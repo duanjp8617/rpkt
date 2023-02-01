@@ -1,0 +1,95 @@
+[package]
+name = "benches"
+version = "0.0.0"
+publish = false
+edition = "2018"
+
+[dev-dependencies]
+criterion = "0.3"
+smoltcp = "0.8"
+arrayvec = "0.7.2"
+bytes = "1"
+ctrlc = { version = "3.0", features = ["termination"]}
+run-time = {path = "../run-time", package = "run-time"}
+run-dpdk = {path = "../run-dpdk", package = "run-dpdk"}
+run-packet = {path = "../run-packet", package = "run-packet"}
+
+[[bench]]
+name = "pbuf_parse"
+path = "dpdk/pbuf_parse.rs"
+harness = false
+
+[[bench]]
+name = "pbuf_build"
+path = "dpdk/pbuf_build.rs"
+harness = false
+
+[[bench]]
+name = "cursor_parse"
+path = "dpdk/cursor_parse.rs"
+harness = false
+
+[[bench]]
+name = "cursor_parse_unchecked"
+path = "dpdk/cursor_parse_unchecked.rs"
+harness = false
+
+[[bench]]
+name = "cursor_parse_coexist"
+path = "dpdk/cursor_parse_coexist.rs"
+harness = false
+
+[[bench]]
+name = "cursor_new"
+path = "dpdk/cursor_new.rs"
+harness = false
+
+[[bench]]
+name = "cursor_build"
+path = "dpdk/cursor_build.rs"
+harness = false
+
+[[bench]]
+name = "smol_parse"
+path = "dpdk/smol_parse.rs"
+harness = false
+
+[[bench]]
+name = "smol_build"
+path = "dpdk/smol_build.rs"
+harness = false
+
+[[bench]]
+name = "cursor_fwd"
+path = "dpdk/cursor_fwd.rs"
+harness = false
+
+[[bench]]
+name = "smol_fwd"
+path = "dpdk/smol_fwd.rs"
+harness = false
+
+###################
+
+[[bench]]
+name = "packet_parse"
+path = "packet/packet_parse.rs"
+harness = false
+
+[[bench]]
+name = "smol_parse_method"
+path = "packet/smol_parse.rs"
+harness = false
+
+[[bench]]
+name = "packet_build"
+path = "packet/packet_build.rs"
+harness = false
+
+[[bench]]
+name = "smol_build_method"
+path = "packet/smol_build.rs"
+harness = false
+
+
+

@@ -1,0 +1,8 @@
+[package]
+name = "run-dpdk-sys"
+version = "0.2.0"
+edition = "2021"
+
+[build-dependencies]
+bindgen = "0.59" 
+cc = "1"
