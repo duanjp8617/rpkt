@@ -155,19 +155,31 @@ impl Mbuf {
     }
 
     #[inline]
-    pub fn set_tx_offload(&mut self, tx_offload: &MbufTxOffload) {
+    pub fn set_tx_offload(&mut self, tx_offload: MbufTxOffload) {
         unsafe {
-            self.ptr.as_mut().ol_flags = tx_offload.tx_offload;
+            self.ptr.as_mut().ol_flags = tx_offload.0;
+        }
+    }
+
+    #[inline]
+    pub fn set_l2_len(&mut self, val: u64) {
+        unsafe {
             self.ptr
                 .as_mut()
                 .__bindgen_anon_3
                 .__bindgen_anon_1
-                .set_l2_len(tx_offload.l2_len);
+                .set_l2_len(val);
+        }
+    }
+
+    #[inline]
+    pub fn set_l3_len(&mut self, val: u64) {
+        unsafe {
             self.ptr
                 .as_mut()
                 .__bindgen_anon_3
                 .__bindgen_anon_1
-                .set_l3_len(tx_offload.l3_len);
+                .set_l3_len(val);
         }
     }
 

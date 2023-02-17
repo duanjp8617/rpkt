@@ -92,9 +92,9 @@ fn build_udp_offload(mbuf: &mut Mbuf, payload_len: usize) {
     let mut of_flag = MbufTxOffload::ALL_DISABLED;
     of_flag.enable_ip_cksum();
     of_flag.enable_udp_cksum();
-    of_flag.set_l2_len(ETHER_HEADER_LEN as u64);
-    of_flag.set_l3_len(IPV4_HEADER_LEN as u64);
-    mbuf.set_tx_offload(&of_flag);
+    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+    mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
+    mbuf.set_tx_offload(of_flag);
 }
 
 #[allow(dead_code)]
@@ -196,10 +196,10 @@ fn build_tcp_offload<'a>(mbuf: &mut Mbuf, payload_len: usize) {
 
     let mut of_flag = MbufTxOffload::ALL_DISABLED;
     of_flag.enable_ip_cksum();
-    of_flag.enable_tcp_cksum();
-    of_flag.set_l2_len(ETHER_HEADER_LEN as u64);
-    of_flag.set_l3_len(IPV4_HEADER_LEN as u64);
-    mbuf.set_tx_offload(&of_flag);
+    of_flag.enable_udp_cksum();
+    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+    mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
+    mbuf.set_tx_offload(of_flag);
 }
 
 fn init_port(
