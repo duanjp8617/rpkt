@@ -2,6 +2,7 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
+use run_dpdk::offload::MbufTxOffload;
 use run_dpdk::*;
 use run_packet::ether::*;
 use run_packet::ipv4::*;
@@ -12,7 +13,11 @@ use run_packet::CursorMut;
 // use packet::ether::;
 
 // test pmd test command:
-// sudo ./dpdk-testpmd -l 0-14 -n 4 -- -i  --portlist=0 --forward-mode=txonly --txpkts=60 --txq=14 --rxq=14 --nb-cores=14
+// sudo ./dpdk-testpmd -l 0-1 -n 4 -- -i  --portlist=0 --forward-mode=txonly --txpkts=60 --txq=1 --rxq=1 --nb-cores=1 --burst=64
+
+// with the new configuration
+// testpmd: 19.09
+// run: 20.39
 
 // the following result is acuiqred without setting ip checksum value
 // nbcore      1         2        3        14
@@ -61,7 +66,7 @@ fn main() {
     DpdkOption::new().init().unwrap();
 
     let port_id = 0;
-    let nb_qs = 14;
+    let nb_qs = 1;
     let mp_name = "mp";
     let mut mpconf = MempoolConf::default();
     mpconf.nb_mbufs = 8192 * 4;
@@ -102,6 +107,9 @@ fn main() {
 
     let mut adder = 0;
     let total_ips = 200;
+    let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
+    tx_of_flag.enable_ip_cksum();
+    tx_of_flag.enable_udp_cksum();
 
     let mut jhs = Vec::new();
     for i in 0..nb_qs {
@@ -133,13 +141,16 @@ fn main() {
                     adder += 1;
                     ippkt.set_dest_ip(Ipv4Addr([192, 168, 23, 2]));
                     ippkt.set_protocol(IpProtocol::UDP);
-                    ippkt.adjust_checksum();
 
                     let mut ethpkt =
                         EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
                     ethpkt.set_dest_mac(MacAddr([0x08, 0x68, 0x8d, 0x61, 0x69, 0x28]));
                     ethpkt.set_source_mac(MacAddr([0x00, 0x50, 0x56, 0xae, 0x76, 0xf5]));
                     ethpkt.set_ethertype(EtherType::IPV4);
+
+                    mbuf.set_tx_offload(tx_of_flag);
+                    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+                    mbuf.set_l3_len(UDP_HEADER_LEN as u64);
                 }
 
                 while batch.len() > 0 {

@@ -57,11 +57,8 @@ dpdk_offload_conf!(
     }
 );
 
-pub struct MbufTxOffload {
-    pub(crate) tx_offload: u64,
-    pub(crate) l2_len: u64,
-    pub(crate) l3_len: u64,
-}
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub struct MbufTxOffload(pub(crate) u64);
 
 impl MbufTxOffload {
     const IP_CKSUM: u64 = 1 << 54;
@@ -69,28 +66,16 @@ impl MbufTxOffload {
     const TCP_CKSUM: u64 = 1 << 52;
 
     pub fn enable_ip_cksum(&mut self) {
-        self.tx_offload = self.tx_offload | Self::IP_CKSUM;
+        self.0 = self.0 | Self::IP_CKSUM;
     }
 
     pub fn enable_udp_cksum(&mut self) {
-        self.tx_offload = self.tx_offload | Self::UDP_CKSUM;
+        self.0 = self.0 | Self::UDP_CKSUM;
     }
 
     pub fn enable_tcp_cksum(&mut self) {
-        self.tx_offload = self.tx_offload | Self::TCP_CKSUM;
+        self.0 = self.0 | Self::TCP_CKSUM;
     }
 
-    pub fn set_l2_len(&mut self, val: u64) {
-        self.l2_len = val;
-    }
-
-    pub fn set_l3_len(&mut self, val: u64) {
-        self.l3_len = val;
-    }
-
-    pub const ALL_DISABLED: Self = Self {
-        tx_offload: 0,
-        l2_len: 0,
-        l3_len: 0,
-    };
+    pub const ALL_DISABLED: Self = Self(0);
 }
