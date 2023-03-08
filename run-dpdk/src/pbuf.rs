@@ -7,11 +7,11 @@ use crate::multiseg::{data_addr, Mbuf};
 
 #[derive(Debug)]
 pub struct Pbuf<'a> {
-    mbuf: &'a mut Mbuf,
-    cur_seg: NonNull<ffi::rte_mbuf>,
-    data: *mut u8,
-    len: usize,
-    headroom: u32,
+    mbuf_head: &'a mut Mbuf,
+    mbuf_cur: NonNull<ffi::rte_mbuf>,
+    chunk_start: *mut u8,
+    chunk_len: usize,
+    segs_len: usize,
 }
 
 impl<'a> Pbuf<'a> {
@@ -19,71 +19,59 @@ impl<'a> Pbuf<'a> {
     pub fn new(mbuf: &'a mut Mbuf) -> Self {
         unsafe {
             let cur_seg = NonNull::new_unchecked(mbuf.as_ptr() as *mut ffi::rte_mbuf);
+            let cur_seg_len = cur_seg.as_ref().data_len;
 
             Self {
-                mbuf,
-                cur_seg,
-                data: data_addr(cur_seg.as_ref()),
-                len: cur_seg.as_ref().data_len.into(),
-                headroom: 0,
+                mbuf_head: mbuf,
+                mbuf_cur: cur_seg,
+                chunk_start: data_addr(cur_seg.as_ref()),
+                chunk_len: cur_seg_len.into(),
+                segs_len: cur_seg_len.into(),
             }
         }
     }
 
     #[inline]
     pub fn original_buf(&self) -> &Mbuf {
-        self.mbuf
+        self.mbuf_head
     }
 
     #[inline]
     pub fn cursor(&self) -> usize {
-        unsafe {
-            self.headroom as usize + usize::from(self.cur_seg.as_ref().data_len)
-                - self.chunk().len()
+        self.segs_len - self.chunk_len
+    }
+
+    #[inline]
+    unsafe fn advance_common(&mut self, target_cursor: usize) {
+        while self.segs_len <= target_cursor && !self.mbuf_cur.as_ref().next.is_null() {
+            self.mbuf_cur = NonNull::new_unchecked(self.mbuf_cur.as_ref().next);
+            self.segs_len += usize::from(self.mbuf_cur.as_ref().data_len);
         }
+
+        self.chunk_len = self.segs_len - target_cursor;
+        self.chunk_start = data_addr(self.mbuf_cur.as_ref())
+            .add(usize::from(self.mbuf_cur.as_ref().data_len) - self.chunk_len);
     }
 
     fn advance_slow(&mut self, cnt: usize) {
-        let mut cursor_pos = self.cursor();
-        assert!(cnt <= self.mbuf.len() - cursor_pos);
+        assert!(cnt <= self.mbuf_head.len() - self.cursor());
 
-        // `segs_len` stores the total length from the start of the mbuf to the
-        // current segment. We can guarantee that `segs_len <= cnt`
-        let mut segs_len = self.len + cursor_pos;
-
-        cursor_pos += cnt;
         unsafe {
-            while segs_len <= cursor_pos && !self.cur_seg.as_ref().next.is_null() {
-                self.cur_seg = NonNull::new_unchecked(self.cur_seg.as_ref().next);
-                segs_len += usize::from(self.cur_seg.as_ref().data_len);
-            }
-
-            self.headroom = segs_len as u32 - u32::from(self.cur_seg.as_ref().data_len);
-            self.data = data_addr(self.cur_seg.as_ref()).add(cursor_pos - self.headroom as usize);
-            self.len = segs_len - cursor_pos;
+            self.advance_common(self.cursor() + cnt);
         }
     }
 
     fn move_back_slow(&mut self, cnt: usize) {
-        let mut cursor_pos = self.cursor();
-        assert!(cnt <= cursor_pos);
+        assert!(cnt <= self.cursor());
 
         // the new cursor position
-        cursor_pos -= cnt;
+        let target_cursor = self.cursor() - cnt;
         unsafe {
             // reset the `cur_seg` to the first segment
-            self.cur_seg = NonNull::new_unchecked(self.mbuf.as_ptr() as *mut ffi::rte_mbuf);
-            let mut segs_len = usize::from(self.cur_seg.as_ref().data_len);
+            self.mbuf_cur = NonNull::new_unchecked(self.mbuf_head.as_ptr() as *mut ffi::rte_mbuf);
+            self.segs_len = usize::from(self.mbuf_cur.as_ref().data_len);
 
-            // advance the internal implicit cursor
-            while segs_len <= cursor_pos && !self.cur_seg.as_ref().next.is_null() {
-                self.cur_seg = NonNull::new_unchecked(self.cur_seg.as_ref().next);
-                segs_len += usize::from(self.cur_seg.as_ref().data_len);
-            }
-
-            self.headroom = segs_len as u32 - u32::from(self.cur_seg.as_ref().data_len);
-            self.data = data_addr(self.cur_seg.as_ref()).add(cursor_pos - self.headroom as usize);
-            self.len = segs_len - cursor_pos;
+            self.advance_common(target_cursor);
         }
     }
 }
@@ -91,24 +79,24 @@ impl<'a> Pbuf<'a> {
 impl<'a> Buf for Pbuf<'a> {
     #[inline]
     fn chunk(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.data, self.len as usize) }
+        unsafe { std::slice::from_raw_parts(self.chunk_start, self.chunk_len) }
     }
 
     #[inline]
     fn advance(&mut self, cnt: usize) {
-        if cnt >= self.chunk().len() {
+        if cnt >= self.chunk_len {
             self.advance_slow(cnt);
         } else {
             unsafe {
-                self.data = self.data.add(cnt);
-                self.len -= cnt;
+                self.chunk_start = self.chunk_start.add(cnt);
+                self.chunk_len -= cnt;
             }
         }
     }
 
     #[inline]
     fn remaining(&self) -> usize {
-        self.mbuf.len() - self.cursor()
+        self.mbuf_head.len() - self.cursor()
     }
 }
 
@@ -119,30 +107,32 @@ impl<'a> PktBuf for Pbuf<'a> {
             if cnt > self.chunk_headroom() {
                 self.move_back_slow(cnt);
             } else {
-                self.data = self.data.sub(cnt);
-                self.len += cnt;
+                self.chunk_start = self.chunk_start.sub(cnt);
+                self.chunk_len += cnt;
             }
         }
     }
 
     fn trim_off(&mut self, cnt: usize) {
         let cursor = self.cursor();
-        assert!(cnt <= self.mbuf.len() - cursor);
+        assert!(cnt <= self.remaining());
 
-        let new_len = self.mbuf.len() - cnt;
-        self.mbuf.truncate(new_len);
+        let new_len = self.mbuf_head.len() - cnt;
+        if cursor == new_len && self.chunk_headroom() == 0 {
+            self.mbuf_head.truncate(new_len);
+            unsafe {
+                self.mbuf_cur =
+                    NonNull::new_unchecked(self.mbuf_head.as_ptr() as *mut ffi::rte_mbuf);
+                self.segs_len = usize::from(self.mbuf_cur.as_ref().data_len);
 
-        if new_len - cursor < self.len as usize {
-            if new_len == cursor && cursor == self.headroom as usize {
-                unsafe {
-                    self.cur_seg = NonNull::new_unchecked(self.mbuf.as_ptr() as *mut ffi::rte_mbuf);
-                    self.data = data_addr(self.cur_seg.as_ref());
-                    self.len = self.cur_seg.as_ref().data_len.into();
-                    self.headroom = 0;
-                }
-                self.advance(cursor);
+                self.advance_common(cursor);
             }
-            self.len = new_len - cursor;
+        } else {
+            self.mbuf_head.truncate(new_len);
+            if new_len < self.segs_len {
+                self.chunk_len = new_len - cursor;
+                self.segs_len = new_len;
+            }
         }
     }
 }
@@ -150,12 +140,12 @@ impl<'a> PktBuf for Pbuf<'a> {
 impl<'a> PktMut for Pbuf<'a> {
     #[inline]
     fn chunk_headroom(&self) -> usize {
-        unsafe { usize::from(self.cur_seg.as_ref().data_len) - self.chunk().len() }
+        unsafe { usize::from(self.mbuf_cur.as_ref().data_len) - self.chunk_len }
     }
 
     #[inline]
     fn chunk_mut(&mut self) -> &mut [u8] {
-        unsafe { std::slice::from_raw_parts_mut(self.data, self.len as usize) }
+        unsafe { std::slice::from_raw_parts_mut(self.chunk_start, self.chunk_len) }
     }
 }
 
