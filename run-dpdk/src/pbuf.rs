@@ -18,15 +18,15 @@ impl<'a> Pbuf<'a> {
     #[inline]
     pub fn new(mbuf: &'a mut Mbuf) -> Self {
         unsafe {
-            let cur_seg = NonNull::new_unchecked(mbuf.as_ptr() as *mut ffi::rte_mbuf);
-            let cur_seg_len = cur_seg.as_ref().data_len;
+            let fst_seg = NonNull::new_unchecked(mbuf.as_ptr() as *mut ffi::rte_mbuf);
+            let fst_seg_len = fst_seg.as_ref().data_len;
 
             Self {
                 mbuf_head: mbuf,
-                mbuf_cur: cur_seg,
-                chunk_start: data_addr(cur_seg.as_ref()),
-                chunk_len: cur_seg_len.into(),
-                segs_len: cur_seg_len.into(),
+                mbuf_cur: fst_seg,
+                chunk_start: data_addr(fst_seg.as_ref()),
+                chunk_len: fst_seg_len.into(),
+                segs_len: fst_seg_len.into(),
             }
         }
     }

@@ -4,32 +4,32 @@ use crate::{PktBuf, PktMut};
 
 #[derive(Debug)]
 pub struct Cursor<'a> {
-    buf: &'a [u8],
-    start: *const u8,
+    chunk: &'a [u8],
+    start_addr: *const u8,
 }
 
 impl<'a> Cursor<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> Self {
         Cursor {
-            buf,
-            start: buf.as_ptr(),
+            chunk: buf,
+            start_addr: buf.as_ptr(),
         }
     }
 
     #[inline]
-    pub fn original_buf(&self) -> &'a [u8] {
-        unsafe { std::slice::from_raw_parts(self.start, self.cursor() + self.buf.len()) }
+    pub fn buf(&self) -> &'a [u8] {
+        unsafe { std::slice::from_raw_parts(self.start_addr, self.cursor() + self.chunk.len()) }
     }
 
     #[inline]
-    pub fn current_buf(&self) -> &'a [u8] {
-        self.buf
+    pub fn chunk_shared_lifetime(&self) -> &'a [u8] {
+        self.chunk
     }
 
     #[inline]
     pub fn cursor(&self) -> usize {
-        unsafe { self.buf.as_ptr().offset_from(self.start) as usize }
+        unsafe { self.chunk.as_ptr().offset_from(self.start_addr) as usize }
     }
 }
 
@@ -37,18 +37,18 @@ impl<'a> Cursor<'a> {
 impl<'a> Buf for Cursor<'a> {
     #[inline]
     fn remaining(&self) -> usize {
-        self.buf.len()
+        self.chunk.len()
     }
 
     #[inline]
     fn chunk(&self) -> &[u8] {
-        self.buf
+        self.chunk
     }
 
     #[inline]
     fn advance(&mut self, cnt: usize) {
-        assert!(cnt <= self.buf.len());
-        self.buf = &self.buf[cnt..];
+        assert!(cnt <= self.chunk.len());
+        self.chunk = &self.chunk[cnt..];
     }
 }
 
@@ -56,62 +56,66 @@ impl<'a> PktBuf for Cursor<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
-        self.buf =
-            unsafe { std::slice::from_raw_parts(self.buf.as_ptr().sub(cnt), self.buf.len() + cnt) };
+        self.chunk = unsafe {
+            std::slice::from_raw_parts(self.chunk.as_ptr().sub(cnt), self.chunk.len() + cnt)
+        };
     }
 
     #[inline]
     fn trim_off(&mut self, cnt: usize) {
-        assert!(cnt <= self.buf.len());
-        self.buf = &self.buf[..(self.buf.len() - cnt)];
+        assert!(cnt <= self.chunk.len());
+        self.chunk = &self.chunk[..(self.chunk.len() - cnt)];
     }
 }
 
 #[derive(Debug)]
 pub struct CursorMut<'a> {
-    buf: &'a mut [u8],
-    start: *const u8,
+    chunk: &'a mut [u8],
+    start_addr: *const u8,
 }
 
 impl<'a> CursorMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> Self {
-        let start = buf.as_mut_ptr();
-        CursorMut { buf, start }
+        let start_addr = buf.as_mut_ptr();
+        CursorMut {
+            chunk: buf,
+            start_addr,
+        }
     }
 
     #[inline]
-    pub fn original_buf(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.start, self.cursor() + self.buf.len()) }
+    pub fn buf(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.start_addr, self.cursor() + self.chunk.len()) }
     }
 
     #[inline]
-    pub fn current_buf(self) -> &'a mut [u8] {
-        self.buf
+    pub fn chunk_mut_shared_lifetime(self) -> &'a mut [u8] {
+        self.chunk
     }
 
     #[inline]
     pub fn cursor(&self) -> usize {
-        unsafe { self.buf.as_ptr().offset_from(self.start) as usize }
+        unsafe { self.chunk.as_ptr().offset_from(self.start_addr) as usize }
     }
 }
 
 impl<'a> Buf for CursorMut<'a> {
     #[inline]
     fn remaining(&self) -> usize {
-        self.buf.len()
+        self.chunk.len()
     }
 
     #[inline]
     fn chunk(&self) -> &[u8] {
-        self.buf
+        self.chunk
     }
 
     #[inline]
     fn advance(&mut self, cnt: usize) {
-        assert!(cnt <= self.buf.len());
-        self.buf = unsafe {
-            std::slice::from_raw_parts_mut(self.buf.as_mut_ptr().add(cnt), self.buf.len() - cnt)
+        assert!(cnt <= self.chunk.len());
+        self.chunk = unsafe {
+            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr().add(cnt), self.chunk.len() - cnt)
         };
     }
 }
@@ -120,23 +124,24 @@ impl<'a> PktBuf for CursorMut<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
-        self.buf = unsafe {
-            std::slice::from_raw_parts_mut(self.buf.as_mut_ptr().sub(cnt), self.buf.len() + cnt)
+        self.chunk = unsafe {
+            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr().sub(cnt), self.chunk.len() + cnt)
         };
     }
 
     #[inline]
     fn trim_off(&mut self, cnt: usize) {
         assert!(cnt <= self.remaining());
-        self.buf =
-            unsafe { std::slice::from_raw_parts_mut(self.buf.as_mut_ptr(), self.buf.len() - cnt) };
+        self.chunk = unsafe {
+            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr(), self.chunk.len() - cnt)
+        };
     }
 }
 
 impl<'a> PktMut for CursorMut<'a> {
     #[inline]
     fn chunk_mut(&mut self) -> &mut [u8] {
-        self.buf
+        self.chunk
     }
 
     #[inline]
@@ -157,7 +162,7 @@ mod test_cursors {
             cursor.advance(c_pos);
 
             assert_eq!(c_pos, cursor.cursor());
-            assert_eq!(cursor.original_buf(), &b[..]);
+            assert_eq!(cursor.buf(), &b[..]);
             assert_eq!(cursor.remaining(), 1000 - c_pos);
             assert_eq!(cursor.chunk(), &b[c_pos..]);
         }
@@ -168,7 +173,7 @@ mod test_cursors {
             cursor.move_back(c_pos);
 
             assert_eq!(1000 - c_pos, cursor.cursor());
-            assert_eq!(cursor.original_buf(), &b[..]);
+            assert_eq!(cursor.buf(), &b[..]);
             assert_eq!(cursor.remaining(), c_pos);
             assert_eq!(cursor.chunk(), &b[1000 - c_pos..]);
         }
@@ -193,7 +198,7 @@ mod test_cursors {
             cursor.advance(c_pos);
 
             assert_eq!(c_pos, cursor.cursor());
-            assert_eq!(cursor.original_buf(), &c[..]);
+            assert_eq!(cursor.buf(), &c[..]);
             assert_eq!(cursor.remaining(), 1000 - c_pos);
             assert_eq!(cursor.chunk_mut(), &mut c[c_pos..]);
         }
@@ -204,7 +209,7 @@ mod test_cursors {
             cursor.move_back(c_pos);
 
             assert_eq!(1000 - c_pos, cursor.cursor());
-            assert_eq!(cursor.original_buf(), &c[..]);
+            assert_eq!(cursor.buf(), &c[..]);
             assert_eq!(cursor.remaining(), c_pos);
             assert_eq!(cursor.chunk_mut(), &mut c[1000 - c_pos..]);
         }

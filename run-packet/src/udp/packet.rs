@@ -117,13 +117,15 @@ impl<T: PktMut> UdpPacket<T> {
 impl<'a> UdpPacket<Cursor<'a>> {
     #[inline]
     pub fn cursor_header(&self) -> UdpHeader<&'a [u8]> {
-        let data = &self.buf.current_buf()[..UDP_HEADER_LEN];
+        let data = &self.buf.chunk_shared_lifetime()[..UDP_HEADER_LEN];
         UdpHeader::new_unchecked(data)
     }
 
     #[inline]
     pub fn cursor_payload(&self) -> Cursor<'a> {
-        Cursor::new(&self.buf.current_buf()[UDP_HEADER_LEN..usize::from(self.packet_len())])
+        Cursor::new(
+            &self.buf.chunk_shared_lifetime()[UDP_HEADER_LEN..usize::from(self.packet_len())],
+        )
     }
 }
 
@@ -132,7 +134,10 @@ impl<'a> UdpPacket<CursorMut<'a>> {
     pub fn split(self) -> (UdpHeader<&'a mut [u8]>, CursorMut<'a>) {
         let packet_len = self.packet_len();
 
-        let (buf_mut, _) = self.buf.current_buf().split_at_mut(usize::from(packet_len));
+        let (buf_mut, _) = self
+            .buf
+            .chunk_mut_shared_lifetime()
+            .split_at_mut(usize::from(packet_len));
         let (hdr, payload) = buf_mut.split_at_mut(UDP_HEADER_LEN);
 
         (UdpHeader::new_unchecked(hdr), CursorMut::new(payload))
