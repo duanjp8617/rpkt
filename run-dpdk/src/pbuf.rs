@@ -32,7 +32,7 @@ impl<'a> Pbuf<'a> {
     }
 
     #[inline]
-    pub fn original_buf(&self) -> &Mbuf {
+    pub fn buf(&self) -> &Mbuf {
         self.mbuf_head
     }
 
@@ -41,6 +41,8 @@ impl<'a> Pbuf<'a> {
         self.segs_len - self.chunk_len
     }
 
+    // Advance the cursor to the `target_cursor` position.
+    // Note: this method should only be used by the `advance` and `move_back` trait method.
     #[inline]
     unsafe fn advance_common(&mut self, target_cursor: usize) {
         while self.segs_len <= target_cursor && !self.mbuf_cur.as_ref().next.is_null() {
