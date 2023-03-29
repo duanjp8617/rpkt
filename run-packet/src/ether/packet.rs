@@ -107,7 +107,7 @@ impl<'a> EtherPacket<CursorMut<'a>> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::{ether::ETHER_HEADER_TEMPLATE, Cursor, CursorMut};
     use bytes::BufMut;

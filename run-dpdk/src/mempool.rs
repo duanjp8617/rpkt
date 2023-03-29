@@ -159,7 +159,7 @@ mod tests {
     use arrayvec::*;
 
     #[test]
-    fn test_mempool1() {
+    fn create_mempool_with_same_name() {
         DpdkOption::new().init().unwrap();
 
         {
@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mempool2() {
+    fn mbuf_alloc_and_size_check() {
         DpdkOption::new().init().unwrap();
 
         {
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mempool3() {
+    fn mbuf_data_unchanged_after_realloc() {
         DpdkOption::new().init().unwrap();
 
         {
@@ -244,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mempool4() {
+    fn alloc_mbuf_from_multiple_threads() {
         DpdkOption::new().init().unwrap();
         assert_eq!(service().lcores().len() >= 4, true);
 

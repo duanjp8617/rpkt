@@ -56,7 +56,7 @@ impl<T: PktMut> ArpPacket<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::arp::ARP_HEADER_TEMPLATE;
     use crate::ether::*;

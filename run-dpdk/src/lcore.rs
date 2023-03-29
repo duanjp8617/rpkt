@@ -136,7 +136,7 @@ mod tests {
     use std::thread;
 
     #[test]
-    fn test_lcore_bind1() {
+    fn bind_lcore_to_thread0() {
         // Dpdk will only be initialized once
         DpdkOption::new().init().unwrap();
 
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn test_lcore_bind2() {
+    fn bind_2_cores_to_the_same_lcore() {
         DpdkOption::new().init().unwrap();
 
         assert_eq!(service().lcores().len() >= 2, true);

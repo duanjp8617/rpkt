@@ -93,7 +93,7 @@ impl<T: PktMut> Icmpv4Packet<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::ether::*;
     use crate::icmpv4::ICMPV4_HEADER_TEMPLATE;
