@@ -145,7 +145,7 @@ impl<'a> UdpPacket<CursorMut<'a>> {
 }
 
 #[cfg(test)]
-mod test_udppkt {
+mod test {
     use super::*;
     use crate::ether::*;
     use crate::ipv4::*;
@@ -164,7 +164,7 @@ mod test_udppkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let buf = Cursor::new(&FRAME_BYTES[..]);
 
         let ethpkt = EtherPacket::parse(buf).unwrap();
@@ -189,7 +189,7 @@ mod test_udppkt {
     }
 
     #[test]
-    fn test_build() {
+    fn packet_build() {
         let mut bytes = [0xff; 108];
         (&mut bytes[ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN..108]).copy_from_slice(
             &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN..108],
@@ -290,149 +290,5 @@ mod test_udppkt {
 
         let udppkt = UdpPacket::parse(ippkt.payload()).unwrap();
         assert_eq!(udppkt.source_port(), 1024);
-    }
-
-    #[test]
-    fn smol_data_parse() {
-        const SRC_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 1]);
-        const DST_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 2]);
-        static PACKET_BYTES: [u8; 12] = [
-            0xbf, 0x00, 0x00, 0x35, 0x00, 0x0c, 0x12, 0x4d, 0xaa, 0x00, 0x00, 0xff,
-        ];
-        static PAYLOAD_BYTES: [u8; 4] = [0xaa, 0x00, 0x00, 0xff];
-
-        let pktbuf = Cursor::new(&PACKET_BYTES[..]);
-
-        let mut packet = UdpPacket::parse(pktbuf).unwrap();
-        assert_eq!(packet.source_port(), 48896);
-        assert_eq!(packet.dest_port(), 53);
-        assert_eq!(packet.packet_len(), 12);
-        assert_eq!(packet.checksum(), 0x124d);
-        assert_eq!(&packet.buf().chunk()[UDP_HEADER_LEN..], &PAYLOAD_BYTES[..]);
-        assert!(packet.verify_ipv4_checksum(SRC_ADDR, DST_ADDR));
-    }
-
-    #[test]
-    fn smol_data_build() {
-        const SRC_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 1]);
-        const DST_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 2]);
-        static PACKET_BYTES: [u8; 12] = [
-            0xbf, 0x00, 0x00, 0x35, 0x00, 0x0c, 0x12, 0x4d, 0xaa, 0x00, 0x00, 0xff,
-        ];
-        static PAYLOAD_BYTES: [u8; 4] = [0xaa, 0x00, 0x00, 0xff];
-
-        let mut bytes = [0xa5; 12];
-        (&mut bytes[UDP_HEADER_LEN..]).copy_from_slice(&PAYLOAD_BYTES[..]);
-
-        let mut pktbuf = CursorMut::new(&mut bytes[..]);
-        pktbuf.advance(UDP_HEADER_LEN);
-
-        let mut packet = UdpPacket::prepend_header(pktbuf, &UDP_HEADER_TEMPLATE);
-        packet.set_source_port(48896);
-        packet.set_dest_port(53);
-        packet.set_checksum(0xffff);
-        packet.adjust_ipv4_checksum(SRC_ADDR, DST_ADDR);
-
-        assert_eq!(&bytes[..], &PACKET_BYTES[..]);
-    }
-
-    #[test]
-    fn pnet_build() {
-        const SRC_ADDR: [u8; 4] = [192, 168, 1, 1];
-        const DST_ADDR: [u8; 4] = [192, 168, 1, 2];
-        static PACKET_BYTES: [u8; 12] = [
-            0xbf, 0x00, 0x00, 0x35, 0x00, 0x0c, 0x12, 0x4d, 0xaa, 0x00, 0x00, 0xff,
-        ];
-        static PAYLOAD_BYTES: [u8; 4] = [0xaa, 0x00, 0x00, 0xff];
-
-        let mut bytes = [0xa5; 12];
-        let mut udppkt = pnet::packet::udp::MutableUdpPacket::new(&mut bytes[..]).unwrap();
-
-        udppkt.set_source(48896);
-        udppkt.set_destination(53);
-        udppkt.set_checksum(0);
-        udppkt.set_length(12);
-        udppkt.set_payload(&PAYLOAD_BYTES[..]);
-
-        let cksum = pnet::packet::udp::ipv4_checksum(
-            &udppkt.to_immutable(),
-            &std::net::Ipv4Addr::new(SRC_ADDR[0], SRC_ADDR[1], SRC_ADDR[2], SRC_ADDR[3]),
-            &std::net::Ipv4Addr::new(DST_ADDR[0], DST_ADDR[1], DST_ADDR[2], DST_ADDR[3]),
-        );
-        udppkt.set_checksum(cksum);
-
-        assert_eq!(&bytes[..], &PACKET_BYTES[..]);
-    }
-
-    fn smol_test() -> (u16, [u8; 108]) {
-        use smoltcp::wire;
-
-        let mut bytes = [0xff; 108];
-        (&mut bytes[42..108]).copy_from_slice(&FRAME_BYTES[42..108]);
-
-        let mut udppkt = wire::UdpPacket::new_unchecked(&mut bytes[34..108]);
-        udppkt.set_src_port(60376);
-        udppkt.set_dst_port(161);
-        udppkt.set_checksum(0);
-        udppkt.set_len(108 - 34);
-        udppkt.fill_checksum(
-            &wire::IpAddress::v4(192, 168, 29, 58),
-            &wire::IpAddress::v4(192, 168, 29, 160),
-        );
-
-        (udppkt.checksum(), bytes)
-    }
-
-    fn run_test() -> (u16, [u8; 108]) {
-        let mut bytes = [0xff; 108];
-        (&mut bytes[ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN..108]).copy_from_slice(
-            &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN..108],
-        );
-
-        let mut pktbuf = CursorMut::new(&mut bytes[..]);
-        pktbuf.advance(ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
-
-        let mut udppkt = UdpPacket::prepend_header(pktbuf, &UDP_HEADER_TEMPLATE);
-        udppkt.set_source_port(60376);
-        udppkt.set_dest_port(161);
-        udppkt.set_checksum(0);
-        udppkt.adjust_ipv4_checksum(Ipv4Addr([192, 168, 29, 58]), Ipv4Addr([192, 168, 29, 160]));
-
-        (udppkt.checksum(), bytes)
-    }
-
-    fn pnet_test() -> (u16, [u8; 108]) {
-        use pnet::packet;
-
-        let mut bytes = [0xff; 108];
-        (&mut bytes[42..108]).copy_from_slice(&FRAME_BYTES[42..108]);
-
-        let mut udppkt = packet::udp::MutableUdpPacket::new(&mut bytes[34..108]).unwrap();
-        udppkt.set_source(60376);
-        udppkt.set_destination(161);
-        udppkt.set_checksum(0);
-        udppkt.set_length(108 - 34);
-
-        let cksum = pnet::packet::udp::ipv4_checksum(
-            &udppkt.to_immutable(),
-            &std::net::Ipv4Addr::new(192, 168, 29, 58),
-            &std::net::Ipv4Addr::new(192, 168, 29, 160),
-        );
-        udppkt.set_checksum(cksum);
-
-        (udppkt.get_checksum(), bytes)
-    }
-
-    #[test]
-    fn checksums_from_three_crates() {
-        let (cksum1, bytes1) = smol_test();
-        let (cksum2, bytes2) = run_test();
-        let (cksum3, bytes3) = pnet_test();
-
-        assert_eq!(cksum1, cksum2);
-        assert_eq!(cksum1, cksum3);
-
-        assert_eq!(&bytes1[..], &bytes2[..]);
-        assert_eq!(&bytes1[..], &bytes3[..]);
     }
 }

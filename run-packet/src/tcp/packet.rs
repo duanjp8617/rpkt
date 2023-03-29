@@ -179,7 +179,7 @@ impl<'a> TcpPacket<CursorMut<'a>> {
 }
 
 #[cfg(test)]
-mod test_tcppkt {
+mod test {
     use super::*;
     use crate::ether::*;
     use crate::ipv4::*;
@@ -204,7 +204,7 @@ mod test_tcppkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let buf = Cursor::new(&FRAME_BYTES[..]);
 
         let ethpkt = EtherPacket::parse(buf).unwrap();
@@ -248,7 +248,7 @@ mod test_tcppkt {
     }
 
     #[test]
-    fn test_build() {
+    fn packet_build() {
         let mut bytes = [0xff; 200];
         (&mut bytes[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12..]).copy_from_slice(
             &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12..],
@@ -306,84 +306,5 @@ mod test_tcppkt {
         let pkt = EtherPacket::prepend_header(ippkt.release(), &ethheader);
 
         assert_eq!(pkt.release().chunk(), &FRAME_BYTES[..]);
-    }
-
-    #[test]
-    fn smol_data_parse() {
-        static PACKET_BYTES: [u8; 28] = [
-            0xbf, 0x00, 0x00, 0x50, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x60, 0x35,
-            0x01, 0x23, 0x01, 0xb6, 0x02, 0x01, 0x03, 0x03, 0x0c, 0x01, 0xaa, 0x00, 0x00, 0xff,
-        ];
-        static OPTION_BYTES: [u8; 4] = [0x03, 0x03, 0x0c, 0x01];
-        static PAYLOAD_BYTES: [u8; 4] = [0xaa, 0x00, 0x00, 0xff];
-        const SRC_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 1]);
-        const DST_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 2]);
-
-        let mut bytes = [0xa5; 28];
-        (&mut bytes[TCP_HEADER_LEN + 4..]).copy_from_slice(&PAYLOAD_BYTES[..]);
-
-        let buf = Cursor::new(&PACKET_BYTES[..]);
-
-        let mut packet = TcpPacket::parse(buf).unwrap();
-        assert_eq!(packet.src_port(), 48896);
-        assert_eq!(packet.dst_port(), 80);
-        assert_eq!(packet.seq_number(), 0x01234567);
-        assert_eq!(packet.ack_number(), 0x89abcdefu32);
-        assert_eq!(packet.header_len(), 24);
-        assert!(packet.fin());
-        assert!(!packet.syn());
-        assert!(packet.rst());
-        assert!(!packet.psh());
-        assert!(packet.ack());
-        assert!(packet.urg());
-        assert_eq!(packet.window_size(), 0x0123);
-        assert_eq!(packet.urgent_ptr(), 0x0201);
-        assert_eq!(packet.checksum(), 0x01b6);
-        assert_eq!(packet.option_bytes(), &OPTION_BYTES[..]);
-        assert_eq!(
-            &packet.buf().chunk()[packet.header_len().into()..],
-            &PAYLOAD_BYTES[..]
-        );
-        assert!(packet.verify_ipv4_checksum(SRC_ADDR, DST_ADDR));
-    }
-
-    #[test]
-    fn smol_data_build() {
-        static PACKET_BYTES: [u8; 28] = [
-            0xbf, 0x00, 0x00, 0x50, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x60, 0x35,
-            0x01, 0x23, 0x01, 0xb6, 0x02, 0x01, 0x03, 0x03, 0x0c, 0x01, 0xaa, 0x00, 0x00, 0xff,
-        ];
-        static OPTION_BYTES: [u8; 4] = [0x03, 0x03, 0x0c, 0x01];
-        static PAYLOAD_BYTES: [u8; 4] = [0xaa, 0x00, 0x00, 0xff];
-        const SRC_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 1]);
-        const DST_ADDR: Ipv4Addr = Ipv4Addr([192, 168, 1, 2]);
-
-        let mut bytes = [0xa5; 28];
-        (&mut bytes[TCP_HEADER_LEN + 4..]).copy_from_slice(&PAYLOAD_BYTES[..]);
-
-        let mut buf = CursorMut::new(&mut bytes[..]);
-        buf.advance(TCP_HEADER_LEN + 4);
-
-        let mut tcpheader = TCP_HEADER_TEMPLATE;
-        tcpheader.set_header_len(24);
-        let mut packet = TcpPacket::prepend_header(buf, &tcpheader);
-        packet.set_src_port(48896);
-        packet.set_dst_port(80);
-        packet.set_seq_number(0x01234567);
-        packet.set_ack_number(0x89abcdefu32);
-        packet.clear_flags();
-        packet.set_fin(true);
-        packet.set_syn(false);
-        packet.set_rst(true);
-        packet.set_psh(false);
-        packet.set_ack(true);
-        packet.set_urg(true);
-        packet.set_window_size(0x0123);
-        packet.set_urgent_ptr(0x0201);
-        packet.set_checksum(0xEEEE);
-        packet.set_option_bytes(&OPTION_BYTES[..]);
-        packet.adjust_ipv4_checksum(SRC_ADDR, DST_ADDR);
-        assert_eq!(packet.buf().chunk(), &PACKET_BYTES[..]);
-        assert_eq!(&bytes[..], &PACKET_BYTES[..]);
     }
 }

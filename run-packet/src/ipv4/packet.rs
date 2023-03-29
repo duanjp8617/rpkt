@@ -172,7 +172,7 @@ impl<'a> Ipv4Packet<CursorMut<'a>> {
 }
 
 #[cfg(test)]
-mod test_ipv4pkt {
+mod test {
     use super::*;
     use crate::ether::*;
     use crate::ipv4::IPV4_HEADER_TEMPLATE;
@@ -191,7 +191,7 @@ mod test_ipv4pkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let buf = Cursor::new(&FRAME_BYTES[..]);
 
         let ethpkt = EtherPacket::parse(buf).unwrap();
@@ -222,7 +222,7 @@ mod test_ipv4pkt {
     }
 
     #[test]
-    fn test_safe_construct() {
+    fn packet_build() {
         let mut bytes = [0xff; 110];
         (&mut bytes[(ETHER_HEADER_LEN + IPV4_HEADER_LEN)..])
             .put(&FRAME_BYTES[(ETHER_HEADER_LEN + IPV4_HEADER_LEN)..]);

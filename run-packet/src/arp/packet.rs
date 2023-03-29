@@ -56,7 +56,7 @@ impl<T: PktMut> ArpPacket<T> {
 }
 
 #[cfg(test)]
-mod test_arppkt {
+mod test {
     use super::*;
     use crate::arp::ARP_HEADER_TEMPLATE;
     use crate::ether::*;
@@ -72,7 +72,7 @@ mod test_arppkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let pres = EtherPacket::parse(Cursor::new(&FRAME_BYTES[..]));
         assert_eq!(pres.is_ok(), true);
         let ethpkt = pres.unwrap();
@@ -96,7 +96,7 @@ mod test_arppkt {
     }
 
     #[test]
-    fn test_safe_construct() {
+    fn packet_build() {
         let mut bytes = [0xff; 60];
         (&mut bytes[(ETHER_HEADER_LEN + ARP_HEADER_LEN)..])
             .put_bytes(0, 60 - ETHER_HEADER_LEN - ARP_HEADER_LEN);

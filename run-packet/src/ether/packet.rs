@@ -107,7 +107,7 @@ impl<'a> EtherPacket<CursorMut<'a>> {
 }
 
 #[cfg(test)]
-mod test_etherpkt {
+mod test {
     use super::*;
     use crate::{ether::ETHER_HEADER_TEMPLATE, Cursor, CursorMut};
     use bytes::BufMut;
@@ -121,7 +121,7 @@ mod test_etherpkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let pres = EtherPacket::parse(Cursor::new(&FRAME_BYTES[..]));
         assert_eq!(pres.is_ok(), true);
         let ethpkt = pres.unwrap();
@@ -140,7 +140,7 @@ mod test_etherpkt {
     }
 
     #[test]
-    fn test_construct() {
+    fn packet_build() {
         let mut bytes = [0xff; 64];
         (&mut bytes[ETHER_HEADER_LEN..]).put(&FRAME_BYTES[ETHER_HEADER_LEN..]);
 

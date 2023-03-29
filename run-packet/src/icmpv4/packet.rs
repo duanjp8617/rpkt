@@ -93,7 +93,7 @@ impl<T: PktMut> Icmpv4Packet<T> {
 }
 
 #[cfg(test)]
-mod test_udppkt {
+mod test {
     use super::*;
     use crate::ether::*;
     use crate::icmpv4::ICMPV4_HEADER_TEMPLATE;
@@ -112,7 +112,7 @@ mod test_udppkt {
     ];
 
     #[test]
-    fn test_parse() {
+    fn packet_parse() {
         let buf = Cursor::new(&FRAME_BYTES[..]);
         let eth = EtherPacket::parse(buf).unwrap();
         assert_eq!(eth.ethertype(), EtherType::IPV4);
@@ -138,7 +138,7 @@ mod test_udppkt {
     }
 
     #[test]
-    fn test_safe_construct() {
+    fn packet_build() {
         let mut bytes = [0xff; 114];
         (&mut bytes[ETHER_HEADER_LEN + IPV4_HEADER_LEN + ICMPV4_HEADER_LEN..]).copy_from_slice(
             &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + ICMPV4_HEADER_LEN..],
