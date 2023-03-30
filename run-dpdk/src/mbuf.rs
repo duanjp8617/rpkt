@@ -2,6 +2,8 @@ use std::ptr::NonNull;
 
 use run_dpdk_sys as ffi;
 
+use crate::offload::{MbufRxOffload, MbufTxOffload};
+
 #[derive(Debug)]
 pub struct Mbuf {
     ptr: NonNull<ffi::rte_mbuf>,
@@ -148,20 +150,6 @@ impl Mbuf {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
-
-    // modified to pub for netbricks_port
-    #[inline]
-    pub(crate) fn into_raw(self) -> *mut ffi::rte_mbuf {
-        let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr.as_ptr()
-    }
-
-    // modified to pub for netbricks_port
-    #[inline]
-    pub(crate) fn as_ptr(&self) -> *const ffi::rte_mbuf {
-        self.ptr.as_ptr()
-    }
 }
 
 impl Drop for Mbuf {
@@ -186,7 +174,7 @@ mod tests {
         DpdkOption::new().init().unwrap();
 
         {
-            let mut config = MempoolConf::new();
+            let mut config = MempoolConf::default();
             config.nb_mbufs = 128;
             let mp = service().mempool_create("wtf", &config).unwrap();
 
@@ -213,33 +201,21 @@ mod tests {
             new_content[0..64].copy_from_slice(&front_content[..]);
             new_content[64..].copy_from_slice(&content[..]);
 
-            assert_eq!(mbuf.front_capacity(), MempoolConf::MBUF_HEADROOM as usize);
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize);
 
             unsafe { mbuf.extend_front(32) };
             mbuf.data_mut()[..32].copy_from_slice(&front_content[32..]);
-            assert_eq!(
-                mbuf.front_capacity(),
-                MempoolConf::MBUF_HEADROOM as usize - 32
-            );
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize - 32);
             assert_eq!(mbuf.data(), &new_content[32..]);
             assert_eq!(mbuf.len(), 1024 + 32);
-            assert_eq!(
-                mbuf.front_capacity(),
-                MempoolConf::MBUF_HEADROOM as usize - 32
-            );
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize - 32);
             assert_eq!(mbuf.capacity(), MempoolConf::DATAROOM as usize - 1024);
 
             mbuf.extend_front_from_slice(&front_content[..32]);
-            assert_eq!(
-                mbuf.front_capacity(),
-                MempoolConf::MBUF_HEADROOM as usize - 64
-            );
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize - 64);
             assert_eq!(mbuf.data(), &new_content[..]);
             assert_eq!(mbuf.len(), 1024 + 64);
-            assert_eq!(
-                mbuf.front_capacity(),
-                MempoolConf::MBUF_HEADROOM as usize - 64
-            );
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize - 64);
             assert_eq!(mbuf.capacity(), MempoolConf::DATAROOM as usize - 1024);
 
             mbuf.truncate(512);
@@ -259,7 +235,7 @@ mod tests {
             );
             assert_eq!(
                 mbuf.front_capacity(),
-                MempoolConf::MBUF_HEADROOM as usize - 64 + 44
+                Mempool::MBUF_HEADROOM as usize - 64 + 44
             );
         }
 
