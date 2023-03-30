@@ -29,6 +29,8 @@ mod pbuf;
 pub use pbuf::Pbuf;
 
 mod port;
-pub use port::{PortConf, PortInfo, PortStats, RxQueue, RxQueueConf, TxQueue, TxQueueConf};
+pub use port::{
+    PortConf, PortInfo, PortStats, RxQueue, RxQueueConf, StatsQueryContext, TxQueue, TxQueueConf,
+};
 
 pub mod offload;

@@ -14,3 +14,12 @@ run-packet = {path = "../run-packet", package = "run-packet", optional = true}
 # `multiseg` feature enables non-contiguous `Mbuf` and `Pbuf`
 # default = ["multiseg"]
 multiseg = ["dep:run-packet"]
+
+[dev-dependencies]
+run-time = {path = "../run-time", package = "run-time"}
+run-packet = {path = "../run-packet", package = "run-packet"}
+ctrlc = { version = "3.0", features = ["termination"]}
+
+[[example]]
+name = "tx_test"
+path = "examples/tx_test.rs"

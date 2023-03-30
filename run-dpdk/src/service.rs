@@ -223,13 +223,13 @@ impl DpdkService {
         port.tx_queue(qid)
     }
 
-    pub fn port_stats(&self, port_id: u16) -> Result<PortStats> {
+    pub fn stats_query(&self, port_id: u16) -> Result<StatsQueryContext> {
         let inner = self.try_lock()?;
         let port = inner
             .ports
             .get(&port_id)
             .ok_or(Error::service_err("invalid port id"))?;
-        port.port_stats()
+        port.stats_query()
     }
 
     pub fn service_close(&self) -> Result<()> {
