@@ -160,7 +160,7 @@ mod tests {
     use run_packet::*;
 
     #[test]
-    fn test_pbuf1() {
+    fn read_non_contiguous_packet_data() {
         DpdkOption::new().init().unwrap();
         let mut buf: [u8; 9000] = [0xac; 9000];
         for i in 0..9000 {
@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pbuf2() {
+    fn advance_across_non_contiguous_memory_segments() {
         DpdkOption::new().init().unwrap();
         {
             let mut config = MempoolConf::default();
@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pbuf3() {
+    fn moveback_across_non_contiguous_memory_segments() {
         DpdkOption::new().init().unwrap();
         {
             let mut config = MempoolConf::default();
@@ -311,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pbuf4() {
+    fn trim_off_test() {
         DpdkOption::new().init().unwrap();
         {
             let mut config = MempoolConf::default();
@@ -471,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    fn test_checksum() {
+    fn checksum_test_for_non_contiguous_mbuf() {
         DpdkOption::new().init().unwrap();
         {
             let mut config = MempoolConf::default();

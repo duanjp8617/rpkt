@@ -136,7 +136,7 @@ mod tests {
     use std::thread;
 
     #[test]
-    fn bind_lcore_to_thread0() {
+    fn bind_lcore_to_thread_0() {
         // Dpdk will only be initialized once
         DpdkOption::new().init().unwrap();
 

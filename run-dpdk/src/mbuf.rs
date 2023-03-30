@@ -127,7 +127,7 @@ mod tests {
     use crate::*;
 
     #[test]
-    fn test_singleseg_mbuf() {
+    fn mbuf_data_append_remove() {
         DpdkOption::new().init().unwrap();
 
         {

@@ -404,7 +404,7 @@ mod tests {
     use crate::*;
 
     #[test]
-    fn test_singleseg_mbuf() {
+    fn mbuf_data_append_remove() {
         DpdkOption::new().init().unwrap();
 
         {
@@ -477,7 +477,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiseg_mbuf1() {
+    fn create_multiseg_mbuf_from_chainer() {
         DpdkOption::new().init().unwrap();
 
         {
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiseg_mbuf2() {
+    fn create_multiseg_mbuf_from_slice() {
         DpdkOption::new().init().unwrap();
         let mut buf: [u8; 9000] = [0xac; 9000];
         for i in 0..9000 {
@@ -553,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiseg_mbuf3() {
+    fn chain_mbuf_into_multiseg_mbuf() {
         DpdkOption::new().init().unwrap();
         let mut buf: [u8; 9000] = [0xac; 9000];
         for i in 0..9000 {
@@ -583,7 +583,7 @@ mod tests {
     }
 
     #[test]
-    fn test_multiseg_mbuf4() {
+    fn truncate_multiseg_mbuf() {
         DpdkOption::new().init().unwrap();
         let mut buf: [u8; 9000] = [0xac; 9000];
         for i in 0..9000 {
