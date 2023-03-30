@@ -128,61 +128,6 @@ impl PortInfo {
 }
 
 #[derive(Clone)]
-pub struct PortStats(pub(crate) ffi::rte_eth_stats);
-
-impl PortStats {
-    pub const QUEUE_STAT_CNTRS: usize = ffi::RTE_ETHDEV_QUEUE_STAT_CNTRS as usize;
-
-    pub fn ipackets(&self) -> u64 {
-        self.0.ipackets
-    }
-
-    pub fn opackets(&self) -> u64 {
-        self.0.opackets
-    }
-
-    pub fn ibytes(&self) -> u64 {
-        self.0.ibytes
-    }
-
-    pub fn obytes(&self) -> u64 {
-        self.0.obytes
-    }
-
-    pub fn imissed(&self) -> u64 {
-        self.0.imissed
-    }
-
-    pub fn oerrors(&self) -> u64 {
-        self.0.oerrors
-    }
-
-    pub fn rx_nombuf(&self) -> u64 {
-        self.0.rx_nombuf
-    }
-
-    pub fn q_ipackets(&self, qid: usize) -> u64 {
-        self.0.q_ipackets[qid]
-    }
-
-    pub fn q_opackets(&self, qid: usize) -> u64 {
-        self.0.q_opackets[qid]
-    }
-
-    pub fn q_ibytes(&self, qid: usize) -> u64 {
-        self.0.q_ibytes[qid]
-    }
-
-    pub fn q_obytes(&self, qid: usize) -> u64 {
-        self.0.q_obytes[qid]
-    }
-
-    pub fn q_errors(&self, qid: usize) -> u64 {
-        self.0.q_errors[qid]
-    }
-}
-
-#[derive(Clone)]
 pub struct PortConf {
     pub mtu: u32, // packet length except ethernet overhead
     pub tx_offloads: DevTxOffload,
@@ -314,6 +259,7 @@ pub(crate) struct Port {
     port_id: u16,
     rxq_cts: Vec<(RxQueue, Mempool)>,
     txqs: Vec<TxQueue>,
+    stats_counter: Arc<()>,
 }
 
 impl Port {
@@ -389,6 +335,7 @@ impl Port {
             port_id,
             rxq_cts,
             txqs,
+            stats_counter: Arc::new(()),
         })
     }
 
@@ -410,6 +357,21 @@ impl Port {
         txq.clone_once()
     }
 
+    pub(crate) fn port_stats(&self) -> Result<PortStats> {
+        if Arc::strong_count(&self.stats_counter) != 1 {
+            return Err(Error::service_err("port stats is in use"));
+        }
+
+        let mut port_stats = PortStats {
+            port_id: self.port_id,
+            stats: unsafe { std::mem::zeroed() },
+            _counter: self.stats_counter.clone(),
+        };
+
+        port_stats.update();
+        Ok(port_stats)
+    }
+
     pub(crate) fn can_shutdown(&self) -> bool {
         for rxq_ct in self.rxq_cts.iter() {
             if rxq_ct.0.in_use() {
@@ -420,6 +382,9 @@ impl Port {
             if txq_ct.in_use() {
                 return false;
             }
+        }
+        if Arc::strong_count(&self.stats_counter) != 1 {
+            return false;
         }
         true
     }
@@ -626,5 +591,71 @@ impl TxQueue {
 
     fn in_use(&self) -> bool {
         Arc::strong_count(&self.counter) != 1
+    }
+}
+
+#[derive(Clone)]
+pub struct PortStats {
+    port_id: u16,
+    stats: ffi::rte_eth_stats,
+    _counter: Arc<()>,
+}
+
+impl PortStats {
+    pub const QUEUE_STAT_CNTRS: usize = ffi::RTE_ETHDEV_QUEUE_STAT_CNTRS as usize;
+
+    pub fn update(&mut self) {
+        let res = unsafe {
+            ffi::rte_eth_stats_get(self.port_id, &mut self.stats as *mut ffi::rte_eth_stats)
+        };
+        assert!(res == 0);
+    }
+
+    pub fn ipackets(&self) -> u64 {
+        self.stats.ipackets
+    }
+
+    pub fn opackets(&self) -> u64 {
+        self.stats.opackets
+    }
+
+    pub fn ibytes(&self) -> u64 {
+        self.stats.ibytes
+    }
+
+    pub fn obytes(&self) -> u64 {
+        self.stats.obytes
+    }
+
+    pub fn imissed(&self) -> u64 {
+        self.stats.imissed
+    }
+
+    pub fn oerrors(&self) -> u64 {
+        self.stats.oerrors
+    }
+
+    pub fn rx_nombuf(&self) -> u64 {
+        self.stats.rx_nombuf
+    }
+
+    pub fn q_ipackets(&self, qid: usize) -> u64 {
+        self.stats.q_ipackets[qid]
+    }
+
+    pub fn q_opackets(&self, qid: usize) -> u64 {
+        self.stats.q_opackets[qid]
+    }
+
+    pub fn q_ibytes(&self, qid: usize) -> u64 {
+        self.stats.q_ibytes[qid]
+    }
+
+    pub fn q_obytes(&self, qid: usize) -> u64 {
+        self.stats.q_obytes[qid]
+    }
+
+    pub fn q_errors(&self, qid: usize) -> u64 {
+        self.stats.q_errors[qid]
     }
 }

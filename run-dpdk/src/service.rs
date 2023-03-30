@@ -109,12 +109,12 @@ impl DpdkService {
     pub fn mempool_free(&self, name: &str) -> Result<()> {
         let mut inner = self.try_lock()?;
 
-        let mp_context = inner
+        let mp = inner
             .mpools
             .get_mut(name)
             .ok_or(Error::service_err("no such mempool"))?;
 
-        if !mp_context.in_use() && mp_context.full() {
+        if !mp.in_use() && mp.full() {
             // We are the sole owner of the counter, this also means that
             // we are the sole owner of the PtrWrapper, and we are safe to deallocate it.
             // The mempool to be removed is also full, this means that there are no out-going
@@ -137,20 +137,18 @@ impl DpdkService {
         Ok(mp.clone())
     }
 
-    pub fn port_infos(&self) -> Result<Vec<PortInfo>> {
-        let inner = self.try_lock()?;
-        let mut port_infos = Vec::new();
+    pub fn port_num(&self) -> Result<u16> {
+        let _inner = self.try_lock()?;
+        unsafe { Ok(ffi::rte_eth_dev_count_avail()) }
+    }
 
-        let dev_nb = unsafe { ffi::rte_eth_dev_count_avail() };
-        for port_id in 0..dev_nb {
-            let mut port_info = unsafe { PortInfo::try_get(port_id) }?;
-            if inner.ports.get(&port_id).is_some() {
-                port_info.started = true;
-            }
-            port_infos.push(port_info);
+    pub fn port_info(&self, port_id: u16) -> Result<PortInfo> {
+        let _inner = self.try_lock()?;
+
+        if port_id >= unsafe { ffi::rte_eth_dev_count_avail() } {
+            return Err(Error::service_err("invalid port id"));
         }
-
-        Ok(port_infos)
+        unsafe { PortInfo::try_get(port_id) }
     }
 
     // rte_eth_dev_configure
@@ -189,24 +187,6 @@ impl DpdkService {
         Ok(())
     }
 
-    pub fn port_stats(&self, port_id: u16) -> Result<PortStats> {
-        let inner = self.try_lock()?;
-
-        if inner.ports.get(&port_id).is_none() {
-            return Error::service_err("port not started").to_err();
-        }
-
-        unsafe {
-            let mut port_stats: ffi::rte_eth_stats = std::mem::zeroed();
-            let res = ffi::rte_eth_stats_get(port_id, &mut port_stats as *mut ffi::rte_eth_stats);
-            if res != 0 {
-                return Error::ffi_err(res, "fail to get eth stats").to_err();
-            }
-
-            Ok(PortStats(port_stats))
-        }
-    }
-
     pub fn port_close(&self, port_id: u16) -> Result<()> {
         let mut inner = self.try_lock()?;
 
@@ -241,6 +221,15 @@ impl DpdkService {
             .get(&port_id)
             .ok_or(Error::service_err("invalid port id"))?;
         port.tx_queue(qid)
+    }
+
+    pub fn port_stats(&self, port_id: u16) -> Result<PortStats> {
+        let inner = self.try_lock()?;
+        let port = inner
+            .ports
+            .get(&port_id)
+            .ok_or(Error::service_err("invalid port id"))?;
+        port.port_stats()
     }
 
     pub fn service_close(&self) -> Result<()> {

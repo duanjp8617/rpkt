@@ -9,3 +9,7 @@ runner = 'sudo -E'
 ```shell
 cargo test -- --test-threads=1
 ```
+
+# Examples
+
+The contained examples are used to test the correctness of the implementation of various DPDK-related features. 
