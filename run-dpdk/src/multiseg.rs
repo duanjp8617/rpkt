@@ -183,14 +183,29 @@ impl Mbuf {
         }
     }
 
-    // modified to pub for netbricks_port
     #[inline]
-    pub unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
+    pub(crate) unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
 
+    // modified to pub for netbricks_port
+    #[inline]
+    pub(crate) fn into_raw(self) -> *mut ffi::rte_mbuf {
+        let ptr = self.ptr;
+        std::mem::forget(self);
+        ptr.as_ptr()
+    }
+
+    // modified to pub for netbricks_port
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const ffi::rte_mbuf {
+        self.ptr.as_ptr()
+    }
+}
+
+impl Mbuf {
     #[inline]
     pub fn num_segs(&self) -> usize {
         usize::from(unsafe { self.ptr.as_ref().nb_segs })
@@ -299,20 +314,6 @@ impl Mbuf {
             cur_seg: Some(self.ptr),
             _data: PhantomData,
         }
-    }
-
-    // modified to pub for netbricks_port
-    #[inline]
-    pub fn as_ptr(&self) -> *const ffi::rte_mbuf {
-        self.ptr.as_ptr()
-    }
-
-    // modified to pub for netbricks_port
-    #[inline]
-    pub fn into_raw(self) -> *mut ffi::rte_mbuf {
-        let ptr = self.ptr;
-        std::mem::forget(self);
-        ptr.as_ptr()
     }
 }
 

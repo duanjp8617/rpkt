@@ -101,11 +101,66 @@ impl Mbuf {
         }
     }
 
+    // rx offload
     #[inline]
-    pub(crate) unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
+    pub fn rx_offload(&self) -> MbufRxOffload {
+        MbufRxOffload(unsafe { self.ptr.as_ref().ol_flags })
+    }
+
+    #[inline]
+    pub fn rss(&self) -> u32 {
+        unsafe { self.ptr.as_ref().__bindgen_anon_2.hash.rss }
+    }
+
+    #[inline]
+    pub fn set_tx_offload(&mut self, tx_offload: MbufTxOffload) {
+        unsafe {
+            self.ptr.as_mut().ol_flags = tx_offload.0;
+        }
+    }
+
+    #[inline]
+    pub fn set_l2_len(&mut self, val: u64) {
+        unsafe {
+            self.ptr
+                .as_mut()
+                .__bindgen_anon_3
+                .__bindgen_anon_1
+                .set_l2_len(val);
+        }
+    }
+
+    #[inline]
+    pub fn set_l3_len(&mut self, val: u64) {
+        unsafe {
+            self.ptr
+                .as_mut()
+                .__bindgen_anon_3
+                .__bindgen_anon_1
+                .set_l3_len(val);
+        }
+    }
+
+    // modified to pub for netbricks_port
+    #[inline]
+    pub unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
         }
+    }
+
+    // modified to pub for netbricks_port
+    #[inline]
+    pub(crate) fn into_raw(self) -> *mut ffi::rte_mbuf {
+        let ptr = self.ptr;
+        std::mem::forget(self);
+        ptr.as_ptr()
+    }
+
+    // modified to pub for netbricks_port
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *const ffi::rte_mbuf {
+        self.ptr.as_ptr()
     }
 }
 
