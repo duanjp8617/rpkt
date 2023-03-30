@@ -68,37 +68,6 @@ dpdk_offload_conf!(
     }
 );
 
-dpdk_offload_conf!(
-    pub struct DevTxOffload(u64) {
-        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
-        udp_cksum,  enable_udp_cksum,  1 << 2,
-        tcp_cksum,  enable_tcp_cksum,  1 << 3,
-        tcp_tso,    enable_tcp_tso,    1 << 5,
-        multi_segs, enable_multi_segs, 1 << 15,
-    }
-);
-
-dpdk_offload_conf!(
-    pub struct DevRxOffload(u64) {
-        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
-        udp_cksum,  enable_udp_cksum,  1 << 2,
-        tcp_cksum,  enable_tcp_cksum,  1 << 3,
-        tcp_lro,    enable_tcp_lro,    1 << 4,
-        scatter,    enable_scatter,    1 << 13,
-        rss_hash,   enable_rss_hash,   1 << 19,
-    }
-);
-
-dpdk_offload_conf!(
-    pub struct MbufRxOffload(u64) {
-        rss_hash,      _do_not_use_1, 1 << 1,
-        ip_cksum_bad,  _do_not_use_2, 1 << 4,
-        ip_cksum_good, _do_not_use_3, 1 << 7,
-        l4_cksum_bad,  _do_not_use_4, 1 << 3,
-        l4_cksum_good, _do_not_use_5, 1 << 8,
-    }
-);
-
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct MbufTxOffload(pub(crate) u64);
 
@@ -121,3 +90,55 @@ impl MbufTxOffload {
 
     pub const ALL_DISABLED: Self = Self(0);
 }
+
+dpdk_offload_conf!(
+    pub struct MbufRxOffload(u64) {
+        rss_hash,      _do_not_use_1, 1 << 1,
+        ip_cksum_bad,  _do_not_use_2, 1 << 4,
+        ip_cksum_good, _do_not_use_3, 1 << 7,
+        l4_cksum_bad,  _do_not_use_4, 1 << 3,
+        l4_cksum_good, _do_not_use_5, 1 << 8,
+    }
+);
+
+#[cfg(not(feature = "multiseg"))]
+dpdk_offload_conf!(
+    pub struct DevTxOffload(u64) {
+        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
+        udp_cksum,  enable_udp_cksum,  1 << 2,
+        tcp_cksum,  enable_tcp_cksum,  1 << 3,
+    }
+);
+
+#[cfg(not(feature = "multiseg"))]
+dpdk_offload_conf!(
+    pub struct DevRxOffload(u64) {
+        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
+        udp_cksum,  enable_udp_cksum,  1 << 2,
+        tcp_cksum,  enable_tcp_cksum,  1 << 3,
+        rss_hash,   enable_rss_hash,   1 << 19,
+    }
+);
+
+#[cfg(feature = "multiseg")]
+dpdk_offload_conf!(
+    pub struct DevTxOffload(u64) {
+        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
+        udp_cksum,  enable_udp_cksum,  1 << 2,
+        tcp_cksum,  enable_tcp_cksum,  1 << 3,
+        tcp_tso,    enable_tcp_tso,    1 << 5,
+        multi_segs, enable_multi_segs, 1 << 15,
+    }
+);
+
+#[cfg(feature = "multiseg")]
+dpdk_offload_conf!(
+    pub struct DevRxOffload(u64) {
+        ipv4_cksum, enable_ipv4_cksum, 1 << 1,
+        udp_cksum,  enable_udp_cksum,  1 << 2,
+        tcp_cksum,  enable_tcp_cksum,  1 << 3,
+        tcp_lro,    enable_tcp_lro,    1 << 4,
+        scatter,    enable_scatter,    1 << 13,
+        rss_hash,   enable_rss_hash,   1 << 19,
+    }
+);
