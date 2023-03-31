@@ -23,3 +23,11 @@ ctrlc = { version = "3.0", features = ["termination"]}
 [[example]]
 name = "tx_test"
 path = "examples/tx_test.rs"
+
+[[example]]
+name = "mbuf_test"
+path = "examples/mbuf_test.rs"
+
+[[example]]
+name = "tx_test_new"
+path = "examples/tx_test_new.rs"

@@ -65,7 +65,7 @@ fn main() {
     DpdkOption::new().init().unwrap();
 
     let port_id = 0;
-    let nb_qs = 1;
+    let nb_qs = 16;
     let mp_name = "mp";
     let mut mpconf = MempoolConf::default();
     mpconf.nb_mbufs = 8192 * 4;
@@ -102,7 +102,7 @@ fn main() {
     .unwrap();
 
     let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
-    let payload_len = 18;
+    let payload_len = 1400;
 
     let mut adder = 0;
     let total_ips = 200;

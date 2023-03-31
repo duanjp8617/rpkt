@@ -93,15 +93,15 @@ impl DpdkService {
         inner.lcores.pin(lcore)
     }
 
-    pub fn mempool_create(&self, name: &str, conf: &MempoolConf) -> Result<Mempool> {
+    pub fn mempool_create<S: AsRef<str>>(&self, name: S, conf: &MempoolConf) -> Result<Mempool> {
         let mut inner = self.try_lock()?;
 
-        if inner.mpools.contains_key(name) {
+        if inner.mpools.contains_key(name.as_ref()) {
             return Error::service_err("mempool already exists").to_err();
         }
 
-        let mp = Mempool::try_create(name.to_string(), conf)?;
-        inner.mpools.insert(name.to_string(), mp.clone());
+        let mp = Mempool::try_create(name.as_ref().to_string(), conf)?;
+        inner.mpools.insert(name.as_ref().to_string(), mp.clone());
 
         Ok(mp)
     }

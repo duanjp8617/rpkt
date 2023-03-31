@@ -154,6 +154,13 @@ impl PortConf {
     /// The maximum frame size of an ethernet jumboframe.
     pub const RTE_ETHER_MAX_JUMBO_PKT_LEN: u16 = 9600;
 
+    /// The default size of the RSS hash key.
+    pub const HASH_KEY_SIZE: u8 = 40;
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn from_port_info(port_info: &PortInfo) -> Result<Self> {
         // Check whether the port suppports the default ethernet MTU size.
         if Self::RTE_ETHER_MTU < port_info.min_mtu() || Self::RTE_ETHER_MTU > port_info.max_mtu() {
@@ -195,7 +202,7 @@ impl PortConf {
 
         // Check whether the rss hash key size is 40, currently we only provide a 40-byte
         // rss hask key.
-        if port_info.hash_key_size() != 40 {
+        if port_info.hash_key_size() != Self::HASH_KEY_SIZE {
             return Error::service_err("invalid rss hash key size").to_err();
         }
 
@@ -207,6 +214,32 @@ impl PortConf {
             rss_hash_key: DEFAULT_RSS_KEY_40B.to_vec(),
             enable_promiscuous: true,
         })
+    }
+
+    pub fn set_mtu(&mut self, val: u32) {
+        self.mtu = val;
+    }
+
+    pub fn set_tx_offloads(&mut self, val: DevTxOffload) {
+        self.tx_offloads = val;
+    }
+
+    pub fn set_rx_offloads(&mut self, val: DevRxOffload) {
+        self.rx_offloads = val;
+    }
+
+    pub fn set_rss_hf(&mut self, val: RssHashFunc) {
+        self.rss_hf = val;
+    }
+
+    pub fn set_rss_hash_key(&mut self, val: &[u8; Self::HASH_KEY_SIZE as usize]) {
+        let mut v = Vec::new();
+        v.extend_from_slice(&val[..]);
+        self.rss_hash_key = v;
+    }
+
+    pub fn set_enable_promiscuous(&mut self, val: bool) {
+        self.enable_promiscuous = val;
     }
 
     // Safety: The returned `rte_eth_conf` must not live past `PortConf`.
@@ -405,12 +438,20 @@ pub struct RxQueueConf {
 impl RxQueueConf {
     pub const NB_RX_DESC: u16 = 512;
 
-    pub fn new<S: AsRef<str>>(nb_rx_desc: u16, socket_id: u32, mp_name: S) -> Self {
-        Self {
-            nb_rx_desc,
-            socket_id,
-            mp_name: mp_name.as_ref().to_string(),
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_nb_rx_desc(&mut self, val: u16) {
+        self.nb_rx_desc = val;
+    }
+
+    pub fn set_socket_id(&mut self, val: u32) {
+        self.socket_id = val;
+    }
+
+    pub fn set_mp_name<S: AsRef<str>>(&mut self, val: S) {
+        self.mp_name = val.as_ref().to_string();
     }
 }
 
@@ -503,11 +544,16 @@ pub struct TxQueueConf {
 impl TxQueueConf {
     pub const NB_TX_DESC: u16 = 512;
 
-    pub fn new(nb_tx_desc: u16, socket_id: u32) -> Self {
-        Self {
-            nb_tx_desc,
-            socket_id,
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn set_nb_tx_desc(&mut self, val: u16) {
+        self.nb_tx_desc = val;
+    }
+
+    pub fn set_socket_id(&mut self, val: u32) {
+        self.socket_id = val;
     }
 }
 
