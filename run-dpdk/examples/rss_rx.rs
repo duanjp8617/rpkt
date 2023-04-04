@@ -26,7 +26,7 @@ const TXQ_NUM: u16 = 1;
 const TXQ_DESC_NUM: u16 = 1024;
 
 // Basic configuration of rx queues
-const RXQ_NUM: u16 = 12;
+const RXQ_NUM: u16 = 16;
 const RXQ_DESC_NUM: u16 = 1024;
 
 // rx threads
@@ -96,7 +96,13 @@ fn entry_func() {
 
                     let buf = Cursor::new(mbuf.data());
                     let _ = EtherPacket::parse(buf)
-                        .and_then(|eth| Ipv4Packet::parse(eth.payload()))
+                        .and_then(|eth| {
+                            if eth.ethertype() != EtherType::IPV4 {
+                                Err(eth.release())
+                            } else {
+                                Ipv4Packet::parse(eth.payload())
+                            }
+                        })
                         .and_then(|ipv4| {
                             let addr = u32::from_le_bytes(ipv4.source_ip().0);
 
@@ -139,6 +145,8 @@ fn entry_func() {
 
         old_stats = curr_stats;
 
+        let mut sum_pps = 0.0;
+        let mut sum_bps = 0.0;
         for qid in 0..RXQ_NUM as usize {
             print!("rxq {}: ", qid);
             println!(
@@ -147,8 +155,10 @@ fn entry_func() {
                 bps_stats[qid].load(Ordering::SeqCst) as f64 * 8.0 / 1_000_000_000.0,
                 flow_nums[qid].load(Ordering::SeqCst)
             );
+            sum_pps += pps_stats[qid].load(Ordering::SeqCst) as f64 / 1_000_000.0;
+            sum_bps += bps_stats[qid].load(Ordering::SeqCst) as f64 * 8.0 / 1_000_000_000.0;
         }
-
+        println!("total {} Mpps, {} Gbps", sum_pps, sum_bps);
     }
 
     for jh in jhs {

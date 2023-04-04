@@ -18,17 +18,19 @@ const WORKING_SOCKET: u32 = 1;
 // Basic configuration of the mempool
 const MBUF_CACHE: u32 = 256;
 const MBUF_NUM: u32 = MBUF_CACHE * 32 * 10;
-const MP_NAME: &str = "wtf";
+
+const TX_MP: &str = "tx";
+const RX_MP: &str = "rx";
 
 // Basic configuration of the port
 const PORT_ID: u16 = 3;
 
 // Basic configuration of tx queues
-const TXQ_NUM: u16 = 8;
+const TXQ_NUM: u16 = 16;
 const TXQ_DESC_NUM: u16 = 1024;
 
 // Basic configuration of rx queues
-const RXQ_NUM: u16 = 16;
+const RXQ_NUM: u16 = TXQ_NUM;
 const RXQ_DESC_NUM: u16 = 1024;
 
 // rx threads
@@ -47,7 +49,7 @@ const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 60;
+const PACKET_LEN: usize = 400;
 
 static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
 
@@ -92,7 +94,7 @@ fn fill_packet_template() {
     eth_pkt.set_dest_mac(MacAddr(DMAC));
     eth_pkt.set_ethertype(EtherType::IPV4);
 
-    utils::fill_mempool(MP_NAME, &v[..]).unwrap();
+    utils::fill_mempool(TX_MP, &v[..]).unwrap();
 }
 
 fn entry_func() {
@@ -106,7 +108,7 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + RXQ_NUM as u32 + TXQ_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + TXQ_NUM as u32
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert!(res == true);
@@ -126,8 +128,11 @@ fn entry_func() {
             service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
 
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
-            let mp = service().mempool(MP_NAME).unwrap();
-            let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
+            let tx_mp = service().mempool(TX_MP).unwrap();
+            let mut tx_batch = ArrayVec::<_, BATCH_SIZE>::new();
+
+            let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
+            let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
             tx_of_flag.enable_ip_cksum();
@@ -137,9 +142,9 @@ fn entry_func() {
             let mut adder: usize = 0;
 
             while run_clone.load(Ordering::Acquire) {
-                mp.fill_batch(&mut batch);
+                tx_mp.fill_batch(&mut tx_batch);
 
-                for mbuf in batch.iter_mut() {
+                for mbuf in tx_batch.iter_mut() {
                     unsafe { mbuf.extend(PACKET_LEN) };
 
                     let mut buf = CursorMut::new(mbuf.data_mut());
@@ -153,28 +158,11 @@ fn entry_func() {
                     mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
                     mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
                 }
+                let _ = txq.tx(&mut tx_batch);
+                Mempool::free_batch(&mut tx_batch);
 
-                while batch.len() > 0 {
-                    let _ = txq.tx(&mut batch);
-                }
-            }
-        });
-        jhs.push(jh);
-    }
-
-    for i in 0..RXQ_NUM as usize {
-        let run_clone = run.clone();
-        let jh = std::thread::spawn(move || {
-            service()
-                .lcore_bind(i as u32 + START_CORE as u32 + TXQ_NUM as u32)
-                .unwrap();
-
-            let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
-            let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
-
-            while run_clone.load(Ordering::Acquire) {
-                rxq.rx(&mut batch);
-                Mempool::free_batch(&mut batch);
+                rxq.rx(&mut rx_batch);
+                Mempool::free_batch(&mut rx_batch);
             }
         });
         jhs.push(jh);
@@ -203,10 +191,13 @@ fn entry_func() {
 }
 
 fn main() {
+    assert!(RXQ_NUM == TXQ_NUM);
+
     DpdkOption::new().init().unwrap();
 
     // create mempool
-    utils::init_mempool(MP_NAME, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
+    utils::init_mempool(TX_MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
+    utils::init_mempool(RX_MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
 
     // create the port
     utils::init_port(
@@ -214,7 +205,7 @@ fn main() {
         RXQ_NUM,
         TXQ_NUM,
         RXQ_DESC_NUM,
-        MP_NAME,
+        RX_MP,
         TXQ_DESC_NUM,
         WORKING_SOCKET,
     )
@@ -226,7 +217,8 @@ fn main() {
     service().port_close(PORT_ID).unwrap();
 
     // free the mempool
-    service().mempool_free(MP_NAME).unwrap();
+    service().mempool_free(TX_MP).unwrap();
+    service().mempool_free(RX_MP).unwrap();
 
     // shutdown the DPDK service
     service().service_close().unwrap();

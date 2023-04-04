@@ -19,6 +19,7 @@ multiseg = ["dep:run-packet"]
 run-time = {path = "../run-time", package = "run-time"}
 run-packet = {path = "../run-packet", package = "run-packet"}
 ctrlc = { version = "3.0", features = ["termination"]}
+smoltcp = "0.8"
 
 [[example]]
 name = "mbuf_test"
@@ -29,5 +30,13 @@ name = "loopback_tx"
 path = "examples/loopback_tx.rs"
 
 [[example]]
+name = "loopback_rx"
+path = "examples/loopback_rx.rs"
+
+[[example]]
 name = "rss_rx"
 path = "examples/rss_rx.rs"
+
+[[example]]
+name = "traffic_fwd"
+path = "examples/traffic_fwd.rs"
