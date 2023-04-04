@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::ffi::CString;
-use std::os::raw::{c_char, c_uint};
+use std::os::raw::c_char;
 use std::ptr::NonNull;
 use std::sync::Arc;
 

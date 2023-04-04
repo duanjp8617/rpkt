@@ -20,14 +20,13 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     mpconf.socket_id = socket_id;
     service().mempool_create(mp_name, mpconf).unwrap();
 
-    let pconf = PortConf::from_port_info(port_info).unwrap();
+    let pconf = PortConf::from_port_info(&port_info).unwrap();
 
     rxq_conf.mp_name = mp_name.to_string();
     rxq_conf.socket_id = socket_id;
@@ -50,10 +49,10 @@ fn main() {
     DpdkOption::new().init().unwrap();
 
     let port_id = 3;
-    let nb_qs = 4;
+    let nb_qs = 1;
     let mp_name = "mp";
     let mut mpconf = MempoolConf::default();
-    mpconf.nb_mbufs = 8192 * 4;
+    mpconf.nb_mbufs = 8192 * 4 * nb_qs;
     mpconf.per_core_caches = 256;
     let mut rxq_conf = RxQueueConf::default();
     rxq_conf.nb_rx_desc = 1024;
@@ -68,8 +67,8 @@ fn main() {
         &mut txq_conf,
     );
 
-    let start_core = 1;
-    let socket_id = service().port_infos().unwrap()[port_id as usize].socket_id;
+    let start_core = 33;
+    let socket_id = service().port_info(port_id).unwrap().socket_id;
     service()
         .lcores()
         .iter()
@@ -98,7 +97,7 @@ fn main() {
         let jh = std::thread::spawn(move || {
             service().lcore_bind(i + 1).unwrap();
             let mut rxq = service().rx_queue(port_id as u16, i as u16).unwrap();
-            let mut batch = ArrayVec::<_, 32>::new();
+            let mut batch = ArrayVec::<_, 64>::new();
 
             let mut total_pkts = 0;
             let mut total_bytes = 0;
@@ -130,30 +129,22 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut old_stats = service().port_stats(port_id).unwrap();
-    while run.load(Ordering::Acquire) {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        let curr_stats = service().port_stats(port_id).unwrap();
-
-        println!(
-            "total rx: {} pps, {} bps, {} misses/s",
-            curr_stats.ipackets() - old_stats.ipackets(),
-            (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1000000000.0,
-            curr_stats.imissed() - old_stats.imissed()
-        );
-
-        print!("per q rx: ");
-        for qid in 0..nb_qs as usize {
-            print!(
-                "q{} {} pps {} bps, ",
-                qid,
-                pps_stats[qid].load(Ordering::SeqCst),
-                bps_stats[qid].load(Ordering::SeqCst) as f64 * 8.0 / 1000000000.0,
+    {
+        let mut stats_query = service().stats_query(port_id).unwrap();
+        let mut old_stats = stats_query.query();
+        let mut curr_stats = stats_query.query();
+        while run.load(Ordering::Acquire) {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            stats_query.update(&mut curr_stats);
+            println!(
+                "pkts per sec: {}, bytes per sec: {}, errors per sec: {}",
+                curr_stats.ipackets() - old_stats.ipackets(),
+                (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1000000000.0,
+                curr_stats.imissed() - old_stats.imissed(),
             );
-        }
-        println!("");
 
-        old_stats = curr_stats;
+            old_stats = curr_stats;
+        }
     }
 
     for jh in jhs {

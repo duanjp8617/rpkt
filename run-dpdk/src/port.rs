@@ -694,6 +694,8 @@ impl Default for PortStats {
     }
 }
 
+/// A context to query the stats counters from the port.
+/// This context is reference counted. 
 pub struct StatsQueryContext {
     port_id: u16,
     counter: Arc<()>,
