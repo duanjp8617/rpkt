@@ -25,5 +25,9 @@ name = "mbuf_test"
 path = "examples/mbuf_test.rs"
 
 [[example]]
-name = "tx_test_new"
-path = "examples/tx_test_new.rs"
+name = "loopback_tx"
+path = "examples/loopback_tx.rs"
+
+[[example]]
+name = "rss_rx"
+path = "examples/rss_rx.rs"

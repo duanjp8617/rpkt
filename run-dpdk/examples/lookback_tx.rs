@@ -2,6 +2,8 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
+use once_cell::sync::OnceCell;
+
 use run_dpdk::offload::MbufTxOffload;
 use run_dpdk::*;
 use run_packet::ether::*;
@@ -19,34 +21,58 @@ const MBUF_NUM: u32 = MBUF_CACHE * 32 * 10;
 const MP_NAME: &str = "wtf";
 
 // Basic configuration of the port
-const PORT_ID: u16 = 0;
-
-// Basic configuration of rx queues
-const RXQ_NUM: u16 = 10;
-const RXQ_DESC_NUM: u16 = 1024;
+const PORT_ID: u16 = 3;
 
 // Basic configuration of tx queues
-const TXQ_NUM: u16 = 10;
+const TXQ_NUM: u16 = 8;
 const TXQ_DESC_NUM: u16 = 1024;
 
-// Basic configuration for traffic generation
-const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
-const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
-const SIP: [u8; 4] = [192, 168, 57, 10];
-const DIP: [u8; 4] = [192, 168, 23, 2];
-const SPORT: u16 = 60376;
-const DPORT: u16 = 161;
-const PAYLOAD_LEN: usize = 18;
-const PAYLOAD_BYTE: u8 = 0xae;
+// Basic configuration of rx queues
+const RXQ_NUM: u16 = 16;
+const RXQ_DESC_NUM: u16 = 1024;
 
 // rx threads
-const RX_START: usize = 32;
+const START_CORE: usize = 33;
 
+// dpdk batch size
 const BATCH_SIZE: usize = 64;
 
+// header info
+const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
+const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
+const DIP: [u8; 4] = [192, 177, 23, 2];
+const SPORT: u16 = 60376;
+const DPORT: u16 = 161;
+const NUM_FLOWS: usize = 8192;
+
+// payload info
+const PAYLOAD_BYTE: u8 = 0xae;
+const PACKET_LEN: usize = 60;
+
+static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
+
+// range 2-251
+// Generate at mot 62500 different IP addresses.
+fn gen_ip_addrs(fst: u8, snd: u8, size: usize) -> Vec<[u8; 4]> {
+    assert!(size <= 250 * 250);
+
+    let mut v = Vec::new();
+
+    for i in 0..size / 250 {
+        for j in 2..252 {
+            v.push([fst, snd, 2 + i as u8, j]);
+        }
+    }
+
+    for j in 0..size % 250 {
+        v.push([fst, snd, 2 + (size / 250) as u8, 2 + j as u8]);
+    }
+
+    v
+}
+
 fn fill_packet_template() {
-    let packet_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN + PAYLOAD_LEN;
-    let mut v = vec![PAYLOAD_BYTE; packet_len];
+    let mut v = vec![PAYLOAD_BYTE; PACKET_LEN];
 
     let mut pbuf = CursorMut::new(&mut v[..]);
     pbuf.advance(ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
@@ -56,7 +82,7 @@ fn fill_packet_template() {
     udp_pkt.set_dest_port(DPORT);
 
     let mut ipv4_pkt = Ipv4Packet::prepend_header(udp_pkt.release(), &IPV4_HEADER_TEMPLATE);
-    ipv4_pkt.set_source_ip(Ipv4Addr(SIP));
+    ipv4_pkt.set_source_ip(Ipv4Addr([0, 0, 0, 0]));
     ipv4_pkt.set_dest_ip(Ipv4Addr(DIP));
     ipv4_pkt.set_protocol(IpProtocol::UDP);
     ipv4_pkt.set_time_to_live(128);
@@ -72,13 +98,15 @@ fn fill_packet_template() {
 fn entry_func() {
     fill_packet_template();
 
+    IP_ADDRS.get_or_init(|| gen_ip_addrs(192, 168, NUM_FLOWS));
+
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
         .lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= RX_START as u32
-                && lcore.lcore_id < RX_START as u32 + RXQ_NUM as u32 + TXQ_NUM as u32
+            lcore.lcore_id >= START_CORE as u32
+                && lcore.lcore_id < START_CORE as u32 + RXQ_NUM as u32 + TXQ_NUM as u32
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert!(res == true);
@@ -92,30 +120,12 @@ fn entry_func() {
 
     let mut jhs = Vec::new();
 
-    for i in RX_START..(RX_START + RXQ_NUM as usize) {
+    for i in 0..TXQ_NUM as usize {
         let run_clone = run.clone();
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32).unwrap();
+            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
 
-            let mut rxq = service().rx_queue(PORT_ID, (i - RX_START) as u16).unwrap();
-            let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
-
-            while run_clone.load(Ordering::Acquire) {
-                rxq.rx(&mut batch);
-                Mempool::free_batch(&mut batch);
-            }
-        });
-        jhs.push(jh);
-    }
-
-    for i in (RX_START + RXQ_NUM as usize)..(RX_START + RXQ_NUM as usize + TXQ_NUM as usize) {
-        let run_clone = run.clone();
-        let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32).unwrap();
-
-            let mut txq = service()
-                .tx_queue(PORT_ID, (i - RX_START - RXQ_NUM as usize) as u16)
-                .unwrap();
+            let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
             let mp = service().mempool(MP_NAME).unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
 
@@ -123,24 +133,48 @@ fn entry_func() {
             tx_of_flag.enable_ip_cksum();
             tx_of_flag.enable_udp_cksum();
 
+            let ip_addrs = IP_ADDRS.get().unwrap();
+            let mut adder: usize = 0;
+
             while run_clone.load(Ordering::Acquire) {
                 mp.fill_batch(&mut batch);
 
                 for mbuf in batch.iter_mut() {
-                    unsafe {
-                        mbuf.extend(
-                            ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN + PAYLOAD_LEN,
-                        )
-                    };
+                    unsafe { mbuf.extend(PACKET_LEN) };
+
+                    let mut buf = CursorMut::new(mbuf.data_mut());
+                    buf.advance(ETHER_HEADER_LEN);
+
+                    let mut ipv4_pkt = Ipv4Packet::parse_unchecked(buf);
+                    ipv4_pkt.set_source_ip(Ipv4Addr(ip_addrs[adder % NUM_FLOWS]));
+                    adder += 1;
 
                     mbuf.set_tx_offload(tx_of_flag);
                     mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
-                    mbuf.set_l3_len(UDP_HEADER_LEN as u64);
+                    mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
                 }
 
                 while batch.len() > 0 {
                     let _ = txq.tx(&mut batch);
                 }
+            }
+        });
+        jhs.push(jh);
+    }
+
+    for i in 0..RXQ_NUM as usize {
+        let run_clone = run.clone();
+        let jh = std::thread::spawn(move || {
+            service()
+                .lcore_bind(i as u32 + START_CORE as u32 + TXQ_NUM as u32)
+                .unwrap();
+
+            let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
+            let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
+
+            while run_clone.load(Ordering::Acquire) {
+                rxq.rx(&mut batch);
+                Mempool::free_batch(&mut batch);
             }
         });
         jhs.push(jh);
@@ -153,10 +187,11 @@ fn entry_func() {
         std::thread::sleep(std::time::Duration::from_secs(1));
         stats_query.update(&mut curr_stats);
         println!(
-            "pkts per sec: {}, bytes per sec: {}, errors per sec: {}",
-            curr_stats.opackets() - old_stats.opackets(),
-            (curr_stats.obytes() - old_stats.obytes()) as f64 * 8.0 / 1000000000.0,
-            curr_stats.oerrors() - old_stats.oerrors(),
+            "tx: {} Mpps, {} Gbps || rx: {} Mpps, {} Gbps",
+            (curr_stats.opackets() - old_stats.opackets()) as f64 / 1_000_000.0,
+            (curr_stats.obytes() - old_stats.obytes()) as f64 * 8.0 / 1_000_000_000.0,
+            (curr_stats.ipackets() - old_stats.ipackets()) as f64 / 1_000_000.0,
+            (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1_000_000_000.0,
         );
 
         old_stats = curr_stats;

@@ -49,7 +49,7 @@ fn main() {
     DpdkOption::new().init().unwrap();
 
     let port_id = 3;
-    let nb_qs = 1;
+    let nb_qs = 12;
     let mp_name = "mp";
     let mut mpconf = MempoolConf::default();
     mpconf.nb_mbufs = 8192 * 4 * nb_qs;
@@ -95,7 +95,7 @@ fn main() {
         bps_stats.push(per_q_bps.clone());
 
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i + 1).unwrap();
+            service().lcore_bind(i + start_core).unwrap();
             let mut rxq = service().rx_queue(port_id as u16, i as u16).unwrap();
             let mut batch = ArrayVec::<_, 64>::new();
 
@@ -144,6 +144,17 @@ fn main() {
             );
 
             old_stats = curr_stats;
+
+            print!("per q rx: ");
+            for qid in 0..nb_qs as usize {
+                print!(
+                    "q{} {} pps {} bps, ",
+                    qid,
+                    pps_stats[qid].load(Ordering::SeqCst),
+                    bps_stats[qid].load(Ordering::SeqCst) as f64 * 8.0 / 1000000000.0,
+                );
+            }
+            println!("");
         }
     }
 

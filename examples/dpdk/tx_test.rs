@@ -65,7 +65,7 @@ fn main() {
     DpdkOption::new().init().unwrap();
 
     let port_id = 3;
-    let nb_qs = 2;
+    let nb_qs = 8;
     let mp_name = "mp";
     let mut mpconf = MempoolConf::default();
     mpconf.nb_mbufs = 8192 * 4 * nb_qs;
@@ -102,7 +102,7 @@ fn main() {
     .unwrap();
 
     let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
-    let payload_len = 18;
+    let payload_len = 256 - total_header_len;
 
     let mut adder = 0;
     let total_ips = 200;
@@ -143,13 +143,13 @@ fn main() {
 
                     let mut ethpkt =
                         EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
-                    ethpkt.set_dest_mac(MacAddr([0x08, 0x68, 0x8d, 0x61, 0x69, 0x28]));
-                    ethpkt.set_source_mac(MacAddr([0x00, 0x50, 0x56, 0xae, 0x76, 0xf5]));
+                    ethpkt.set_dest_mac(MacAddr([0x0c, 0x42, 0xa1, 0x0b, 0x91, 0xfb]));
+                    ethpkt.set_source_mac(MacAddr([0x0c, 0x42, 0xa1, 0x0b, 0xa0, 0xbb]));
                     ethpkt.set_ethertype(EtherType::IPV4);
 
                     mbuf.set_tx_offload(tx_of_flag);
                     mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
-                    mbuf.set_l3_len(UDP_HEADER_LEN as u64);
+                    mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
                 }
 
                 while batch.len() > 0 {
