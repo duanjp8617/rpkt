@@ -14,30 +14,23 @@ use run_packet::CursorMut;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
+const THREAD_NUM: u32 = 12;
+const START_CORE: usize = 33;
+
+// dpdk batch size
+const BATCH_SIZE: usize = 64;
 
 // Basic configuration of the mempool
 const MBUF_CACHE: u32 = 256;
-const MBUF_NUM: u32 = MBUF_CACHE * 32 * 10;
+const MBUF_NUM: u32 = MBUF_CACHE * 32 * THREAD_NUM;
 
 const TX_MP: &str = "tx";
 const RX_MP: &str = "rx";
 
 // Basic configuration of the port
 const PORT_ID: u16 = 3;
-
-// Basic configuration of tx queues
-const TXQ_NUM: u16 = 16;
 const TXQ_DESC_NUM: u16 = 1024;
-
-// Basic configuration of rx queues
-const RXQ_NUM: u16 = TXQ_NUM;
 const RXQ_DESC_NUM: u16 = 1024;
-
-// rx threads
-const START_CORE: usize = 33;
-
-// dpdk batch size
-const BATCH_SIZE: usize = 64;
 
 // header info
 const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
@@ -108,7 +101,7 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + TXQ_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert!(res == true);
@@ -122,7 +115,7 @@ fn entry_func() {
 
     let mut jhs = Vec::new();
 
-    for i in 0..TXQ_NUM as usize {
+    for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
         let jh = std::thread::spawn(move || {
             service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
@@ -191,8 +184,6 @@ fn entry_func() {
 }
 
 fn main() {
-    assert!(RXQ_NUM == TXQ_NUM);
-
     DpdkOption::new().init().unwrap();
 
     // create mempool
@@ -202,8 +193,8 @@ fn main() {
     // create the port
     utils::init_port(
         PORT_ID,
-        RXQ_NUM,
-        TXQ_NUM,
+        THREAD_NUM as u16,
+        THREAD_NUM as u16,
         RXQ_DESC_NUM,
         RX_MP,
         TXQ_DESC_NUM,

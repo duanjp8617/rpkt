@@ -77,10 +77,25 @@ pub struct DpdkService {
 }
 
 impl DpdkService {
+    /// Return a static reference to a list of `Lcore` on the current machine.
+    /// 
+    /// Each `Lcore` contains the lcore id, cpu id and the socket id of the corresponding
+    /// physical CPU core. 
+    /// 
+    /// We obtain the list of `Lcore` by reading the `/sys/` folder under the 
+    /// Linux file system.
     pub fn lcores(&self) -> &Vec<Lcore> {
         &self.lcores
     }
 
+    /// Bind the current thread to the lcore indicated by `lcore_id`.
+    /// 
+    /// This function will fail and return an `Err` if the following conditions happen:
+    /// 1. The DPDK service has been shutdown.
+    /// 2. The lcore id is invalid on the current machine.
+    /// 3. The thread has already been bind to an lcore.
+    /// 4. The lcore has already been bind to another thread.
+    /// 5. The DPDK FFI fails with lcore binding.    
     pub fn lcore_bind(&self, lcore_id: u32) -> Result<()> {
         let mut inner = self.try_lock()?;
 
@@ -263,6 +278,10 @@ pub fn try_service() -> Result<&'static DpdkService> {
         .ok_or(Error::service_err("service is not initialized"))
 }
 
+/// Return a static reference to the `DpdkService` instance.
+/// 
+/// The `DpdkService` instance will only be initialized once, and all
+/// subsequent access to the public methods are protected by a global lock. 
 pub fn service() -> &'static DpdkService {
     match SERVICE.get() {
         Some(handle) => handle,
