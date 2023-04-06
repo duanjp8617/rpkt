@@ -5,6 +5,7 @@ use ctrlc;
 
 use smoltcp::wire;
 
+use once_cell::sync::OnceCell;
 use run_dpdk::offload::MbufTxOffload;
 use run_dpdk::*;
 
@@ -13,40 +14,69 @@ use run_dpdk::*;
 // run         17.02   28.94    30.94     31
 // smoltcp     13.52   25.92    30.89     31
 
+// Another test it seems that pcie 3.0 and 4.0 have no significant differences
+// nbcore      1         2        3        4          14       18
+// run         16.80   27.94    30.94     
+// smoltcp     12.63   24.91    30.22    30.05                 
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 1;
-
-// Basic configuration of the mempool
-const MBUF_CACHE: u32 = 256;
-const MBUF_NUM: u32 = MBUF_CACHE * 32 * 10;
-const MP_NAME: &str = "wtf";
-
-// Basic configuration of the port
-const PORT_ID: u16 = 3;
-
-// Basic configuration of tx queues
-const TXQ_NUM: u16 = 1;
-const TXQ_DESC_NUM: u16 = 1024;
-
-// Basic configuration of rx queues
-const RXQ_NUM: u16 = TXQ_NUM;
-const RXQ_DESC_NUM: u16 = 1024;
-
-// rx threads
-const START_CORE: usize = 33;
+const WORKING_SOCKET: u32 = 0;
+const THREAD_NUM: u32 = 4;
+const START_CORE: usize = 1;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
 
+// Basic configuration of the mempool
+const MBUF_CACHE: u32 = 256;
+const MBUF_NUM: u32 = MBUF_CACHE * 32 * THREAD_NUM;
+const MP_NAME: &str = "wtf";
+
+// Basic configuration of the port
+const PORT_ID: u16 = 0;
+const TXQ_DESC_NUM: u16 = 1024;
+const RXQ_DESC_NUM: u16 = 1024;
+
+// header info
+const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
+const SMAC: [u8; 6] = [0x0c, 0x42, 0xa1, 0x72, 0xc9, 0x92];
+const DIP: [u8; 4] = [192, 168, 21, 2];
+const SPORT: u16 = 60376;
+const DPORT: u16 = 161;
+const NUM_FLOWS: usize = 8192;
+
+static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
+
+// range 2-251
+// Generate at mot 62500 different IP addresses.
+fn gen_ip_addrs(fst: u8, snd: u8, size: usize) -> Vec<[u8; 4]> {
+    assert!(size <= 250 * 250);
+
+    let mut v = Vec::new();
+
+    for i in 0..size / 250 {
+        for j in 2..252 {
+            v.push([fst, snd, 2 + i as u8, j]);
+        }
+    }
+
+    for j in 0..size % 250 {
+        v.push([fst, snd, 2 + (size / 250) as u8, 2 + j as u8]);
+    }
+
+    v
+}
+
 fn entry_func() {
+    IP_ADDRS.get_or_init(|| gen_ip_addrs(192, 168, NUM_FLOWS));
+
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
         .lcores()
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + RXQ_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert!(res == true);
@@ -60,7 +90,7 @@ fn entry_func() {
 
     let mut jhs = Vec::new();
 
-    for i in 0..TXQ_NUM as usize {
+    for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
 
         let jh = std::thread::spawn(move || {
@@ -73,6 +103,9 @@ fn entry_func() {
             let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
             tx_of_flag.enable_ip_cksum();
             tx_of_flag.enable_udp_cksum();
+
+            let ip_addrs = IP_ADDRS.get().unwrap();
+            let mut adder: usize = 0;
 
             while run_clone.load(Ordering::Acquire) {
                 rxq.rx(&mut batch);
@@ -87,18 +120,18 @@ fn entry_func() {
                                     if let Ok(mut udppkt) =
                                         wire::UdpPacket::new_checked(ippkt.payload_mut())
                                     {
-                                        let old = udppkt.src_port();
-                                        udppkt.set_src_port(udppkt.dst_port());
-                                        udppkt.set_dst_port(old);
+                                        udppkt.set_dst_port(DPORT);
+                                        udppkt.set_src_port(SPORT);
 
-                                        let old = ippkt.src_addr();
-                                        ippkt.set_src_addr(ippkt.dst_addr());
-                                        ippkt.set_dst_addr(old);
+                                        ippkt.set_dst_addr(wire::Ipv4Address(DIP));
+                                        ippkt.set_src_addr(wire::Ipv4Address(
+                                            ip_addrs[adder % NUM_FLOWS],
+                                        ));
                                         let ip_hdr_len = ippkt.header_len();
+                                        adder += 1;
 
-                                        let old = ethpkt.src_addr();
-                                        ethpkt.set_src_addr(ethpkt.dst_addr());
-                                        ethpkt.set_dst_addr(old);
+                                        ethpkt.set_dst_addr(wire::EthernetAddress(DMAC));
+                                        ethpkt.set_src_addr(wire::EthernetAddress(SMAC));
 
                                         mbuf.set_tx_offload(tx_of_flag);
                                         mbuf.set_l2_len(14 as u64);
@@ -140,8 +173,6 @@ fn entry_func() {
 }
 
 fn main() {
-    assert!(RXQ_NUM == TXQ_NUM);
-
     DpdkOption::new().init().unwrap();
 
     // create mempool
@@ -150,8 +181,8 @@ fn main() {
     // create the port
     utils::init_port(
         PORT_ID,
-        RXQ_NUM,
-        TXQ_NUM,
+        THREAD_NUM as u16,
+        THREAD_NUM as u16,
         RXQ_DESC_NUM,
         MP_NAME,
         TXQ_DESC_NUM,

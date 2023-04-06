@@ -11,29 +11,22 @@ use run_packet::Cursor;
 use run_time::*;
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 1;
-
-// Basic configuration of the mempool
-const MBUF_CACHE: u32 = 256;
-const MBUF_NUM: u32 = MBUF_CACHE * 32 * 10;
-const MP_NAME: &str = "wtf";
-
-// Basic configuration of the port
-const PORT_ID: u16 = 3;
-
-// Basic configuration of tx queues
-const TXQ_NUM: u16 = 1;
-const TXQ_DESC_NUM: u16 = 1024;
-
-// Basic configuration of rx queues
-const RXQ_NUM: u16 = 16;
-const RXQ_DESC_NUM: u16 = 1024;
-
-// rx threads
-const START_CORE: usize = 33;
+const WORKING_SOCKET: u32 = 0;
+const THREAD_NUM: u32 = 4;
+const START_CORE: usize = 1;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
+
+// Basic configuration of the mempool
+const MBUF_CACHE: u32 = 256;
+const MBUF_NUM: u32 = MBUF_CACHE * 32 * THREAD_NUM;
+const MP_NAME: &str = "wtf";
+
+// Basic configuration of the port
+const PORT_ID: u16 = 0;
+const TXQ_DESC_NUM: u16 = 1024;
+const RXQ_DESC_NUM: u16 = 1024;
 
 fn entry_func() {
     // make sure that the rx and tx threads are on the correct cores
@@ -42,7 +35,7 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + RXQ_NUM as u32 + TXQ_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert!(res == true);
@@ -60,7 +53,7 @@ fn entry_func() {
     let mut bps_stats = Vec::new();
     let mut flow_nums = Vec::new();
 
-    for i in 0..RXQ_NUM as usize {
+    for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
 
         let per_q_pps = Arc::new(AtomicUsize::new(0));
@@ -71,9 +64,7 @@ fn entry_func() {
         flow_nums.push(flow_num.clone());
 
         let jh = std::thread::spawn(move || {
-            service()
-                .lcore_bind(i as u32 + START_CORE as u32 + TXQ_NUM as u32)
-                .unwrap();
+            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
@@ -147,7 +138,7 @@ fn entry_func() {
 
         let mut sum_pps = 0.0;
         let mut sum_bps = 0.0;
-        for qid in 0..RXQ_NUM as usize {
+        for qid in 0..THREAD_NUM as usize {
             print!("rxq {}: ", qid);
             println!(
                 "{} Mpps, {} Gbps, {} flows",
@@ -175,8 +166,8 @@ fn main() {
     // create the port
     utils::init_port(
         PORT_ID,
-        RXQ_NUM,
-        TXQ_NUM,
+        THREAD_NUM as u16,
+        THREAD_NUM as u16,
         RXQ_DESC_NUM,
         MP_NAME,
         TXQ_DESC_NUM,

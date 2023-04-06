@@ -13,9 +13,9 @@ use run_packet::Buf;
 use run_packet::CursorMut;
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 12;
-const START_CORE: usize = 33;
+const WORKING_SOCKET: u32 = 0;
+const THREAD_NUM: u32 = 14;
+const START_CORE: usize = 1;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
@@ -28,21 +28,21 @@ const TX_MP: &str = "tx";
 const RX_MP: &str = "rx";
 
 // Basic configuration of the port
-const PORT_ID: u16 = 3;
+const PORT_ID: u16 = 0;
 const TXQ_DESC_NUM: u16 = 1024;
 const RXQ_DESC_NUM: u16 = 1024;
 
 // header info
-const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
 const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
-const DIP: [u8; 4] = [192, 177, 23, 2];
+const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
+const DIP: [u8; 4] = [192, 168, 23, 2];
 const SPORT: u16 = 60376;
 const DPORT: u16 = 161;
 const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 400;
+const PACKET_LEN: usize = 60;
 
 static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
 
@@ -125,7 +125,7 @@ fn entry_func() {
             let mut tx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
-            let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
+            // let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
             tx_of_flag.enable_ip_cksum();
@@ -154,8 +154,8 @@ fn entry_func() {
                 let _ = txq.tx(&mut tx_batch);
                 Mempool::free_batch(&mut tx_batch);
 
-                rxq.rx(&mut rx_batch);
-                Mempool::free_batch(&mut rx_batch);
+                // rxq.rx(&mut rx_batch);
+                // Mempool::free_batch(&mut rx_batch);
             }
         });
         jhs.push(jh);
