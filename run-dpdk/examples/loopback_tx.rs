@@ -125,7 +125,7 @@ fn entry_func() {
             let mut tx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
-            // let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
+            let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
             tx_of_flag.enable_ip_cksum();
@@ -154,8 +154,8 @@ fn entry_func() {
                 let _ = txq.tx(&mut tx_batch);
                 Mempool::free_batch(&mut tx_batch);
 
-                // rxq.rx(&mut rx_batch);
-                // Mempool::free_batch(&mut rx_batch);
+                rxq.rx(&mut rx_batch);
+                Mempool::free_batch(&mut rx_batch);
             }
         });
         jhs.push(jh);
