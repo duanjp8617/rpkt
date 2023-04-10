@@ -40,3 +40,22 @@ ip link set dev NAME mtu 9000
 The ```NAME``` refers the interface name in the Linux kernel, it can be checked with DPDK's ```dpdk-devbind.py``` script. 
 
 2. 
+
+# DPDK devices
+
+## Intel E810
+
+1. Configure huge page and iommu by adding the following line to the ```GRUB_CMDLINE_LINUX``` field of the ```/etc/default/grub```
+```shell
+GRUB_CMDLINE_LINUX="intel_iommu=on iommu=pt hugepagesz=1G hugepages=16 default_hugepagesz=1G intel_pstate=disable"
+``` 
+
+2. Run the following command to apply the change in the grub system:
+```shell
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+3. Reboot the system, and check whether the kernel parameters take effect with the following command:
+```shell
+cat /proc/cmdline
+```
