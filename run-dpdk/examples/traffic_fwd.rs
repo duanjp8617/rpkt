@@ -20,9 +20,9 @@ use run_dpdk::*;
 // smoltcp     12.63   24.91    30.22    30.05                 
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 0;
-const THREAD_NUM: u32 = 4;
-const START_CORE: usize = 1;
+const WORKING_SOCKET: u32 = 1;
+const THREAD_NUM: u32 = 2;
+const START_CORE: usize = 33;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
@@ -38,9 +38,9 @@ const TXQ_DESC_NUM: u16 = 1024;
 const RXQ_DESC_NUM: u16 = 1024;
 
 // header info
-const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
-const SMAC: [u8; 6] = [0x0c, 0x42, 0xa1, 0x72, 0xc9, 0x92];
-const DIP: [u8; 4] = [192, 168, 21, 2];
+const DMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa2, 0xb1];
+const SMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa5, 0xf8];
+const DIP: [u8; 4] = [192, 168, 22, 2];
 const SPORT: u16 = 60376;
 const DPORT: u16 = 161;
 const NUM_FLOWS: usize = 8192;

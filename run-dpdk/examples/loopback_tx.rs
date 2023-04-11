@@ -13,9 +13,9 @@ use run_packet::Buf;
 use run_packet::CursorMut;
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 0;
-const THREAD_NUM: u32 = 14;
-const START_CORE: usize = 1;
+const WORKING_SOCKET: u32 = 1;
+const THREAD_NUM: u32 = 4;
+const START_CORE: usize = 33;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
@@ -28,13 +28,13 @@ const TX_MP: &str = "tx";
 const RX_MP: &str = "rx";
 
 // Basic configuration of the port
-const PORT_ID: u16 = 0;
+const PORT_ID: u16 = 3;
 const TXQ_DESC_NUM: u16 = 1024;
 const RXQ_DESC_NUM: u16 = 1024;
 
 // header info
-const DMAC: [u8; 6] = [0x08, 0x68, 0x8d, 0x61, 0x69, 0x28];
-const SMAC: [u8; 6] = [0x00, 0x50, 0x56, 0xae, 0x76, 0xf5];
+const DMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa5, 0xf8];
+const SMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa2, 0xb1];
 const DIP: [u8; 4] = [192, 168, 23, 2];
 const SPORT: u16 = 60376;
 const DPORT: u16 = 161;

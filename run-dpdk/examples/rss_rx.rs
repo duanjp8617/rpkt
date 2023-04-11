@@ -11,9 +11,9 @@ use run_packet::Cursor;
 use run_time::*;
 
 // The socket to work on
-const WORKING_SOCKET: u32 = 0;
-const THREAD_NUM: u32 = 4;
-const START_CORE: usize = 1;
+const WORKING_SOCKET: u32 = 1;
+const THREAD_NUM: u32 = 3;
+const START_CORE: usize = 33;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;

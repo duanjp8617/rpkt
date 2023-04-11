@@ -59,3 +59,31 @@ grub-mkconfig -o /boot/grub/grub.cfg
 ```shell
 cat /proc/cmdline
 ```
+
+## Intel E810 Driver Compatibility
+
+It seems that to correctly use Intel E810 driver, we need to install the correct device driver version. 
+It seems that we need upgrade E810 firmware, upgrade Linux ICE driver version, and update the Intel DDP version. 
+
+Note:
+
+By just upgrading the ICE driver to 1.11.14, we fix this problem. 
+Go to intel official site
+```shell
+https://www.intel.com/content/www/us/en/download/19630/intel-network-adapter-driver-for-e810-series-devices-under-linux.html
+```
+And download the latest ICE driver version.
+
+Untar the driver, switch to /src folder, issue the following commands:
+```shell
+make -j
+sudo make install
+sudo rmmod ice
+sudo modprobe ice
+```
+
+To check whether ice driver version is correctly upgraded, use the following command:
+```shell
+modinfo ice
+sudo ethtool -i DEVICE_NAME
+```
