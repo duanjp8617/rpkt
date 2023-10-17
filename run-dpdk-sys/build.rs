@@ -15,94 +15,10 @@ const DPDK_GIT_REPO: &str = "https://dpdk.org/git/dpdk";
 
 // To rebuild everything, remove dpdk-sys/deps/configure-finish file.
 
-fn main() {
-    // Save the absolute path of the root directory.
-    let pwd = fs::canonicalize(PathBuf::from("./")).unwrap();
-
-    // Download DPDK source from the official git repo.
-    if !Path::new("deps/dpdk").is_dir() {
-        let mut tag = "v".to_string();
-        tag.push_str(DPDK_VERSION);
-        let res = Command::new("git")
-            .args(&["clone", "-b", &tag, DPDK_GIT_REPO, "deps/dpdk"])
-            .status()
-            .expect("Please install git.");
-        if !res.success() {
-            panic!(
-                "Failed to clone DPDK repo {} at tag {}.",
-                DPDK_GIT_REPO, &tag
-            );
-        }
-    }
-
-    // Configure DPDK with meson.
-    if !Path::new("deps/configure-finish").is_file() {
-        // Remove dpdk/build directory if they exist.
-        let build_dir = Path::new("deps/dpdk/build");
-        if build_dir.is_dir() {
-            fs::remove_dir_all(build_dir)
-                .expect("Fail to remove existing deps/dpdk/build directory.");
-        }
-
-        // Configure DPDK for build.
-        let mut meson_dprefix = String::from("-Dprefix=");
-        meson_dprefix.push_str(pwd.join("deps/dpdk-install").to_str().unwrap());
-        let res = Command::new("meson")
-            .current_dir("deps/dpdk")
-            .args(&[&meson_dprefix[..], "build"])
-            .status()
-            .expect("Please install meson.");
-        if !res.success() {
-            panic!("Fail to configure DPDK source with meson.");
-        }
-
-        fs::File::create(Path::new("deps/configure-finish"))
-            .expect("Fail to create deps/configure-finish.");
-        println!("cargo:rerun-if-changed=deps/configure-finish");
-    }
-
-    // Build and install DPDK.
-    let res = Command::new("ninja")
-        .current_dir("deps/dpdk/build")
-        .status()
-        .expect("Please install ninja.");
-    if !res.success() {
-        panic!("Failed to build DPDK with ninja.");
-    }
-    let res = Command::new("ninja")
-        .current_dir("deps/dpdk/build")
-        .args(&["install"])
-        .status()
-        .unwrap();
-    assert!(res.success());
-
-    // Set PKG_CONFIG_PATH environment variable to point to the installed DPDK library.
-    env::set_var(
-        "PKG_CONFIG_PATH",
-        pwd.join("deps/dpdk-install/lib/x86_64-linux-gnu/pkgconfig")
-            .to_str()
-            .unwrap(),
-    );
-
-    // Check DPDK version.
-    let output = Command::new("pkg-config")
-        .args(&["--modversion", "libdpdk"])
-        .output()
-        .expect("Please install pkg-config.");
-    if !output.status.success() {
-        panic!(
-            "Failed to find dpdk cflags. DPDK is not successfully installed by the build script."
-        )
-    }
-    let s = String::from_utf8(output.stdout).unwrap();
-    let version_str = s.trim();
-    if !version_str.starts_with(DPDK_VERSION) {
-        panic!(
-            "pkg-config finds another DPDK library with version {}.",
-            version_str
-        );
-    }
-
+// Build the dpdk ffi library.
+// The library information is acquired through pkg-config.
+// The ffi interface is generated with the bindgen.
+fn build_dpdk_ffi() {
     // Probe the cflags of the installed DPDK library.
     let output = Command::new("pkg-config")
         .args(&["--cflags", "libdpdk"])
@@ -209,4 +125,93 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    // Check DPDK version.
+    let output = Command::new("pkg-config")
+        .args(&["--modversion", "libdpdk"])
+        .output()
+        .expect("Cannot find pkg-config. Please install pkg-config.");
+    if output.status.success() {
+        let s = String::from_utf8(output.stdout).unwrap();
+        let version_str = s.trim();
+        if !version_str.starts_with(DPDK_VERSION) {
+            panic!(
+                "pkg-config finds DPDK library with version {}.\nPlease install a supported version.\n",
+                version_str
+            );
+        }
+
+        // Found a matching dpdk library installed globally.
+        build_dpdk_ffi();
+        return;
+    }
+
+    // Save the absolute path of the root directory.
+    let pwd = fs::canonicalize(PathBuf::from("./")).unwrap();
+
+    // Download DPDK source from the official git repo.
+    if !Path::new("deps/dpdk").is_dir() {
+        let mut tag = "v".to_string();
+        tag.push_str(DPDK_VERSION);
+        let res = Command::new("git")
+            .args(&["clone", "-b", &tag, DPDK_GIT_REPO, "deps/dpdk"])
+            .status()
+            .expect("Cannot find git. Please install git.\n");
+        if !res.success() {
+            panic!("Fail to clone DPDK repo {} at tag {}.", DPDK_GIT_REPO, &tag);
+        }
+    }
+
+    // Configure DPDK with meson.
+    if !Path::new("deps/configure-finish").is_file() {
+        // Remove dpdk/build directory if they exist.
+        let build_dir = Path::new("deps/dpdk/build");
+        if build_dir.is_dir() {
+            fs::remove_dir_all(build_dir)
+                .expect("Fail to remove existing deps/dpdk/build directory.\n");
+        }
+
+        // Configure DPDK for build.
+        let mut meson_dprefix = String::from("-Dprefix=");
+        meson_dprefix.push_str(pwd.join("deps/dpdk-install").to_str().unwrap());
+        let res = Command::new("meson")
+            .current_dir("deps/dpdk")
+            .args(&[&meson_dprefix[..], "build"])
+            .status()
+            .expect("Cannot find meson. Please install meson.\n");
+        if !res.success() {
+            panic!("Fail to configure DPDK source with meson.");
+        }
+
+        fs::File::create(Path::new("deps/configure-finish"))
+            .expect("Fail to create deps/configure-finish.\n");
+        println!("cargo:rerun-if-changed=deps/configure-finish");
+    }
+
+    // Build and install DPDK.
+    let res = Command::new("ninja")
+        .current_dir("deps/dpdk/build")
+        .status()
+        .expect("Cannot find ninja. Please install ninja.\n");
+    if !res.success() {
+        panic!("Fail to build DPDK with ninja.");
+    }
+    let res = Command::new("ninja")
+        .current_dir("deps/dpdk/build")
+        .args(&["install"])
+        .status()
+        .unwrap();
+    assert!(res.success());
+
+    // Set PKG_CONFIG_PATH environment variable to point to the installed DPDK library.
+    env::set_var(
+        "PKG_CONFIG_PATH",
+        pwd.join("deps/dpdk-install/lib/x86_64-linux-gnu/pkgconfig")
+            .to_str()
+            .unwrap(),
+    );
+
+    build_dpdk_ffi();
 }
