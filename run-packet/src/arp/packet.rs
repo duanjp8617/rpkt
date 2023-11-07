@@ -1,10 +1,8 @@
 use bytes::Buf;
 
-use crate::ether::MacAddr;
-use crate::ipv4::Ipv4Addr;
 use crate::PktMut;
 
-use super::header::{ArpHeader, ARP_HEADER_LEN};
+use super::{sha, spa, tha, tpa, ArpHeader, ARP_HEADER_LEN};
 
 use super::Operation;
 
@@ -14,18 +12,14 @@ packet_base! {
         get_methods: [
             (check_arp_format, bool),
             (operation, Operation),
-            (source_mac_addr, MacAddr),
-            (source_ipv4_addr, Ipv4Addr),
-            (target_mac_addr, MacAddr),
-            (target_ipv4_addr, Ipv4Addr),
         ],
         set_methods: [
             (adjust_arp_format),
             (set_operation, value: Operation),
-            (set_source_mac_addr, value: MacAddr),
-            (set_source_ipv4_addr, value: Ipv4Addr),
-            (set_target_mac_addr, value: MacAddr),
-            (set_target_ipv4_addr, value: Ipv4Addr),
+            (set_sender_hardware_addr, value: &[u8]),
+            (set_sender_protocol_addr, value: &[u8]),
+            (set_target_hardware_addr, value: &[u8]),
+            (set_target_protocol_addr, value: &[u8]),
         ],
         unchecked_set_methods: []
     }
@@ -39,6 +33,26 @@ impl<T: Buf> ArpPacket<T> {
         } else {
             Err(buf)
         }
+    }
+
+    #[inline]
+    pub fn sender_hardware_addr(&self) -> &[u8] {
+        sha(self.buf.chunk())
+    }
+
+    #[inline]
+    pub fn sender_protocol_addr(&self) -> &[u8] {
+        spa(self.buf.chunk())
+    }
+
+    #[inline]
+    pub fn target_hardware_addr(&self) -> &[u8] {
+        tha(self.buf.chunk())
+    }
+
+    #[inline]
+    pub fn target_protocol_addr(&self) -> &[u8] {
+        tpa(self.buf.chunk())
     }
 }
 
@@ -59,7 +73,8 @@ impl<T: PktMut> ArpPacket<T> {
 mod tests {
     use super::*;
     use crate::arp::ARP_HEADER_TEMPLATE;
-    use crate::ether::*;
+    use crate::eth::*;
+    use crate::ipv4::*;
     use crate::PktMut;
     use crate::{Cursor, CursorMut};
     use bytes::BufMut;
@@ -84,15 +99,21 @@ mod tests {
         assert_eq!(arppkt.check_arp_format(), true);
         assert_eq!(arppkt.operation(), Operation::REQUEST);
         assert_eq!(
-            arppkt.source_mac_addr(),
+            MacAddr::from_bytes(arppkt.sender_hardware_addr()),
             MacAddr([0xc4, 0x01, 0x32, 0x58, 0x00, 0x00])
         );
-        assert_eq!(arppkt.source_ipv4_addr(), Ipv4Addr([10, 0, 0, 1]),);
         assert_eq!(
-            arppkt.target_mac_addr(),
+            Ipv4Addr::from_bytes(arppkt.sender_protocol_addr()),
+            Ipv4Addr([10, 0, 0, 1]),
+        );
+        assert_eq!(
+            MacAddr::from_bytes(arppkt.target_hardware_addr()),
             MacAddr([0xc4, 0x02, 0x32, 0x6b, 0x00, 0x00])
         );
-        assert_eq!(arppkt.target_ipv4_addr(), Ipv4Addr([10, 0, 0, 2]),);
+        assert_eq!(
+            Ipv4Addr::from_bytes(arppkt.target_protocol_addr()),
+            Ipv4Addr([10, 0, 0, 2]),
+        );
     }
 
     #[test]
@@ -106,10 +127,10 @@ mod tests {
 
         let mut arppkt = ArpPacket::prepend_header(buf, &ARP_HEADER_TEMPLATE);
         arppkt.set_operation(Operation::REQUEST);
-        arppkt.set_source_mac_addr(MacAddr([0xc4, 0x01, 0x32, 0x58, 0x00, 0x00]));
-        arppkt.set_source_ipv4_addr(Ipv4Addr([10, 0, 0, 1]));
-        arppkt.set_target_mac_addr(MacAddr([0xc4, 0x02, 0x32, 0x6b, 0x00, 0x00]));
-        arppkt.set_target_ipv4_addr(Ipv4Addr([10, 0, 0, 2]));
+        arppkt.set_sender_hardware_addr(MacAddr([0xc4, 0x01, 0x32, 0x58, 0x00, 0x00]).as_bytes());
+        arppkt.set_sender_protocol_addr(Ipv4Addr([10, 0, 0, 1]).as_bytes());
+        arppkt.set_target_hardware_addr(MacAddr([0xc4, 0x02, 0x32, 0x6b, 0x00, 0x00]).as_bytes());
+        arppkt.set_target_protocol_addr(Ipv4Addr([10, 0, 0, 2]).as_bytes());
 
         let mut ethpkt = EtherPacket::prepend_header(arppkt.release(), &ETHER_HEADER_TEMPLATE);
         ethpkt.set_dest_mac(MacAddr([0xc4, 0x02, 0x32, 0x6b, 0x00, 0x00]));

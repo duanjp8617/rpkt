@@ -1,24 +1,12 @@
 use byteorder::{ByteOrder, NetworkEndian};
 
-use crate::ether::{EtherType, MacAddr};
-use crate::ipv4::Ipv4Addr;
+use crate::eth::EtherType;
 
+use super::{hlen, htype, oper, plen, ptype, sha, spa, tha, tpa};
+use super::{
+    hlen_mut, htype_mut, oper_mut, plen_mut, ptype_mut, sha_mut, spa_mut, tha_mut, tpa_mut,
+};
 use super::{Hardware, Operation};
-
-header_field_range_accessors! {
-    (htype, htype_mut, 0..2),
-    (ptype, ptype_mut, 2..4),
-    (oper, oper_mut, 6..8),
-    (sha, sha_mut, 8..14),
-    (spa, spa_mut, 14..18),
-    (tha, tha_mut, 18..24),
-    (tpa, tpa_mut, 24..28)
-}
-
-header_field_val_accessors! {
-    (hlen, hlen_mut, 4),
-    (plen, plen_mut, 5),
-}
 
 pub const ARP_HEADER_LEN: usize = 28;
 
@@ -98,27 +86,23 @@ impl<T: AsRef<[u8]>> ArpHeader<T> {
     }
 
     #[inline]
-    pub fn source_mac_addr(&self) -> MacAddr {
-        let data = sha(self.buf.as_ref());
-        MacAddr::from_bytes(data)
+    pub fn sender_hardware_addr(&self) -> &[u8] {
+        sha(self.buf.as_ref())
     }
 
     #[inline]
-    pub fn source_ipv4_addr(&self) -> Ipv4Addr {
-        let data = spa(self.buf.as_ref());
-        Ipv4Addr::from_bytes(data)
+    pub fn sender_protocol_addr(&self) -> &[u8] {
+        spa(self.buf.as_ref())
     }
 
     #[inline]
-    pub fn target_mac_addr(&self) -> MacAddr {
-        let data = tha(self.buf.as_ref());
-        MacAddr::from_bytes(data)
+    pub fn target_hardware_addr(&self) -> &[u8] {
+        tha(self.buf.as_ref())
     }
 
     #[inline]
-    pub fn target_ipv4_addr(&self) -> Ipv4Addr {
-        let data = tpa(self.buf.as_ref());
-        Ipv4Addr::from_bytes(data)
+    pub fn target_protocol_addr(&self) -> &[u8] {
+        tpa(self.buf.as_ref())
     }
 }
 
@@ -161,26 +145,26 @@ impl<T: AsMut<[u8]>> ArpHeader<T> {
     }
 
     #[inline]
-    pub fn set_source_mac_addr(&mut self, value: MacAddr) {
+    pub fn set_sender_hardware_addr(&mut self, value: &[u8]) {
         let data = sha_mut(self.buf.as_mut());
-        data.copy_from_slice(value.as_bytes());
+        data.copy_from_slice(value);
     }
 
     #[inline]
-    pub fn set_source_ipv4_addr(&mut self, value: Ipv4Addr) {
+    pub fn set_sender_protocol_addr(&mut self, value: &[u8]) {
         let data = spa_mut(self.buf.as_mut());
-        data.copy_from_slice(value.as_bytes())
+        data.copy_from_slice(value)
     }
 
     #[inline]
-    pub fn set_target_mac_addr(&mut self, value: MacAddr) {
+    pub fn set_target_hardware_addr(&mut self, value: &[u8]) {
         let data = tha_mut(self.buf.as_mut());
-        data.copy_from_slice(value.as_bytes())
+        data.copy_from_slice(value)
     }
 
     #[inline]
-    pub fn set_target_ipv4_addr(&mut self, value: Ipv4Addr) {
+    pub fn set_target_protocol_addr(&mut self, value: &[u8]) {
         let data = tpa_mut(self.buf.as_mut());
-        data.copy_from_slice(value.as_bytes())
+        data.copy_from_slice(value)
     }
 }

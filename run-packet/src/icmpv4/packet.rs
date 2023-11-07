@@ -95,7 +95,7 @@ impl<T: PktMut> Icmpv4Packet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ether::*;
+    use crate::eth::*;
     use crate::icmpv4::ICMPV4_HEADER_TEMPLATE;
     use crate::ipv4::*;
     use crate::{Cursor, CursorMut};

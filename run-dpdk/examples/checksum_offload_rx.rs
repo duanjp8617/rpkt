@@ -4,7 +4,7 @@ use arrayvec::ArrayVec;
 use ctrlc;
 
 use run_dpdk::*;
-use run_packet::ether::*;
+use run_packet::eth::*;
 use run_packet::ipv4::*;
 use run_packet::tcp::*;
 use run_packet::udp::*;

@@ -6,7 +6,7 @@ use once_cell::sync::OnceCell;
 
 use run_dpdk::offload::MbufTxOffload;
 use run_dpdk::*;
-use run_packet::ether::*;
+use run_packet::eth::*;
 use run_packet::ipv4::*;
 use run_packet::udp::UdpPacket;
 use run_packet::CursorMut;

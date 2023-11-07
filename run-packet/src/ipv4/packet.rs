@@ -174,7 +174,7 @@ impl<'a> Ipv4Packet<CursorMut<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ether::*;
+    use crate::eth::*;
     use crate::ipv4::IPV4_HEADER_TEMPLATE;
     use crate::{Cursor, CursorMut};
     use bytes::BufMut;

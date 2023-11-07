@@ -63,8 +63,6 @@ impl fmt::Display for MacAddr {
 
 enum_sim! {
     pub struct EtherType (u16) {
-        VLAN = 0x8100,
-        QINQ = 0x88A8,
         ARP =  0x0806,
         IPV4 = 0x0800,
         IPV6 = 0x86DD,
@@ -74,8 +72,6 @@ enum_sim! {
 impl fmt::Display for EtherType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EtherType::VLAN => write!(f, "VLAN"),
-            EtherType::QINQ => write!(f, "QINQ"),
             EtherType::ARP => write!(f, "ARP"),
             EtherType::IPV4 => write!(f, "IPv4"),
             EtherType::IPV6 => write!(f, "IPv6"),
