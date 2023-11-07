@@ -181,7 +181,7 @@ impl<'a> TcpPacket<CursorMut<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eth::*;
+    use crate::ether::*;
     use crate::ipv4::*;
     use crate::tcp::TCP_HEADER_TEMPLATE;
     use crate::{Cursor, CursorMut};

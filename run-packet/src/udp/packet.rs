@@ -147,7 +147,7 @@ impl<'a> UdpPacket<CursorMut<'a>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eth::*;
+    use crate::ether::*;
     use crate::ipv4::*;
     use crate::udp::UDP_HEADER_TEMPLATE;
     use crate::{Cursor, CursorMut};

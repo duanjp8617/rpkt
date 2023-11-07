@@ -73,7 +73,7 @@ impl<T: PktMut> ArpPacket<T> {
 mod tests {
     use super::*;
     use crate::arp::ARP_HEADER_TEMPLATE;
-    use crate::eth::*;
+    use crate::ether::*;
     use crate::ipv4::*;
     use crate::PktMut;
     use crate::{Cursor, CursorMut};

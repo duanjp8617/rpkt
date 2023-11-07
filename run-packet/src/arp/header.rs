@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, NetworkEndian};
 
-use crate::eth::EtherType;
+use crate::ether::EtherType;
 
 use super::{hlen, htype, oper, plen, ptype, sha, spa, tha, tpa};
 use super::{
