@@ -265,3 +265,125 @@ impl<'a> Iterator for OptionIter<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static OPTIONS: [u8; 70] = [
+        0x01, 0x02, 0x04, 0x05, 0xdc, 0x03, 0x03, 0x0c, 0x4, 0x02, 0x05, 0x0a, 0x00, 0x00, 0x01,
+        0xf4, 0x00, 0x00, 0x05, 0xdc, 0x05, 0x12, 0x00, 0x00, 0x03, 0x6b, 0x00, 0x00, 0x04, 0xc9,
+        0x00, 0x00, 0x05, 0xdc, 0x00, 0x00, 0x09, 0xc4, 0x05, 0x1a, 0x00, 0x0d, 0x59, 0xf8, 0x00,
+        0x12, 0xb1, 0x28, 0x00, 0x16, 0xe3, 0x60, 0x00, 0x26, 0x25, 0xa0, 0x34, 0x3e, 0xfc, 0xea,
+        0x34, 0x40, 0xae, 0xf0, 0x0c, 0x05, 0x01, 0x02, 0x03, 0x00,
+    ];
+
+    #[test]
+    fn option_parse() {
+        let mut opt_iter = OptionIter::from_option_bytes(&OPTIONS[..]);
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Nop = opt {
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Mss(mss) = opt {
+                assert_eq!(mss, 1500);
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Wsopt(ws) = opt {
+                assert_eq!(ws, 12);
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::SackPerm = opt {
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Sack(sack) = opt {
+                assert_eq!(sack.num_blocks(), 1);
+                assert_eq!(sack.sack(0), (500, 1500));
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Sack(sack) = opt {
+                assert_eq!(sack.num_blocks(), 2);
+                assert_eq!(sack.sack(0), (875, 1225));
+                assert_eq!(sack.sack(1), (1500, 2500));
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Sack(sack) = opt {
+                assert_eq!(sack.num_blocks(), 3);
+                assert_eq!(sack.sack(0), (875000, 1225000));
+                assert_eq!(sack.sack(1), (1500000, 2500000));
+                assert_eq!(sack.sack(2), (876543210, 876654320));
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Unknown(b) = opt {
+                assert_eq!(b, &[0x0c, 0x05, 0x01, 0x02, 0x03]);
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        let opt = opt_iter.next().unwrap();
+        assert_eq!(
+            if let TcpOption::Eol = opt {
+                true
+            } else {
+                false
+            },
+            true
+        );
+
+        assert_eq!(OptionIter::check_option_bytes(&OPTIONS[..]), true);
+    }
+}
