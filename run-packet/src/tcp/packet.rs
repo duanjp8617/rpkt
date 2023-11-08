@@ -234,12 +234,10 @@ mod tests {
         assert_eq!(tcppkt.urgent_ptr(), 0);
 
         assert_eq!(tcppkt.option_bytes().len(), 12);
-        assert_eq!(
-            OptionReader::check_option_bytes(tcppkt.option_bytes()),
-            true
-        );
-        let mut opt_reader = OptionReader::from_option_bytes(tcppkt.option_bytes());
-        let opt1 = (&mut opt_reader).next().unwrap();
+        assert_eq!(OptionIter::check_option_bytes(tcppkt.option_bytes()), true);
+
+        let mut opt_reader = OptionIter::from_option_bytes(tcppkt.option_bytes());
+        let opt1 = opt_reader.next().unwrap();
         assert_eq!(
             true,
             if let TcpOption::Nop = opt1 {
@@ -248,7 +246,7 @@ mod tests {
                 false
             }
         );
-        let opt2 = (&mut opt_reader).next().unwrap();
+        let opt2 = opt_reader.next().unwrap();
         assert_eq!(
             true,
             if let TcpOption::Nop = opt2 {
@@ -257,14 +255,13 @@ mod tests {
                 false
             }
         );
-        let opt3 = (&mut opt_reader).next().unwrap();
-        if let TcpOption::Ts(ts) = opt3 {
-            assert_eq!(ts.timestamp(), 2216543);
-            assert_eq!(ts.timestamp_echo(), 835172936);
+        let opt3 = opt_reader.next().unwrap();
+        if let TcpOption::Ts(ts, ts_echo) = opt3 {
+            assert_eq!(ts, 2216543);
+            assert_eq!(ts_echo, 835172936);
         } else {
             assert!(false);
         }
-        assert_eq!(opt_reader.valid(), true);
 
         assert_eq!(
             tcppkt.payload().chunk(),
@@ -302,10 +299,12 @@ mod tests {
         tcppkt.set_window_size(46);
         tcppkt.set_checksum(0x4729);
         tcppkt.set_urgent_ptr(0);
-        tcppkt.option_bytes_mut().copy_from_slice(
-            &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
-                ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
-        );
+
+        let mut writer = OptionWriter::from_option_bytes(tcppkt.option_bytes_mut());
+        writer.nop();
+        writer.nop();
+        writer.ts(2216543, 835172936);
+        assert_eq!(writer.remaining_bytes(), 0);
 
         let mut ipheader = IPV4_HEADER_TEMPLATE;
         ipheader.set_header_len(20);

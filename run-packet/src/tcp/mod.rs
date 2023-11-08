@@ -5,5 +5,4 @@ mod packet;
 pub use packet::TcpPacket;
 
 mod option;
-pub use option::{MaxSegSize, SelectiveAck, TcpFastopen, Timestamps, WindowScale};
-pub use option::{OptionReader, TcpOption};
+pub use option::{OptionIter, OptionWriter, SelectiveAck, TcpOption};
