@@ -30,7 +30,7 @@ impl<T: AsRef<[u8]>> SelectiveAck<T> {
         (usize::from(self.buf.as_ref()[1]) - 2) / 8
     }
 
-    pub fn sack(&self, idx: usize) -> (u32, u32) {
+    pub fn block(&self, idx: usize) -> (u32, u32) {
         assert!(idx < self.num_blocks());
         (
             NetworkEndian::read_u32(&self.buf.as_ref()[2 + 8 * idx..6 + 8 * idx]),
@@ -40,107 +40,111 @@ impl<T: AsRef<[u8]>> SelectiveAck<T> {
 }
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>> SelectiveAck<T> {
-    pub fn set_sack(&mut self, idx: usize, sack: (u32, u32)) {
+    pub fn set_block(&mut self, idx: usize, sack: (u32, u32)) {
         assert!(idx < self.num_blocks());
         NetworkEndian::write_u32(&mut self.buf.as_mut()[2 + 8 * idx..6 + 8 * idx], sack.0);
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[6 + 8 * idx..6 + 10 * idx], sack.1);
+        NetworkEndian::write_u32(&mut self.buf.as_mut()[6 + 8 * idx..10 + 8 * idx], sack.1);
     }
 }
 
 pub struct OptionWriter<'a> {
     buf: &'a mut [u8],
-    cursor: usize,
 }
 
 impl<'a> OptionWriter<'a> {
     pub fn eol(&mut self) {
-        assert!(self.cursor < self.buf.len());
+        assert!(self.buf.len() > 0);
 
-        self.buf[self.cursor] = END_OF_LIST;
+        self.buf[0] = END_OF_LIST;
 
-        self.cursor += 1;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+        self.buf = remaining;
     }
 
     pub fn nop(&mut self) {
-        assert!(self.cursor < self.buf.len());
+        assert!(self.buf.len() > 0);
 
-        self.buf[self.cursor] = NOP;
+        self.buf[0] = NOP;
 
-        self.cursor += 1;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+        self.buf = remaining;
     }
 
     pub fn mss(&mut self, mss: u16) {
-        assert!(self.buf.len() - self.cursor >= 4);
+        assert!(self.buf.len() >= 4);
 
-        self.buf[self.cursor] = MAX_SEG_SIZE;
-        self.buf[self.cursor + 1] = 4;
-        NetworkEndian::write_u16(&mut self.buf[self.cursor + 2..self.cursor + 4], mss);
+        self.buf[0] = MAX_SEG_SIZE;
+        self.buf[1] = 4;
+        NetworkEndian::write_u16(&mut self.buf[2..4], mss);
 
-        self.cursor += 4;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
+        self.buf = remaining;
     }
 
     pub fn wsopt(&mut self, value: u8) {
-        assert!(self.buf.len() - self.cursor >= 3);
+        assert!(self.buf.len() >= 3);
 
-        self.buf[self.cursor] = WINDOW_SCALE;
-        self.buf[self.cursor + 1] = 3;
-        self.buf[self.cursor + 2] = value;
+        self.buf[0] = WINDOW_SCALE;
+        self.buf[1] = 3;
+        self.buf[2] = value;
 
-        self.cursor += 3;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(3);
+        self.buf = remaining;
     }
 
     pub fn sack_perm(&mut self) {
-        assert!(self.buf.len() - self.cursor >= 2);
+        assert!(self.buf.len() >= 2);
 
-        self.buf[self.cursor] = SACK_PERMITTED;
-        self.buf[self.cursor + 1] = 2;
+        self.buf[0] = SACK_PERMITTED;
+        self.buf[1] = 2;
 
-        self.cursor += 2;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
+        self.buf = remaining;
     }
 
-    pub fn sack<'b: 'a>(&'b mut self, num_sacks: usize) -> SelectiveAck<&'b mut [u8]> {
-        assert!(num_sacks <= 4);
-        let opt_len = 2 + num_sacks * 8;
+    pub fn sack(&mut self, num_blocks: usize) -> SelectiveAck<&'a mut [u8]> {
+        assert!(num_blocks <= 4);
+        let opt_len = 2 + num_blocks * 8;
         assert!(self.buf.len() >= opt_len);
 
-        self.buf[self.cursor] = SELECTIVE_ACK;
-        self.buf[self.cursor + 1] = opt_len as u8;
-        let sack_option = SelectiveAck {
-            buf: &mut self.buf[self.cursor..self.cursor + opt_len],
-        };
+        self.buf[0] = SELECTIVE_ACK;
+        self.buf[1] = opt_len as u8;
 
-        self.cursor += opt_len;
+        let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
+        self.buf = remaining;
 
-        sack_option
+        SelectiveAck { buf }
     }
 
     pub fn ts(&mut self, ts: u32, ts_echo: u32) {
-        assert!(self.buf.len() - self.cursor >= 10);
+        assert!(self.buf.len() >= 10);
 
-        self.buf[self.cursor] = TIMESTAMPS;
-        self.buf[self.cursor + 1] = 10;
-        NetworkEndian::write_u32(&mut self.buf[self.cursor + 2..self.cursor + 6], ts);
-        NetworkEndian::write_u32(&mut self.buf[self.cursor + 6..self.cursor + 10], ts_echo);
+        self.buf[0] = TIMESTAMPS;
+        self.buf[1] = 10;
+        NetworkEndian::write_u32(&mut self.buf[2..6], ts);
+        NetworkEndian::write_u32(&mut self.buf[6..10], ts_echo);
 
-        self.cursor += 10;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(10);
+        self.buf = remaining;
     }
 
     pub fn fo(&mut self, cookie: &[u8]) {
-        assert!(self.buf.len() - self.cursor >= 18);
+        assert!(self.buf.len() >= 18);
 
-        self.buf[self.cursor] = TCP_FASTOPEN;
-        self.buf[self.cursor + 1] = 18;
-        (&mut self.buf[self.cursor + 2..self.cursor + 18]).copy_from_slice(cookie);
+        self.buf[0] = TCP_FASTOPEN;
+        self.buf[1] = 18;
+        (&mut self.buf[2..18]).copy_from_slice(cookie);
 
-        self.cursor += 18;
+        let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(18);
+        self.buf = remaining;
     }
 
     pub fn from_option_bytes(buf: &'a mut [u8]) -> Self {
-        Self { buf, cursor: 0 }
+        Self { buf }
     }
 
     pub fn remaining_bytes(&self) -> usize {
-        self.buf.len() - self.cursor
+        self.buf.len()
     }
 }
 
@@ -328,7 +332,7 @@ mod tests {
         assert_eq!(
             if let TcpOption::Sack(sack) = opt {
                 assert_eq!(sack.num_blocks(), 1);
-                assert_eq!(sack.sack(0), (500, 1500));
+                assert_eq!(sack.block(0), (500, 1500));
                 true
             } else {
                 false
@@ -340,8 +344,8 @@ mod tests {
         assert_eq!(
             if let TcpOption::Sack(sack) = opt {
                 assert_eq!(sack.num_blocks(), 2);
-                assert_eq!(sack.sack(0), (875, 1225));
-                assert_eq!(sack.sack(1), (1500, 2500));
+                assert_eq!(sack.block(0), (875, 1225));
+                assert_eq!(sack.block(1), (1500, 2500));
                 true
             } else {
                 false
@@ -353,9 +357,9 @@ mod tests {
         assert_eq!(
             if let TcpOption::Sack(sack) = opt {
                 assert_eq!(sack.num_blocks(), 3);
-                assert_eq!(sack.sack(0), (875000, 1225000));
-                assert_eq!(sack.sack(1), (1500000, 2500000));
-                assert_eq!(sack.sack(2), (876543210, 876654320));
+                assert_eq!(sack.block(0), (875000, 1225000));
+                assert_eq!(sack.block(1), (1500000, 2500000));
+                assert_eq!(sack.block(2), (876543210, 876654320));
                 true
             } else {
                 false
@@ -396,16 +400,16 @@ mod tests {
         opt_writer.mss(1500);
         opt_writer.wsopt(12);
         opt_writer.sack_perm();
-        opt_writer.sack(1).set_sack(0, (500, 1500));
+        opt_writer.sack(1).set_block(0, (500, 1500));
 
         let mut sack = opt_writer.sack(2);
-        sack.set_sack(0, (875, 1225));
-        sack.set_sack(1, (1500, 2500));
+        sack.set_block(0, (875, 1225));
+        sack.set_block(1, (1500, 2500));
 
-        // let mut sack = opt_writer.sack(3);
-        // sack.set_sack(0, (875000, 1225000));
-        // sack.set_sack(1, (1500000, 2500000));
-        // sack.set_sack(2, (876543210, 876654320));
+        let mut sack = opt_writer.sack(3);
+        sack.set_block(0, (875000, 1225000));
+        sack.set_block(1, (1500000, 2500000));
+        sack.set_block(2, (876543210, 876654320));
 
         assert_eq!(&buf[..64], &OPTIONS[..64]);
     }
