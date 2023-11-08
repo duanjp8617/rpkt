@@ -21,7 +21,11 @@ const FLG_ECE: u16 = 0x001 << 6;
 const FLG_CWR: u16 = 0x001 << 7;
 const FLG_NS: u16 = 0x001 << 8;
 
+/// Length of the TCP header without options
 pub const TCP_HEADER_LEN: usize = 20;
+
+/// Maximum length of the TCP header with options
+pub const TCP_HEADER_LEN_MAX: usize = 60;
 
 pub const TCP_HEADER_TEMPLATE: TcpHeader<[u8; TCP_HEADER_LEN]> = TcpHeader {
     buf: [

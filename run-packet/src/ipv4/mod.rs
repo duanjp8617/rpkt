@@ -151,8 +151,20 @@ impl Ipv4PseudoHeader {
     }
 }
 
+enum_sim! {
+    pub struct Ipv4OptionType (u8) {
+        LIST_END = 0,
+        NOP = 1,
+        TIMESTAMP =  68,
+        RECORD_ROUTE = 7,
+        ROUTER_ALERT = 20 | 0x80,
+    }
+}
+
 mod header;
 pub use header::{Ipv4Header, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 
 mod packet;
 pub use self::packet::Ipv4Packet;
+
+pub mod option;

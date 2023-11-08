@@ -110,10 +110,9 @@ impl<T: PktBuf> TcpPacket<T> {
 
 impl<T: PktMut> TcpPacket<T> {
     #[inline]
-    pub fn set_option_bytes(&mut self, option_bytes: &[u8]) {
-        let header_len = self.header_len();
-        let data = &mut self.buf.chunk_mut()[TCP_HEADER_LEN..header_len as usize];
-        data.copy_from_slice(option_bytes);
+    pub fn option_bytes_mut(&mut self) -> &mut [u8] {
+        let header_len = usize::from(self.header_len());
+        &mut self.buf.chunk_mut()[TCP_HEADER_LEN..header_len]
     }
 
     #[inline]
@@ -183,7 +182,7 @@ mod tests {
     use super::*;
     use crate::ether::*;
     use crate::ipv4::*;
-    use crate::tcp::TCP_HEADER_TEMPLATE;
+    use crate::tcp::*;
     use crate::{Cursor, CursorMut};
 
     static FRAME_BYTES: [u8; 200] = [
@@ -236,10 +235,36 @@ mod tests {
 
         assert_eq!(tcppkt.option_bytes().len(), 12);
         assert_eq!(
-            tcppkt.option_bytes(),
-            &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
-                ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)]
+            OptionReader::check_option_bytes(tcppkt.option_bytes()),
+            true
         );
+        let mut opt_reader = OptionReader::from_option_bytes(tcppkt.option_bytes());
+        let opt1 = (&mut opt_reader).next().unwrap();
+        assert_eq!(
+            true,
+            if let TcpOption::Nop = opt1 {
+                true
+            } else {
+                false
+            }
+        );
+        let opt2 = (&mut opt_reader).next().unwrap();
+        assert_eq!(
+            true,
+            if let TcpOption::Nop = opt2 {
+                true
+            } else {
+                false
+            }
+        );
+        let opt3 = (&mut opt_reader).next().unwrap();
+        if let TcpOption::Ts(ts) = opt3 {
+            assert_eq!(ts.timestamp(), 2216543);
+            assert_eq!(ts.timestamp_echo(), 835172936);
+        } else {
+            assert!(false);
+        }
+        assert_eq!(opt_reader.valid(), true);
 
         assert_eq!(
             tcppkt.payload().chunk(),
@@ -277,7 +302,7 @@ mod tests {
         tcppkt.set_window_size(46);
         tcppkt.set_checksum(0x4729);
         tcppkt.set_urgent_ptr(0);
-        tcppkt.set_option_bytes(
+        tcppkt.option_bytes_mut().copy_from_slice(
             &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
                 ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
         );
