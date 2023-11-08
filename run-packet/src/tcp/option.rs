@@ -98,7 +98,7 @@ impl<'a> OptionWriter<'a> {
         self.cursor += 2;
     }
 
-    pub fn sack(&'a mut self, num_sacks: usize) -> SelectiveAck<&'a mut [u8]> {
+    pub fn sack<'b: 'a>(&'b mut self, num_sacks: usize) -> SelectiveAck<&'b mut [u8]> {
         assert!(num_sacks <= 4);
         let opt_len = 2 + num_sacks * 8;
         assert!(self.buf.len() >= opt_len);
@@ -385,5 +385,28 @@ mod tests {
         );
 
         assert_eq!(OptionIter::check_option_bytes(&OPTIONS[..]), true);
+    }
+
+    #[test]
+    fn option_build() {
+        let mut buf: [u8; 70] = [0; 70];
+        let mut opt_writer = OptionWriter::from_option_bytes(&mut buf[..]);
+
+        opt_writer.nop();
+        opt_writer.mss(1500);
+        opt_writer.wsopt(12);
+        opt_writer.sack_perm();
+        opt_writer.sack(1).set_sack(0, (500, 1500));
+
+        let mut sack = opt_writer.sack(2);
+        sack.set_sack(0, (875, 1225));
+        sack.set_sack(1, (1500, 2500));
+
+        // let mut sack = opt_writer.sack(3);
+        // sack.set_sack(0, (875000, 1225000));
+        // sack.set_sack(1, (1500000, 2500000));
+        // sack.set_sack(2, (876543210, 876654320));
+
+        assert_eq!(&buf[..64], &OPTIONS[..64]);
     }
 }
