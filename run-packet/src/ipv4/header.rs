@@ -20,6 +20,9 @@ header_field_range_accessors! {
 
 pub const IPV4_HEADER_LEN: usize = 20;
 
+/// Maximum length of the TCP header with options
+pub const IPV4_HEADER_LEN_MAX: usize = 60;
+
 pub const IPV4_HEADER_TEMPLATE: Ipv4Header<[u8; 20]> = Ipv4Header {
     buf: [
         0x45, 0x00, 0x00, 0x14, 0x00, 0x00, 0x40, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00,

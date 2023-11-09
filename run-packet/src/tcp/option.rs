@@ -186,84 +186,93 @@ impl<'a> Iterator for OptionIter<'a> {
                 self.buf = &self.buf[1..];
                 Some(TcpOption::Nop)
             }
-            MAX_SEG_SIZE => {
-                if self.buf[1] != 4 || self.buf.len() < 4 {
-                    self.valid = false;
-                    None
-                } else {
-                    let mss = NetworkEndian::read_u16(&self.buf[2..4]);
-                    self.buf = &self.buf[4..];
-                    Some(TcpOption::Mss(mss))
-                }
-            }
-            WINDOW_SCALE => {
-                if self.buf[1] != 3 || self.buf.len() < 3 {
-                    self.valid = false;
-                    None
-                } else {
-                    let ws = self.buf[2];
-                    self.buf = &self.buf[3..];
-                    Some(TcpOption::Wsopt(ws))
-                }
-            }
-            SACK_PERMITTED => {
-                if self.buf[1] != 2 || self.buf.len() < 2 {
-                    self.valid = false;
-                    None
-                } else {
-                    self.buf = &self.buf[2..];
-                    Some(TcpOption::SackPerm)
-                }
-            }
-            SELECTIVE_ACK => {
-                let opt_len = usize::from(self.buf[1]);
-
-                #[inline]
-                fn opt_len_valid(len: usize) -> bool {
-                    len >= 2 && len <= 40 && (len - 2) % 8 == 0
-                }
-
-                if !opt_len_valid(opt_len) || self.buf.len() < opt_len {
-                    self.valid = false;
-                    None
-                } else {
-                    let opt = SelectiveAck {
-                        buf: &self.buf[..opt_len],
-                    };
-                    self.buf = &self.buf[opt_len..];
-                    Some(TcpOption::Sack(opt))
-                }
-            }
-            TIMESTAMPS => {
-                if self.buf[1] != 10 || self.buf.len() < 10 {
-                    self.valid = false;
-                    None
-                } else {
-                    let ts = NetworkEndian::read_u32(&self.buf[2..6]);
-                    let ts_echo = NetworkEndian::read_u32(&self.buf[6..10]);
-                    self.buf = &self.buf[10..];
-                    Some(TcpOption::Ts(ts, ts_echo))
-                }
-            }
-            TCP_FASTOPEN => {
-                if self.buf[1] != 18 || self.buf.len() < 18 {
-                    self.valid = false;
-                    None
-                } else {
-                    let buf = &self.buf[2..18];
-                    self.buf = &self.buf[18..];
-                    Some(TcpOption::Fo(buf))
-                }
-            }
             _ => {
-                let opt_len = usize::from(self.buf[1]);
-                if self.buf.len() < opt_len {
+                if self.buf.len() < 2 {
                     self.valid = false;
-                    None
-                } else {
-                    let opt = &self.buf[..opt_len];
-                    self.buf = &self.buf[opt_len..];
-                    Some(TcpOption::Unknown(opt))
+                    return None;
+                }
+
+                match opt_type {
+                    MAX_SEG_SIZE => {
+                        if self.buf[1] != 4 || self.buf.len() < 4 {
+                            self.valid = false;
+                            None
+                        } else {
+                            let mss = NetworkEndian::read_u16(&self.buf[2..4]);
+                            self.buf = &self.buf[4..];
+                            Some(TcpOption::Mss(mss))
+                        }
+                    }
+                    WINDOW_SCALE => {
+                        if self.buf[1] != 3 || self.buf.len() < 3 {
+                            self.valid = false;
+                            None
+                        } else {
+                            let ws = self.buf[2];
+                            self.buf = &self.buf[3..];
+                            Some(TcpOption::Wsopt(ws))
+                        }
+                    }
+                    SACK_PERMITTED => {
+                        if self.buf[1] != 2 || self.buf.len() < 2 {
+                            self.valid = false;
+                            None
+                        } else {
+                            self.buf = &self.buf[2..];
+                            Some(TcpOption::SackPerm)
+                        }
+                    }
+                    SELECTIVE_ACK => {
+                        let opt_len = usize::from(self.buf[1]);
+
+                        #[inline]
+                        fn opt_len_valid(len: usize) -> bool {
+                            len >= 2 && len <= 40 && (len - 2) % 8 == 0
+                        }
+
+                        if !opt_len_valid(opt_len) || self.buf.len() < opt_len {
+                            self.valid = false;
+                            None
+                        } else {
+                            let opt = SelectiveAck {
+                                buf: &self.buf[..opt_len],
+                            };
+                            self.buf = &self.buf[opt_len..];
+                            Some(TcpOption::Sack(opt))
+                        }
+                    }
+                    TIMESTAMPS => {
+                        if self.buf[1] != 10 || self.buf.len() < 10 {
+                            self.valid = false;
+                            None
+                        } else {
+                            let ts = NetworkEndian::read_u32(&self.buf[2..6]);
+                            let ts_echo = NetworkEndian::read_u32(&self.buf[6..10]);
+                            self.buf = &self.buf[10..];
+                            Some(TcpOption::Ts(ts, ts_echo))
+                        }
+                    }
+                    TCP_FASTOPEN => {
+                        if self.buf[1] != 18 || self.buf.len() < 18 {
+                            self.valid = false;
+                            None
+                        } else {
+                            let buf = &self.buf[2..18];
+                            self.buf = &self.buf[18..];
+                            Some(TcpOption::Fo(buf))
+                        }
+                    }
+                    _ => {
+                        let opt_len = usize::from(self.buf[1]);
+                        if self.buf.len() < opt_len {
+                            self.valid = false;
+                            None
+                        } else {
+                            let opt = &self.buf[..opt_len];
+                            self.buf = &self.buf[opt_len..];
+                            Some(TcpOption::Unknown(opt))
+                        }
+                    }
                 }
             }
         }
