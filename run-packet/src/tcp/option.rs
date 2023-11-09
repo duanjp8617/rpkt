@@ -26,10 +26,12 @@ pub struct SelectiveAck<T> {
 }
 
 impl<T: AsRef<[u8]>> SelectiveAck<T> {
+    #[inline]
     pub fn num_blocks(&self) -> usize {
         (usize::from(self.buf.as_ref()[1]) - 2) / 8
     }
 
+    #[inline]
     pub fn block(&self, idx: usize) -> (u32, u32) {
         assert!(idx < self.num_blocks());
         (
@@ -40,6 +42,7 @@ impl<T: AsRef<[u8]>> SelectiveAck<T> {
 }
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>> SelectiveAck<T> {
+    #[inline]
     pub fn set_block(&mut self, idx: usize, sack: (u32, u32)) {
         assert!(idx < self.num_blocks());
         NetworkEndian::write_u32(&mut self.buf.as_mut()[2 + 8 * idx..6 + 8 * idx], sack.0);
@@ -47,11 +50,11 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> SelectiveAck<T> {
     }
 }
 
-pub struct OptionWriter<'a> {
+pub struct TcpOptionWriter<'a> {
     buf: &'a mut [u8],
 }
 
-impl<'a> OptionWriter<'a> {
+impl<'a> TcpOptionWriter<'a> {
     pub fn eol(&mut self) {
         assert!(self.buf.len() > 0);
 
@@ -139,25 +142,29 @@ impl<'a> OptionWriter<'a> {
         self.buf = remaining;
     }
 
-    pub fn from_option_bytes(buf: &'a mut [u8]) -> Self {
+    #[inline]
+    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> Self {
         Self { buf }
     }
 
+    #[inline]
     pub fn remaining_bytes(&self) -> usize {
         self.buf.len()
     }
 }
 
-pub struct OptionIter<'a> {
+pub struct TcpOptionIter<'a> {
     buf: &'a [u8],
     valid: bool,
 }
 
-impl<'a> OptionIter<'a> {
-    pub fn from_option_bytes(buf: &'a [u8]) -> OptionIter<'a> {
+impl<'a> TcpOptionIter<'a> {
+    #[inline]
+    pub fn from_option_bytes(buf: &'a [u8]) -> TcpOptionIter<'a> {
         Self { buf, valid: true }
     }
 
+    #[inline]
     pub fn check_option_bytes(buf: &'a [u8]) -> bool {
         let mut reader = Self::from_option_bytes(buf);
         while let Some(_) = (&mut reader).next() {}
@@ -165,7 +172,7 @@ impl<'a> OptionIter<'a> {
     }
 }
 
-impl<'a> Iterator for OptionIter<'a> {
+impl<'a> Iterator for TcpOptionIter<'a> {
     type Item = TcpOption<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -293,7 +300,7 @@ mod tests {
 
     #[test]
     fn option_parse() {
-        let mut opt_iter = OptionIter::from_option_bytes(&OPTIONS[..]);
+        let mut opt_iter = TcpOptionIter::from_option_bytes(&OPTIONS[..]);
 
         let opt = opt_iter.next().unwrap();
         assert_eq!(
@@ -397,13 +404,13 @@ mod tests {
             true
         );
 
-        assert_eq!(OptionIter::check_option_bytes(&OPTIONS[..]), true);
+        assert_eq!(TcpOptionIter::check_option_bytes(&OPTIONS[..]), true);
     }
 
     #[test]
     fn option_build() {
         let mut buf: [u8; 70] = [0; 70];
-        let mut opt_writer = OptionWriter::from_option_bytes(&mut buf[..]);
+        let mut opt_writer = TcpOptionWriter::from_option_bytes_mut(&mut buf[..]);
 
         opt_writer.nop();
         opt_writer.mss(1500);

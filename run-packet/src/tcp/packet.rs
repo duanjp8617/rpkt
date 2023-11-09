@@ -234,9 +234,12 @@ mod tests {
         assert_eq!(tcppkt.urgent_ptr(), 0);
 
         assert_eq!(tcppkt.option_bytes().len(), 12);
-        assert_eq!(OptionIter::check_option_bytes(tcppkt.option_bytes()), true);
+        assert_eq!(
+            TcpOptionIter::check_option_bytes(tcppkt.option_bytes()),
+            true
+        );
 
-        let mut opt_reader = OptionIter::from_option_bytes(tcppkt.option_bytes());
+        let mut opt_reader = TcpOptionIter::from_option_bytes(tcppkt.option_bytes());
         let opt1 = opt_reader.next().unwrap();
         assert_eq!(
             true,
@@ -300,7 +303,7 @@ mod tests {
         tcppkt.set_checksum(0x4729);
         tcppkt.set_urgent_ptr(0);
 
-        let mut writer = OptionWriter::from_option_bytes(tcppkt.option_bytes_mut());
+        let mut writer = TcpOptionWriter::from_option_bytes_mut(tcppkt.option_bytes_mut());
         writer.nop();
         writer.nop();
         writer.ts(2216543, 835172936);

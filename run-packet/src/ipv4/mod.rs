@@ -157,4 +157,8 @@ pub use header::{Ipv4Header, IPV4_HEADER_LEN, IPV4_HEADER_LEN_MAX, IPV4_HEADER_T
 mod packet;
 pub use self::packet::Ipv4Packet;
 
-pub mod option;
+mod option;
+pub use option::{
+    Ipv4Option, Ipv4OptionIter, Ipv4OptionIterMut, Ipv4OptionMut, Ipv4OptionWriter, RecordRoute,
+    RouteAlert, Timestamp,
+};

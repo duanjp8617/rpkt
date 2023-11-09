@@ -29,40 +29,48 @@ pub struct Timestamp<T> {
 }
 
 impl<T: AsRef<[u8]>> Timestamp<T> {
+    #[inline]
     pub fn flg(&self) -> u8 {
         self.buf.as_ref()[3] & 0x0f
     }
 
+    #[inline]
     pub fn overflow(&self) -> u8 {
         self.buf.as_ref()[3] >> 4
     }
 
+    #[inline]
     pub fn readable(&self) -> &[u8] {
         let readable_len = usize::from(self.buf.as_ref()[2]) - 5;
         &self.buf.as_ref()[4..4 + readable_len]
     }
 
+    #[inline]
     pub fn remaining(&self) -> usize {
         (usize::from(self.buf.as_ref()[1]) + 1) - usize::from(self.buf.as_ref()[2])
     }
 }
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>> Timestamp<T> {
+    #[inline]
     /// possible value: 0, 1, 3
     pub fn set_flg(&mut self, value: u8) {
         self.buf.as_mut()[3] = (self.buf.as_mut()[3] & 0xf0) | (value & 0x0f);
     }
 
+    #[inline]
     pub fn inc_overflow(&mut self) {
         self.buf.as_mut()[3] += 1 << 4;
     }
 
+    #[inline]
     pub fn writable(&mut self) -> &mut [u8] {
         let start = usize::from(self.buf.as_ref()[2]) - 1;
         let len = usize::from(self.buf.as_mut()[1]);
         &mut self.buf.as_mut()[start..len]
     }
 
+    #[inline]
     pub fn inc_readable_size(&mut self, value: usize) {
         assert!(value <= self.remaining());
         self.buf.as_mut()[2] += value as u8;
@@ -74,23 +82,27 @@ pub struct RecordRoute<T> {
 }
 
 impl<T: AsRef<[u8]>> RecordRoute<T> {
+    #[inline]
     pub fn readable(&self) -> &[u8] {
         let readable_len = usize::from(self.buf.as_ref()[2]) - 4;
         &self.buf.as_ref()[3..3 + readable_len]
     }
 
+    #[inline]
     pub fn remaining(&self) -> usize {
         (usize::from(self.buf.as_ref()[1]) + 1) - usize::from(self.buf.as_ref()[2])
     }
 }
 
 impl<T: AsMut<[u8]> + AsRef<[u8]>> RecordRoute<T> {
+    #[inline]
     pub fn writable(&mut self) -> &mut [u8] {
         let start = usize::from(self.buf.as_ref()[2]) - 1;
         let len = usize::from(self.buf.as_mut()[1]);
         &mut self.buf.as_mut()[start..len]
     }
 
+    #[inline]
     pub fn inc_readable_size(&mut self, value: usize) {
         assert!(value <= self.remaining());
         self.buf.as_mut()[2] += value as u8;
@@ -102,22 +114,24 @@ pub struct RouteAlert<T> {
 }
 
 impl<T: AsRef<[u8]>> RouteAlert<T> {
+    #[inline]
     pub fn alert_value(&self) -> u16 {
         NetworkEndian::read_u16(&self.buf.as_ref()[2..4])
     }
 }
 
 impl<T: AsMut<[u8]>> RouteAlert<T> {
+    #[inline]
     pub fn set_alert_value(&mut self, value: u16) {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], value);
     }
 }
 
-pub struct OptionWriter<'a> {
+pub struct Ipv4OptionWriter<'a> {
     buf: &'a mut [u8],
 }
 
-impl<'a> OptionWriter<'a> {
+impl<'a> Ipv4OptionWriter<'a> {
     pub fn eol(&mut self) {
         assert!(self.buf.len() > 0);
 
@@ -176,22 +190,25 @@ impl<'a> OptionWriter<'a> {
         RouteAlert { buf }
     }
 
-    pub fn from_option_bytes(buf: &'a mut [u8]) -> Self {
+    #[inline]
+    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> Self {
         Self { buf }
     }
 
+    #[inline]
     pub fn remaining_bytes(&self) -> usize {
         self.buf.len()
     }
 }
 
-pub struct OptionIter<'a> {
+pub struct Ipv4OptionIter<'a> {
     buf: &'a [u8],
     valid: bool,
 }
 
-impl<'a> OptionIter<'a> {
-    pub fn from_option_bytes(buf: &'a [u8]) -> OptionIter<'a> {
+impl<'a> Ipv4OptionIter<'a> {
+    #[inline]
+    pub fn from_option_bytes(buf: &'a [u8]) -> Ipv4OptionIter<'a> {
         Self { buf, valid: true }
     }
 
@@ -202,7 +219,7 @@ impl<'a> OptionIter<'a> {
     }
 }
 
-impl<'a> Iterator for OptionIter<'a> {
+impl<'a> Iterator for Ipv4OptionIter<'a> {
     type Item = Ipv4Option<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -313,18 +330,19 @@ impl<'a> Iterator for OptionIter<'a> {
     }
 }
 
-pub struct OptionIterMut<'a> {
+pub struct Ipv4OptionIterMut<'a> {
     buf: &'a mut [u8],
     valid: bool,
 }
 
-impl<'a> OptionIterMut<'a> {
-    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> OptionIterMut<'a> {
+impl<'a> Ipv4OptionIterMut<'a> {
+    #[inline]
+    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> Ipv4OptionIterMut<'a> {
         Self { buf, valid: true }
     }
 }
 
-impl<'a> Iterator for OptionIterMut<'a> {
+impl<'a> Iterator for Ipv4OptionIterMut<'a> {
     type Item = Ipv4OptionMut<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -453,7 +471,7 @@ mod tests {
     fn test_ipv4_option() {
         let mut buf = [0; 200];
 
-        let mut writer = OptionWriter::from_option_bytes(&mut buf[..]);
+        let mut writer = Ipv4OptionWriter::from_option_bytes_mut(&mut buf[..]);
 
         let mut ts = writer.ts(16);
         let mut rr = writer.rr(15);
@@ -501,7 +519,7 @@ mod tests {
 
         assert_eq!(writer.remaining_bytes(), 160);
 
-        let mut opt_iter = OptionIter::from_option_bytes(&buf[..40]);
+        let mut opt_iter = Ipv4OptionIter::from_option_bytes(&buf[..40]);
 
         if let Ipv4Option::Ts(ts) = opt_iter.next().unwrap() {
             assert_eq!(ts.flg(), 3);
@@ -558,7 +576,7 @@ mod tests {
             assert!(false);
         }
 
-        let mut opt_iter = OptionIterMut::from_option_bytes_mut(&mut buf[..40]);
+        let mut opt_iter = Ipv4OptionIterMut::from_option_bytes_mut(&mut buf[..40]);
 
         if let Ipv4OptionMut::Ts(mut ts) = opt_iter.next().unwrap() {
             NetworkEndian::write_u32(&mut ts.writable()[..], 256);
@@ -582,7 +600,7 @@ mod tests {
             assert!(false);
         }
 
-        let mut opt_iter = OptionIterMut::from_option_bytes_mut(&mut buf[..40]);
+        let mut opt_iter = Ipv4OptionIterMut::from_option_bytes_mut(&mut buf[..40]);
 
         if let Ipv4OptionMut::Ts(ts) = opt_iter.next().unwrap() {
             assert_eq!(ts.flg(), 3);
