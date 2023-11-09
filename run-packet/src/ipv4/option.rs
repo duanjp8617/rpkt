@@ -24,51 +24,6 @@ pub enum Ipv4OptionMut<'a> {
     Unknown(&'a mut [u8]),
 }
 
-///
-/// IP Timestamp option - RFC 791 page 22.
-/// +--------+--------+--------+--------+
-/// |01000100| length | pointer|oflw|flg|
-/// +--------+--------+--------+--------+
-/// |         internet address          |
-/// +--------+--------+--------+--------+
-/// |             timestamp             |
-/// +--------+--------+--------+--------+
-/// |                ...                |
-///
-/// Type = 68
-///
-/// The Option Length is the number of octets in the option counting
-/// the type, length, pointer, and overflow/flag octets (maximum
-/// length 40).
-///
-/// The Pointer is the number of octets from the beginning of this
-/// option to the end of timestamps plus one (i.e., it points to the
-/// octet beginning the space for next timestamp).  The smallest
-/// legal value is 5.  The timestamp area is full when the pointer
-/// is greater than the length.
-///
-/// The Overflow (oflw) [4 bits] is the number of IP modules that
-/// cannot register timestamps due to lack of space.
-///
-/// The Flag (flg) [4 bits] values are
-///
-///   0 -- time stamps only, stored in consecutive 32-bit words,
-///
-///   1 -- each timestamp is preceded with internet address of the
-///        registering entity,
-///
-///   3 -- the internet address fields are prespecified.  An IP
-///        module only registers its timestamp if it matches its own
-///        address with the next specified internet address.
-///
-/// Timestamps are defined in RFC 791 page 22 as milliseconds since midnight UTC.
-///
-///        The Timestamp is a right-justified, 32-bit timestamp in
-///        milliseconds since midnight UT.  If the time is not available in
-///        milliseconds or cannot be provided with respect to midnight UT
-///        then any time may be inserted as a timestamp provided the high
-///        order bit of the timestamp field is set to one to indicate the
-///        use of a non-standard value.
 pub struct Timestamp<T> {
     buf: T,
 }
@@ -117,27 +72,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Timestamp<T> {
     }
 }
 
-/// RecordRoute option specific related constants.
-///
-/// from RFC 791 page 20:
-///
-///	Record Route
-///
-///	      +--------+--------+--------+---------//--------+
-///	      |00000111| length | pointer|     route data    |
-///	      +--------+--------+--------+---------//--------+
-///	        Type=7
-///
-///	      The record route option provides a means to record the route of
-///	      an internet datagram.
-///
-///	      The option begins with the option type code.  The second octet
-///	      is the option length which includes the option type code and the
-///	      length octet, the pointer octet, and length-3 octets of route
-///	      data.  The third octet is the pointer into the route data
-///	      indicating the octet which begins the next area to store a route
-///	      address.  The pointer is relative to this option, and the
-///	      smallest legal value for the pointer is 4.
 pub struct RecordRoute<T> {
     buf: T,
 }
@@ -164,24 +98,6 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> RecordRoute<T> {
     }
 }
 
-// Router Alert option specific related constants.
-//
-// from RFC 2113 section 2.1:
-//
-//	+--------+--------+--------+--------+
-//	|10010100|00000100|  2 octet value  |
-//	+--------+--------+--------+--------+
-//
-//	Type:
-//	Copied flag:  1 (all fragments must carry the option)
-//	Option class: 0 (control)
-//	Option number: 20 (decimal)
-//
-//	Length: 4
-//
-//	Value:  A two octet code with the following values:
-//	0 - Router shall examine packet
-//	1-65535 - Reserved
 pub struct RouteAlert<T> {
     buf: T,
 }
