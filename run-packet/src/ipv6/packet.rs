@@ -100,17 +100,17 @@ impl<'a> Ipv6Packet<Cursor<'a>> {
     }
 }
 
-// impl<'a> Ipv6Packet<CursorMut<'a>> {
-//     #[inline]
-//     pub fn split(self) -> (Ipv6Header<&'a mut [u8]>, CursorMut<'a>) {
-//         let packet_len = self.packet_len();
+impl<'a> Ipv6Packet<CursorMut<'a>> {
+    #[inline]
+    pub fn split(self) -> (Ipv6Header<&'a mut [u8]>, CursorMut<'a>) {
+        let packet_len = usize::from(self.payload_len()) + IPV6_HEADER_LEN;
 
-//         let (buf_mut, _) = self
-//             .buf
-//             .chunk_mut_shared_lifetime()
-//             .split_at_mut(usize::from(packet_len));
-//         let (hdr, payload) = buf_mut.split_at_mut(UDP_HEADER_LEN);
+        let (buf_mut, _) = self
+            .buf
+            .chunk_mut_shared_lifetime()
+            .split_at_mut(packet_len);
+        let (hdr, payload) = buf_mut.split_at_mut(IPV6_HEADER_LEN);
 
-//         (UdpHeader::new_unchecked(hdr), CursorMut::new(payload))
-//     }
-// }
+        (Ipv6Header::new_unchecked(hdr), CursorMut::new(payload))
+    }
+}
