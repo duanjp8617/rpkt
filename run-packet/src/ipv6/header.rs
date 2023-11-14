@@ -146,3 +146,38 @@ impl<T: AsMut<[u8]>> Ipv6Header<T> {
         data.copy_from_slice(value.as_bytes());
     }
 }
+
+pub const IPV6_FRAGMENT_HEADER_LEN: usize = 8;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Ipv6FragmentHeader<T> {
+    buf: T,
+}
+
+impl<T: AsRef<[u8]>> Ipv6FragmentHeader<T> {
+    #[inline]
+    pub fn new(buf: T) -> Result<Self, T> {
+        if buf.as_ref().len() >= IPV6_FRAGMENT_HEADER_LEN {
+            Ok(Self { buf })
+        } else {
+            Err(buf)
+        }
+    }
+
+    #[inline]
+    pub fn new_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.buf.as_ref()[0..IPV6_FRAGMENT_HEADER_LEN]
+    }
+
+    #[inline]
+    pub fn to_owned(&self) -> Ipv6FragmentHeader<[u8; IPV6_FRAGMENT_HEADER_LEN]> {
+        let mut buf = [0; IPV6_FRAGMENT_HEADER_LEN];
+        buf.copy_from_slice(self.as_bytes());
+        Ipv6FragmentHeader { buf }
+    }
+}

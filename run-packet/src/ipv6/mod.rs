@@ -4,6 +4,20 @@ use byteorder::{ByteOrder, NetworkEndian};
 
 use crate::ipv4::Ipv4Addr;
 
+// A full implementation of IPv6 includes implementation of the
+//    following extension headers:
+
+//       Hop-by-Hop Options
+//       Fragment
+//       Destination Options
+//       Routing
+//       Authentication
+//       Encapsulating Security Payload
+
+//    The first four are specified in this document (RFC8200); the last two are
+//    specified in [RFC4302] and [RFC4303], respectively.  The current list
+//    of IPv6 extension headers can be found at [IANA-EH].
+
 /// A sixteen-octet IPv6 address.
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
 pub struct Ipv6Addr(pub [u8; 16]);
@@ -206,3 +220,5 @@ pub use header::{Ipv6Header, IPV6_HEADER_LEN};
 
 mod packet;
 pub use packet::Ipv6Packet;
+
+pub mod extentions;
