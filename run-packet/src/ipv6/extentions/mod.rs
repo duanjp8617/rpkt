@@ -1,8 +1,17 @@
-mod frag_ext;
-pub use frag_ext::{Ipv6FragExtHeader, Ipv6FragExtPacket, IPV6_FRAGMENT_HEADER_LEN};
+mod option;
+pub use option::{
+    GenericTlvOption, Ipv6OptionPacket, Ipv6TlvOption, Ipv6TlvOptionIter, Ipv6TlvOptionIterMut,
+    Ipv6TlvOptionMut, Ipv6TlvOptionWriter,
+};
 
-mod hbh_ext;
-pub use hbh_ext::Ipv6HbhExtPacket;
+mod hbh_opt;
+pub use hbh_opt::Ipv6HbhOptPacket;
 
-mod dst_ext;
-pub use dst_ext::Ipv6DstExtPacket;
+mod dst_opt;
+pub use dst_opt::Ipv6DstOptPacket;
+
+mod frag;
+pub use frag::{Ipv6FragHeader, Ipv6FragPacket, IPV6_FRAG_HEADER_LEN};
+
+mod routing;
+pub use routing::{CompressedRoutingHeader, GenericRoutingHeader, Ipv6RoutingPacket};

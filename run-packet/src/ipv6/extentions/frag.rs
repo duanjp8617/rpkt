@@ -14,18 +14,18 @@ header_field_range_accessors! {
     (ident, ident_mut, 4..8)
 }
 
-pub const IPV6_FRAGMENT_HEADER_LEN: usize = 8;
+pub const IPV6_FRAG_HEADER_LEN: usize = 8;
 
 /// RFC2460 - Sec. 4.5
 #[derive(Clone, Copy, Debug)]
-pub struct Ipv6FragExtHeader<T> {
+pub struct Ipv6FragHeader<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> Ipv6FragExtHeader<T> {
+impl<T: AsRef<[u8]>> Ipv6FragHeader<T> {
     #[inline]
     pub fn new(buf: T) -> Result<Self, T> {
-        if buf.as_ref().len() >= IPV6_FRAGMENT_HEADER_LEN {
+        if buf.as_ref().len() >= IPV6_FRAG_HEADER_LEN {
             Ok(Self { buf })
         } else {
             Err(buf)
@@ -39,14 +39,14 @@ impl<T: AsRef<[u8]>> Ipv6FragExtHeader<T> {
 
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.buf.as_ref()[0..IPV6_FRAGMENT_HEADER_LEN]
+        &self.buf.as_ref()[0..IPV6_FRAG_HEADER_LEN]
     }
 
     #[inline]
-    pub fn to_owned(&self) -> Ipv6FragExtHeader<[u8; IPV6_FRAGMENT_HEADER_LEN]> {
-        let mut buf = [0; IPV6_FRAGMENT_HEADER_LEN];
+    pub fn to_owned(&self) -> Ipv6FragHeader<[u8; IPV6_FRAG_HEADER_LEN]> {
+        let mut buf = [0; IPV6_FRAG_HEADER_LEN];
         buf.copy_from_slice(self.as_bytes());
-        Ipv6FragExtHeader { buf }
+        Ipv6FragHeader { buf }
     }
 
     #[inline]
@@ -76,7 +76,7 @@ impl<T: AsRef<[u8]>> Ipv6FragExtHeader<T> {
     }
 }
 
-impl<T: AsMut<[u8]>> Ipv6FragExtHeader<T> {
+impl<T: AsMut<[u8]>> Ipv6FragHeader<T> {
     #[inline]
     pub fn set_next_header(&mut self, value: IpProtocol) {
         let data = next_header_mut(self.buf.as_mut());
@@ -118,8 +118,8 @@ impl<T: AsMut<[u8]>> Ipv6FragExtHeader<T> {
 }
 
 packet_base! {
-    pub struct Ipv6FragExtPacket: Ipv6FragExtHeader {
-        header_len: IPV6_FRAGMENT_HEADER_LEN,
+    pub struct Ipv6FragPacket: Ipv6FragHeader {
+        header_len: IPV6_FRAG_HEADER_LEN,
         get_methods: [
             (next_header, IpProtocol),
             (frag_off, u16),
@@ -137,11 +137,11 @@ packet_base! {
     }
 }
 
-impl<T: Buf> Ipv6FragExtPacket<T> {
+impl<T: Buf> Ipv6FragPacket<T> {
     #[inline]
-    pub fn parse(buf: T) -> Result<Ipv6FragExtPacket<T>, T> {
-        if buf.chunk().len() >= IPV6_FRAGMENT_HEADER_LEN {
-            Ok(Ipv6FragExtPacket::parse_unchecked(buf))
+    pub fn parse(buf: T) -> Result<Ipv6FragPacket<T>, T> {
+        if buf.chunk().len() >= IPV6_FRAG_HEADER_LEN {
+            Ok(Ipv6FragPacket::parse_unchecked(buf))
         } else {
             Err(buf)
         }
@@ -150,48 +150,45 @@ impl<T: Buf> Ipv6FragExtPacket<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.release();
-        buf.advance(IPV6_FRAGMENT_HEADER_LEN);
+        buf.advance(IPV6_FRAG_HEADER_LEN);
         buf
     }
 }
 
-impl<T: PktMut> Ipv6FragExtPacket<T> {
+impl<T: PktMut> Ipv6FragPacket<T> {
     #[inline]
     pub fn prepend_header<HT: AsRef<[u8]>>(
         mut buf: T,
-        header: &Ipv6FragExtHeader<HT>,
-    ) -> Ipv6FragExtPacket<T> {
-        assert!(buf.chunk_headroom() >= IPV6_FRAGMENT_HEADER_LEN);
-        buf.move_back(IPV6_FRAGMENT_HEADER_LEN);
+        header: &Ipv6FragHeader<HT>,
+    ) -> Ipv6FragPacket<T> {
+        assert!(buf.chunk_headroom() >= IPV6_FRAG_HEADER_LEN);
+        buf.move_back(IPV6_FRAG_HEADER_LEN);
 
-        let data = &mut buf.chunk_mut()[0..IPV6_FRAGMENT_HEADER_LEN];
+        let data = &mut buf.chunk_mut()[0..IPV6_FRAG_HEADER_LEN];
         data.copy_from_slice(header.as_bytes());
 
-        Ipv6FragExtPacket { buf }
+        Ipv6FragPacket { buf }
     }
 }
 
-impl<'a> Ipv6FragExtPacket<Cursor<'a>> {
+impl<'a> Ipv6FragPacket<Cursor<'a>> {
     #[inline]
-    pub fn cursor_header(&self) -> Ipv6FragExtHeader<&'a [u8]> {
-        let data = &self.buf.chunk_shared_lifetime()[..IPV6_FRAGMENT_HEADER_LEN];
-        Ipv6FragExtHeader::new_unchecked(data)
+    pub fn cursor_header(&self) -> Ipv6FragHeader<&'a [u8]> {
+        let data = &self.buf.chunk_shared_lifetime()[..IPV6_FRAG_HEADER_LEN];
+        Ipv6FragHeader::new_unchecked(data)
     }
 
     #[inline]
     pub fn cursor_payload(&self) -> Cursor<'a> {
-        Cursor::new(&self.buf.chunk_shared_lifetime()[IPV6_FRAGMENT_HEADER_LEN..])
+        Cursor::new(&self.buf.chunk_shared_lifetime()[IPV6_FRAG_HEADER_LEN..])
     }
 }
 
-impl<'a> Ipv6FragExtPacket<CursorMut<'a>> {
+impl<'a> Ipv6FragPacket<CursorMut<'a>> {
     #[inline]
-    pub fn split(self) -> (Ipv6FragExtHeader<&'a mut [u8]>, CursorMut<'a>) {
+    pub fn split(self) -> (Ipv6FragHeader<&'a mut [u8]>, CursorMut<'a>) {
         let buf_mut = self.buf.chunk_mut_shared_lifetime();
-        let (hdr, payload) = buf_mut.split_at_mut(IPV6_FRAGMENT_HEADER_LEN);
-        (
-            Ipv6FragExtHeader::new_unchecked(hdr),
-            CursorMut::new(payload),
-        )
+        let (hdr, payload) = buf_mut.split_at_mut(IPV6_FRAG_HEADER_LEN);
+        (Ipv6FragHeader::new_unchecked(hdr), CursorMut::new(payload))
     }
 }

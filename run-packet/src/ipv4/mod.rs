@@ -84,10 +84,19 @@ impl fmt::Display for Ipv4Addr {
 }
 
 enum_sim! {
+    /// See https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
     pub struct IpProtocol (u8) {
-        ICMP = 0x01,
-        TCP = 0x06,
-        UDP =  0x11,
+        ICMP = 1,
+        TCP = 6,
+        UDP =  17,
+        /// The IPv6 Hop-by-hop extention number
+        HOPOPT = 0,
+        IPV6_ROUTE = 43,
+        IPV6_FRAG = 44,
+        ESP = 50,
+        AH = 51,
+        IPV6_NO_NXT = 59,
+        IPV6_OPTS = 60,
     }
 }
 
