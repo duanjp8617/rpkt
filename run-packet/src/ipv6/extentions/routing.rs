@@ -61,12 +61,11 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> GenericRoutingHeader<T> {
 impl<'a> GenericRoutingHeader<&'a [u8]> {
     #[inline]
     pub fn try_get<PT: Buf>(pkt: &'a Ipv6RoutingPacket<PT>) -> Option<Self> {
-        if pkt.buf.chunk().len() < 2 {
+        if !pkt.check_len() {
             return None;
         }
 
-        if pkt.header_len() <= pkt.buf.chunk().len()
-            && usize::from(pkt.buf.chunk()[1]) % 2 == 0
+        if usize::from(pkt.buf.chunk()[1]) % 2 == 0
             && pkt.segments_left() <= usize::from(pkt.buf.chunk()[1]) / 2
         {
             Some(Self {
@@ -81,15 +80,14 @@ impl<'a> GenericRoutingHeader<&'a [u8]> {
 impl<'a> GenericRoutingHeader<&'a mut [u8]> {
     #[inline]
     pub fn try_get<PT: PktMut>(pkt: &'a mut Ipv6RoutingPacket<PT>) -> Option<Self> {
-        if pkt.buf.chunk().len() < 2 {
+        if !pkt.check_len() {
             return None;
         }
 
-        let header_len = pkt.header_len();
-        if header_len <= pkt.buf.chunk().len()
-            && usize::from(pkt.buf.chunk()[1]) % 2 == 0
+        if usize::from(pkt.buf.chunk()[1]) % 2 == 0
             && pkt.segments_left() <= usize::from(pkt.buf.chunk()[1]) / 2
         {
+            let header_len = pkt.header_len();
             Some(Self {
                 buf: &mut pkt.buf.chunk_mut()[..header_len],
             })
@@ -189,29 +187,25 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> CompressedRoutingHeader<T> {
 impl<'a> CompressedRoutingHeader<&'a [u8]> {
     #[inline]
     pub fn try_get<PT: Buf>(pkt: &'a Ipv6RoutingPacket<PT>) -> Option<Self> {
-        if pkt.buf.chunk().len() < 2 {
+        if !pkt.check_len() {
             return None;
         }
 
-        if pkt.header_len() <= pkt.buf.chunk().len() {
-            let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
-            let tmp_header = CompressedRoutingHeader {
-                buf: pkt.buf.chunk(),
-            };
-            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
-            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+        let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
+        let tmp_header = CompressedRoutingHeader {
+            buf: pkt.buf.chunk(),
+        };
+        let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
+        let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+        let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
+        let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
 
-            if len_except_the_last % first_addr_len == 0
-                && tmp_header.segments_left() <= tmp_header.total_addrs()
-            {
-                Some(CompressedRoutingHeader {
-                    buf: &pkt.buf.chunk()[..pkt.header_len()],
-                })
-            } else {
-                None
-            }
+        if len_except_the_last % first_addr_len == 0
+            && tmp_header.segments_left() <= tmp_header.total_addrs()
+        {
+            Some(CompressedRoutingHeader {
+                buf: &pkt.buf.chunk()[..pkt.header_len()],
+            })
         } else {
             None
         }
@@ -221,30 +215,26 @@ impl<'a> CompressedRoutingHeader<&'a [u8]> {
 impl<'a> CompressedRoutingHeader<&'a mut [u8]> {
     #[inline]
     pub fn try_get<PT: PktMut>(pkt: &'a mut Ipv6RoutingPacket<PT>) -> Option<Self> {
-        if pkt.buf.chunk().len() < 2 {
+        if !pkt.check_len() {
             return None;
         }
 
-        let header_len = pkt.header_len();
-        if header_len <= pkt.buf.chunk().len() {
-            let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
-            let tmp_header = CompressedRoutingHeader {
-                buf: pkt.buf.chunk(),
-            };
-            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
-            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+        let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
+        let tmp_header = CompressedRoutingHeader {
+            buf: pkt.buf.chunk(),
+        };
+        let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
+        let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+        let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
+        let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
 
-            if len_except_the_last % first_addr_len == 0
-                && tmp_header.segments_left() <= tmp_header.total_addrs()
-            {
-                Some(CompressedRoutingHeader {
-                    buf: &mut pkt.buf.chunk_mut()[..header_len],
-                })
-            } else {
-                None
-            }
+        if len_except_the_last % first_addr_len == 0
+            && tmp_header.segments_left() <= tmp_header.total_addrs()
+        {
+            let header_len = pkt.header_len();
+            Some(CompressedRoutingHeader {
+                buf: &mut pkt.buf.chunk_mut()[..header_len],
+            })
         } else {
             None
         }
@@ -300,16 +290,26 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn parse(buf: T) -> Result<Ipv6RoutingPacket<T>, T> {
-        if buf.chunk().len() >= 2 {
-            let header_len = usize::from(buf.chunk()[1]) * 8 + 8;
-            if buf.chunk().len() >= header_len {
-                Ok(Self { buf })
+    fn check_len(&self) -> bool {
+        if self.buf.chunk().len() >= 2 {
+            let header_len = usize::from(self.buf.chunk()[1]) * 8 + 8;
+            if self.buf.chunk().len() >= header_len {
+                true
             } else {
-                Err(buf)
+                false
             }
         } else {
-            Err(buf)
+            false
+        }
+    }
+
+    #[inline]
+    pub fn parse(buf: T) -> Result<Ipv6RoutingPacket<T>, T> {
+        let pkt = Ipv6RoutingPacket::parse_unchecked(buf);
+        if pkt.check_len() {
+            Ok(pkt)
+        } else {
+            Err(pkt.release())
         }
     }
 
