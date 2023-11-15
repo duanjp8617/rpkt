@@ -321,9 +321,9 @@ impl<T: PktMut> Ipv6OptionPacket<T> {
         buf.move_back(header_len);
 
         let data = &mut buf.chunk_mut()[0..header_len];
-        (&mut data[2..]).fill(0);
         data[0] = IpProtocol::TCP.into();
         data[1] = ((header_len - 8) / 8) as u8;
+        (&mut data[2..]).fill(0);
 
         Ipv6OptionPacket { buf }
     }

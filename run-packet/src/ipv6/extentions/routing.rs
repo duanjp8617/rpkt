@@ -58,6 +58,47 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> GenericRoutingHeader<T> {
     }
 }
 
+impl<'a> GenericRoutingHeader<&'a [u8]> {
+    #[inline]
+    pub fn try_get<PT: Buf>(pkt: &'a Ipv6RoutingPacket<PT>) -> Option<Self> {
+        if pkt.buf.chunk().len() < 2 {
+            return None;
+        }
+
+        if pkt.header_len() <= pkt.buf.chunk().len()
+            && usize::from(pkt.buf.chunk()[1]) % 2 == 0
+            && pkt.segments_left() <= usize::from(pkt.buf.chunk()[1]) / 2
+        {
+            Some(Self {
+                buf: &pkt.buf.chunk()[..pkt.header_len()],
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> GenericRoutingHeader<&'a mut [u8]> {
+    #[inline]
+    pub fn try_get<PT: PktMut>(pkt: &'a mut Ipv6RoutingPacket<PT>) -> Option<Self> {
+        if pkt.buf.chunk().len() < 2 {
+            return None;
+        }
+
+        let header_len = pkt.header_len();
+        if header_len <= pkt.buf.chunk().len()
+            && usize::from(pkt.buf.chunk()[1]) % 2 == 0
+            && pkt.segments_left() <= usize::from(pkt.buf.chunk()[1]) / 2
+        {
+            Some(Self {
+                buf: &mut pkt.buf.chunk_mut()[..header_len],
+            })
+        } else {
+            None
+        }
+    }
+}
+
 pub struct CompressedRoutingHeader<T> {
     buf: T,
 }
@@ -145,6 +186,71 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> CompressedRoutingHeader<T> {
     }
 }
 
+impl<'a> CompressedRoutingHeader<&'a [u8]> {
+    #[inline]
+    pub fn try_get<PT: Buf>(pkt: &'a Ipv6RoutingPacket<PT>) -> Option<Self> {
+        if pkt.buf.chunk().len() < 2 {
+            return None;
+        }
+
+        if pkt.header_len() <= pkt.buf.chunk().len() {
+            let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
+            let tmp_header = CompressedRoutingHeader {
+                buf: pkt.buf.chunk(),
+            };
+            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
+            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
+            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+
+            if len_except_the_last % first_addr_len == 0
+                && tmp_header.segments_left() <= tmp_header.total_addrs()
+            {
+                Some(CompressedRoutingHeader {
+                    buf: &pkt.buf.chunk()[..pkt.header_len()],
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> CompressedRoutingHeader<&'a mut [u8]> {
+    #[inline]
+    pub fn try_get<PT: PktMut>(pkt: &'a mut Ipv6RoutingPacket<PT>) -> Option<Self> {
+        if pkt.buf.chunk().len() < 2 {
+            return None;
+        }
+
+        let header_len = pkt.header_len();
+        if header_len <= pkt.buf.chunk().len() {
+            let addr_buf_len = usize::from(pkt.buf.chunk()[1]) * 8;
+            let tmp_header = CompressedRoutingHeader {
+                buf: pkt.buf.chunk(),
+            };
+            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
+            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
+            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+
+            if len_except_the_last % first_addr_len == 0
+                && tmp_header.segments_left() <= tmp_header.total_addrs()
+            {
+                Some(CompressedRoutingHeader {
+                    buf: &mut pkt.buf.chunk_mut()[..header_len],
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Ipv6RoutingPacket<T> {
@@ -214,47 +320,6 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
         buf.advance(header_len);
         buf
     }
-
-    #[inline]
-    pub fn as_generic_routing_header(&self) -> Option<GenericRoutingHeader<&[u8]>> {
-        // we only need to make sure that the ext_header_len is even
-        if self.header_len() <= self.buf.remaining()
-            && usize::from(self.buf.chunk()[1]) % 2 == 0
-            && self.segments_left() <= usize::from(self.buf.chunk()[1]) / 2
-        {
-            Some(GenericRoutingHeader {
-                buf: &self.buf.chunk()[..self.header_len()],
-            })
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn as_compressed_routing_header(&self) -> Option<CompressedRoutingHeader<&[u8]>> {
-        if self.header_len() <= self.buf.remaining() {
-            let addr_buf_len = usize::from(self.buf.chunk()[1]) * 8;
-            let tmp_header = CompressedRoutingHeader {
-                buf: self.buf.chunk(),
-            };
-            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
-            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
-
-            if len_except_the_last % first_addr_len == 0
-                && tmp_header.segments_left() <= tmp_header.total_addrs()
-            {
-                Some(CompressedRoutingHeader {
-                    buf: &self.buf.chunk()[..self.header_len()],
-                })
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
 }
 
 impl<T: PktMut> Ipv6RoutingPacket<T> {
@@ -287,54 +352,7 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn as_generic_routing_header_mut(&mut self) -> Option<GenericRoutingHeader<&mut [u8]>> {
-        // we only need to make sure that the ext_header_len is even
-        let header_len = self.header_len();
-
-        if header_len <= self.buf.remaining()
-            && usize::from(self.buf.chunk()[1]) % 2 == 0
-            && self.segments_left() <= usize::from(self.buf.chunk()[1]) / 2
-        {
-            Some(GenericRoutingHeader {
-                buf: &mut self.buf.chunk_mut()[..header_len],
-            })
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn as_compressed_routing_header_mut(
-        &mut self,
-    ) -> Option<CompressedRoutingHeader<&mut [u8]>> {
-        let header_len = self.header_len();
-
-        if header_len <= self.buf.remaining() {
-            let addr_buf_len = usize::from(self.buf.chunk()[1]) * 8;
-            let tmp_header = CompressedRoutingHeader {
-                buf: self.buf.chunk(),
-            };
-            let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-            let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
-            let len_except_the_last = addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-            let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
-
-            if len_except_the_last % first_addr_len == 0
-                && tmp_header.segments_left() <= tmp_header.total_addrs()
-            {
-                Some(CompressedRoutingHeader {
-                    buf: &mut self.buf.chunk_mut()[..header_len],
-                })
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    pub fn prepend_generic_header(mut buf: T, num_addrs: usize) -> Ipv6RoutingPacket<T> {
+    fn prepend_generic_header(mut buf: T, num_addrs: usize) -> Ipv6RoutingPacket<T> {
         assert!(num_addrs * 2 <= 255);
 
         let header_len = 8 + num_addrs * 16;
@@ -343,20 +361,23 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
         buf.move_back(header_len);
 
         let data = &mut buf.chunk_mut()[0..header_len];
-        (&mut data[2..]).fill(0);
         data[0] = IpProtocol::TCP.into();
-        data[1] = ((header_len - 8) / 8) as u8;
+        data[1] = (num_addrs * 2) as u8;
+        (&mut data[2..]).fill(0);
 
         Ipv6RoutingPacket { buf }
     }
 
-    #[inline]
-    pub fn prepend_compressed_header(
+    pub fn prepend_header(
         mut buf: T,
         num_addrs: usize,
         comp_i: u8,
         comp_e: u8,
     ) -> Ipv6RoutingPacket<T> {
+        if comp_i == 0 && comp_e == 0 {
+            return Self::prepend_generic_header(buf, num_addrs);
+        }
+
         assert!(comp_i <= 15 && comp_e <= 15 && num_addrs > 0);
         let addr_buf_len =
             (num_addrs - 1) * (16 - usize::from(comp_i)) + (16 - usize::from(comp_e));
