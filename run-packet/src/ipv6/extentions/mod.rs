@@ -14,4 +14,4 @@ mod frag;
 pub use frag::{Ipv6FragHeader, Ipv6FragPacket, IPV6_FRAG_HEADER_LEN};
 
 mod routing;
-pub use routing::{CompressedRoutingHeader, GenericRoutingHeader, Ipv6RoutingPacket};
+pub use routing::{Compressed, Generic, Ipv6RoutingPacket, RoutingHeader, RoutingHeaderMut};
