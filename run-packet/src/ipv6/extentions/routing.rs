@@ -365,34 +365,15 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
         &mut self.buf.chunk_mut()[4..header_len]
     }
 
-    #[inline]
-    fn prepend_generic_header(mut buf: T, num_addrs: usize) -> Ipv6RoutingPacket<T> {
-        assert!(num_addrs * 2 <= 255);
-
-        let header_len = 8 + num_addrs * 16;
-
-        assert!(buf.chunk_headroom() >= header_len);
-        buf.move_back(header_len);
-
-        let data = &mut buf.chunk_mut()[0..header_len];
-        data[0] = IpProtocol::TCP.into();
-        data[1] = (num_addrs * 2) as u8;
-        (&mut data[2..]).fill(0);
-
-        Ipv6RoutingPacket { buf }
-    }
-
     pub fn prepend_header(
         mut buf: T,
         num_addrs: usize,
         comp_i: u8,
         comp_e: u8,
     ) -> Ipv6RoutingPacket<T> {
-        if comp_i == 0 && comp_e == 0 {
-            return Self::prepend_generic_header(buf, num_addrs);
-        }
-
+        // argument value range check
         assert!(comp_i <= 15 && comp_e <= 15 && num_addrs > 0);
+
         let addr_buf_len =
             (num_addrs - 1) * (16 - usize::from(comp_i)) + (16 - usize::from(comp_e));
         let pad = if addr_buf_len % 8 == 0 {
@@ -400,22 +381,31 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
         } else {
             8 - (addr_buf_len % 8)
         };
+        // make sure buffer size for storing addresses is not too large
         assert!(addr_buf_len + pad <= 2040);
 
         let header_len = 8 + addr_buf_len + pad;
-
+        // we have enough head room to write the header
         assert!(buf.chunk_headroom() >= header_len);
+
         buf.move_back(header_len);
+        let mut pkt = Ipv6RoutingPacket { buf };
 
-        let data = &mut buf.chunk_mut()[0..header_len];
-        data[0] = IpProtocol::TCP.into();
-        data[1] = ((header_len - 8) / 8) as u8;
-        (&mut data[2..4]).fill(0);
-        data[4] = (comp_i << 4) | comp_e;
-        data[5] = (pad as u8) << 4;
-        (&mut data[6..]).fill(0);
+        // create a correct header based on the input arguments
+        pkt.set_next_header(IpProtocol::TCP);
+        pkt.set_header_len_unchecked((header_len - 8) / 8);
+        pkt.set_segments_left(0);
+        if comp_i == 0 && comp_e == 0 {
+            pkt.set_routing_type(TYPE0);
+            (&mut pkt.buf.chunk_mut()[4..]).fill(0);
+        } else {
+            pkt.set_routing_type(RPL);
+            pkt.buf.chunk_mut()[4] = (comp_i << 4) | comp_e;
+            pkt.buf.chunk_mut()[5] = (pad as u8) << 4;
+            (&mut pkt.buf.chunk_mut()[6..]).fill(0);
+        }
 
-        Ipv6RoutingPacket { buf }
+        pkt
     }
 }
 
