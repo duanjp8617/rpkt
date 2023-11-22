@@ -23,8 +23,10 @@ enum_sim! {
 }
 
 mod packet;
-pub use packet::Icmpv6Packet;
+pub use packet::{
+    Icmpv6Msg, Icmpv6MsgEcho, Icmpv6MsgGeneric, Icmpv6MsgMtu, Icmpv6MsgMut, Icmpv6MsgPtr,
+    Icmpv6Packet,
+};
 
-mod mld;
-mod msg;
-mod ndp;
+pub mod mld;
+pub mod ndp;

@@ -71,7 +71,6 @@ impl<T: PktBuf> Ipv6Packet<T> {
 impl<T: PktMut> Ipv6Packet<T> {
     #[inline]
     pub fn prepend_header<HT: AsRef<[u8]>>(mut buf: T, header: &Ipv6Header<HT>) -> Ipv6Packet<T> {
-        assert!(IPV6_HEADER_LEN <= buf.chunk_headroom());
         let payload_len = buf.remaining();
         buf.move_back(IPV6_HEADER_LEN);
 

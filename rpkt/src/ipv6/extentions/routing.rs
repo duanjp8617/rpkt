@@ -32,16 +32,6 @@ pub struct RoutingMsgGeneric<T> {
 
 impl<T: AsRef<[u8]>> RoutingMsgGeneric<T> {
     #[inline]
-    pub fn next_header(&self) -> IpProtocol {
-        self.buf.as_ref()[0].into()
-    }
-
-    #[inline]
-    pub fn msg_type(&self) -> RoutingMsgType {
-        self.buf.as_ref()[2].into()
-    }
-
-    #[inline]
     pub fn segments_left(&self) -> usize {
         self.buf.as_ref()[3].into()
     }
@@ -100,16 +90,6 @@ pub struct RoutingMsgCompressed<T> {
 }
 
 impl<T: AsRef<[u8]>> RoutingMsgCompressed<T> {
-    #[inline]
-    pub fn next_header(&self) -> IpProtocol {
-        self.buf.as_ref()[0].into()
-    }
-
-    #[inline]
-    pub fn msg_type(&self) -> RoutingMsgType {
-        self.buf.as_ref()[2].into()
-    }
-
     #[inline]
     pub fn segments_left(&self) -> usize {
         self.buf.as_ref()[3].into()
