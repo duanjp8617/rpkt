@@ -1,5 +1,6 @@
 [package]
 name = "rpkt-time"
+description = "high-precision timer based on rdtsc register"
 keywords = ["dpdk", "rtdsc"]
 categories = ["network-programming"]
 
