@@ -4,32 +4,41 @@ use crate::ipv4::IpProtocol;
 use crate::PktMut;
 use crate::{Cursor, CursorMut};
 
-pub const TYPE0: u8 = 0;
-pub const TYPE2: u8 = 2;
-pub const RPL: u8 = 3;
+enum_sim! {
+    pub struct RoutingMsgType (u8) {
+        TYPE0 = 0,
+        TYPE2 = 2,
+        RPL =  3,
+    }
+}
 
-pub enum RoutingHeader<'a> {
-    Type0(Generic<&'a [u8]>),
-    Type2(Generic<&'a [u8]>),
-    Rpl(Compressed<&'a [u8]>),
+pub enum RoutingMsg<'a> {
+    Type0(RoutingMsgGeneric<&'a [u8]>),
+    Type2(RoutingMsgGeneric<&'a [u8]>),
+    Rpl(RoutingMsgCompressed<&'a [u8]>),
     Unknown,
 }
 
-pub enum RoutingHeaderMut<'a> {
-    Type0(Generic<&'a mut [u8]>),
-    Type2(Generic<&'a mut [u8]>),
-    Rpl(Compressed<&'a mut [u8]>),
+pub enum RoutingMsgMut<'a> {
+    Type0(RoutingMsgGeneric<&'a mut [u8]>),
+    Type2(RoutingMsgGeneric<&'a mut [u8]>),
+    Rpl(RoutingMsgCompressed<&'a mut [u8]>),
     Unknown,
 }
 
-pub struct Generic<T> {
+pub struct RoutingMsgGeneric<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> Generic<T> {
+impl<T: AsRef<[u8]>> RoutingMsgGeneric<T> {
     #[inline]
-    pub fn routing_type(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn next_header(&self) -> IpProtocol {
+        self.buf.as_ref()[0].into()
+    }
+
+    #[inline]
+    pub fn msg_type(&self) -> RoutingMsgType {
+        self.buf.as_ref()[2].into()
     }
 
     #[inline]
@@ -61,7 +70,12 @@ impl<T: AsRef<[u8]>> Generic<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> Generic<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> RoutingMsgGeneric<T> {
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.as_mut()[0] = value.into();
+    }
+
     #[inline]
     pub fn set_segments_left(&mut self, value: usize) {
         assert!(value <= 255);
@@ -81,14 +95,19 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Generic<T> {
     }
 }
 
-pub struct Compressed<T> {
+pub struct RoutingMsgCompressed<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> Compressed<T> {
+impl<T: AsRef<[u8]>> RoutingMsgCompressed<T> {
     #[inline]
-    pub fn routing_type(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn next_header(&self) -> IpProtocol {
+        self.buf.as_ref()[0].into()
+    }
+
+    #[inline]
+    pub fn msg_type(&self) -> RoutingMsgType {
+        self.buf.as_ref()[2].into()
     }
 
     #[inline]
@@ -149,7 +168,12 @@ impl<T: AsRef<[u8]>> Compressed<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> Compressed<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> RoutingMsgCompressed<T> {
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.as_mut()[0] = value.into();
+    }
+
     #[inline]
     pub fn set_segments_left(&mut self, value: usize) {
         assert!(value <= 255);
@@ -179,11 +203,11 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Compressed<T> {
 
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Ipv6RoutingPacket<T> {
+pub struct RoutingPacket<T> {
     buf: T,
 }
 
-impl<T: Buf> Ipv6RoutingPacket<T> {
+impl<T: Buf> RoutingPacket<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -210,8 +234,8 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn routing_type(&self) -> u8 {
-        self.buf.chunk()[2]
+    pub fn msg_type(&self) -> RoutingMsgType {
+        self.buf.chunk()[2].into()
     }
 
     #[inline]
@@ -226,9 +250,9 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn parse(buf: T) -> Result<Ipv6RoutingPacket<T>, T> {
+    pub fn parse(buf: T) -> Result<RoutingPacket<T>, T> {
         if buf.chunk().len() >= 2 {
-            let pkt = Ipv6RoutingPacket::parse_unchecked(buf);
+            let pkt = RoutingPacket::parse_unchecked(buf);
             if pkt.buf.chunk().len() >= pkt.header_len() {
                 Ok(pkt)
             } else {
@@ -248,35 +272,35 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn routing_header(&self) -> Option<RoutingHeader> {
-        let rt = self.routing_type();
+    pub fn msg(&self) -> Option<RoutingMsg> {
+        let rt = self.msg_type();
 
         match rt {
-            TYPE0 => {
+            RoutingMsgType::TYPE0 => {
                 let addr_buf_len = self.header_len() - 8;
 
                 if addr_buf_len % 16 == 0 && self.segments_left() <= addr_buf_len / 16 {
-                    Some(RoutingHeader::Type0(Generic {
+                    Some(RoutingMsg::Type0(RoutingMsgGeneric {
                         buf: &self.buf.chunk()[..self.header_len()],
                     }))
                 } else {
                     None
                 }
             }
-            TYPE2 => {
+            RoutingMsgType::TYPE2 => {
                 let addr_buf_len = self.header_len() - 8;
 
                 if addr_buf_len % 16 == 0 && self.segments_left() <= addr_buf_len / 16 {
-                    Some(RoutingHeader::Type2(Generic {
+                    Some(RoutingMsg::Type2(RoutingMsgGeneric {
                         buf: &self.buf.chunk()[..self.header_len()],
                     }))
                 } else {
                     None
                 }
             }
-            RPL => {
+            RoutingMsgType::RPL => {
                 let addr_buf_len = self.header_len() - 8;
-                let tmp_header = Compressed {
+                let tmp_header = RoutingMsgCompressed {
                     buf: self.buf.chunk(),
                 };
                 let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
@@ -288,19 +312,19 @@ impl<T: Buf> Ipv6RoutingPacket<T> {
                 if len_except_the_last % first_addr_len == 0
                     && tmp_header.segments_left() <= tmp_header.total_addrs()
                 {
-                    Some(RoutingHeader::Rpl(Compressed {
+                    Some(RoutingMsg::Rpl(RoutingMsgCompressed {
                         buf: &self.buf.chunk()[..self.header_len()],
                     }))
                 } else {
                     None
                 }
             }
-            _ => Some(RoutingHeader::Unknown),
+            _ => Some(RoutingMsg::Unknown),
         }
     }
 }
 
-impl<T: PktMut> Ipv6RoutingPacket<T> {
+impl<T: PktMut> RoutingPacket<T> {
     #[inline]
     pub fn set_next_header(&mut self, value: IpProtocol) {
         self.buf.chunk_mut()[0] = value.into();
@@ -313,8 +337,8 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn set_routing_type(&mut self, value: u8) {
-        self.buf.chunk_mut()[2] = value;
+    pub fn set_msg_type(&mut self, value: RoutingMsgType) {
+        self.buf.chunk_mut()[2] = value.into();
     }
 
     #[inline]
@@ -330,37 +354,37 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
     }
 
     #[inline]
-    pub fn routing_header_mut(&mut self) -> Option<RoutingHeaderMut> {
-        let rt = self.routing_type();
+    pub fn msg_mut(&mut self) -> Option<RoutingMsgMut> {
+        let rt = self.msg_type();
 
         match rt {
-            TYPE0 => {
+            RoutingMsgType::TYPE0 => {
                 let addr_buf_len = self.header_len() - 8;
 
                 if addr_buf_len % 16 == 0 && self.segments_left() <= addr_buf_len / 16 {
                     let header_len = self.header_len();
-                    Some(RoutingHeaderMut::Type0(Generic {
+                    Some(RoutingMsgMut::Type0(RoutingMsgGeneric {
                         buf: &mut self.buf.chunk_mut()[..header_len],
                     }))
                 } else {
                     None
                 }
             }
-            TYPE2 => {
+            RoutingMsgType::TYPE2 => {
                 let addr_buf_len = self.header_len() - 8;
 
                 if addr_buf_len % 16 == 0 && self.segments_left() <= addr_buf_len / 16 {
                     let header_len = self.header_len();
-                    Some(RoutingHeaderMut::Type2(Generic {
+                    Some(RoutingMsgMut::Type2(RoutingMsgGeneric {
                         buf: &mut self.buf.chunk_mut()[..header_len],
                     }))
                 } else {
                     None
                 }
             }
-            RPL => {
+            RoutingMsgType::RPL => {
                 let addr_buf_len = self.header_len() - 8;
-                let tmp_header = Compressed {
+                let tmp_header = RoutingMsgCompressed {
                     buf: self.buf.chunk(),
                 };
                 let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
@@ -373,48 +397,24 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
                     && tmp_header.segments_left() <= tmp_header.total_addrs()
                 {
                     let header_len = self.header_len();
-                    Some(RoutingHeaderMut::Rpl(Compressed {
+                    Some(RoutingMsgMut::Rpl(RoutingMsgCompressed {
                         buf: &mut self.buf.chunk_mut()[..header_len],
                     }))
                 } else {
                     None
                 }
             }
-            _ => Some(RoutingHeaderMut::Unknown),
+            _ => Some(RoutingMsgMut::Unknown),
         }
     }
 
-    pub fn prepend_generic_header(
+    fn prepend_msg(
         buf: &mut T,
-        routing_type: u8,
-        num_addrs: usize,
-    ) -> Generic<&mut [u8]> {
-        assert!(num_addrs * 2 <= 255 && (routing_type == TYPE0 || routing_type == TYPE2));
-
-        let header_len = 8 + num_addrs * 16;
-        assert!(buf.chunk_headroom() >= header_len);
-
-        buf.move_back(header_len);
-        let mut pkt = Ipv6RoutingPacket { buf };
-
-        pkt.set_next_header(IpProtocol::TCP);
-        pkt.set_header_len_unchecked(num_addrs * 2);
-        pkt.set_routing_type(routing_type);
-        pkt.set_segments_left(0);
-
-        (&mut pkt.buf.chunk_mut()[4..header_len]).fill(0);
-
-        Generic {
-            buf: &mut pkt.buf.chunk_mut()[..header_len],
-        }
-    }
-
-    pub fn prepend_compressed_header(
-        buf: &mut T,
+        msg_type: RoutingMsgType,
         num_addrs: usize,
         comp_i: u8,
         comp_e: u8,
-    ) -> Compressed<&mut [u8]> {
+    ) -> usize {
         // argument value range check
         assert!(comp_i <= 15 && comp_e <= 15 && num_addrs > 0);
 
@@ -429,32 +429,59 @@ impl<T: PktMut> Ipv6RoutingPacket<T> {
         assert!(addr_buf_len + pad <= 2040);
 
         let header_len = 8 + addr_buf_len + pad;
-        // we have enough head room to write the header
-        assert!(buf.chunk_headroom() >= header_len);
-
         buf.move_back(header_len);
-        let mut pkt = Ipv6RoutingPacket { buf };
+        let mut pkt = RoutingPacket { buf };
 
         // create a correct header based on the input arguments
-        pkt.set_next_header(IpProtocol::TCP);
+        pkt.set_next_header(IpProtocol::TCP.into());
         pkt.set_header_len_unchecked((header_len - 8) / 8);
-        pkt.set_routing_type(RPL);
+        pkt.set_msg_type(msg_type);
         pkt.set_segments_left(0);
         pkt.buf.chunk_mut()[4] = (comp_i << 4) | comp_e;
         pkt.buf.chunk_mut()[5] = (pad as u8) << 4;
-        (&mut pkt.buf.chunk_mut()[6..header_len]).fill(0);
+        (&mut pkt.buf.chunk_mut()[6..]).fill(0);
 
-        Compressed {
-            buf: &mut pkt.buf.chunk_mut()[..header_len],
+        header_len
+    }
+
+    #[inline]
+    pub fn prepend_type0_msg(buf: &mut T, num_addrs: usize) -> RoutingMsgGeneric<&mut [u8]> {
+        let header_len = Self::prepend_msg(buf, RoutingMsgType::TYPE0, num_addrs, 0, 0);
+
+        RoutingMsgGeneric {
+            buf: &mut buf.chunk_mut()[..header_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_type2_msg(buf: &mut T) -> RoutingMsgGeneric<&mut [u8]> {
+        let header_len = Self::prepend_msg(buf, RoutingMsgType::TYPE2, 1, 0, 0);
+
+        RoutingMsgGeneric {
+            buf: &mut buf.chunk_mut()[..header_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_rpl_msg(
+        buf: &mut T,
+        num_addrs: usize,
+        comp_i: u8,
+        comp_e: u8,
+    ) -> RoutingMsgCompressed<&mut [u8]> {
+        let header_len = Self::prepend_msg(buf, RoutingMsgType::RPL, num_addrs, comp_i, comp_e);
+
+        RoutingMsgCompressed {
+            buf: &mut buf.chunk_mut()[..header_len],
         }
     }
 }
 
-impl<'a> Ipv6RoutingPacket<Cursor<'a>> {
+impl<'a> RoutingPacket<Cursor<'a>> {
     #[inline]
-    pub fn cursor_pkt(&self) -> Ipv6RoutingPacket<&'a [u8]> {
+    pub fn cursor_pkt(&self) -> RoutingPacket<&'a [u8]> {
         let header_len = self.header_len();
-        Ipv6RoutingPacket {
+        RoutingPacket {
             buf: &self.buf.chunk_shared_lifetime()[..header_len],
         }
     }
@@ -466,14 +493,14 @@ impl<'a> Ipv6RoutingPacket<Cursor<'a>> {
     }
 }
 
-impl<'a> Ipv6RoutingPacket<CursorMut<'a>> {
+impl<'a> RoutingPacket<CursorMut<'a>> {
     #[inline]
-    pub fn split(self) -> (Ipv6RoutingPacket<&'a mut [u8]>, CursorMut<'a>) {
+    pub fn split(self) -> (RoutingPacket<&'a mut [u8]>, CursorMut<'a>) {
         let header_len = self.header_len();
         let buf_mut = self.buf.chunk_mut_shared_lifetime();
         let (hdr, payload) = buf_mut.split_at_mut(header_len);
         (
-            Ipv6RoutingPacket {
+            RoutingPacket {
                 buf: &mut hdr[..header_len],
             },
             CursorMut::new(payload),

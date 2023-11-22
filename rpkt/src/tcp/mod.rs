@@ -5,4 +5,4 @@ mod packet;
 pub use packet::TcpPacket;
 
 mod option;
-pub use option::{SelectiveAck, TcpOption, TcpOptionIter, TcpOptionWriter};
+pub use option::{TcpOptionSack, TcpOption, TcpOptionIter, TcpOptionWriter};

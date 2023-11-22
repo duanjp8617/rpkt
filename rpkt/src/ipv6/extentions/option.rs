@@ -7,23 +7,23 @@ use crate::{Cursor, CursorMut};
 const PAD0: u8 = 0;
 const PADN: u8 = 1;
 
-pub enum Ipv6TlvOption<'a> {
+pub enum Ipv6Option<'a> {
     Pad0,
     PadN,
-    Generic(GenericTlvOption<&'a [u8]>),
+    Generic(Ipv6OptionGeneric<&'a [u8]>),
 }
 
-pub enum Ipv6TlvOptionMut<'a> {
+pub enum Ipv6OptionMut<'a> {
     Pad0,
     PadN,
-    Generic(GenericTlvOption<&'a mut [u8]>),
+    Generic(Ipv6OptionGeneric<&'a mut [u8]>),
 }
 
-pub struct GenericTlvOption<T> {
+pub struct Ipv6OptionGeneric<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> GenericTlvOption<T> {
+impl<T: AsRef<[u8]>> Ipv6OptionGeneric<T> {
     #[inline]
     pub fn option_type(&self) -> u8 {
         self.buf.as_ref()[0]
@@ -41,7 +41,7 @@ impl<T: AsRef<[u8]>> GenericTlvOption<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> GenericTlvOption<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> Ipv6OptionGeneric<T> {
     #[inline]
     pub fn option_data_mut(&mut self) -> &mut [u8] {
         let opt_len = usize::from(self.option_data_len()) + 2;
@@ -49,11 +49,11 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> GenericTlvOption<T> {
     }
 }
 
-pub struct Ipv6TlvOptionWriter<'a> {
+pub struct Ipv6OptionWriter<'a> {
     buf: &'a mut [u8],
 }
 
-impl<'a> Ipv6TlvOptionWriter<'a> {
+impl<'a> Ipv6OptionWriter<'a> {
     pub fn pad0(&mut self) {
         assert!(self.buf.len() > 0);
 
@@ -74,7 +74,7 @@ impl<'a> Ipv6TlvOptionWriter<'a> {
         self.buf = remaining;
     }
 
-    pub fn generic(&mut self, opt_type: u8, opt_len: usize) -> GenericTlvOption<&'a mut [u8]> {
+    pub fn generic(&mut self, opt_type: u8, opt_len: usize) -> Ipv6OptionGeneric<&'a mut [u8]> {
         assert!(opt_len >= 2 && opt_len <= 257 && self.buf.len() >= opt_len);
 
         self.buf[0] = opt_type;
@@ -84,7 +84,7 @@ impl<'a> Ipv6TlvOptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
         self.buf = remaining;
 
-        GenericTlvOption { buf }
+        Ipv6OptionGeneric { buf }
     }
 
     #[inline]
@@ -98,14 +98,14 @@ impl<'a> Ipv6TlvOptionWriter<'a> {
     }
 }
 
-pub struct Ipv6TlvOptionIter<'a> {
+pub struct Ipv6OptionIter<'a> {
     buf: &'a [u8],
     valid: bool,
 }
 
-impl<'a> Ipv6TlvOptionIter<'a> {
+impl<'a> Ipv6OptionIter<'a> {
     #[inline]
-    pub fn from_option_bytes(buf: &'a [u8]) -> Ipv6TlvOptionIter<'a> {
+    pub fn from_option_bytes(buf: &'a [u8]) -> Ipv6OptionIter<'a> {
         Self { buf, valid: true }
     }
 
@@ -117,8 +117,8 @@ impl<'a> Ipv6TlvOptionIter<'a> {
     }
 }
 
-impl<'a> Iterator for Ipv6TlvOptionIter<'a> {
-    type Item = Ipv6TlvOption<'a>;
+impl<'a> Iterator for Ipv6OptionIter<'a> {
+    type Item = Ipv6Option<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.valid || self.buf.len() == 0 {
@@ -129,7 +129,7 @@ impl<'a> Iterator for Ipv6TlvOptionIter<'a> {
         match opt_type {
             PAD0 => {
                 self.buf = &self.buf[1..];
-                Some(Ipv6TlvOption::Pad0)
+                Some(Ipv6Option::Pad0)
             }
             _ => {
                 if self.buf.len() < 2 {
@@ -145,7 +145,7 @@ impl<'a> Iterator for Ipv6TlvOptionIter<'a> {
                             None
                         } else {
                             self.buf = &self.buf[opt_len..];
-                            Some(Ipv6TlvOption::PadN)
+                            Some(Ipv6Option::PadN)
                         }
                     }
                     _ => {
@@ -154,11 +154,11 @@ impl<'a> Iterator for Ipv6TlvOptionIter<'a> {
                             self.valid = false;
                             None
                         } else {
-                            let opt = GenericTlvOption {
+                            let opt = Ipv6OptionGeneric {
                                 buf: &self.buf[..opt_len],
                             };
                             self.buf = &self.buf[opt_len..];
-                            Some(Ipv6TlvOption::Generic(opt))
+                            Some(Ipv6Option::Generic(opt))
                         }
                     }
                 }
@@ -167,20 +167,20 @@ impl<'a> Iterator for Ipv6TlvOptionIter<'a> {
     }
 }
 
-pub struct Ipv6TlvOptionIterMut<'a> {
+pub struct Ipv6OptionIterMut<'a> {
     buf: &'a mut [u8],
     valid: bool,
 }
 
-impl<'a> Ipv6TlvOptionIterMut<'a> {
+impl<'a> Ipv6OptionIterMut<'a> {
     #[inline]
-    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> Ipv6TlvOptionIterMut<'a> {
+    pub fn from_option_bytes_mut(buf: &'a mut [u8]) -> Ipv6OptionIterMut<'a> {
         Self { buf, valid: true }
     }
 }
 
-impl<'a> Iterator for Ipv6TlvOptionIterMut<'a> {
-    type Item = Ipv6TlvOptionMut<'a>;
+impl<'a> Iterator for Ipv6OptionIterMut<'a> {
+    type Item = Ipv6OptionMut<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.valid || self.buf.len() == 0 {
@@ -193,7 +193,7 @@ impl<'a> Iterator for Ipv6TlvOptionIterMut<'a> {
                 let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                 self.buf = remaining;
 
-                Some(Ipv6TlvOptionMut::Pad0)
+                Some(Ipv6OptionMut::Pad0)
             }
             _ => {
                 if self.buf.len() < 2 {
@@ -212,7 +212,7 @@ impl<'a> Iterator for Ipv6TlvOptionIterMut<'a> {
                                 std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
                             self.buf = remaining;
 
-                            Some(Ipv6TlvOptionMut::PadN)
+                            Some(Ipv6OptionMut::PadN)
                         }
                     }
                     _ => {
@@ -225,7 +225,7 @@ impl<'a> Iterator for Ipv6TlvOptionIterMut<'a> {
                                 std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
                             self.buf = remaining;
 
-                            Some(Ipv6TlvOptionMut::Generic(GenericTlvOption { buf }))
+                            Some(Ipv6OptionMut::Generic(Ipv6OptionGeneric { buf }))
                         }
                     }
                 }
@@ -317,7 +317,6 @@ impl<T: PktMut> Ipv6OptionPacket<T> {
     pub fn prepend_header<HT: AsRef<[u8]>>(mut buf: T, header_len: usize) -> Ipv6OptionPacket<T> {
         assert!(header_len >= 8 && header_len <= 2048 && header_len % 8 == 0);
 
-        assert!(buf.chunk_headroom() >= header_len);
         buf.move_back(header_len);
 
         let data = &mut buf.chunk_mut()[0..header_len];

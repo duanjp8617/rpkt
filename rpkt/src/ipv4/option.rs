@@ -9,26 +9,26 @@ const ROUTE_ALERT: u8 = 20 | 0x80;
 pub enum Ipv4Option<'a> {
     Eol,
     Nop,
-    Ts(Timestamp<&'a [u8]>),
-    RR(RecordRoute<&'a [u8]>),
-    RA(RouteAlert<&'a [u8]>),
+    Ts(Ipv4OptionTs<&'a [u8]>),
+    RR(Ipv4OptionRr<&'a [u8]>),
+    RA(Ipv4OptionRa<&'a [u8]>),
     Unknown(&'a [u8]),
 }
 
 pub enum Ipv4OptionMut<'a> {
     Eol,
     Nop,
-    Ts(Timestamp<&'a mut [u8]>),
-    RR(RecordRoute<&'a mut [u8]>),
-    RA(RouteAlert<&'a mut [u8]>),
+    Ts(Ipv4OptionTs<&'a mut [u8]>),
+    RR(Ipv4OptionRr<&'a mut [u8]>),
+    RA(Ipv4OptionRa<&'a mut [u8]>),
     Unknown(&'a mut [u8]),
 }
 
-pub struct Timestamp<T> {
+pub struct Ipv4OptionTs<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> Timestamp<T> {
+impl<T: AsRef<[u8]>> Ipv4OptionTs<T> {
     #[inline]
     pub fn flg(&self) -> u8 {
         self.buf.as_ref()[3] & 0x0f
@@ -51,7 +51,7 @@ impl<T: AsRef<[u8]>> Timestamp<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> Timestamp<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> Ipv4OptionTs<T> {
     #[inline]
     /// possible value: 0, 1, 3
     pub fn set_flg(&mut self, value: u8) {
@@ -77,11 +77,11 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> Timestamp<T> {
     }
 }
 
-pub struct RecordRoute<T> {
+pub struct Ipv4OptionRr<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> RecordRoute<T> {
+impl<T: AsRef<[u8]>> Ipv4OptionRr<T> {
     #[inline]
     pub fn readable(&self) -> &[u8] {
         let readable_len = usize::from(self.buf.as_ref()[2]) - 4;
@@ -94,7 +94,7 @@ impl<T: AsRef<[u8]>> RecordRoute<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> RecordRoute<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> Ipv4OptionRr<T> {
     #[inline]
     pub fn writable(&mut self) -> &mut [u8] {
         let start = usize::from(self.buf.as_ref()[2]) - 1;
@@ -109,18 +109,18 @@ impl<T: AsMut<[u8]> + AsRef<[u8]>> RecordRoute<T> {
     }
 }
 
-pub struct RouteAlert<T> {
+pub struct Ipv4OptionRa<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> RouteAlert<T> {
+impl<T: AsRef<[u8]>> Ipv4OptionRa<T> {
     #[inline]
     pub fn alert_value(&self) -> u16 {
         NetworkEndian::read_u16(&self.buf.as_ref()[2..4])
     }
 }
 
-impl<T: AsMut<[u8]>> RouteAlert<T> {
+impl<T: AsMut<[u8]>> Ipv4OptionRa<T> {
     #[inline]
     pub fn set_alert_value(&mut self, value: u16) {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], value);
@@ -133,8 +133,6 @@ pub struct Ipv4OptionWriter<'a> {
 
 impl<'a> Ipv4OptionWriter<'a> {
     pub fn eol(&mut self) {
-        assert!(self.buf.len() > 0);
-
         self.buf[0] = END_OF_LIST;
 
         let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
@@ -142,16 +140,14 @@ impl<'a> Ipv4OptionWriter<'a> {
     }
 
     pub fn nop(&mut self) {
-        assert!(self.buf.len() > 0);
-
         self.buf[0] = NOP;
 
         let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
         self.buf = remaining;
     }
 
-    pub fn ts(&mut self, len: usize) -> Timestamp<&'a mut [u8]> {
-        assert!(len >= 4 && len <= 40 && len % 4 == 0 && self.buf.len() >= len);
+    pub fn ts(&mut self, len: usize) -> Ipv4OptionTs<&'a mut [u8]> {
+        assert!(len >= 4 && len <= 40 && len % 4 == 0);
 
         self.buf[0] = TIMESTAMP;
         self.buf[1] = len as u8;
@@ -161,11 +157,11 @@ impl<'a> Ipv4OptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(len);
         self.buf = remaining;
 
-        Timestamp { buf }
+        Ipv4OptionTs { buf }
     }
 
-    pub fn rr(&mut self, len: usize) -> RecordRoute<&'a mut [u8]> {
-        assert!(len >= 3 && len <= 40 && (len - 3) % 4 == 0 && self.buf.len() >= len);
+    pub fn rr(&mut self, len: usize) -> Ipv4OptionRr<&'a mut [u8]> {
+        assert!(len >= 3 && len <= 40 && (len - 3) % 4 == 0);
 
         self.buf[0] = RECORD_ROUTE;
         self.buf[1] = len as u8;
@@ -175,19 +171,17 @@ impl<'a> Ipv4OptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(len);
         self.buf = remaining;
 
-        RecordRoute { buf }
+        Ipv4OptionRr { buf }
     }
 
-    pub fn ra(&mut self) -> RouteAlert<&'a mut [u8]> {
-        assert!(self.buf.len() >= 4);
-
+    pub fn ra(&mut self) -> Ipv4OptionRa<&'a mut [u8]> {
         self.buf[0] = ROUTE_ALERT;
         self.buf[1] = 4;
 
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
         self.buf = remaining;
 
-        RouteAlert { buf }
+        Ipv4OptionRa { buf }
     }
 
     #[inline]
@@ -267,7 +261,7 @@ impl<'a> Iterator for Ipv4OptionIter<'a> {
                             self.valid = false;
                             None
                         } else {
-                            let opt = Timestamp {
+                            let opt = Ipv4OptionTs {
                                 buf: &self.buf[..opt_len],
                             };
                             self.buf = &self.buf[opt_len..];
@@ -294,7 +288,7 @@ impl<'a> Iterator for Ipv4OptionIter<'a> {
                             self.valid = false;
                             None
                         } else {
-                            let opt = RecordRoute {
+                            let opt = Ipv4OptionRr {
                                 buf: &self.buf[..opt_len],
                             };
                             self.buf = &self.buf[opt_len..];
@@ -306,7 +300,7 @@ impl<'a> Iterator for Ipv4OptionIter<'a> {
                             self.valid = false;
                             None
                         } else {
-                            let opt = RouteAlert {
+                            let opt = Ipv4OptionRa {
                                 buf: &self.buf[..4],
                             };
                             self.buf = &self.buf[4..];
@@ -398,7 +392,7 @@ impl<'a> Iterator for Ipv4OptionIterMut<'a> {
                                 std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
                             self.buf = remaining;
 
-                            let opt = Timestamp { buf };
+                            let opt = Ipv4OptionTs { buf };
                             Some(Ipv4OptionMut::Ts(opt))
                         }
                     }
@@ -426,7 +420,7 @@ impl<'a> Iterator for Ipv4OptionIterMut<'a> {
                                 std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
                             self.buf = remaining;
 
-                            let opt = RecordRoute { buf };
+                            let opt = Ipv4OptionRr { buf };
                             Some(Ipv4OptionMut::RR(opt))
                         }
                     }
@@ -439,7 +433,7 @@ impl<'a> Iterator for Ipv4OptionIterMut<'a> {
                                 std::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
                             self.buf = remaining;
 
-                            let opt = RouteAlert { buf };
+                            let opt = Ipv4OptionRa { buf };
                             Some(Ipv4OptionMut::RA(opt))
                         }
                     }

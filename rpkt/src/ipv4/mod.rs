@@ -168,6 +168,6 @@ pub use self::packet::Ipv4Packet;
 
 mod option;
 pub use option::{
-    Ipv4Option, Ipv4OptionIter, Ipv4OptionIterMut, Ipv4OptionMut, Ipv4OptionWriter, RecordRoute,
-    RouteAlert, Timestamp,
+    Ipv4Option, Ipv4OptionIter, Ipv4OptionIterMut, Ipv4OptionMut, Ipv4OptionRa, Ipv4OptionRr,
+    Ipv4OptionTs, Ipv4OptionWriter,
 };

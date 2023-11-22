@@ -15,17 +15,17 @@ pub enum TcpOption<'a> {
     Mss(u16),
     Wsopt(u8),
     SackPerm,
-    Sack(SelectiveAck<&'a [u8]>),
+    Sack(TcpOptionSack<&'a [u8]>),
     Ts(u32, u32),
     Fo(&'a [u8]),
     Unknown(&'a [u8]),
 }
 
-pub struct SelectiveAck<T> {
+pub struct TcpOptionSack<T> {
     buf: T,
 }
 
-impl<T: AsRef<[u8]>> SelectiveAck<T> {
+impl<T: AsRef<[u8]>> TcpOptionSack<T> {
     #[inline]
     pub fn num_blocks(&self) -> usize {
         (usize::from(self.buf.as_ref()[1]) - 2) / 8
@@ -41,7 +41,7 @@ impl<T: AsRef<[u8]>> SelectiveAck<T> {
     }
 }
 
-impl<T: AsMut<[u8]> + AsRef<[u8]>> SelectiveAck<T> {
+impl<T: AsMut<[u8]> + AsRef<[u8]>> TcpOptionSack<T> {
     #[inline]
     pub fn set_block(&mut self, idx: usize, sack: (u32, u32)) {
         assert!(idx < self.num_blocks());
@@ -56,8 +56,6 @@ pub struct TcpOptionWriter<'a> {
 
 impl<'a> TcpOptionWriter<'a> {
     pub fn eol(&mut self) {
-        assert!(self.buf.len() > 0);
-
         self.buf[0] = END_OF_LIST;
 
         let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
@@ -65,8 +63,6 @@ impl<'a> TcpOptionWriter<'a> {
     }
 
     pub fn nop(&mut self) {
-        assert!(self.buf.len() > 0);
-
         self.buf[0] = NOP;
 
         let (_, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
@@ -74,8 +70,6 @@ impl<'a> TcpOptionWriter<'a> {
     }
 
     pub fn mss(&mut self, mss: u16) {
-        assert!(self.buf.len() >= 4);
-
         self.buf[0] = MAX_SEG_SIZE;
         self.buf[1] = 4;
         NetworkEndian::write_u16(&mut self.buf[2..4], mss);
@@ -85,8 +79,6 @@ impl<'a> TcpOptionWriter<'a> {
     }
 
     pub fn wsopt(&mut self, value: u8) {
-        assert!(self.buf.len() >= 3);
-
         self.buf[0] = WINDOW_SCALE;
         self.buf[1] = 3;
         self.buf[2] = value;
@@ -96,8 +88,6 @@ impl<'a> TcpOptionWriter<'a> {
     }
 
     pub fn sack_perm(&mut self) {
-        assert!(self.buf.len() >= 2);
-
         self.buf[0] = SACK_PERMITTED;
         self.buf[1] = 2;
 
@@ -105,10 +95,9 @@ impl<'a> TcpOptionWriter<'a> {
         self.buf = remaining;
     }
 
-    pub fn sack(&mut self, num_blocks: usize) -> SelectiveAck<&'a mut [u8]> {
+    pub fn sack(&mut self, num_blocks: usize) -> TcpOptionSack<&'a mut [u8]> {
         assert!(num_blocks <= 4);
         let opt_len = 2 + num_blocks * 8;
-        assert!(self.buf.len() >= opt_len);
 
         self.buf[0] = SELECTIVE_ACK;
         self.buf[1] = opt_len as u8;
@@ -116,12 +105,10 @@ impl<'a> TcpOptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(opt_len);
         self.buf = remaining;
 
-        SelectiveAck { buf }
+        TcpOptionSack { buf }
     }
 
     pub fn ts(&mut self, ts: u32, ts_echo: u32) {
-        assert!(self.buf.len() >= 10);
-
         self.buf[0] = TIMESTAMPS;
         self.buf[1] = 10;
         NetworkEndian::write_u32(&mut self.buf[2..6], ts);
@@ -132,8 +119,6 @@ impl<'a> TcpOptionWriter<'a> {
     }
 
     pub fn fo(&mut self, cookie: &[u8]) {
-        assert!(self.buf.len() >= 18);
-
         self.buf[0] = TCP_FASTOPEN;
         self.buf[1] = 18;
         (&mut self.buf[2..18]).copy_from_slice(cookie);
@@ -241,7 +226,7 @@ impl<'a> Iterator for TcpOptionIter<'a> {
                             self.valid = false;
                             None
                         } else {
-                            let opt = SelectiveAck {
+                            let opt = TcpOptionSack {
                                 buf: &self.buf[..opt_len],
                             };
                             self.buf = &self.buf[opt_len..];
