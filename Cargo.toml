@@ -14,3 +14,4 @@ authors = ["duanjp8617 <duanjp8617@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
+license = "Apache-2.0"
