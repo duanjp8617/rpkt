@@ -1,5 +1,6 @@
 [package]
 name = "rpkt-dpdk"
+description = "a safe FFI library for DPDK"
 keywords = ["dpdk"]
 categories = ["network-programming"]
 
