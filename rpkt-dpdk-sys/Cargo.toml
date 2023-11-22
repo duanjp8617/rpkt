@@ -1,5 +1,6 @@
 [package]
 name = "rpkt-dpdk-sys"
+description = "do not use this crate, use rpkt-dpdk instead"
 keywords = ["dpdk", "ffi"]
 categories = ["network-programming"]
 
