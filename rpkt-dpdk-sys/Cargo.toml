@@ -1,7 +1,13 @@
 [package]
 name = "rpkt-dpdk-sys"
-version = "0.2.0"
-edition = "2021"
+categories = ["network-programming"]
+
+workspace = ".."
+repository.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [build-dependencies]
 bindgen = "0.59" 

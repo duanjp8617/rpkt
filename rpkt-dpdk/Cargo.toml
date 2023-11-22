@@ -1,7 +1,13 @@
 [package]
 name = "rpkt-dpdk"
-version = "0.2.0"
-edition = "2018"
+categories = ["network-programming"]
+
+workspace = ".."
+repository.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 libc = "0.2"

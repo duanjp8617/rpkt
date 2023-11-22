@@ -2,8 +2,14 @@
 name = "rpkt"
 description = "efficient and generic network packet manipulation for rust"
 keywords = ["network packet", "packet parser", "network protocols"]
-version = "0.1.0"
-edition = "2021"
+categories = ["network-programming"]
+
+workspace = ".."
+repository.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 byteorder = "1"

@@ -1,7 +1,6 @@
 use byteorder::{ByteOrder, NetworkEndian};
 use bytes::Buf;
 
-use crate::ipv4::IpProtocol;
 use crate::PktMut;
 use crate::{Cursor, CursorMut};
 

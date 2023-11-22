@@ -1,5 +1,4 @@
 [workspace]
-
 members = [
   "rpkt",
   "rpkt-dpdk-sys",
@@ -7,3 +6,11 @@ members = [
   "rpkt-time",
   "examples",
 ]
+resolver = "2"
+
+[workspace.package]
+repository = "https://github.com/duanjp8617/rpkt"
+authors = ["duanjp8617 <duanjp8617@gmail.com>"]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
