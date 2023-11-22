@@ -15,8 +15,8 @@ license.workspace = true
 libc = "0.2"
 arrayvec = "0.7.2"
 once_cell = "1.9.0"
-run-dpdk-sys = { path = "../rpkt-dpdk-sys", package = "rpkt-dpdk-sys"}
-run-packet = {path = "../rpkt", package = "rpkt", optional = true}
+run-dpdk-sys = { path = "../rpkt-dpdk-sys", package = "rpkt-dpdk-sys", version = "0.1.0"}
+run-packet = {path = "../rpkt", package = "rpkt", optional = true, version = "0.1.0"}
 
 [features]
 # `multiseg` feature enables non-contiguous `Mbuf` and `Pbuf`
