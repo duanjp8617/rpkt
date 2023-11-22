@@ -1,5 +1,6 @@
 [package]
 name = "rpkt-dpdk"
+keywords = ["dpdk", "user-space packet processing"]
 categories = ["network-programming"]
 
 workspace = ".."

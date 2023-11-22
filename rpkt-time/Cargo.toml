@@ -1,5 +1,6 @@
 [package]
 name = "rpkt-time"
+keywords = ["dpdk", "rtdsc"]
 categories = ["network-programming"]
 
 workspace = ".."
