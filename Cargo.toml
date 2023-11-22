@@ -1,9 +1,9 @@
 [workspace]
 
 members = [
-  "run-packet",
-  "run-dpdk-sys",
-  "run-dpdk",
-  "run-time",
+  "rpkt",
+  "rpkt-dpdk-sys",
+  "rpkt-dpdk",
+  "rpkt-time",
   "examples",
 ]

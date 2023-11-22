@@ -9,9 +9,9 @@ criterion = "0.3"
 smoltcp = "0.8"
 arrayvec = "0.7.2"
 ctrlc = { version = "3.0", features = ["termination"]}
-run-time = {path = "../run-time", package = "run-time"}
-run-dpdk = {path = "../run-dpdk", package = "run-dpdk"}
-run-packet = {path = "../run-packet", package = "run-packet"}
+run-time = {path = "../rpkt-time", package = "rpkt-time"}
+run-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk"}
+run-packet = {path = "../rpkt", package = "rpkt"}
 
 
 #[[example]]

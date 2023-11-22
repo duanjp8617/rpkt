@@ -3,7 +3,7 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 use arrayvec::ArrayVec;
 use ctrlc;
 
-use run_dpdk::*;
+use rpkt_dpdk::*;
 use run_packet::ether::*;
 use run_packet::ipv4::*;
 use run_packet::tcp::*;

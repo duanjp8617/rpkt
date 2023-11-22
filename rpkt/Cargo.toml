@@ -1,0 +1,15 @@
+[package]
+name = "rpkt"
+description = "efficient and generic network packet manipulation for rust"
+keywords = ["network packet", "packet parser", "network protocols"]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+byteorder = "1"
+bytes = "1"
+smoltcp = "0.8"
+
+[dev-dependencies]
+smoltcp = "0.8"
+pnet = "0.31.0"
