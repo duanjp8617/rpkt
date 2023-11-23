@@ -20,8 +20,7 @@ pub enum Icmpv6Msg<'a> {
     NdpRedirect(NdpMsgRedirect<&'a [u8]>),
     NdpRouterAdv(NdpMsgRouterAdv<&'a [u8]>),
     NdpRouterSolicit(NdpMsgRouterSolicit<&'a [u8]>),
-    Unknown,
-    Invalid,
+    Invalid(u8),
 }
 
 pub enum Icmpv6MsgMut<'a> {
@@ -36,8 +35,7 @@ pub enum Icmpv6MsgMut<'a> {
     NdpRedirect(NdpMsgRedirect<&'a mut [u8]>),
     NdpRouterAdv(NdpMsgRouterAdv<&'a mut [u8]>),
     NdpRouterSolicit(NdpMsgRouterSolicit<&'a mut [u8]>),
-    Unknown,
-    Invalid,
+    Invalid(u8),
 }
 
 #[derive(Debug)]
@@ -113,7 +111,57 @@ impl<T: Buf> Icmpv6Packet<T> {
             Icmpv6MsgType::ECHO_REPLY => Icmpv6Msg::EchoReply(Icmpv6MsgEcho {
                 buf: self.buf.chunk(),
             }),
-            _ => Icmpv6Msg::Unknown,
+            _ => {
+                let pkt_len = self.buf.chunk().len();
+                match self.msg_type() {
+                    Icmpv6MsgType::NDP_ROUTER_SOLICIT => {
+                        if pkt_len < 8 {
+                            Icmpv6Msg::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6Msg::NdpRouterSolicit(NdpMsgRouterSolicit {
+                                buf: self.buf.chunk(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_ROUTER_ADV => {
+                        if pkt_len < 16 {
+                            Icmpv6Msg::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6Msg::NdpRouterAdv(NdpMsgRouterAdv {
+                                buf: self.buf.chunk(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_NEIGHBOR_SOLICIT => {
+                        if pkt_len < 24 {
+                            Icmpv6Msg::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6Msg::NdpNeighborSolicit(NdpMsgNeighborSolicit {
+                                buf: self.buf.chunk(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_NEIGHBOR_ADV => {
+                        if pkt_len < 24 {
+                            Icmpv6Msg::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6Msg::NdpNeighborAdv(NdpMsgNeighborAdv {
+                                buf: self.buf.chunk(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_REDIRECT => {
+                        if pkt_len < 40 {
+                            Icmpv6Msg::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6Msg::NdpRedirect(NdpMsgRedirect {
+                                buf: self.buf.chunk(),
+                            })
+                        }
+                    }
+                    _ => Icmpv6Msg::Invalid(self.msg_type().into()),
+                }
+            }
         }
     }
 }
@@ -161,7 +209,57 @@ impl<T: PktMut> Icmpv6Packet<T> {
             Icmpv6MsgType::ECHO_REPLY => Icmpv6MsgMut::EchoReply(Icmpv6MsgEcho {
                 buf: self.buf.chunk_mut(),
             }),
-            _ => Icmpv6MsgMut::Unknown,
+            _ => {
+                let pkt_len = self.buf.chunk().len();
+                match self.msg_type() {
+                    Icmpv6MsgType::NDP_ROUTER_SOLICIT => {
+                        if pkt_len < 8 {
+                            Icmpv6MsgMut::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6MsgMut::NdpRouterSolicit(NdpMsgRouterSolicit {
+                                buf: self.buf.chunk_mut(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_ROUTER_ADV => {
+                        if pkt_len < 16 {
+                            Icmpv6MsgMut::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6MsgMut::NdpRouterAdv(NdpMsgRouterAdv {
+                                buf: self.buf.chunk_mut(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_NEIGHBOR_SOLICIT => {
+                        if pkt_len < 24 {
+                            Icmpv6MsgMut::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6MsgMut::NdpNeighborSolicit(NdpMsgNeighborSolicit {
+                                buf: self.buf.chunk_mut(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_NEIGHBOR_ADV => {
+                        if pkt_len < 24 {
+                            Icmpv6MsgMut::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6MsgMut::NdpNeighborAdv(NdpMsgNeighborAdv {
+                                buf: self.buf.chunk_mut(),
+                            })
+                        }
+                    }
+                    Icmpv6MsgType::NDP_REDIRECT => {
+                        if pkt_len < 40 {
+                            Icmpv6MsgMut::Invalid(self.msg_type().into())
+                        } else {
+                            Icmpv6MsgMut::NdpRedirect(NdpMsgRedirect {
+                                buf: self.buf.chunk_mut(),
+                            })
+                        }
+                    }
+                    _ => Icmpv6MsgMut::Invalid(self.msg_type().into()),
+                }
+            }
         }
     }
 
@@ -175,7 +273,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_dst_unreachable_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
+    pub fn prepend_msg_dst_unreachable(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::DST_UNREACHABLE, msg_len);
         Icmpv6MsgGeneric {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -183,7 +281,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_pkt_too_big_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgMtu<&mut [u8]> {
+    pub fn prepend_msg_pkt_too_big(buf: &mut T, msg_len: usize) -> Icmpv6MsgMtu<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::PKT_TOO_BIG, msg_len);
         Icmpv6MsgMtu {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -191,7 +289,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_time_exceed_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
+    pub fn prepend_msg_time_exceed(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::TIME_EXCEED, msg_len);
         Icmpv6MsgGeneric {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -199,7 +297,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_param_problem_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgPtr<&mut [u8]> {
+    pub fn prepend_msg_param_problem(buf: &mut T, msg_len: usize) -> Icmpv6MsgPtr<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::PARAM_PROBLEM, msg_len);
         Icmpv6MsgPtr {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -207,7 +305,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_echo_request_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
+    pub fn prepend_msg_echo_request(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::ECHO_REQUEST, msg_len);
         Icmpv6MsgEcho {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -215,9 +313,63 @@ impl<T: PktMut> Icmpv6Packet<T> {
     }
 
     #[inline]
-    pub fn prepend_echo_reply_msg(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
+    pub fn prepend_msg_echo_reply(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
         Self::prepend_msg(buf, Icmpv6MsgType::ECHO_REPLY, msg_len);
         Icmpv6MsgEcho {
+            buf: &mut buf.chunk_mut()[..msg_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_msg_ndp_router_solicit(
+        buf: &mut T,
+        msg_len: usize,
+    ) -> NdpMsgRouterSolicit<&mut [u8]> {
+        assert!(msg_len >= 8 && msg_len % 8 == 0);
+        Self::prepend_msg(buf, Icmpv6MsgType::NDP_ROUTER_SOLICIT, msg_len);
+        NdpMsgRouterSolicit {
+            buf: &mut buf.chunk_mut()[..msg_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_msg_ndp_router_adv(buf: &mut T, msg_len: usize) -> NdpMsgRouterAdv<&mut [u8]> {
+        assert!(msg_len >= 16 && msg_len % 8 == 0);
+        Self::prepend_msg(buf, Icmpv6MsgType::NDP_ROUTER_ADV, msg_len);
+        NdpMsgRouterAdv {
+            buf: &mut buf.chunk_mut()[..msg_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_msg_ndp_neighbor_solicit(
+        buf: &mut T,
+        msg_len: usize,
+    ) -> NdpMsgNeighborSolicit<&mut [u8]> {
+        assert!(msg_len >= 24 && msg_len % 8 == 0);
+        Self::prepend_msg(buf, Icmpv6MsgType::NDP_NEIGHBOR_SOLICIT, msg_len);
+        NdpMsgNeighborSolicit {
+            buf: &mut buf.chunk_mut()[..msg_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_msg_ndp_neighbor_adv(
+        buf: &mut T,
+        msg_len: usize,
+    ) -> NdpMsgNeighborAdv<&mut [u8]> {
+        assert!(msg_len >= 24 && msg_len % 8 == 0);
+        Self::prepend_msg(buf, Icmpv6MsgType::NDP_NEIGHBOR_ADV, msg_len);
+        NdpMsgNeighborAdv {
+            buf: &mut buf.chunk_mut()[..msg_len],
+        }
+    }
+
+    #[inline]
+    pub fn prepend_msg_ndp_redirected(buf: &mut T, msg_len: usize) -> NdpMsgRedirect<&mut [u8]> {
+        assert!(msg_len >= 40 && msg_len % 8 == 0);
+        Self::prepend_msg(buf, Icmpv6MsgType::NDP_REDIRECT, msg_len);
+        NdpMsgRedirect {
             buf: &mut buf.chunk_mut()[..msg_len],
         }
     }

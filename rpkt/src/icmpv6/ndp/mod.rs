@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, NetworkEndian};
 
 pub struct NdpMsgRouterSolicit<T> {
-    buf: T,
+    pub(crate) buf: T,
 }
 
 impl<T: AsRef<[u8]>> NdpMsgRouterSolicit<T> {
@@ -29,7 +29,7 @@ impl<T: AsMut<[u8]>> NdpMsgRouterSolicit<T> {
 }
 
 pub struct NdpMsgRouterAdv<T> {
-    buf: T,
+    pub(crate) buf: T,
 }
 
 impl<T: AsRef<[u8]>> NdpMsgRouterAdv<T> {
@@ -131,7 +131,7 @@ impl<T: AsMut<[u8]>> NdpMsgRouterAdv<T> {
 }
 
 pub struct NdpMsgNeighborSolicit<T> {
-    buf: T,
+    pub(crate) buf: T,
 }
 
 impl<T: AsRef<[u8]>> NdpMsgNeighborSolicit<T> {
@@ -169,7 +169,7 @@ impl<T: AsMut<[u8]>> NdpMsgNeighborSolicit<T> {
 }
 
 pub struct NdpMsgNeighborAdv<T> {
-    buf: T,
+    pub(crate) buf: T,
 }
 
 impl<T: AsRef<[u8]>> NdpMsgNeighborAdv<T> {
@@ -252,7 +252,7 @@ impl<T: AsMut<[u8]>> NdpMsgNeighborAdv<T> {
 }
 
 pub struct NdpMsgRedirect<T> {
-    buf: T,
+    pub(crate) buf: T,
 }
 
 impl<T: AsRef<[u8]>> NdpMsgRedirect<T> {
