@@ -30,8 +30,4 @@ pub use packet::{
 
 pub mod mld;
 
-mod ndp;
-pub use ndp::{
-    NdpMsgNeighborAdv, NdpMsgNeighborSolicit, NdpMsgRedirect, NdpMsgRouterAdv, NdpMsgRouterSolicit,
-    NdpOption, NdpOptionLinkAddr, NdpOptionMtu, NdpOptionPrefixInfo, NdpOptionRedirectedHdr,
-};
+pub mod ndp;
