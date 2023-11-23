@@ -2,6 +2,10 @@ use crate::PktMut;
 use byteorder::{ByteOrder, NetworkEndian};
 use bytes::Buf;
 
+use super::msg::*;
+use super::ndp::{
+    NdpMsgNeighborAdv, NdpMsgNeighborSolicit, NdpMsgRedirect, NdpMsgRouterAdv, NdpMsgRouterSolicit,
+};
 use super::Icmpv6MsgType;
 
 pub enum Icmpv6Msg<'a> {
@@ -11,7 +15,13 @@ pub enum Icmpv6Msg<'a> {
     ParamProblem(Icmpv6MsgPtr<&'a [u8]>),
     EchoRequest(Icmpv6MsgEcho<&'a [u8]>),
     EchoReply(Icmpv6MsgEcho<&'a [u8]>),
+    NdpNeighborAdv(NdpMsgNeighborAdv<&'a [u8]>),
+    NdpNeighborSolicit(NdpMsgNeighborSolicit<&'a [u8]>),
+    NdpRedirect(NdpMsgRedirect<&'a [u8]>),
+    NdpRouterAdv(NdpMsgRouterAdv<&'a [u8]>),
+    NdpRouterSolicit(NdpMsgRouterSolicit<&'a [u8]>),
     Unknown,
+    Invalid,
 }
 
 pub enum Icmpv6MsgMut<'a> {
@@ -21,157 +31,13 @@ pub enum Icmpv6MsgMut<'a> {
     ParamProblem(Icmpv6MsgPtr<&'a mut [u8]>),
     EchoRequest(Icmpv6MsgEcho<&'a mut [u8]>),
     EchoReply(Icmpv6MsgEcho<&'a mut [u8]>),
+    NdpNeighborAdv(NdpMsgNeighborAdv<&'a mut [u8]>),
+    NdpNeighborSolicit(NdpMsgNeighborSolicit<&'a mut [u8]>),
+    NdpRedirect(NdpMsgRedirect<&'a mut [u8]>),
+    NdpRouterAdv(NdpMsgRouterAdv<&'a mut [u8]>),
+    NdpRouterSolicit(NdpMsgRouterSolicit<&'a mut [u8]>),
     Unknown,
-}
-
-pub struct Icmpv6MsgGeneric<T> {
-    buf: T,
-}
-
-impl<T: AsRef<[u8]>> Icmpv6MsgGeneric<T> {
-    #[inline]
-    pub fn code(&self) -> u8 {
-        self.buf.as_ref()[1]
-    }
-
-    #[inline]
-    pub fn check_reserved(&self) -> bool {
-        &self.buf.as_ref()[4..8] == &[0, 0, 0, 0][..]
-    }
-
-    #[inline]
-    pub fn data(&self) -> &[u8] {
-        &self.buf.as_ref()[8..]
-    }
-}
-
-impl<T: AsMut<[u8]>> Icmpv6MsgGeneric<T> {
-    #[inline]
-    pub fn set_code(&mut self, value: u8) {
-        self.buf.as_mut()[1] = value;
-    }
-
-    #[inline]
-    pub fn adjust_reserved(&mut self) {
-        (&mut self.buf.as_mut()[4..8]).fill(0);
-    }
-
-    #[inline]
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[8..]
-    }
-}
-
-pub struct Icmpv6MsgMtu<T> {
-    buf: T,
-}
-
-impl<T: AsRef<[u8]>> Icmpv6MsgMtu<T> {
-    #[inline]
-    pub fn mtu(&self) -> u32 {
-        let data = &self.buf.as_ref()[4..8];
-        NetworkEndian::read_u32(data)
-    }
-
-    #[inline]
-    pub fn data(&self) -> &[u8] {
-        &self.buf.as_ref()[8..]
-    }
-}
-
-impl<T: AsMut<[u8]>> Icmpv6MsgMtu<T> {
-    #[inline]
-    pub fn set_mtu(&mut self, value: u32) {
-        let data = &mut self.buf.as_mut()[4..8];
-        NetworkEndian::write_u32(data, value);
-    }
-
-    #[inline]
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[8..]
-    }
-}
-
-pub struct Icmpv6MsgPtr<T> {
-    buf: T,
-}
-
-impl<T: AsRef<[u8]>> Icmpv6MsgPtr<T> {
-    #[inline]
-    pub fn code(&self) -> u8 {
-        self.buf.as_ref()[1]
-    }
-
-    #[inline]
-    pub fn ptr(&self) -> u32 {
-        let data = &self.buf.as_ref()[4..8];
-        NetworkEndian::read_u32(data)
-    }
-
-    #[inline]
-    pub fn data(&self) -> &[u8] {
-        &self.buf.as_ref()[8..]
-    }
-}
-
-impl<T: AsMut<[u8]>> Icmpv6MsgPtr<T> {
-    #[inline]
-    pub fn set_code(&mut self, value: u8) {
-        self.buf.as_mut()[1] = value;
-    }
-
-    #[inline]
-    pub fn set_ptr(&mut self, value: u32) {
-        let data = &mut self.buf.as_mut()[4..8];
-        NetworkEndian::write_u32(data, value);
-    }
-
-    #[inline]
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[8..]
-    }
-}
-
-pub struct Icmpv6MsgEcho<T> {
-    buf: T,
-}
-
-impl<T: AsRef<[u8]>> Icmpv6MsgEcho<T> {
-    #[inline]
-    pub fn ident(&self) -> u16 {
-        let data = &self.buf.as_ref()[4..6];
-        NetworkEndian::read_u16(data)
-    }
-
-    #[inline]
-    pub fn seq(&self) -> u16 {
-        let data = &self.buf.as_ref()[6..8];
-        NetworkEndian::read_u16(data)
-    }
-
-    #[inline]
-    pub fn data(&self) -> &[u8] {
-        &self.buf.as_ref()[8..]
-    }
-}
-
-impl<T: AsMut<[u8]>> Icmpv6MsgEcho<T> {
-    #[inline]
-    pub fn set_ident(&mut self, value: u16) {
-        let data = &mut self.buf.as_mut()[4..6];
-        NetworkEndian::write_u16(data, value);
-    }
-
-    #[inline]
-    pub fn set_seq(&mut self, value: u16) {
-        let data = &mut self.buf.as_mut()[6..8];
-        NetworkEndian::write_u16(data, value);
-    }
-
-    #[inline]
-    pub fn data_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[8..]
-    }
+    Invalid,
 }
 
 #[derive(Debug)]
