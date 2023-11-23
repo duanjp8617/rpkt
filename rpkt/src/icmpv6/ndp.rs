@@ -303,6 +303,13 @@ impl<T: AsMut<[u8]>> NdpMsgRedirect<T> {
     }
 }
 
+const SRC_LINK_ADDR: u8 = 1;
+const DST_LINK_ADDR: u8 = 2;
+const PREFIX_INFO: u8 = 3;
+const REDIRECTED_HDR: u8 = 4;
+const MTU: u8 = 5;
+
+
 pub enum NdpOption<'a> {
     SrcLinkAddr(NdpOptionLinkAddr<&'a [u8]>),
     DstLinkAddr(NdpOptionLinkAddr<&'a [u8]>),
