@@ -32,8 +32,25 @@ pub struct RoutingMsgGeneric<T> {
 
 impl<T: AsRef<[u8]>> RoutingMsgGeneric<T> {
     #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        self.buf.as_ref()[0].into()
+    }
+
+    #[inline]
     pub fn segments_left(&self) -> usize {
         self.buf.as_ref()[3].into()
+    }
+
+    #[inline]
+    pub fn check_reserved(&self) -> bool {
+        &self.buf.as_ref()[4..8] == &[0, 0, 0, 0][..]
+    }
+
+    #[inline]
+    pub fn addr(&self, idx: usize) -> &[u8] {
+        assert!(idx < self.total_addrs());
+
+        &self.buf.as_ref()[8 + 16 * idx..24 + 16 * idx]
     }
 
     #[inline]
@@ -45,18 +62,6 @@ impl<T: AsRef<[u8]>> RoutingMsgGeneric<T> {
     #[inline]
     pub fn next_to_read(&self) -> usize {
         self.total_addrs() - self.segments_left()
-    }
-
-    #[inline]
-    pub fn addr(&self, idx: usize) -> &[u8] {
-        assert!(idx < self.total_addrs());
-
-        &self.buf.as_ref()[8 + 16 * idx..24 + 16 * idx]
-    }
-
-    #[inline]
-    pub fn check_reserved(&self) -> bool {
-        &self.buf.as_ref()[4..8] == &[0, 0, 0, 0][..]
     }
 }
 
@@ -91,6 +96,11 @@ pub struct RoutingMsgCompressed<T> {
 
 impl<T: AsRef<[u8]>> RoutingMsgCompressed<T> {
     #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        self.buf.as_ref()[0].into()
+    }
+
+    #[inline]
     pub fn segments_left(&self) -> usize {
         self.buf.as_ref()[3].into()
     }
@@ -111,17 +121,12 @@ impl<T: AsRef<[u8]>> RoutingMsgCompressed<T> {
     }
 
     #[inline]
-    pub fn total_addrs(&self) -> usize {
-        let addr_buf_len = usize::from(self.buf.as_ref()[1]) * 8;
-        let len_except_the_last = addr_buf_len - self.pad() - (16 - self.compr_e());
-
-        debug_assert!(len_except_the_last % (16 - self.compr_i()) == 0);
-        len_except_the_last / (16 - self.compr_i()) + 1
-    }
-
-    #[inline]
-    pub fn next_to_read(&self) -> usize {
-        self.total_addrs() - self.segments_left()
+    pub fn check_reserved(&self) -> bool {
+        if (&self.buf.as_ref()[6..8] == &[0, 0][..]) && (self.buf.as_ref()[5] & 0x0f == 0) {
+            true
+        } else {
+            false
+        }
     }
 
     #[inline]
@@ -139,12 +144,17 @@ impl<T: AsRef<[u8]>> RoutingMsgCompressed<T> {
     }
 
     #[inline]
-    pub fn check_reserved(&self) -> bool {
-        if (&self.buf.as_ref()[6..8] == &[0, 0][..]) && (self.buf.as_ref()[5] & 0x0f == 0) {
-            true
-        } else {
-            false
-        }
+    pub fn total_addrs(&self) -> usize {
+        let addr_buf_len = usize::from(self.buf.as_ref()[1]) * 8;
+        let len_except_the_last = addr_buf_len - self.pad() - (16 - self.compr_e());
+
+        debug_assert!(len_except_the_last % (16 - self.compr_i()) == 0);
+        len_except_the_last / (16 - self.compr_i()) + 1
+    }
+
+    #[inline]
+    pub fn next_to_read(&self) -> usize {
+        self.total_addrs() - self.segments_left()
     }
 }
 

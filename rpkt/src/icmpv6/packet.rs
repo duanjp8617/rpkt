@@ -30,6 +30,11 @@ pub struct Icmpv6MsgGeneric<T> {
 
 impl<T: AsRef<[u8]>> Icmpv6MsgGeneric<T> {
     #[inline]
+    pub fn code(&self) -> u8 {
+        self.buf.as_ref()[1]
+    }
+
+    #[inline]
     pub fn check_reserved(&self) -> bool {
         &self.buf.as_ref()[4..8] == &[0, 0, 0, 0][..]
     }
@@ -92,6 +97,11 @@ pub struct Icmpv6MsgPtr<T> {
 }
 
 impl<T: AsRef<[u8]>> Icmpv6MsgPtr<T> {
+    #[inline]
+    pub fn code(&self) -> u8 {
+        self.buf.as_ref()[1]
+    }
+
     #[inline]
     pub fn ptr(&self) -> u32 {
         let data = &self.buf.as_ref()[4..8];
@@ -209,7 +219,7 @@ impl<T: Buf> Icmpv6Packet<T> {
 
     #[inline]
     pub fn parse(buf: T) -> Result<Icmpv6Packet<T>, T> {
-        if buf.chunk().len() >= 4 && buf.chunk().len() == buf.remaining() {
+        if buf.chunk().len() >= 8 && buf.chunk().len() == buf.remaining() {
             Ok(Icmpv6Packet { buf })
         } else {
             Err(buf)

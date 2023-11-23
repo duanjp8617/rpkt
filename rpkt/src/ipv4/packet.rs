@@ -68,7 +68,7 @@ impl<T: Buf> Ipv4Packet<T> {
     }
 
     #[inline]
-    pub fn option(&self) -> &[u8] {
+    pub fn option_bytes(&self) -> &[u8] {
         &self.buf.chunk()[IPV4_HEADER_LEN..self.header_len().into()]
     }
 
@@ -104,10 +104,9 @@ impl<T: PktBuf> Ipv4Packet<T> {
 
 impl<T: PktMut> Ipv4Packet<T> {
     #[inline]
-    pub fn set_option_bytes(&mut self, option_bytes: &[u8]) {
+    pub fn option_bytes_mut(&mut self) -> &mut [u8] {
         let header_len = self.header_len();
-        let data = &mut self.buf.chunk_mut()[IPV4_HEADER_LEN..header_len as usize];
-        data.copy_from_slice(option_bytes);
+        &mut self.buf.chunk_mut()[IPV4_HEADER_LEN..header_len as usize]
     }
 
     pub fn adjust_checksum(&mut self) {
@@ -140,7 +139,7 @@ impl<'a> Ipv4Packet<Cursor<'a>> {
     }
 
     #[inline]
-    pub fn cursor_option(&self) -> &'a [u8] {
+    pub fn cursor_options(&self) -> &'a [u8] {
         &self.buf.chunk_shared_lifetime()[IPV4_HEADER_LEN..usize::from(self.header_len())]
     }
 
@@ -159,7 +158,10 @@ impl<'a> Ipv4Packet<CursorMut<'a>> {
         let header_len = self.header_len();
         let packet_len = self.packet_len();
 
-        let (buf_mut, _) = self.buf.chunk_mut_shared_lifetime().split_at_mut(usize::from(packet_len));
+        let (buf_mut, _) = self
+            .buf
+            .chunk_mut_shared_lifetime()
+            .split_at_mut(usize::from(packet_len));
         let (hdr, payload) = buf_mut.split_at_mut(usize::from(header_len));
         let (hdr, option) = hdr.split_at_mut(IPV4_HEADER_LEN);
 

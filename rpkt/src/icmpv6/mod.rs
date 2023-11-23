@@ -29,4 +29,9 @@ pub use packet::{
 };
 
 pub mod mld;
-pub mod ndp;
+
+mod ndp;
+pub use ndp::{
+    NdpMsgNeighborAdv, NdpMsgNeighborSolicit, NdpMsgRedirect, NdpMsgRouterAdv, NdpMsgRouterSolicit,
+    NdpOption, NdpOptionLinkAddr, NdpOptionMtu, NdpOptionPrefixInfo, NdpOptionRedirectedHdr,
+};
