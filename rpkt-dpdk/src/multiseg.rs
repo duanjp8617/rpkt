@@ -14,6 +14,18 @@ pub struct Mbuf {
 unsafe impl Send for Mbuf {}
 unsafe impl Sync for Mbuf {}
 
+impl AsRef<Mbuf> for Mbuf {
+    fn as_ref(&self) -> &Mbuf {
+        self
+    }
+}
+
+impl AsMut<Mbuf> for Mbuf {
+    fn as_mut(&mut self) -> &mut Mbuf {
+        self
+    }
+}
+
 impl Mbuf {
     #[inline]
     pub fn len(&self) -> usize {
