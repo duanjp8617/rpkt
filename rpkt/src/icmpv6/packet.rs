@@ -265,8 +265,6 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     fn prepend_msg(buf: &mut T, msg_type: Icmpv6MsgType, msg_len: usize) {
-        assert!(msg_len >= 8 && buf.remaining() == 0);
-
         buf.move_back(msg_len);
         buf.chunk_mut()[0] = msg_type.into();
         (&mut buf.chunk_mut()[1..msg_len]).fill(0);
@@ -274,6 +272,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_dst_unreachable(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::DST_UNREACHABLE, msg_len);
         Icmpv6MsgGeneric {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -282,6 +282,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_pkt_too_big(buf: &mut T, msg_len: usize) -> Icmpv6MsgMtu<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::PKT_TOO_BIG, msg_len);
         Icmpv6MsgMtu {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -290,6 +292,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_time_exceed(buf: &mut T, msg_len: usize) -> Icmpv6MsgGeneric<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::TIME_EXCEED, msg_len);
         Icmpv6MsgGeneric {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -298,6 +302,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_param_problem(buf: &mut T, msg_len: usize) -> Icmpv6MsgPtr<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::PARAM_PROBLEM, msg_len);
         Icmpv6MsgPtr {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -306,6 +312,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_echo_request(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::ECHO_REQUEST, msg_len);
         Icmpv6MsgEcho {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -314,6 +322,8 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_echo_reply(buf: &mut T, msg_len: usize) -> Icmpv6MsgEcho<&mut [u8]> {
+        assert!(msg_len >= 8 && buf.remaining() == 0);
+
         Self::prepend_msg(buf, Icmpv6MsgType::ECHO_REPLY, msg_len);
         Icmpv6MsgEcho {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -325,7 +335,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
         buf: &mut T,
         msg_len: usize,
     ) -> NdpMsgRouterSolicit<&mut [u8]> {
-        assert!(msg_len >= 8 && msg_len % 8 == 0);
+        assert!(msg_len >= 8 && msg_len % 8 == 0 && buf.remaining() == 0);
         Self::prepend_msg(buf, Icmpv6MsgType::NDP_ROUTER_SOLICIT, msg_len);
         NdpMsgRouterSolicit {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -334,7 +344,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_ndp_router_adv(buf: &mut T, msg_len: usize) -> NdpMsgRouterAdv<&mut [u8]> {
-        assert!(msg_len >= 16 && msg_len % 8 == 0);
+        assert!(msg_len >= 16 && msg_len % 8 == 0 && buf.remaining() == 0);
         Self::prepend_msg(buf, Icmpv6MsgType::NDP_ROUTER_ADV, msg_len);
         NdpMsgRouterAdv {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -346,7 +356,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
         buf: &mut T,
         msg_len: usize,
     ) -> NdpMsgNeighborSolicit<&mut [u8]> {
-        assert!(msg_len >= 24 && msg_len % 8 == 0);
+        assert!(msg_len >= 24 && msg_len % 8 == 0 && buf.remaining() == 0);
         Self::prepend_msg(buf, Icmpv6MsgType::NDP_NEIGHBOR_SOLICIT, msg_len);
         NdpMsgNeighborSolicit {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -358,7 +368,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
         buf: &mut T,
         msg_len: usize,
     ) -> NdpMsgNeighborAdv<&mut [u8]> {
-        assert!(msg_len >= 24 && msg_len % 8 == 0);
+        assert!(msg_len >= 24 && msg_len % 8 == 0 && buf.remaining() == 0);
         Self::prepend_msg(buf, Icmpv6MsgType::NDP_NEIGHBOR_ADV, msg_len);
         NdpMsgNeighborAdv {
             buf: &mut buf.chunk_mut()[..msg_len],
@@ -367,7 +377,7 @@ impl<T: PktMut> Icmpv6Packet<T> {
 
     #[inline]
     pub fn prepend_msg_ndp_redirected(buf: &mut T, msg_len: usize) -> NdpMsgRedirect<&mut [u8]> {
-        assert!(msg_len >= 40 && msg_len % 8 == 0);
+        assert!(msg_len >= 40 && msg_len % 8 == 0 && buf.remaining() == 0);
         Self::prepend_msg(buf, Icmpv6MsgType::NDP_REDIRECT, msg_len);
         NdpMsgRedirect {
             buf: &mut buf.chunk_mut()[..msg_len],
