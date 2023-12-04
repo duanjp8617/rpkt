@@ -50,33 +50,25 @@ impl<T: AsRef<[u8]>> ArpHeader<T> {
     }
 
     #[inline]
-    fn hardware_type(&self) -> Hardware {
+    pub fn hardware_type(&self) -> Hardware {
         let data = htype(self.buf.as_ref());
         NetworkEndian::read_u16(data).into()
     }
 
     #[inline]
-    fn protocol_type(&self) -> EtherType {
+    pub fn protocol_type(&self) -> EtherType {
         let data = ptype(self.buf.as_ref());
         NetworkEndian::read_u16(data).into()
     }
 
     #[inline]
-    fn hardware_len(&self) -> u8 {
+    pub fn hardware_len(&self) -> u8 {
         *hlen(self.buf.as_ref())
     }
 
     #[inline]
-    fn protocol_len(&self) -> u8 {
+    pub fn protocol_len(&self) -> u8 {
         *plen(self.buf.as_ref())
-    }
-
-    #[inline]
-    pub fn check_arp_format(&self) -> bool {
-        self.hardware_type() == Hardware::ETHERNET
-            && self.protocol_type() == EtherType::IPV4
-            && self.hardware_len() == 6
-            && self.protocol_len() == 4
     }
 
     #[inline]
@@ -108,34 +100,25 @@ impl<T: AsRef<[u8]>> ArpHeader<T> {
 
 impl<T: AsMut<[u8]>> ArpHeader<T> {
     #[inline]
-    fn set_hardware_type(&mut self, value: Hardware) {
+    pub fn set_hardware_type(&mut self, value: Hardware) {
         let data = htype_mut(self.buf.as_mut());
         NetworkEndian::write_u16(data, value.into())
     }
 
     #[inline]
-    fn set_protocol_type(&mut self, value: EtherType) {
+    pub fn set_protocol_type(&mut self, value: EtherType) {
         let data = ptype_mut(self.buf.as_mut());
         NetworkEndian::write_u16(data, value.into())
     }
 
     #[inline]
-    fn set_hardware_len(&mut self, value: u8) {
+    pub fn set_hardware_len(&mut self, value: u8) {
         *hlen_mut(self.buf.as_mut()) = value;
     }
 
     #[inline]
-    fn set_protocol_len(&mut self, value: u8) {
+    pub fn set_protocol_len(&mut self, value: u8) {
         *plen_mut(self.buf.as_mut()) = value;
-    }
-
-    #[inline]
-    pub fn adjust_arp_format(&mut self) {
-        self.set_hardware_type(Hardware::ETHERNET);
-        self.set_protocol_type(EtherType::IPV4);
-
-        self.set_hardware_len(6);
-        self.set_protocol_len(4);
     }
 
     #[inline]

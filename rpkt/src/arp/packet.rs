@@ -1,20 +1,25 @@
 use bytes::Buf;
 
+use crate::ether::EtherType;
 use crate::PktMut;
 
-use super::{sha, spa, tha, tpa, ArpHeader, ARP_HEADER_LEN};
-
-use super::Operation;
+use super::{sha, spa, tha, tpa, ArpHeader, Hardware, Operation, ARP_HEADER_LEN};
 
 packet_base! {
     pub struct ArpPacket: ArpHeader {
         header_len: ARP_HEADER_LEN,
         get_methods: [
-            (check_arp_format, bool),
+            (hardware_type, Hardware),
+            (protocol_type, EtherType),
+            (hardware_len, u8),
+            (protocol_len, u8),
             (operation, Operation),
         ],
         set_methods: [
-            (adjust_arp_format),
+            (set_hardware_type, value: Hardware),
+            (set_protocol_type, value: EtherType),
+            (set_hardware_len, value: u8),
+            (set_protocol_len, value: u8),
             (set_operation, value: Operation),
             (set_sender_hardware_addr, value: &[u8]),
             (set_sender_protocol_addr, value: &[u8]),
@@ -59,7 +64,10 @@ impl<T: Buf> ArpPacket<T> {
 impl<T: PktMut> ArpPacket<T> {
     #[inline]
     pub fn prepend_header<HT: AsRef<[u8]>>(mut buf: T, header: &ArpHeader<HT>) -> ArpPacket<T> {
-        assert!(buf.chunk_headroom() >= ARP_HEADER_LEN);
+        assert!(
+            buf.chunk_headroom() >= ARP_HEADER_LEN,
+            "fail to prepend the arp header, please check argument formats"
+        );
         buf.move_back(ARP_HEADER_LEN);
 
         let data = &mut buf.chunk_mut()[0..ARP_HEADER_LEN];
@@ -72,7 +80,6 @@ impl<T: PktMut> ArpPacket<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arp::ARP_HEADER_TEMPLATE;
     use crate::ether::*;
     use crate::ipv4::*;
     use crate::PktMut;
@@ -96,7 +103,10 @@ mod tests {
         assert_eq!(pres.is_ok(), true);
         let arppkt = pres.unwrap();
 
-        assert_eq!(arppkt.check_arp_format(), true);
+        assert_eq!(arppkt.hardware_type(), Hardware::ETHERNET);
+        assert_eq!(arppkt.protocol_type(), EtherType::IPV4);
+        assert_eq!(arppkt.hardware_len(), 6);
+        assert_eq!(arppkt.protocol_len(), 4);
         assert_eq!(arppkt.operation(), Operation::REQUEST);
         assert_eq!(
             MacAddr::from_bytes(arppkt.sender_hardware_addr()),
@@ -125,7 +135,11 @@ mod tests {
         buf.advance(ETHER_HEADER_LEN + ARP_HEADER_LEN);
         assert_eq!(buf.chunk_headroom(), ETHER_HEADER_LEN + ARP_HEADER_LEN);
 
-        let mut arppkt = ArpPacket::prepend_header(buf, &ARP_HEADER_TEMPLATE);
+        let mut arppkt = ArpPacket::prepend_header(buf, &ArpHeader::new_unchecked([0xff; 30]));
+        arppkt.set_hardware_type(Hardware::ETHERNET);
+        arppkt.set_protocol_type(EtherType::IPV4);
+        arppkt.set_hardware_len(6);
+        arppkt.set_protocol_len(4);
         arppkt.set_operation(Operation::REQUEST);
         arppkt.set_sender_hardware_addr(MacAddr([0xc4, 0x01, 0x32, 0x58, 0x00, 0x00]).as_bytes());
         arppkt.set_sender_protocol_addr(Ipv4Addr([10, 0, 0, 1]).as_bytes());
