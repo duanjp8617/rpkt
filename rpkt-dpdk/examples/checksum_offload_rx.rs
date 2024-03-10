@@ -37,10 +37,10 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
-    assert!(res == true);
+    assert_eq!(res, true);
 
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();

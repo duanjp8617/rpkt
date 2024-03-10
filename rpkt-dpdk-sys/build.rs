@@ -27,7 +27,7 @@ fn build_dpdk_ffi() {
         .args(&["--cflags", "libdpdk"])
         .output()
         .unwrap();
-    assert!(output.status.success() == true);
+    assert_eq!(output.status.success(), true);
     let cflags = String::from_utf8(output.stdout).unwrap();
 
     // Compile the csrc/impl.c file into a static library.
@@ -98,7 +98,7 @@ fn build_dpdk_ffi() {
         .args(&["--libs", "--static", "libdpdk"])
         .output()
         .unwrap();
-    assert!(output.status.success() == true);
+    assert_eq!(output.status.success(), true);
     let ldflags = String::from_utf8(output.stdout).unwrap();
     for ldflag in ldflags.trim().split(' ') {
         if ldflag.starts_with("-L") {

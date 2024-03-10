@@ -76,10 +76,10 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
-    assert!(res == true);
+    assert_eq!(res, true);
 
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();
@@ -134,7 +134,7 @@ fn entry_func() {
                                         ethpkt.set_src_addr(wire::EthernetAddress(SMAC));
 
                                         mbuf.set_tx_offload(tx_of_flag);
-                                        mbuf.set_l2_len(14 as u64);
+                                        mbuf.set_l2_len(14u64);
                                         mbuf.set_l3_len(ip_hdr_len as u64);
                                     }
                                 }

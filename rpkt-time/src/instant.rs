@@ -10,7 +10,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-/// A measurement of a monotonically nondecreasing clock. Similar to
+/// A measurement of a monotonically non-decreasing clock. Similar to
 /// [`std::time::Instant`](std::time::Instant) but is faster and more
 /// accurate with stable TSC.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -52,7 +52,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// Previously we panicked if `earlier` was later than `self`. Currently this method saturates
+    /// Previously we panicked if `earlier` was later than `self`. Currently, this method saturates
     /// to follow the behavior of the standard library. Future versions may reintroduce the panic
     /// in some circumstances.
     ///
@@ -167,11 +167,11 @@ impl Instant {
             .map(Instant)
     }
 
-    /// Convert interal clocking counter into a UNIX timestamp represented as the
-    /// nanoseconds elapsed from [UNIX_EPOCH](std::time::UNIX_EPOCH).
+    /// Convert internal clocking counter into a UNIX timestamp represented as the
+    /// nanoseconds elapsed from [UNIX_EPOCH](UNIX_EPOCH).
     ///
-    /// [`Anchor`](crate::Anchor) contains the necessary calibration data for conversion.
-    /// Typically, initializing an [`Anchor`](crate::Anchor) takes about 50 nano seconds, so
+    /// [`Anchor`](Anchor) contains the necessary calibration data for conversion.
+    /// Typically, initializing an [`Anchor`](Anchor) takes about 50 nanoseconds, so
     /// try to reuse it for a batch of `Instant`.
     ///
     /// # Examples
@@ -239,7 +239,7 @@ impl Sub<Instant> for Instant {
     ///
     /// # Panics
     ///
-    /// Previously we panicked if `other` was later than `self`. Currently this method saturates
+    /// Previously we panicked if `other` was later than `self`. Currently, this method saturates
     /// to follow the behavior of the standard library. Future versions may reintroduce the panic
     /// in some circumstances.
     #[inline]
@@ -256,7 +256,7 @@ impl std::fmt::Debug for Instant {
 
 /// An anchor which can be used to convert internal clocking counter into system timestamp.
 ///
-/// *[See also the `Instant::as_unix_nanos()`](crate::Instant::as_unix_nanos).*
+/// *[See also the `Instant::as_unix_nanos()`](Instant::as_unix_nanos).*
 #[derive(Copy, Clone)]
 pub struct Anchor {
     unix_time_ns: u64,
