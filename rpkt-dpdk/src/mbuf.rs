@@ -1,6 +1,6 @@
 use std::ptr::NonNull;
 
-use run_dpdk_sys as ffi;
+use rpkt_dpdk_sys as ffi;
 
 use crate::offload::{MbufRxOffload, MbufTxOffload};
 

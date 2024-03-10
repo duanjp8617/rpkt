@@ -15,8 +15,8 @@ license.workspace = true
 [dependencies]
 byteorder = "1"
 bytes = "1"
-smoltcp = "0.8"
+smoltcp = "0.8.2"
 
 [dev-dependencies]
-smoltcp = "0.8"
-pnet = "0.31.0"
+smoltcp = "0.8.2"
+pnet = "0.34.0"

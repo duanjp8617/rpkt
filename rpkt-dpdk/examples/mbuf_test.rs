@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::*;
+use rpkt_dpdk::*;
 
 const BATCH_SIZE: usize = 128;
 
@@ -50,7 +50,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
     }
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        run_dpdk::Lcore::current().unwrap().lcore_id
+        rpkt_dpdk::Lcore::current().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
@@ -73,7 +73,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                run_dpdk::Lcore::current().unwrap().lcore_id
+                rpkt_dpdk::Lcore::current().unwrap().lcore_id
             );
         }));
     }
@@ -125,7 +125,7 @@ fn cache_enabled_single_alloc(base_idx: u32, nb_threads: u32) {
 
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        run_dpdk::Lcore::current().unwrap().lcore_id
+        rpkt_dpdk::Lcore::current().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
@@ -146,7 +146,7 @@ fn cache_enabled_single_alloc(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                run_dpdk::Lcore::current().unwrap().lcore_id
+                rpkt_dpdk::Lcore::current().unwrap().lcore_id
             );
         }));
     }
@@ -192,7 +192,7 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
     }
     println!(
         "lcore {}: all the mbufs from current mempool has been set with test data 99",
-        run_dpdk::Lcore::current().unwrap().lcore_id
+        rpkt_dpdk::Lcore::current().unwrap().lcore_id
     );
     drop(v);
 
@@ -216,7 +216,7 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are set with test data 99",
-                run_dpdk::Lcore::current().unwrap().lcore_id
+                rpkt_dpdk::Lcore::current().unwrap().lcore_id
             );
         }));
     }

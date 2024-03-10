@@ -2,13 +2,13 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::tcp::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::Cursor;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::tcp::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::Cursor;
 
 // test pmd test command:
 // sudo ./dpdk-testpmd -l 0-16 -n 4 -- -i  --portlist=0 --forward-mode=rxonly --txq=16 --rxq=16 --nb-cores=16

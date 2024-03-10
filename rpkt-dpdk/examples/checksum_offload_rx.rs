@@ -4,12 +4,12 @@ use arrayvec::ArrayVec;
 use ctrlc;
 
 use rpkt_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::tcp::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::Cursor;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::tcp::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::Cursor;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 0;

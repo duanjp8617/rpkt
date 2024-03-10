@@ -1,6 +1,6 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
+use rpkt_dpdk::*;
 use smoltcp::wire;
 
 static FRAME_BYTES: [u8; 110] = [

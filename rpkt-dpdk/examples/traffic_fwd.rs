@@ -6,8 +6,8 @@ use ctrlc;
 use smoltcp::wire;
 
 use once_cell::sync::OnceCell;
-use run_dpdk::offload::MbufTxOffload;
-use run_dpdk::*;
+use rpkt_dpdk::offload::MbufTxOffload;
+use rpkt_dpdk::*;
 
 // the following result is acuiqred without setting ip checksum value
 // nbcore      1         2        3        4          14       18

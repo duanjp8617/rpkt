@@ -35,9 +35,9 @@ mod tsc;
 ///
 /// # Examples
 /// ```
-/// use rdtsc_time;
+/// use rpkt_time;
 ///
-/// assert!(rdtsc_time::tsc_stable());
+/// assert!(rpkt_time::tsc_stable());
 /// ```
 pub fn tsc_stable() -> bool {
     tsc::tsc_stable()
@@ -51,9 +51,9 @@ pub fn tsc_stable() -> bool {
 /// 
 /// # Examples
 /// ```
-/// use rdtsc_time::Instant;
+/// use rpkt_time::Instant;
 ///
-/// let ddl = Instant::now().raw().checked_add(rdtsc_time::cycles_per_sec()).unwrap();
+/// let ddl = Instant::now().raw().checked_add(rpkt_time::cycles_per_sec()).unwrap();
 /// while Instant::now().raw() <= ddl {}
 ///
 /// println!("1s has passed");

@@ -2,7 +2,7 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::*;
+use rpkt_dpdk::*;
 use smoltcp::wire;
 
 const BATCHSIZE: usize = 32;

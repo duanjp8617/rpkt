@@ -1,6 +1,6 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
+use rpkt_dpdk::*;
 use smoltcp::wire;
 
 fn batched_build(batch: &mut ArrayVec<Mbuf, 32>, payload_len: usize) {

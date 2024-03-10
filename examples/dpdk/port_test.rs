@@ -1,8 +1,8 @@
 // use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
-use run_packet::ether::MacAddr;
-use run_dpdk::*;
+use rpkt::ether::MacAddr;
+use rpkt_dpdk::*;
 // use ctrlc;
 
 fn main() {

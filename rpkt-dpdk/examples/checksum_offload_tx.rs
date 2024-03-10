@@ -6,12 +6,12 @@ use ctrlc;
 
 use rpkt_dpdk::offload::MbufTxOffload;
 use rpkt_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::tcp::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::CursorMut;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::tcp::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::CursorMut;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 0;
@@ -157,7 +157,7 @@ fn build_tcp_manual(mbuf: &mut Mbuf) {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -207,7 +207,7 @@ fn build_tcp_offload(mbuf: &mut Mbuf) {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );

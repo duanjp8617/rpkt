@@ -5,7 +5,7 @@ use std::ptr::NonNull;
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
-use run_dpdk_sys as ffi;
+use rpkt_dpdk_sys as ffi;
 
 use crate::error::*;
 use crate::Mbuf;

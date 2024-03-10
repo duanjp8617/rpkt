@@ -4,7 +4,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard};
 
 use once_cell::sync::OnceCell;
-use run_dpdk_sys as ffi;
+use rpkt_dpdk_sys as ffi;
 
 use super::error::*;
 use super::lcore::{self, *};

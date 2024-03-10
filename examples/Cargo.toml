@@ -5,13 +5,13 @@ publish = false
 edition = "2018"
 
 [dev-dependencies]
-criterion = "0.3"
-smoltcp = "0.8"
+criterion = "0.5.1"
+smoltcp = "0.8.2"
 arrayvec = "0.7.2"
 ctrlc = { version = "3.0", features = ["termination"]}
-run-time = {path = "../rpkt-time", package = "rpkt-time"}
-run-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk"}
-run-packet = {path = "../rpkt", package = "rpkt"}
+rpkt-time = {path = "../rpkt-time", package = "rpkt-time"}
+rpkt-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk"}
+rpkt = {path = "../rpkt", package = "rpkt"}
 
 
 #[[example]]
