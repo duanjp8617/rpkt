@@ -67,6 +67,8 @@ fn main() {
         &mut txq_conf,
     );
 
+    // Change this value to be half of available cores
+    // TODO: Make it configurable
     let start_core = 33;
     let socket_id = service().port_info(port_id).unwrap().socket_id;
     service()
@@ -74,7 +76,7 @@ fn main() {
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(lcore.socket_id == socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));
@@ -96,7 +98,7 @@ fn main() {
 
         let jh = std::thread::spawn(move || {
             service().lcore_bind(i + start_core).unwrap();
-            let mut rxq = service().rx_queue(port_id as u16, i as u16).unwrap();
+            let mut rxq = service().rx_queue(port_id, i as u16).unwrap();
             let mut batch = ArrayVec::<_, 64>::new();
 
             let mut total_pkts = 0;
@@ -154,7 +156,7 @@ fn main() {
                     bps_stats[qid].load(Ordering::SeqCst) as f64 * 8.0 / 1000000000.0,
                 );
             }
-            println!("");
+            println!();
         }
     }
 

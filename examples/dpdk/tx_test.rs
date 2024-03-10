@@ -90,7 +90,7 @@ fn main() {
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(lcore.socket_id == socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));

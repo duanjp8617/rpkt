@@ -12,8 +12,8 @@ fn main() {
         println!("lcore {} on socket {}", lcore.lcore_id, lcore.socket_id);
     }
 
-    let port_infos = service().port_infos().unwrap();
-    for port_info in port_infos {
+    for port_num in 0..service().port_num().unwrap() {
+        let port_info = service().port_info(port_num).unwrap();
         println!(
             "port {} with driver {} on socket {} with mac addr {}, started {}",
             port_info.port_id,
@@ -64,6 +64,7 @@ fn main() {
     }
 
     let mut mpconf = MempoolConf::default();
+    // TODO: Make it configurable
     mpconf.socket_id = 1;
     service().mempool_create("wtf", &mpconf).unwrap();
     println!("mempool wtf created");
@@ -72,8 +73,15 @@ fn main() {
     let mut rxq_confs = Vec::new();
     let mut txq_confs = Vec::new();
     for _ in 0..4 {
-        rxq_confs.push(RxQueueConf::new(128, 0, "wtf"));
-        txq_confs.push(TxQueueConf::new(128, 0));
+        let mut rx_queue = RxQueueConf::new();
+        rx_queue.set_nb_rx_desc(128);
+        rx_queue.set_socket_id(0);
+        rx_queue.set_mp_name("wtf");
+        rxq_confs.push(rx_queue);
+        let mut tx_queue = TxQueueConf::new();
+        tx_queue.set_nb_tx_desc(128);
+        tx_queue.set_socket_id(0);
+        txq_confs.push(tx_queue);
     }
     println!("create confs");
 

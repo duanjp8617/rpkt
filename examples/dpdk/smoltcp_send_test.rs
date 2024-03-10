@@ -18,8 +18,15 @@ fn main() {
     let mut rxq_confs = Vec::new();
     let mut txq_confs = Vec::new();
     for _ in 0..nb_qs {
-        rxq_confs.push(RxQueueConf::new(1024, 0, "wtf"));
-        txq_confs.push(TxQueueConf::new(1024, 0));
+        let mut rx_queue = RxQueueConf::new();
+        rx_queue.set_nb_rx_desc(1024);
+        rx_queue.set_socket_id(0);
+        rx_queue.set_mp_name("wtf");
+        rxq_confs.push(rx_queue);
+        let mut tx_queue = TxQueueConf::new();
+        tx_queue.set_nb_tx_desc(1024);
+        tx_queue.set_socket_id(0);
+        txq_confs.push(tx_queue);
     }
 
     service()
@@ -87,10 +94,10 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut old_stats = service().port_stats(0).unwrap();
+    let mut old_stats = service().stats_query(0).unwrap().query();
     while run_curr.load(Ordering::Acquire) {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let curr_stats = service().port_stats(0).unwrap();
+        let curr_stats = service().stats_query(0).unwrap().query();
         println!(
             "pkts per sec: {}, bytes per sec: {}, errors per sec: {}",
             curr_stats.opackets() - old_stats.opackets(),

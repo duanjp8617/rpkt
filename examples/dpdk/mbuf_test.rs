@@ -19,7 +19,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
 
     let mp = service().mempool("wtf").unwrap();
     let mut batch = ArrayVec::<_, 128>::new();
-    assert!(nb_mbufs % 128 == 0);
+    assert_eq!(nb_mbufs % 128, 0);
     // On the current rte thread, try to alloc `nb_mbufs / 128` batches, and
     // fill in test data.
     for _ in 0..(nb_mbufs / 128) {
@@ -37,13 +37,13 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
         mp.fill_batch(&mut batch);
         for mbuf in batch.iter_mut() {
             unsafe { mbuf.extend(1) };
-            assert!(mbuf.data()[0] == 99);
+            assert_eq!(mbuf.data()[0], 99);
         }
         batch.drain(..);
     }
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        rpkt_dpdk::Lcore::current().unwrap().lcore_id
+        Lcore::current().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
@@ -58,13 +58,13 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
                 mp.fill_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
                     unsafe { mbuf.extend(1) };
-                    assert!(mbuf.data()[0] != 99);
+                    assert_ne!(mbuf.data()[0], 99);
                 }
                 batch.drain(..);
             }
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                rpkt_dpdk::Lcore::current().unwrap().lcore_id
+                Lcore::current().unwrap().lcore_id
             );
         }));
     }
@@ -109,11 +109,11 @@ fn cache_enabled_single(base_idx: u32, nb_threads: u32) {
         unsafe { mbuf.extend(1) };
 
         let data = mbuf.data();
-        assert!(data[0] == 99);
+        assert_eq!(data[0], 99);
     }
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        rpkt_dpdk::Lcore::current().unwrap().lcore_id
+        Lcore::current().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
@@ -128,11 +128,11 @@ fn cache_enabled_single(base_idx: u32, nb_threads: u32) {
                 unsafe { mbuf.extend(1) };
 
                 let data = mbuf.data();
-                assert!(data[0] != 99);
+                assert_ne!(data[0], 99);
             }
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                rpkt_dpdk::Lcore::current().unwrap().lcore_id
+                Lcore::current().unwrap().lcore_id
             );
         }));
     }
@@ -177,7 +177,7 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
     }
     println!(
         "lcore {}: all the mbufs from current mempool has been set with test data 99",
-        rpkt_dpdk::Lcore::current().unwrap().lcore_id
+        Lcore::current().unwrap().lcore_id
     );
     drop(v);
 
@@ -194,13 +194,13 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
                 mp.fill_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
                     unsafe { mbuf.extend(1) };
-                    assert!(mbuf.data()[0] == 99);
+                    assert_eq!(mbuf.data()[0], 99);
                 }
                 Mempool::free_batch(&mut batch);
             }
             println!(
                 "lcore {}: all the mbufs from the local cache are set with test data 99",
-                rpkt_dpdk::Lcore::current().unwrap().lcore_id
+                Lcore::current().unwrap().lcore_id
             );
         }));
     }

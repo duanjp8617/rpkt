@@ -23,12 +23,12 @@ fn batched_l4(batch: &mut ArrayVec<Mbuf, 32>) {
         if let Ok(ethpkt) = EtherPacket::parse(buf) {
             if let Ok(ippkt) = Ipv4Packet::parse(ethpkt.cursor_payload()) {
                 if let Ok(udppkt) = UdpPacket::parse(ippkt.cursor_payload()) {
-                    assert!(ethpkt.ethertype() == EtherType::IPV4);
-                    assert!(ippkt.protocol() == IpProtocol::UDP);
-                    assert!(udppkt.source_port() == 60376);
-                    assert!(udppkt.dest_port() == 161);
-                    assert!(udppkt.packet_len() == 74);
-                    assert!(udppkt.checksum() == 0xbc86);
+                    assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
+                    assert_eq!(ippkt.protocol(), IpProtocol::UDP);
+                    assert_eq!(udppkt.source_port(), 60376);
+                    assert_eq!(udppkt.dest_port(), 161);
+                    assert_eq!(udppkt.packet_len(), 74);
+                    assert_eq!(udppkt.checksum(), 0xbc86);
                 } else {
                     panic!();
                 }

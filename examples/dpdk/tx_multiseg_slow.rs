@@ -139,7 +139,7 @@ fn build_tcp_manual(payload_len: usize, mp: &Mempool) -> Mbuf {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -194,7 +194,7 @@ fn build_tcp_offload(payload_len: usize, mp: &Mempool) -> Mbuf {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -233,8 +233,7 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = &service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     mpconf.socket_id = socket_id;
@@ -285,13 +284,13 @@ fn main() {
     );
 
     let start_core = 1;
-    let socket_id = service().port_infos().unwrap()[port_id as usize].socket_id;
+    let socket_id = service().port_info(port_id).unwrap().socket_id;
     service()
         .lcores()
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(lcore.socket_id == socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));
@@ -327,10 +326,10 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut old_stats = service().port_stats(port_id).unwrap();
+    let mut old_stats = service().stats_query(port_id).unwrap().query();
     while run_curr.load(Ordering::Acquire) {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let curr_stats = service().port_stats(port_id).unwrap();
+        let curr_stats = service().stats_query(port_id).unwrap().query();
         println!(
             "pkts per sec: {}, bytes per sec: {}, errors per sec: {}",
             curr_stats.opackets() - old_stats.opackets(),

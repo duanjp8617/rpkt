@@ -158,7 +158,7 @@ fn build_tcp_manual(mp: &Mempool) -> Mbuf {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -209,7 +209,7 @@ fn build_tcp_offload(mp: &Mempool) -> Mbuf {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );

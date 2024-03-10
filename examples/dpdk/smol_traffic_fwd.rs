@@ -17,8 +17,7 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = &service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     mpconf.socket_id = socket_id;
@@ -82,21 +81,15 @@ fn main() {
     );
 
     let start_core = 1;
-    let iport_socket_id = service().port_infos().unwrap()[iport_id as usize].socket_id;
-    let oport_socket_id = service().port_infos().unwrap()[oport_id as usize].socket_id;
+    let iport_socket_id = service().port_info(iport_id).unwrap().socket_id;
+    let oport_socket_id = service().port_info(oport_id).unwrap().socket_id;
     service()
         .lcores()
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(
-                lcore.socket_id == iport_socket_id,
-                "core with invalid socket id"
-            );
-            assert!(
-                lcore.socket_id == oport_socket_id,
-                "core with invalid socket id"
-            );
+            assert_eq!(lcore.socket_id, iport_socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, oport_socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));
@@ -159,10 +152,10 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut old_stats = service().port_stats(oport_id).unwrap();
+    let mut old_stats = service().stats_query(oport_id).unwrap().query();
     while run.load(Ordering::Acquire) {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let curr_stats = service().port_stats(oport_id).unwrap();
+        let curr_stats = service().stats_query(oport_id).unwrap().query();
         println!(
             "forwarded pkts: {} pps, {} Gbps, {} errors/s",
             curr_stats.opackets() - old_stats.opackets(),
