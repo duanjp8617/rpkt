@@ -5,6 +5,7 @@ members = [
   "rpkt-dpdk",
   "rpkt-time",
   "examples",
+  "benches",
 ]
 resolver = "2"
 
