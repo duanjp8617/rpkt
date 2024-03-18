@@ -1,11 +1,11 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::Cursor;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::Cursor;
 
 static FRAME_BYTES: [u8; 110] = [
     0x00, 0x0b, 0x86, 0x64, 0x8b, 0xa0, 0x00, 0x50, 0x56, 0xae, 0x76, 0xf5, 0x08, 0x00, 0x45, 0x00,
@@ -23,14 +23,14 @@ fn batched_l3(batch: &mut ArrayVec<Mbuf, 32>) {
         assert!(buf.chunk().len() >= 64);
 
         let ethpkt = EtherPacket::parse_unchecked(buf);
-        assert!(ethpkt.ethertype() == EtherType::IPV4);
+        assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
 
         let ippkt = Ipv4Packet::parse_unchecked(ethpkt.payload());
-        assert!(ippkt.protocol() == IpProtocol::UDP);
-        assert!(ippkt.source_ip() == Ipv4Addr([192, 168, 29, 58]));
-        assert!(ippkt.dest_ip() == Ipv4Addr([192, 168, 29, 160]));
-        assert!(ippkt.checksum() == 0x0000);
-        assert!(ippkt.ident() == 0x5c65);
+        assert_eq!(ippkt.protocol(), IpProtocol::UDP);
+        assert_eq!(ippkt.source_ip(), Ipv4Addr([192, 168, 29, 58]));
+        assert_eq!(ippkt.dest_ip(), Ipv4Addr([192, 168, 29, 160]));
+        assert_eq!(ippkt.checksum(), 0x0000);
+        assert_eq!(ippkt.ident(), 0x5c65);
     }
 }
 
@@ -40,16 +40,16 @@ fn batched_l4(batch: &mut ArrayVec<Mbuf, 32>) {
         // assert!(buf.chunk().len() >= 64);
 
         let ethpkt = EtherPacket::parse_unchecked(buf);
-        assert!(ethpkt.ethertype() == EtherType::IPV4);
+        assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
 
         let ippkt = Ipv4Packet::parse_unchecked(ethpkt.payload());
-        assert!(ippkt.protocol() == IpProtocol::UDP);
+        assert_eq!(ippkt.protocol(), IpProtocol::UDP);
 
         let udppkt = UdpPacket::parse_unchecked(ippkt.payload());
-        assert!(udppkt.source_port() == 60376);
-        assert!(udppkt.dest_port() == 161);
-        assert!(udppkt.packet_len() == 74);
-        assert!(udppkt.checksum() == 0xbc86);
+        assert_eq!(udppkt.source_port(), 60376);
+        assert_eq!(udppkt.dest_port(), 161);
+        assert_eq!(udppkt.packet_len(), 74);
+        assert_eq!(udppkt.checksum(), 0xbc86);
     }
 }
 
@@ -59,21 +59,21 @@ fn batched_app(batch: &mut ArrayVec<Mbuf, 32>) {
         // assert!(buf.chunk().len() >= 64);
 
         let ethpkt = EtherPacket::parse_unchecked(buf);
-        assert!(ethpkt.ethertype() == EtherType::IPV4);
+        assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
 
         let ippkt = Ipv4Packet::parse_unchecked(ethpkt.payload());
-        assert!(ippkt.protocol() == IpProtocol::UDP);
+        assert_eq!(ippkt.protocol(), IpProtocol::UDP);
 
         let udppkt = UdpPacket::parse_unchecked(ippkt.payload());
-        assert!(udppkt.source_port() == 60376);
-        assert!(udppkt.dest_port() == 161);
-        assert!(udppkt.packet_len() == 74);
+        assert_eq!(udppkt.source_port(), 60376);
+        assert_eq!(udppkt.dest_port(), 161);
+        assert_eq!(udppkt.packet_len(), 74);
 
         let payload = udppkt.payload();
 
         let mut b = [0; 66];
         (&mut b[..]).copy_from_slice(payload.chunk());
-        assert!(b[0..66] == FRAME_BYTES[42..108]);
+        assert_eq!(b[0..66], FRAME_BYTES[42..108]);
     }
 }
 

@@ -1,21 +1,21 @@
-/// This crate provides an alternative approach to the time crate of the stardard library.
+/// This crate provides an alternative approach to the time crate of the standard library.
 /// It relies on the tsc registers to get the current time instant in a faster and more accurate
-/// fasihon.
+/// fashion.
 ///
-/// Note that this library does has the following limitations:
+/// Note that this library does have the following limitations:
 ///
 /// 1. It only works on 32/64 bits Linux systems with stable tsc (see this blog post for more information
 /// about stable tsc: http://oliveryang.net/2015/09/pitfalls-of-TSC-usage/).
 ///
 /// 2. When this crate is loaded, it will check whether the system has stable tsc.
 /// If it does not detect tsc, it will report `false` through the `tsc_stable()` method.
-/// Any usage of this crate is strictly forbidended without stable tsc, as the APIs of this
-/// crate may report errorneous time result.
+/// Any usage of this crate is strictly forbidden without stable tsc, as the APIs of this
+/// crate may report erroneous time result.
 ///
 /// 3. When initializing this library, it may cause a panic if it fails to read the sysfs file or
 /// parse the file read result.
 ///
-/// Some of the code is taken from minstant library, but remove some unncessary
+/// Some of the code is taken from minstant library, but remove some unnecessary
 /// code path for performance.
 
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -35,25 +35,25 @@ mod tsc;
 ///
 /// # Examples
 /// ```
-/// use rdtsc_time;
+/// use rpkt_time;
 ///
-/// assert!(rdtsc_time::tsc_stable());
+/// assert!(rpkt_time::tsc_stable());
 /// ```
 pub fn tsc_stable() -> bool {
     tsc::tsc_stable()
 }
 
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-/// Return the number of CPU cycles of 1 second. It can be used to caclculate future tsc
+/// Return the number of CPU cycles of 1 second. It can be used to calculate future tsc
 /// counter value after a fixed time interval.
 /// 
 /// Note that this method may return 0 if it is not running on systems with stable tsc.
 /// 
 /// # Examples
 /// ```
-/// use rdtsc_time::Instant;
+/// use rpkt_time::Instant;
 ///
-/// let ddl = Instant::now().raw().checked_add(rdtsc_time::cycles_per_sec()).unwrap();
+/// let ddl = Instant::now().raw().checked_add(rpkt_time::cycles_per_sec()).unwrap();
 /// while Instant::now().raw() <= ddl {}
 ///
 /// println!("1s has passed");

@@ -1,10 +1,10 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::Buf;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::Buf;
 
 fn batched_build(batch: &mut ArrayVec<Mbuf, 32>, payload_len: usize) {
     for mut mbuf in batch.drain(..) {

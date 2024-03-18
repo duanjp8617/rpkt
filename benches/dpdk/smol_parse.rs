@@ -1,6 +1,6 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
+use rpkt_dpdk::*;
 use smoltcp::wire;
 
 static FRAME_BYTES: [u8; 110] = [
@@ -16,51 +16,51 @@ static FRAME_BYTES: [u8; 110] = [
 fn batched_l3(batch: &mut ArrayVec<Mbuf, 32>) {
     for mbuf in batch.iter_mut() {
         let ethpkt = wire::EthernetFrame::new_checked(mbuf.data()).unwrap();
-        assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
+        assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert!(ippkt.protocol() == wire::IpProtocol::Udp);
-        assert!(ippkt.src_addr() == wire::Ipv4Address([192, 168, 29, 58]));
-        assert!(ippkt.dst_addr() == wire::Ipv4Address([192, 168, 29, 160]));
-        assert!(ippkt.checksum() == 0x0000);
-        assert!(ippkt.ident() == 0x5c65);
+        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
+        assert_eq!(ippkt.src_addr(), wire::Ipv4Address([192, 168, 29, 58]));
+        assert_eq!(ippkt.dst_addr(), wire::Ipv4Address([192, 168, 29, 160]));
+        assert_eq!(ippkt.checksum(), 0x0000);
+        assert_eq!(ippkt.ident(), 0x5c65);
     }
 }
 
 fn batched_l4(batch: &mut ArrayVec<Mbuf, 32>) {
     for mbuf in batch.iter_mut() {
         let ethpkt = wire::EthernetFrame::new_checked(mbuf.data()).unwrap();
-        assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
+        assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert!(ippkt.protocol() == wire::IpProtocol::Udp);
+        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
 
         let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
-        assert!(udppkt.src_port() == 60376);
-        assert!(udppkt.dst_port() == 161);
-        assert!(udppkt.len() == 74);
-        assert!(udppkt.checksum() == 0xbc86);
+        assert_eq!(udppkt.src_port(), 60376);
+        assert_eq!(udppkt.dst_port(), 161);
+        assert_eq!(udppkt.len(), 74);
+        assert_eq!(udppkt.checksum(), 0xbc86);
     }
 }
 
 fn batched_app(batch: &mut ArrayVec<Mbuf, 32>) {
     for mbuf in batch.iter_mut() {
         let ethpkt = wire::EthernetFrame::new_checked(mbuf.data()).unwrap();
-        assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
+        assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert!(ippkt.protocol() == wire::IpProtocol::Udp);
+        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
 
         let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
-        assert!(udppkt.src_port() == 60376);
-        assert!(udppkt.dst_port() == 161);
-        assert!(udppkt.len() == 74);
+        assert_eq!(udppkt.src_port(), 60376);
+        assert_eq!(udppkt.dst_port(), 161);
+        assert_eq!(udppkt.len(), 74);
 
         let payload = udppkt.payload();
 
         let mut b = [0; 66];
         (&mut b[..]).copy_from_slice(payload);
-        assert!(b[0..66] == FRAME_BYTES[42..108]);
+        assert_eq!(b[0..66], FRAME_BYTES[42..108]);
     }
 }
 

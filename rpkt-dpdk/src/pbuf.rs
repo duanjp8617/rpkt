@@ -1,7 +1,7 @@
 use std::ptr::NonNull;
 
-use run_dpdk_sys as ffi;
-use run_packet::{Buf, PktBuf, PktMut};
+use rpkt_dpdk_sys as ffi;
+use rpkt::{Buf, PktBuf, PktMut};
 
 use crate::multiseg::{data_addr, Mbuf};
 
@@ -155,10 +155,10 @@ impl<T: AsMut<Mbuf> + AsRef<Mbuf>> PktMut for Pbuf<T> {
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use run_packet::ether::*;
-    use run_packet::ipv4::*;
-    use run_packet::udp::*;
-    use run_packet::*;
+    use rpkt::ether::*;
+    use rpkt::ipv4::*;
+    use rpkt::udp::*;
+    use rpkt::*;
 
     #[test]
     fn read_non_contiguous_packet_data() {

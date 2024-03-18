@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ptr::{null_mut, NonNull};
 
-use run_dpdk_sys as ffi;
+use rpkt_dpdk_sys as ffi;
 
 use crate::offload::{MbufRxOffload, MbufTxOffload};
 use crate::Mempool;

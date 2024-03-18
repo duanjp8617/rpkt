@@ -2,14 +2,14 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::offload::*;
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::tcp::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::CursorMut;
+use rpkt_dpdk::offload::*;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::tcp::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::CursorMut;
 
 static FRAME_BYTES: [u8; 200] = [
     0x00, 0x26, 0x62, 0x2f, 0x47, 0x87, 0x00, 0x1d, 0x60, 0xb3, 0x01, 0x84, 0x08, 0x00, 0x45, 0x00,
@@ -124,7 +124,7 @@ fn build_tcp_manual<'a>(mbuf: &mut Mbuf, payload_len: usize) {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -173,7 +173,7 @@ fn build_tcp_offload<'a>(mbuf: &mut Mbuf, payload_len: usize) {
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
     tcppkt.set_urgent_ptr(0);
-    tcppkt.set_option_bytes(
+    tcppkt.option_bytes_mut().copy_from_slice(
         &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
             ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
@@ -210,8 +210,7 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = &service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     mpconf.socket_id = socket_id;
@@ -260,7 +259,7 @@ fn main() {
     );
 
     let start_core = 1;
-    let socket_id = service().port_infos().unwrap()[port_id as usize].socket_id;
+    let socket_id = service().port_info(port_id).unwrap().socket_id;
     service()
         .lcores()
         .iter()
@@ -303,10 +302,10 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut old_stats = service().port_stats(port_id).unwrap();
+    let mut old_stats = service().stats_query(port_id).unwrap().query();
     while run_curr.load(Ordering::Acquire) {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        let curr_stats = service().port_stats(port_id).unwrap();
+        let curr_stats = service().stats_query(port_id).unwrap().query();
         println!(
             "pkts per sec: {}, bytes per sec: {}, errors per sec: {}",
             curr_stats.opackets() - old_stats.opackets(),

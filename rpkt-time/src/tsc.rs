@@ -86,7 +86,7 @@ fn measure_fraq(precision: f64, repeat: u64) -> Option<(f64, u64, Instant, u64)>
         if diff / (tsc2 - tsc1) as f64 <= precision {
             // we get a stable measurement
             let nanos_per_cycle = (t2 - t1).as_nanos() as f64 / (tsc2 - tsc1) as f64;
-            let cycles_per_sec = (1_000_000_000 as f64 / nanos_per_cycle) as u64;
+            let cycles_per_sec = (1_000_000_000f64 / nanos_per_cycle) as u64;
             return Some((nanos_per_cycle, cycles_per_sec, t2, tsc2));
         }
 
@@ -121,7 +121,7 @@ unsafe fn module_init() {
         Some(measure_fraq(PRECISION, 50).unwrap())
     } else {
         // If we can't determine whether tsc is stable from the sysfs, we will
-        // perform a manual check by meausing the CPU fraquency at each core and comparing
+        // perform a manual check by measuring the CPU frequency at each core and comparing
         // the measurement results to see whether they are all synchronized.
         measure_fraq(PRECISION, 50).and_then(
             |(nanos_per_cycle, cycles_per_sec, ref_time, ref_tsc)| {

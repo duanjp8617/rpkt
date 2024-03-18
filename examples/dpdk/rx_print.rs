@@ -2,13 +2,13 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::tcp::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::Cursor;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::tcp::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::Cursor;
 
 // test pmd test command:
 // sudo ./dpdk-testpmd -l 0-16 -n 4 -- -i  --portlist=0 --forward-mode=rxonly --txq=16 --rxq=16 --nb-cores=16
@@ -25,14 +25,13 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     mpconf.socket_id = socket_id;
     service().mempool_create(mp_name, mpconf).unwrap();
 
-    let pconf = PortConf::from_port_info(port_info).unwrap();
+    let pconf = PortConf::from_port_info(&port_info).unwrap();
 
     rxq_conf.mp_name = mp_name.to_string();
     rxq_conf.socket_id = socket_id;
@@ -74,13 +73,13 @@ fn main() {
     );
 
     let start_core = 1;
-    let socket_id = service().port_infos().unwrap()[port_id as usize].socket_id;
+    let socket_id = service().port_info(port_id).unwrap().socket_id;
     service()
         .lcores()
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(lcore.socket_id == socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));
@@ -96,7 +95,7 @@ fn main() {
 
         let jh = std::thread::spawn(move || {
             service().lcore_bind(i + 1).unwrap();
-            let mut rxq = service().rx_queue(port_id as u16, i as u16).unwrap();
+            let mut rxq = service().rx_queue(port_id, i as u16).unwrap();
             let mut batch = ArrayVec::<_, 32>::new();
 
             while run.load(Ordering::Acquire) {

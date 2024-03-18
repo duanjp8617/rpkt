@@ -2,13 +2,13 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::offload::MbufTxOffload;
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::CursorMut;
+use rpkt_dpdk::offload::MbufTxOffload;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::CursorMut;
 
 // use packet::ether::;
 
@@ -90,7 +90,7 @@ fn main() {
         .iter()
         .find(|lcore| lcore.lcore_id >= start_core && lcore.lcore_id < start_core + nb_qs)
         .map(|lcore| {
-            assert!(lcore.socket_id == socket_id, "core with invalid socket id");
+            assert_eq!(lcore.socket_id, socket_id, "core with invalid socket id");
         });
 
     let run = Arc::new(AtomicBool::new(true));

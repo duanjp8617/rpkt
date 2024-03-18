@@ -218,7 +218,7 @@ impl<T: AsMut<[u8]>> Ipv4Header<T> {
 
     #[inline]
     pub fn set_frag_offset(&mut self, value: u16) {
-        assert!(value & 0x07 == 0, "invalid fragment offset: {}", value);
+        assert_eq!(value & 0x07, 0, "invalid fragment offset: {}", value);
         let data = flag_fragoff_mut(self.buf.as_mut());
         let raw = (NetworkEndian::read_u16(data) & 0xe000) | (value >> 3);
         NetworkEndian::write_u16(data, raw);

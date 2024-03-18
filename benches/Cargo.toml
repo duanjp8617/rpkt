@@ -5,14 +5,14 @@ publish = false
 edition = "2018"
 
 [dev-dependencies]
-criterion = "0.3"
-smoltcp = "0.8"
-arrayvec = "0.7.2"
+criterion = "0.5.1"
+smoltcp = "0.8.2"
+arrayvec = "0.7.4"
 bytes = "1"
 ctrlc = { version = "3.0", features = ["termination"]}
-run-time = {path = "../run-time", package = "run-time"}
-run-dpdk = {path = "../run-dpdk", package = "run-dpdk"}
-run-packet = {path = "../run-packet", package = "run-packet"}
+rpkt-time = {path = "../rpkt-time", package = "rpkt-time"}
+rpkt-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk", features = ["multiseg"]}
+rpkt = {path = "../rpkt", package = "rpkt"}
 
 [[bench]]
 name = "pbuf_parse"

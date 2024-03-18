@@ -1,10 +1,10 @@
 use arrayvec::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::Cursor;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::Cursor;
 
 static FRAME_BYTES: [u8; 110] = [
     0x00, 0x0b, 0x86, 0x64, 0x8b, 0xa0, 0x00, 0x50, 0x56, 0xae, 0x76, 0xf5, 0x08, 0x00, 0x45, 0x00,
@@ -23,12 +23,12 @@ fn batched_l4(batch: &mut ArrayVec<Mbuf, 32>) {
         if let Ok(ethpkt) = EtherPacket::parse(buf) {
             if let Ok(ippkt) = Ipv4Packet::parse(ethpkt.cursor_payload()) {
                 if let Ok(udppkt) = UdpPacket::parse(ippkt.cursor_payload()) {
-                    assert!(ethpkt.ethertype() == EtherType::IPV4);
-                    assert!(ippkt.protocol() == IpProtocol::UDP);
-                    assert!(udppkt.source_port() == 60376);
-                    assert!(udppkt.dest_port() == 161);
-                    assert!(udppkt.packet_len() == 74);
-                    assert!(udppkt.checksum() == 0xbc86);
+                    assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
+                    assert_eq!(ippkt.protocol(), IpProtocol::UDP);
+                    assert_eq!(udppkt.source_port(), 60376);
+                    assert_eq!(udppkt.dest_port(), 161);
+                    assert_eq!(udppkt.packet_len(), 74);
+                    assert_eq!(udppkt.checksum(), 0xbc86);
                 } else {
                     panic!();
                 }

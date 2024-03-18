@@ -2,12 +2,12 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::Buf;
-use run_packet::CursorMut;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::Buf;
+use rpkt::CursorMut;
 
 const BATCHSIZE: usize = 64;
 
@@ -20,8 +20,7 @@ fn init_port(
     rxq_conf: &mut RxQueueConf,
     txq_conf: &mut TxQueueConf,
 ) {
-    let port_infos = service().port_infos().unwrap();
-    let port_info = &port_infos[port_id as usize];
+    let port_info = &service().port_info(port_id).unwrap();
     let socket_id = port_info.socket_id;
 
     service()
@@ -177,13 +176,13 @@ fn main() {
         jhs.push(jh);
     }
 
-    let mut p0_old_stats = service().port_stats(p0_id).unwrap();
-    let mut p1_old_stats = service().port_stats(p1_id).unwrap();
+    let mut p0_old_stats = service().stats_query(p0_id).unwrap().query();
+    let mut p1_old_stats = service().stats_query(p1_id).unwrap().query();
     while run.load(Ordering::Acquire) {
         std::thread::sleep(std::time::Duration::from_secs(1));
 
-        let p0_curr_stats = service().port_stats(p0_id).unwrap();
-        let p1_curr_stats = service().port_stats(p1_id).unwrap();
+        let p0_curr_stats = service().stats_query(p0_id).unwrap().query();
+        let p1_curr_stats = service().stats_query(p1_id).unwrap().query();
 
         println!(
             "tx: {} pps, {} Gbps; rx: {} pps, {} Gps; rx_missed: {} pps",

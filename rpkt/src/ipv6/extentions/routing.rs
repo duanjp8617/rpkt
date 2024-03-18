@@ -294,10 +294,10 @@ impl<T: Buf> RoutingPacket<T> {
                     buf: self.buf.chunk(),
                 };
                 let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-                let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+                let last_addr_len = 16usize.checked_sub(tmp_header.compr_e())?;
                 let len_except_the_last =
                     addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-                let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+                let first_addr_len = 16usize.checked_sub(tmp_header.compr_i())?;
 
                 if len_except_the_last % first_addr_len == 0
                     && tmp_header.segments_left() <= tmp_header.total_addrs()
@@ -378,10 +378,10 @@ impl<T: PktMut> RoutingPacket<T> {
                     buf: self.buf.chunk(),
                 };
                 let addr_buf_len_without_padding = addr_buf_len.checked_sub(tmp_header.pad())?;
-                let last_addr_len = (16 as usize).checked_sub(tmp_header.compr_e())?;
+                let last_addr_len = 16usize.checked_sub(tmp_header.compr_e())?;
                 let len_except_the_last =
                     addr_buf_len_without_padding.checked_sub(last_addr_len)?;
-                let first_addr_len = (16 as usize).checked_sub(tmp_header.compr_i())?;
+                let first_addr_len = 16usize.checked_sub(tmp_header.compr_i())?;
 
                 if len_except_the_last % first_addr_len == 0
                     && tmp_header.segments_left() <= tmp_header.total_addrs()

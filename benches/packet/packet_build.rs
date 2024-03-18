@@ -1,9 +1,9 @@
 use bytes::Buf;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::udp::*;
-use run_packet::CursorMut;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::udp::*;
+use rpkt::CursorMut;
 
 fn packet_build(buf: &mut [u8], payload_len: usize) {
     let mut pkt = CursorMut::new(&mut buf[0..42 + payload_len]);

@@ -3,8 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
+use bindgen::Formatter;
 
-const DPDK_VERSION: &str = "21.11";
+use version_compare::{Version};
+
+const DPDK_PREFERRED_VERSION: &str = "23.11";
 const DPDK_GIT_REPO: &str = "https://dpdk.org/git/dpdk";
 
 // On Ubuntu server, we need the following packages:
@@ -24,7 +27,7 @@ fn build_dpdk_ffi() {
         .args(&["--cflags", "libdpdk"])
         .output()
         .unwrap();
-    assert!(output.status.success() == true);
+    assert_eq!(output.status.success(), true);
     let cflags = String::from_utf8(output.stdout).unwrap();
 
     // Compile the csrc/impl.c file into a static library.
@@ -83,7 +86,7 @@ fn build_dpdk_ffi() {
         bgbuilder = bgbuilder.clang_arg(cflag);
     }
     bgbuilder
-        .rustfmt_bindings(true)
+        .formatter(Formatter::Rustfmt)
         .generate()
         .expect("Unable to generate rust bingdings from csrc/header.h.")
         .write_to_file(outdir.join("dpdk.rs"))
@@ -95,7 +98,7 @@ fn build_dpdk_ffi() {
         .args(&["--libs", "--static", "libdpdk"])
         .output()
         .unwrap();
-    assert!(output.status.success() == true);
+    assert_eq!(output.status.success(), true);
     let ldflags = String::from_utf8(output.stdout).unwrap();
     for ldflag in ldflags.trim().split(' ') {
         if ldflag.starts_with("-L") {
@@ -128,6 +131,11 @@ fn build_dpdk_ffi() {
 }
 
 fn main() {
+    // At this moment, rpkt doesn't provide bindings to anything that was changed since 21.11
+    // That value should be updated, once those methods/structs would be exposed
+    let dpdk_min_version: Version = Version::from("21.11").unwrap();
+    // It is not guaranteed that there will be no significant ABI/API changes later
+    let dpdk_max_version: Version = Version::from("24.03.9999").unwrap();
     // Check DPDK version.
     let output = Command::new("pkg-config")
         .args(&["--modversion", "libdpdk"])
@@ -136,10 +144,21 @@ fn main() {
     if output.status.success() {
         let s = String::from_utf8(output.stdout).unwrap();
         let version_str = s.trim();
-        if !version_str.starts_with(DPDK_VERSION) {
+        let version = Version::from(version_str).unwrap();
+        if version < dpdk_min_version {
             panic!(
-                "pkg-config finds DPDK library with version {}.\nPlease install a supported version.\n",
-                version_str
+                "pkg-config finds DPDK library with version {} which is too old.\nPlease install version between {} and {}.\n",
+                version_str,
+                dpdk_min_version,
+                dpdk_max_version
+            );
+        }
+        if version > dpdk_max_version {
+            panic!(
+                "pkg-config finds DPDK library with version {} which is too new.\nPlease install version between {} and {}.\n",
+                version_str,
+                dpdk_min_version,
+                dpdk_max_version
             );
         }
 
@@ -154,7 +173,7 @@ fn main() {
     // Download DPDK source from the official git repo.
     if !Path::new("deps/dpdk").is_dir() {
         let mut tag = "v".to_string();
-        tag.push_str(DPDK_VERSION);
+        tag.push_str(DPDK_PREFERRED_VERSION);
         let res = Command::new("git")
             .args(&["clone", "-b", &tag, DPDK_GIT_REPO, "deps/dpdk"])
             .status()

@@ -4,11 +4,11 @@ use std::sync::{atomic::AtomicBool, atomic::AtomicUsize, atomic::Ordering, Arc};
 use arrayvec::ArrayVec;
 use ctrlc;
 
-use run_dpdk::*;
-use run_packet::ether::*;
-use run_packet::ipv4::*;
-use run_packet::Cursor;
-use run_time::*;
+use rpkt_dpdk::*;
+use rpkt::ether::*;
+use rpkt::ipv4::*;
+use rpkt::Cursor;
+use rpkt_time::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
@@ -35,10 +35,10 @@ fn entry_func() {
         .iter()
         .filter(|lcore| {
             lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM as u32
+                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
-    assert!(res == true);
+    assert_eq!(res, true);
 
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();

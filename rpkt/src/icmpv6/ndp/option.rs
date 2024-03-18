@@ -457,7 +457,7 @@ impl<'a> NdpOptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(32);
         self.buf = remaining;
 
-        let mut opt = NdpOptionPrefixInfo { buf };
+        let opt = NdpOptionPrefixInfo { buf };
         (&mut opt.buf[2..]).fill(0);
 
         opt
@@ -473,14 +473,14 @@ impl<'a> NdpOptionWriter<'a> {
         let (buf, remaining) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(8);
         self.buf = remaining;
 
-        let mut opt = NdpOptionRedirectedHdr { buf };
+        let opt = NdpOptionRedirectedHdr { buf };
         (&mut opt.buf[2..]).fill(0);
 
         opt
     }
 
     #[inline]
-    pub fn mtu(&mut self, opt_len: usize) -> NdpOptionMtu<&'a mut [u8]> {
+    pub fn mtu(&mut self, _opt_len: usize) -> NdpOptionMtu<&'a mut [u8]> {
         assert!(self.buf.len() > 8);
 
         self.buf[0] = MTU;
