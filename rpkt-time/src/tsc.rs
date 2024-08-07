@@ -1,4 +1,3 @@
-use core::arch::x86_64::_rdtsc;
 use std::cell::UnsafeCell;
 use std::fs::read_to_string;
 use std::mem::{size_of, zeroed, MaybeUninit};
@@ -35,7 +34,7 @@ fn tsc() -> u64 {
     #[cfg(target_arch = "x86")]
     use core::arch::x86::_rdtsc;
 
-    #[cfg(target_arc = "x86_64")]
+    #[cfg(target_arch = "x86_64")]
     use core::arch::x86_64::_rdtsc;
 
     unsafe { _rdtsc() }
