@@ -5,7 +5,7 @@ use std::process::Command;
 use std::str;
 use bindgen::Formatter;
 
-use version_compare::{Version};
+use version_compare::Version;
 
 const DPDK_PREFERRED_VERSION: &str = "23.11";
 const DPDK_GIT_REPO: &str = "https://dpdk.org/git/dpdk";
