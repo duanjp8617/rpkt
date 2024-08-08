@@ -46,6 +46,12 @@ pub const DEFAULT_RSS_KEY_40B: [u8; 40] = [
     0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
 ];
 
+pub const DEFAULT_RSS_KEY_52B: [u8; 52] = [
+    0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+    0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+    0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+    0x6D, 0x5A, 0x6D, 0x5A,
+];
 
 // According to the `rss_type_table` variable from the dpdk/app/test-pmd/config.c file,
 // there are 12 different rss types for ipv4/v6 protocols.
@@ -77,10 +83,10 @@ dpdk_offload_conf!(
     pub struct MbufTxOffload(u64) {
         /// #define RTE_MBUF_F_TX_IP_CKSUM      (1ULL << 54)
         _do_not_use_1, enable_ip_cksum,  1 << 54,
-        
+
         /// #define RTE_MBUF_F_TX_UDP_CKSUM     (3ULL << 52)
         _do_not_use_2, enable_udp_cksum, 3 << 52,
-        
+
         /// #define RTE_MBUF_F_TX_TCP_CKSUM     (1ULL << 52)
         _do_not_use_3, enable_tcp_cksum, 1 << 52,
     }
@@ -170,15 +176,15 @@ dpdk_offload_conf!(
 
         /// #define RTE_ETH_RX_OFFLOAD_TCP_CKSUM        RTE_BIT64(3)
         tcp_cksum,  enable_tcp_cksum,  1 << 3,
-        
+
         /// #define RTE_ETH_RX_OFFLOAD_RSS_HASH         RTE_BIT64(19)
         rss_hash,   enable_rss_hash,   1 << 19,
-        
+
         /// #define RTE_ETH_RX_OFFLOAD_TCP_LRO          RTE_BIT64(4)
         tcp_lro,    enable_tcp_lro,    1 << 4,
 
         /// #define RTE_ETH_RX_OFFLOAD_SCATTER          RTE_BIT64(13)
         scatter,    enable_scatter,    1 << 13,
-        
+
     }
 );

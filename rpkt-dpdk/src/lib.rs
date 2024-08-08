@@ -36,3 +36,5 @@ pub use port::{
 pub mod offload;
 
 pub mod utils;
+
+pub use arrayvec::ArrayVec as ArrayVec;

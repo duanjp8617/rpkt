@@ -154,9 +154,6 @@ impl PortConf {
     /// The maximum frame size of an ethernet jumboframe.
     pub const RTE_ETHER_MAX_JUMBO_PKT_LEN: u16 = 9600;
 
-    /// The default size of the RSS hash key.
-    pub const HASH_KEY_SIZE: u8 = 40;
-
     pub fn new() -> Self {
         Self::default()
     }
@@ -203,16 +200,23 @@ impl PortConf {
         // Check whether the rss hash key size is 40, currently we only provide a 40-byte
         // rss hask key.
         // This is not compatible with Intel NIC.
-        // if port_info.hash_key_size() != Self::HASH_KEY_SIZE {
-        //     return Error::service_err("invalid rss hash key size").to_err();
-        // }
+        let rss_hash_key = match port_info.hash_key_size() {
+            52 => {
+                // intel nic, e810
+                DEFAULT_RSS_KEY_52B.to_vec()
+            }
+            40 => DEFAULT_RSS_KEY_40B.to_vec(),
+            _ => {
+                return Error::service_err("invalid rss hash key size").to_err();
+            }
+        };
 
         Ok(Self {
             mtu: u32::from(Self::RTE_ETHER_MTU),
             tx_offloads,
             rx_offloads,
             rss_hf: port_info.flow_type_rss_offloads(),
-            rss_hash_key: DEFAULT_RSS_KEY_40B.to_vec(),
+            rss_hash_key,
             enable_promiscuous: true,
         })
     }
@@ -233,7 +237,7 @@ impl PortConf {
         self.rss_hf = val;
     }
 
-    pub fn set_rss_hash_key(&mut self, val: &[u8; Self::HASH_KEY_SIZE as usize]) {
+    pub fn set_rss_hash_key(&mut self, val: &[u8]) {
         let mut v = Vec::new();
         v.extend_from_slice(&val[..]);
         self.rss_hash_key = v;
@@ -696,7 +700,7 @@ impl Default for PortStats {
 }
 
 /// A context to query the stats counters from the port.
-/// This context is reference counted. 
+/// This context is reference counted.
 pub struct StatsQueryContext {
     port_id: u16,
     counter: Arc<()>,
