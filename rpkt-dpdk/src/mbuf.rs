@@ -143,12 +143,20 @@ impl Mbuf {
         }
     }
 
-    // modified to pub for netbricks_port
+    /// Convert a raw pointer into a `Mbuf` object.
     #[inline]
     pub unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
         }
+    }
+
+    /// Convert the `Mbuf` object into the raw pointer. 
+    #[inline]
+    pub unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
+        let ptr = self.ptr.as_ptr();
+        std::mem::forget(self);
+        ptr
     }
 }
 
