@@ -17,7 +17,7 @@ fn smol_build(buf: &mut [u8], payload_len: usize) {
     ipv4_pkt.clear_flags();
     ipv4_pkt.set_frag_offset(0);
     ipv4_pkt.set_hop_limit(128);
-    ipv4_pkt.set_protocol(wire::IpProtocol::Udp);
+    ipv4_pkt.set_next_header(wire::IpProtocol::Udp);
     ipv4_pkt.set_src_addr(wire::Ipv4Address([192, 168, 29, 58]));
     ipv4_pkt.set_dst_addr(wire::Ipv4Address([192, 168, 29, 160]));
     ipv4_pkt.set_checksum(0);

@@ -67,7 +67,7 @@ fn smol_fwd_l4(
                 if ethpkt.ethertype() == wire::EthernetProtocol::Ipv4 {
                     match wire::Ipv4Packet::new_checked(ethpkt.payload_mut()) {
                         Ok(mut ippkt) => {
-                            if ippkt.protocol() == wire::IpProtocol::Udp {
+                            if ippkt.next_header() == wire::IpProtocol::Udp {
                                 match wire::UdpPacket::new_checked(ippkt.payload_mut()) {
                                     Ok(mut udppkt) => {
                                         udppkt.set_dst_port(DPORT);
@@ -157,5 +157,5 @@ pub fn b4(c: &mut Criterion) {
     service().mempool_free("wtf").unwrap();
 }
 
-criterion_group!(benches, b3);
+criterion_group!(benches, b3, b4);
 criterion_main!(benches);

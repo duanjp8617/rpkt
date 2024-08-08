@@ -164,5 +164,5 @@ pub fn b4(c: &mut Criterion) {
     service().mempool_free("wtf").unwrap();
 }
 
-criterion_group!(benches, b3);
+criterion_group!(benches, b3, b4);
 criterion_main!(benches);

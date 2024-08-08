@@ -19,7 +19,7 @@ fn batched_l3(batch: &mut ArrayVec<Mbuf, 32>) {
         assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
+        assert_eq!(ippkt.next_header(), wire::IpProtocol::Udp);
         assert_eq!(ippkt.src_addr(), wire::Ipv4Address([192, 168, 29, 58]));
         assert_eq!(ippkt.dst_addr(), wire::Ipv4Address([192, 168, 29, 160]));
         assert_eq!(ippkt.checksum(), 0x0000);
@@ -33,7 +33,7 @@ fn batched_l4(batch: &mut ArrayVec<Mbuf, 32>) {
         assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
+        assert_eq!(ippkt.next_header(), wire::IpProtocol::Udp);
 
         let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
         assert_eq!(udppkt.src_port(), 60376);
@@ -49,7 +49,7 @@ fn batched_app(batch: &mut ArrayVec<Mbuf, 32>) {
         assert_eq!(ethpkt.ethertype(), wire::EthernetProtocol::Ipv4);
 
         let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-        assert_eq!(ippkt.protocol(), wire::IpProtocol::Udp);
+        assert_eq!(ippkt.next_header(), wire::IpProtocol::Udp);
 
         let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
         assert_eq!(udppkt.src_port(), 60376);
