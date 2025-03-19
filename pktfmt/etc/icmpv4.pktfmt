@@ -1,0 +1,8 @@
+message Icmpv4DestUnreachable {
+    header = [
+        type_ = Field{bit = 8, default = 3},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        unused = Field{bit = 32},
+    ],
+}

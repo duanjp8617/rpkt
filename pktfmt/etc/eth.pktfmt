@@ -1,0 +1,11 @@
+%%
+use std::io;
+%%
+
+packet Ether {
+    header = [
+        dest_mac = Field {bit = 48, repr = &[u8], arg = %%MacAddr%%, },
+        src_mac = Field {bit = 48, repr = &[u8], arg = %%MacAddr%%},
+        ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
+    ]
+}

@@ -2,6 +2,7 @@
 members = [
   "rpkt",
   "rpkt-dpdk",
+  "pktfmt",
   "examples",
   "benches",
 ]

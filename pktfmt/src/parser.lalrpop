@@ -1,0 +1,374 @@
+use std::str::FromStr;
+
+use lalrpop_util::ParseError;
+
+use crate::ast::{
+    Field, BuiltinTypes, Arg, DefaultVal, Header, AlgOp, AlgExpr, parse_to_byte_val, 
+    LengthField, Length, Packet, Message, Cond, MessageGroupName, ParsedItem
+};
+use crate::utils::{Spanned, Error};
+use crate::token::Token;
+
+grammar<'input>;
+
+extern {
+    type Location = usize;
+    type Error = Error;
+
+    enum Token<'input> {
+        // top-level 
+        "packet" => Token::Packet,
+        "message" => Token::Message,
+        "message_group" => Token::MessageGroup,
+        
+        // header
+        "header" => Token::Header,
+        "Field" => Token::Field,
+        "bit" => Token::Bit,
+        "repr" => Token::Repr,
+        "arg" => Token::Arg,
+        "default" => Token::Default,
+        "gen" => Token::Gen,
+
+        // length
+        "length" => Token::Length,
+        "header_len" => Token::HeaderLen,
+        "payload_len" => Token::PayloadLen,
+        "packet_len" => Token::PacketLen,
+        // Algorithmic
+        "+" => Token::Plus,
+        "-" => Token::Minus,
+        "*" => Token::Mult,
+        "/" => Token::Div,
+
+        // condition
+        "cond" => Token::Cond,
+        // comparison
+        "==" => Token::Eq,
+        "!=" => Token::Neq,
+        ">" => Token::Gt,
+        ">=" => Token::Ge,
+        "<" => Token::Lt,
+        "<=" => Token::Le,
+        // logical
+        "!" => Token::Not,
+        "&&" => Token::And,
+        "||" => Token::Or,
+
+        // identifiers
+        "ident" => Token::Ident(<&'input str>),
+
+        // builtin types
+        "builtin type" => Token::BuiltinType(<&'input str>),
+
+        // boolean value, true, false
+        "bool value" => Token::BooleanValue(<&'input str>),
+        
+        // brackets
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "{" => Token::LBrace,
+        "}" => Token::RBrace,
+        "[" => Token::LBracket,
+        "]" => Token::RBracket,
+
+        // comma
+        "," => Token::Comma,
+
+        // at
+        "@" => Token::At,
+
+        // assign
+        "=" => Token::Assign,
+
+        // numbers
+        "num" => Token::Num(<&'input str>),
+        "hex num" => Token::HexNum(<&'input str>),
+
+        // rust code
+        "code" => Token::Code(<&'input str>),
+
+        // doc
+        "doc"=> Token::Doc(<&'input str>),
+    }
+}
+
+// A macro for generating list stored in Vec.
+// Taken from lalrpop's parser.
+// Note: a lalrpop macro must end with ;.
+// An Option<T> can be turned into an iterator Iterator<item = T>.
+List<E>: Vec<E> = 
+    <v0: (<E> ",")*> <e: E?> => {
+        v0.into_iter().chain(e).collect()
+};
+
+pub Num: u64 = {
+    "num" => u64::from_str(<>).unwrap(),
+    "hex num" => u64::from_str_radix(&<>[2..], 16).unwrap()
+}
+
+Bool: bool = {
+    "bool value" => {
+        match <> {
+            "true" => true,
+            "false" => false,
+            _ => panic!()
+        }
+    }
+}
+
+BuiltinTypes: BuiltinTypes = {
+    "builtin type" => <>.into()
+}
+
+Arg: Arg = {
+    BuiltinTypes => Arg::BuiltinTypes(<>),
+    <s: "code"> => Arg::Code((&s[2..(s.len()-2)]).to_string())
+}
+
+Byte: u8  = {
+    <l: @L> <num: Num> <r: @R> =>? {
+        parse_to_byte_val(num).map_err(|err| {
+            let error = Error::Ast {err, span: (l, r)};
+            ParseError::User{ error }
+        })
+    }
+}
+
+ByteArray: Vec<u8> = {
+    "[" <List<Byte>> "]" => <>
+}
+
+DefaultVal: DefaultVal = {
+    Num => DefaultVal::Num(<>),
+    Bool => DefaultVal::Bool(<>),
+    ByteArray => DefaultVal::Bytes(<>)
+}
+
+DefaultValWithFixFlag: (DefaultVal, bool) = {
+    DefaultVal => (<>, false), 
+    "@" <DefaultVal> => (<>, true)
+}
+
+pub Field: Field = {
+    <l: @L> "Field" "{"
+        "bit" "=" <bit: Num> 
+        <repr: ("," "repr" "=" <BuiltinTypes>)?>
+        <arg: ("," "arg" "=" <Arg>)?>
+        <opt_default_fix: ("," "default" "=" <DefaultValWithFixFlag>)?>
+        <gen: ("," "gen" "=" <Bool>)?>
+        ","?
+    "}" <r: @R> =>? {
+        Field::new(bit, repr, arg, opt_default_fix, gen).map_err(|err| {
+            let error = Error::Ast {err, span: (l, r)};
+            ParseError::User{ error }
+        })
+    }
+}
+
+NamedField: (Spanned<String>, Field) = {
+    <l: @L> <field_name: "ident"> <r: @R> "=" <field: Field> => {
+        (Spanned{item: field_name.to_string(), span: (l, r)}, field)
+    }
+}
+
+Header: Header = {
+    <l: @L> "header" "=" "["
+        <header_list: List<NamedField>>
+    "]" <r: @R> =>? {
+        Header::new(header_list, (l, r)).map_err(|(err, span)|{
+            let error = Error::Ast{err, span};
+            ParseError::User{ error }
+        })
+    }
+}
+
+AddExpr: Box<AlgExpr> = {
+    <lexpr: AddExpr> "+" <rexpr: MultExpr> => 
+        Box::new(AlgExpr::Binary(lexpr, AlgOp::Add, rexpr)),
+    <lexpr: AddExpr> "-" <rexpr: MultExpr> => 
+        Box::new(AlgExpr::Binary(lexpr, AlgOp::Sub, rexpr)),
+    MultExpr => <>
+}
+
+MultExpr: Box<AlgExpr> = {
+    <lexpr: MultExpr> "*" <rexpr: AlgBaseExpr> => 
+        Box::new(AlgExpr::Binary(lexpr, AlgOp::Mul, rexpr)),
+    <lexpr: MultExpr> "/" <rexpr: AlgBaseExpr> => 
+        Box::new(AlgExpr::Binary(lexpr, AlgOp::Div, rexpr)),
+    AlgBaseExpr => <>
+}
+
+AlgBaseExpr: Box<AlgExpr> = {
+    "num" => Box::new(AlgExpr::Num(u64::from_str(<>).unwrap())),
+    "ident" => Box::new(AlgExpr::Ident(String::from_str(<>).unwrap())),
+    "(" <AddExpr> ")" => <>
+}
+
+AlgExpr: LengthField = {
+    <l: @L> <expr: AddExpr> <r: @R> =>? {
+        expr.try_take_usable_alg_expr().map_err(|err| {
+            let error = Error::Ast {err, span: (l, r)};
+            ParseError::User{ error }
+        }).map(|expr| LengthField::Expr{ expr })
+    }
+}
+
+HeaderLenAssign: Option<LengthField> = {
+    "header_len" "=" <expr: (AlgExpr)?> => expr
+}
+
+PayloadLenAssign: Option<LengthField> = {
+    "payload_len" "=" <expr: (AlgExpr)?> => expr
+}
+
+PacketLenAssign: Option<LengthField> = {
+    "packet_len" "=" <expr: (AlgExpr)?> => expr
+}
+
+// (opt, 0) => header_len
+// (opt, 1) => payload_len
+// (opt, 2) => packet_len
+#[inline]
+EitherHeaderOrPayloadOrPacket: (Option<LengthField>, usize) = {
+    HeaderLenAssign => (<>, 0),
+    PayloadLenAssign => (<>, 1),
+    PacketLenAssign => (<>, 2)
+}
+
+#[inline]
+EitherPayloadOrPacket: (Option<LengthField>, usize) = {
+    PayloadLenAssign => (<>, 1),
+    PacketLenAssign => (<>, 2)
+}
+
+LengthFieldListSubRule: Vec<LengthField> = {
+    // Length parse 1: only one of the length field is defined
+    <opt: EitherHeaderOrPayloadOrPacket> ","? => {
+        let mut v = vec![LengthField::None, LengthField::None, LengthField::None];
+        v[opt.1] = LengthField::from_option(opt.0);
+        v
+    },
+    // Length parse 2: header length field is defined. one of payload/packet length is defined
+    <header_len_opt: HeaderLenAssign> "," <opt_with_index: EitherPayloadOrPacket> ","? => {
+        let mut v = vec![LengthField::None, LengthField::None, LengthField::None];
+        v[0] =  LengthField::from_option(header_len_opt);
+        v[opt_with_index.1] = LengthField::from_option(opt_with_index.0);
+        v
+    },
+    // Length parse 3: header is optional, both payload and packet length are defined
+    <header_len_opt_opt: (<HeaderLenAssign> ",")?> 
+    <payload_len_opt: PayloadLenAssign> "," <packet_len_opt: PacketLenAssign> ","? => {
+        let mut v = vec![LengthField::None, LengthField::None, LengthField::None];
+        if let Some(header_len_opt) = header_len_opt_opt {
+            v[0] =  LengthField::from_option(header_len_opt);
+        }
+        v[1] =  LengthField::from_option(payload_len_opt);
+        v[2] =  LengthField::from_option(packet_len_opt);
+        v
+    }
+}
+
+LengthFieldList: (Vec<LengthField>, (usize, usize)) = {
+    <l: @L> "length" "=" "[" <list: LengthFieldListSubRule> "]" <r: @R> => 
+      (list, (l, r))
+}
+
+CondTuple: (String, u64) = {
+    <cond_name: "ident"> "==" <num: "num"> => {
+        (cond_name.to_string(), u64::from_str(num).unwrap())
+    }
+}
+
+CondList: Vec<(String, u64)> = {
+    "(" <head: CondTuple> ")"  <tail: ("||" "(" <CondTuple> ")" )*> => {
+        vec![head].into_iter().chain(tail).collect()
+    }
+}
+
+CondFieldList: (Vec<(String, u64)>, (usize, usize)) = {
+    <l: @L> "cond" "=" <cond_list: CondList> <r: @R> => 
+      (cond_list, (l, r))
+}
+
+pub Packet: Packet = {
+    "packet" <name: "ident"> "{"
+        <header: Header>
+        <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
+        ","?
+    "}" =>? {
+        let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
+            (vec![LengthField::None, LengthField::None, LengthField::None], (0,0))
+        );
+        let length = Length::from_packet_length(length_fields, &header).map_err(|err| {            
+            let error = Error::Ast{err, span};
+            ParseError::User{ error }
+        })?;
+
+        Ok(Packet::new(name, header, length))
+    }
+}
+
+pub Message: Message = {
+    "message" <name: "ident"> "{"
+        <header: Header>
+        <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
+        <cond_field_with_pos_opt: ("," <CondFieldList>)?>
+        ","?
+    "}" =>? {
+        let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
+            (vec![LengthField::None, LengthField::None, LengthField::None], (0,0))
+        );
+        let length = Length::from_message_length(length_fields, &header).map_err(|err| {            
+            let error = Error::Ast{err, span};
+            ParseError::User{ error }
+        })?;
+
+        let cond_opt = match cond_field_with_pos_opt {
+            None => None,
+            Some((cond_list, span)) => {
+                let cond = Cond::from_cond_list(cond_list, &header).map_err(|err| {
+                    let error = Error::Ast{err, span};
+                    ParseError::User{ error }
+                })?;
+                Some(cond)
+            }
+        };
+
+        Ok(Message::new(name, header, length, cond_opt))
+    }
+}
+
+pub MessageGroupName: MessageGroupName = {
+    "message_group" <name: "ident"> "=" "["
+        <first_name: "ident"> 
+        <subsequent_names: ("," <"ident">)*>
+        ","?
+    "]" => {
+        MessageGroupName::new(name.to_string(),  vec![first_name.to_string()].into_iter().chain(subsequent_names.into_iter().map(|s| s.to_string())).collect())
+    }
+}
+
+pub ParsedItem: (ParsedItem, (usize, usize)) = {
+    <l: @L> <packet: Packet> <r: @R> => {
+        (ParsedItem::Packet_(packet), (l,r))
+    },
+    <l: @L> <message: Message> <r: @R> => {
+        (ParsedItem::Message_(message), (l,r))
+    },
+    <l: @L> <message_group_name: MessageGroupName> <r: @R> => {
+        (ParsedItem::MessageGroupName_(message_group_name), (l,r))
+    }
+}
+
+pub TopLevel: (String, Vec<(ParsedItem, (usize, usize))>, Option<String>) = {
+    <start_code: "code">
+    <items: (<ParsedItem>)+>
+    <end_code: ("code")?> => {
+        (
+            (&start_code[2..(start_code.len()-2)]).to_string(), 
+            items, 
+            end_code.map(|s| (&s[2..(s.len()-2)]).to_string())
+        )
+    }
+}

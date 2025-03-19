@@ -1,0 +1,15 @@
+%%
+use std::io;
+%%
+
+packet Udp {
+    header = [
+        src_port = Field {bit = 16},
+        dst_port = Field {bit = 16},
+        length_ = Field {bit = 16, default = 8, gen = false},
+        checksum = Field {bit = 16},
+    ],
+    length = [
+        packet_len = length_
+    ]
+}
