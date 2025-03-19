@@ -2,7 +2,6 @@ use std::env;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::process::Command;
-use std::str;
 
 use bindgen::Formatter;
 use version_compare::Version;
@@ -150,7 +149,7 @@ fn main() {
             );
             panic!();
         }
-        
+
         // Found a installed dpdk library.
         build_dpdk_ffi();
         return;
