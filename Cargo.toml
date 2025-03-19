@@ -3,7 +3,6 @@ members = [
   "rpkt",
   "rpkt-dpdk-sys",
   "rpkt-dpdk",
-  "rpkt-time",
   "examples",
   "benches",
 ]

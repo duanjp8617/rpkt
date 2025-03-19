@@ -25,7 +25,6 @@ rpkt = {path = "../rpkt", package = "rpkt", optional = true, version = "0.1.0"}
 multiseg = ["dep:rpkt"]
 
 [dev-dependencies]
-rpkt-time = {path = "../rpkt-time", package = "rpkt-time"}
 rpkt = {path = "../rpkt", package = "rpkt"}
 ctrlc = { version = "3.0", features = ["termination"]}
 smoltcp = "0.8.2"

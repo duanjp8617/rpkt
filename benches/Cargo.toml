@@ -10,7 +10,6 @@ smoltcp = "0.8.2"
 arrayvec = "0.7.4"
 bytes = "1"
 ctrlc = { version = "3.0", features = ["termination"]}
-rpkt-time = {path = "../rpkt-time", package = "rpkt-time"}
 rpkt-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk", features = ["multiseg"]}
 rpkt = {path = "../rpkt", package = "rpkt"}
 
