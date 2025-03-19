@@ -1,22 +1,11 @@
 use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::iter::FromIterator;
+use std::path::PathBuf;
 use std::process::Command;
 use std::str;
+
 use bindgen::Formatter;
-
 use version_compare::Version;
-
-const DPDK_PREFERRED_VERSION: &str = "23.11";
-const DPDK_GIT_REPO: &str = "https://dpdk.org/git/dpdk";
-
-// On Ubuntu server, we need the following packages:
-// 1. meson (apt install meson) for meson build
-// 2. pyelf-tool (apt install python3-pyelftools) for meson configuration
-// 3. clang (apt install clang) for bindgen
-// 4. libnuma-dev (apt install libnuma-dev) for NUMA support
-
-// To rebuild everything, remove dpdk-sys/deps/configure-finish file.
 
 // Build the dpdk ffi library.
 // The library information is acquired through pkg-config.
@@ -131,11 +120,10 @@ fn build_dpdk_ffi() {
 }
 
 fn main() {
-    // At this moment, rpkt doesn't provide bindings to anything that was changed since 21.11
-    // That value should be updated, once those methods/structs would be exposed
-    let dpdk_min_version: Version = Version::from("21.11").unwrap();
-    // It is not guaranteed that there will be no significant ABI/API changes later
-    let dpdk_max_version: Version = Version::from("24.03.9999").unwrap();
+    // Only support recent LTS versions.
+    let supported_version = &["21.11.9", "22.11.7", "23.11.3", "24.11.1"];
+    let supported_version = Vec::from_iter(supported_version.map(|vs| Version::from(vs).unwrap()));
+
     // Check DPDK version.
     let output = Command::new("pkg-config")
         .args(&["--modversion", "libdpdk"])
@@ -145,92 +133,30 @@ fn main() {
         let s = String::from_utf8(output.stdout).unwrap();
         let version_str = s.trim();
         let version = Version::from(version_str).unwrap();
-        if version < dpdk_min_version {
-            panic!(
-                "pkg-config finds DPDK library with version {} which is too old.\nPlease install version between {} and {}.\n",
-                version_str,
-                dpdk_min_version,
-                dpdk_max_version
+        if supported_version
+            .iter()
+            .find(|allowed_version| **allowed_version == version)
+            .is_none()
+        {
+            eprintln!(
+                "pkg-config finds DPDK library with version {version_str} which is not matched."
             );
-        }
-        if version > dpdk_max_version {
-            panic!(
-                "pkg-config finds DPDK library with version {} which is too new.\nPlease install version between {} and {}.\n",
-                version_str,
-                dpdk_min_version,
-                dpdk_max_version
+            eprintln!(
+                "rpkt only supports DPDK version {}, {}, {} and {}.",
+                supported_version[0],
+                supported_version[1],
+                supported_version[2],
+                supported_version[3]
             );
+            panic!();
         }
-
-        // Found a matching dpdk library installed globally.
+        
+        // Found a installed dpdk library.
         build_dpdk_ffi();
         return;
+    } else {
+        eprintln!("pkg-config can not find installed DPDK library.");
+        eprintln!("Please add the pkgconfig path of the installed DPDK library to PKG_CONFIG_PATH and try again.");
+        panic!();
     }
-
-    // Save the absolute path of the root directory.
-    let pwd = fs::canonicalize(PathBuf::from("./")).unwrap();
-
-    // Download DPDK source from the official git repo.
-    if !Path::new("deps/dpdk").is_dir() {
-        let mut tag = "v".to_string();
-        tag.push_str(DPDK_PREFERRED_VERSION);
-        let res = Command::new("git")
-            .args(&["clone", "-b", &tag, DPDK_GIT_REPO, "deps/dpdk"])
-            .status()
-            .expect("Cannot find git. Please install git.\n");
-        if !res.success() {
-            panic!("Fail to clone DPDK repo {} at tag {}.", DPDK_GIT_REPO, &tag);
-        }
-    }
-
-    // Configure DPDK with meson.
-    if !Path::new("deps/configure-finish").is_file() {
-        // Remove dpdk/build directory if they exist.
-        let build_dir = Path::new("deps/dpdk/build");
-        if build_dir.is_dir() {
-            fs::remove_dir_all(build_dir)
-                .expect("Fail to remove existing deps/dpdk/build directory.\n");
-        }
-
-        // Configure DPDK for build.
-        let mut meson_dprefix = String::from("-Dprefix=");
-        meson_dprefix.push_str(pwd.join("deps/dpdk-install").to_str().unwrap());
-        let res = Command::new("meson")
-            .current_dir("deps/dpdk")
-            .args(&[&meson_dprefix[..], "build"])
-            .status()
-            .expect("Cannot find meson. Please install meson.\n");
-        if !res.success() {
-            panic!("Fail to configure DPDK source with meson.");
-        }
-
-        fs::File::create(Path::new("deps/configure-finish"))
-            .expect("Fail to create deps/configure-finish.\n");
-        println!("cargo:rerun-if-changed=deps/configure-finish");
-    }
-
-    // Build and install DPDK.
-    let res = Command::new("ninja")
-        .current_dir("deps/dpdk/build")
-        .status()
-        .expect("Cannot find ninja. Please install ninja.\n");
-    if !res.success() {
-        panic!("Fail to build DPDK with ninja.");
-    }
-    let res = Command::new("ninja")
-        .current_dir("deps/dpdk/build")
-        .args(&["install"])
-        .status()
-        .unwrap();
-    assert!(res.success());
-
-    // Set PKG_CONFIG_PATH environment variable to point to the installed DPDK library.
-    env::set_var(
-        "PKG_CONFIG_PATH",
-        pwd.join("deps/dpdk-install/lib/x86_64-linux-gnu/pkgconfig")
-            .to_str()
-            .unwrap(),
-    );
-
-    build_dpdk_ffi();
 }
