@@ -1,6 +1,6 @@
 use std::ptr::NonNull;
 
-use rpkt_dpdk_sys as ffi;
+use crate::sys as ffi;
 use rpkt::{Buf, PktBuf, PktMut};
 
 use crate::multiseg::{data_addr, Mbuf};

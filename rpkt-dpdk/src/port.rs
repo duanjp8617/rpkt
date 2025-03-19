@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
-use rpkt_dpdk_sys as ffi;
+use crate::sys as ffi;
 
 use crate::error::*;
 use crate::offload::*;

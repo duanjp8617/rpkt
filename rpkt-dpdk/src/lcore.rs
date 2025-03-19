@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
-use rpkt_dpdk_sys as ffi;
+use crate::sys as ffi;
 
 use crate::error::*;
 
