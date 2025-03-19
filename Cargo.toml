@@ -1,7 +1,6 @@
 [workspace]
 members = [
   "rpkt",
-  "rpkt-dpdk-sys",
   "rpkt-dpdk",
   "examples",
   "benches",
