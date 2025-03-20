@@ -118,6 +118,51 @@ pub use generated::{EtherHeader, EtherPacket, ETHER_HEADER_LEN, ETHER_HEADER_TEM
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{Buf, Cursor, CursorMut};
+    use bytes::BufMut;
+
+    static FRAME_BYTES: [u8; 64] = [
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x08, 0x00, 0xaa,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0xff,
+    ];
+
+    #[test]
+    fn packet_parse() {
+        let pres = EtherPacket::parse(Cursor::new(&FRAME_BYTES[..]));
+        assert_eq!(pres.is_ok(), true);
+        let ethpkt = pres.unwrap();
+        assert_eq!(
+            ethpkt.dst_addr(),
+            EtherAddr([0x01, 0x02, 0x03, 0x04, 0x05, 0x06])
+        );
+        assert_eq!(
+            ethpkt.src_addr(),
+            EtherAddr([0x11, 0x12, 0x13, 0x14, 0x15, 0x16])
+        );
+        assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
+
+        let next = ethpkt.payload();
+        assert_eq!(next.chunk(), &FRAME_BYTES[ETHER_HEADER_LEN..]);
+    }
+
+    #[test]
+    fn packet_build() {
+        let mut bytes = [0xff; 64];
+        (&mut bytes[ETHER_HEADER_LEN..]).put(&FRAME_BYTES[ETHER_HEADER_LEN..]);
+
+        let mut buf = CursorMut::new(&mut bytes[..]);
+        buf.advance(ETHER_HEADER_LEN);
+
+        let mut ethpkt = EtherPacket::prepend_header(buf, &ETHER_HEADER_TEMPLATE);
+        ethpkt.set_dst_addr(EtherAddr([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));
+        ethpkt.set_src_addr(EtherAddr([0x11, 0x12, 0x13, 0x14, 0x15, 0x16]));
+        ethpkt.set_ethertype(EtherType::IPV4);
+
+        assert_eq!(ethpkt.buf().chunk(), &FRAME_BYTES[..]);
+    }
 
     #[test]
     fn etheraddr_parse_from() {
