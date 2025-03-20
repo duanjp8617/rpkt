@@ -95,6 +95,8 @@ impl<'a> HeaderGen<'a> {
         // Header template.
         self.code_gen_for_header_template(output);
 
+        writeln!(output, "").unwrap();
+
         // Defines the header struct.
         let header_struct_gen = Container {
             container_struct_name: &self.header_struct_name(),

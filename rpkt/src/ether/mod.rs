@@ -3,11 +3,11 @@ use core::fmt;
 enum_sim! {
     /// An enum-like type for representing Ethertype in Ethernet frame.
     pub struct EtherType (u16) {
-        /// Frame payload is Arp protocol.
+        /// Ethernet frame payload is Arp protocol.
         ARP =  0x0806,
-        /// Frame payload is Ipv4 protocol.
+        /// Ethernet frame payload is Ipv4 protocol.
         IPV4 = 0x0800,
-        /// Frame payload is Ipv6 protocol.
+        /// Ethernet frame payloadis Ipv6 protocol.
         IPV6 = 0x86DD,
     }
 }
@@ -162,6 +162,20 @@ mod tests {
         ethpkt.set_ethertype(EtherType::IPV4);
 
         assert_eq!(ethpkt.buf().chunk(), &FRAME_BYTES[..]);
+    }
+
+    #[test]
+    fn header_template() {
+        let header = EtherHeader::parse(ETHER_HEADER_TEMPLATE.header_slice()).unwrap();
+        assert_eq!(
+            header.dst_addr(),
+            EtherAddr::from_bytes(&[0, 0, 0, 0, 0, 0])
+        );
+        assert_eq!(
+            header.src_addr(),
+            EtherAddr::from_bytes(&[0, 0, 0, 0, 0, 0])
+        );
+        assert_eq!(header.ethertype(), EtherType::IPV4);
     }
 
     #[test]
