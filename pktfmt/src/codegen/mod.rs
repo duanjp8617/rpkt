@@ -574,10 +574,11 @@ impl<'a> MessageGen<'a> {
             // Message build.
             build.code_gen_for_contiguous_buffer(
                 "build_message",
+                "mut ",
                 "buf",
                 "T",
                 "as_mut()",
-                &self.header_array_name(),
+                &format!("&{}[..]", &self.header_array_name()),
                 impl_block.get_writer(),
             );
 
@@ -803,6 +804,7 @@ impl<'a> PacketGenForContiguousBuf<'a> {
             // Message build.
             build.code_gen_for_contiguous_buffer(
                 "build_packet",
+                "mut ",
                 "buf",
                 "T",
                 "as_mut()",
@@ -929,7 +931,12 @@ impl<'a> GroupMessageGen<'a> {
         write!(output, "pub enum {enum_name}<{buf_type}> {{\n").unwrap();
         for msg in self.msgs.iter() {
             let msg_name = msg.protocol_name().to_string();
-            write!(output, "{msg_name}_({msg_name}<{buf_type}>),\n").unwrap();
+            write!(
+                output,
+                "{msg_name}_({}<{buf_type}>),\n",
+                MessageGen::new(msg).message_struct_name()
+            )
+            .unwrap();
         }
         write!(output, "}}\n").unwrap();
     }
@@ -978,13 +985,15 @@ impl<'a> GroupMessageGen<'a> {
             let msg_strut_name = message_gen.message_struct_name();
             write!(
                 output,
-                "{msg_strut_name}::parse({buf_name}).map(|msg| {}::{msg_strut_name}_(msg))\n",
-                &self.group_message_name
+                "{msg_strut_name}::parse({buf_name}).map(|msg| {}::{}_(msg))\n",
+                &self.group_message_name,
+                msg.protocol_name()
             )
             .unwrap();
 
             write!(output, "}}\n").unwrap();
         }
+        write!(output, "_ => Err(buf)").unwrap();
         write!(output, "}}\n").unwrap();
 
         write!(output, "}}\n").unwrap();

@@ -183,6 +183,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
     pub fn code_gen_for_contiguous_buffer(
         &self,
         method_name: &str,
+        buf_mutability: &str,
         buf_name: &str,
         buf_type: &str,
         buf_access: &str,
@@ -192,7 +193,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
         write!(output, "#[inline]\n").unwrap();
         write!(
             output,
-            "pub fn {method_name}({buf_name}: {buf_type}) -> Self {{\n"
+            "pub fn {method_name}({buf_mutability}{buf_name}: {buf_type}) -> Self {{\n"
         )
         .unwrap();
         write!(

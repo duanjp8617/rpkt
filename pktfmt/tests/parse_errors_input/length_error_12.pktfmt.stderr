@@ -1,5 +1,5 @@
 ast error
-at /home/djp/pkt-rs/pktfmt/tests/parse_errors_input/length_error_12.pktfmt 17:5-20:5
+at /home/djp/ws_rpkt/rpkt/pktfmt/tests/parse_errors_input/length_error_12.pktfmt 17:5-20:5
          ~~~~~~~~~~
 17 |     length = [
 18 |         header_len =field_1,

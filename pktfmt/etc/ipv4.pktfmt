@@ -1,5 +1,6 @@
 %%
 #![allow(missing_docs)]
+#![allow(unused_parens)]
 
 use byteorder::{ByteOrder, NetworkEndian};
 
@@ -59,7 +60,7 @@ message Timestamp {
         flg = Field {bit = 4},
     ],
     length = [
-        header_len=
+        header_len=len
     ],
     cond = (type_ == 68)
 }
@@ -75,7 +76,7 @@ message RecordRoute {
         pointer = Field {bit = 8, default = 4},
     ],
     length = [
-        header_len=
+        header_len=len
     ],
     cond = (type_ == 7),
 }

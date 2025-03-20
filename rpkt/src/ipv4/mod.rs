@@ -38,3 +38,17 @@ enum_sim! {
 }
 
 mod generated;
+pub use generated::{Ipv4Header, Ipv4Packet, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
+
+/// The Ipv4 options.
+pub mod options {
+    // The Ipv4 Eol option
+    pub use super::generated::{EolMessage, EOL_HEADER_ARRAY};
+
+    // The Ipv4 Nop option
+    pub use super::generated::{NopMessage, NOP_HEADER_ARRAY};
+
+    
+
+
+}

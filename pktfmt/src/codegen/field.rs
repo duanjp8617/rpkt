@@ -524,7 +524,6 @@ impl<'a> FieldSetMethod<'a> {
                     // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
                     // |   field       | | rest bits |
 
-                    let mut rest_of_field_buf = Vec::new();
                     {
                         // First, read the rest of the bits into a variable.
                         if end.bit_pos() == 7 {
@@ -537,9 +536,10 @@ impl<'a> FieldSetMethod<'a> {
                             // 3. Convert the value to `repr` type ("({}[{}]&{}) as {})")
                             // 4. Left shift to make room for the field area ("(({}[{}]&{}) as {})
                             //    << {}")
+                            // 5. glue the `REST_OF_FIELD` and `write_value` together.
                             write!(
-                                &mut rest_of_field_buf,
-                                "(({target_slice}[{}]&{}) as {}) << {}",
+                                &mut output,
+                                "let write_value = (({target_slice}[{}]&{}) as {}) << {} |{write_value};\n",
                                 self.start.byte_pos(),
                                 ones_mask(8 - u64::from(self.start.bit_pos()), 7),
                                 self.field.repr.to_string(),
@@ -550,13 +550,15 @@ impl<'a> FieldSetMethod<'a> {
                             // The field has the form:
                             // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
                             // |   field         | |rest bits|
-                            // We do similar steps except for the final one (the left-shift one).
+                            // We do similar steps as above, and left shift the `write_value` to
+                            // make room for the rest of the bits.
                             write!(
-                                &mut rest_of_field_buf,
-                                "({target_slice}[{}]&{}) as {}",
+                                &mut output,
+                                "let write_value = ({target_slice}[{}]&{}) as {} |({write_value}<<{});\n",
                                 end.byte_pos(),
                                 ones_mask(0, 6 - u64::from(end.bit_pos())),
-                                self.field.repr.to_string()
+                                self.field.repr.to_string(),
+                                7 - end.bit_pos()
                             )
                             .unwrap();
                         }
@@ -569,40 +571,11 @@ impl<'a> FieldSetMethod<'a> {
                     // Specify the target slice to write to.
                     write!(
                         field_writer.get_writer(),
-                        "&mut {target_slice}[{}..{}],",
+                        "&mut {target_slice}[{}..{}], write_value",
                         self.start.byte_pos(),
                         self.start.byte_pos() + byte_len(self.field.bit)
                     )
                     .unwrap();
-
-                    if end.bit_pos() == 7 {
-                        // The field has the following form:
-                        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                        //             |   field         |
-                        // `write_value` has the same form as field.
-                        // We glue the variable defined as `REST_OF_FIELD`
-                        // and `write_value` together.
-                        write!(
-                            field_writer.get_writer(),
-                            "{}|{write_value}",
-                            std::str::from_utf8(&rest_of_field_buf[..]).unwrap()
-                        )
-                        .unwrap();
-                    } else {
-                        // The field has the following form:
-                        // 0 1 2 3 4 5 6 7
-                        // | field |
-                        // We left shift the `write_value` to make room
-                        // for the rest of the bits.
-                        // Then we glue them together.
-                        write!(
-                            field_writer.get_writer(),
-                            "{}|({write_value}<<{})",
-                            std::str::from_utf8(&rest_of_field_buf[..]).unwrap(),
-                            7 - end.bit_pos()
-                        )
-                        .unwrap();
-                    }
                 }
             }
             _ => {
@@ -1087,7 +1060,8 @@ self.buf.as_mut()[1]=(self.buf.as_mut()[1]&0x03)|(value<<2);",
             "Field {bit  = 9}",
             FieldSetMethod,
             write_repr,
-            "NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2],(self.buf.as_mut()[1]&0x7f) as u16|(value<<7));",
+            "let write_value = (self.buf.as_mut()[1]&0x7f) as u16 |(value<<7);
+NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], write_value);",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1097,7 +1071,8 @@ self.buf.as_mut()[1]=(self.buf.as_mut()[1]&0x03)|(value<<2);",
             "Field {bit  = 14}",
             FieldSetMethod,
             write_repr,
-            "NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2],((self.buf.as_mut()[0]&0xc0) as u16) << 8|value);",
+            "let write_value = ((self.buf.as_mut()[0]&0xc0) as u16) << 8 |value;
+NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], write_value);",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_mut()",
             "value"
@@ -1127,7 +1102,8 @@ self.buf.as_mut()[1]=(self.buf.as_mut()[1]&0x03)|(value<<2);",
             "Field {bit  = 55}",
             FieldSetMethod,
             write_repr,
-            "NetworkEndian::write_uint(&mut self.buf.as_mut()[3..10],(self.buf.as_mut()[9]&0x1) as u64|(value<<1),7);",
+            "let write_value = (self.buf.as_mut()[9]&0x1) as u64 |(value<<1);
+NetworkEndian::write_uint(&mut self.buf.as_mut()[3..10], write_value,7);",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1137,7 +1113,8 @@ self.buf.as_mut()[1]=(self.buf.as_mut()[1]&0x03)|(value<<2);",
             "Field {bit  = 60}",
             FieldSetMethod,
             write_repr,
-            "NetworkEndian::write_u64(&mut self.buf.as_mut()[3..11],((self.buf.as_mut()[3]&0xf0) as u64) << 56|value);",
+            "let write_value = ((self.buf.as_mut()[3]&0xf0) as u64) << 56 |value;
+NetworkEndian::write_u64(&mut self.buf.as_mut()[3..11], write_value);",
             BitPos::new(3 * 8 + 4),
             "self.buf.as_mut()",
             "value"
@@ -1185,7 +1162,8 @@ self.buf.as_mut()[13]=self.buf.as_mut()[13]&0x7f
             FieldSetMethod,
             write_as_arg,
             "assert!(value <= 0x7ffffffff);
-NetworkEndian::write_uint(&mut self.buf.as_mut()[3..8],(self.buf.as_mut()[7]&0x1f) as u64|(value<<5),5);",
+let write_value = (self.buf.as_mut()[7]&0x1f) as u64 |(value<<5);
+NetworkEndian::write_uint(&mut self.buf.as_mut()[3..8], write_value,5);",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"

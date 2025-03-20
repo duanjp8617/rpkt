@@ -1,10 +1,11 @@
 #![allow(missing_docs)]
+#![allow(unused_parens)]
 
 use byteorder::{ByteOrder, NetworkEndian};
 
+use super::{IpProtocol, Ipv4Addr};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
-use super::{IpProtocol, Ipv4Addr};
 
 /// A constant that defines the fixed byte length of the Ipv4 protocol header.
 pub const IPV4_HEADER_LEN: usize = 20;
@@ -155,10 +156,8 @@ impl<T: AsMut<[u8]>> Ipv4Header<T> {
     #[inline]
     pub fn set_frag_offset(&mut self, value: u16) {
         assert!(value <= 0x1fff);
-        NetworkEndian::write_u16(
-            &mut self.buf.as_mut()[6..8],
-            ((self.buf.as_mut()[6] & 0xe0) as u16) << 8 | value,
-        );
+        let write_value = ((self.buf.as_mut()[6] & 0xe0) as u16) << 8 | value;
+        NetworkEndian::write_u16(&mut self.buf.as_mut()[6..8], write_value);
     }
     #[inline]
     pub fn set_ttl(&mut self, value: u8) {
@@ -369,10 +368,8 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     #[inline]
     pub fn set_frag_offset(&mut self, value: u16) {
         assert!(value <= 0x1fff);
-        NetworkEndian::write_u16(
-            &mut self.buf.chunk_mut()[6..8],
-            ((self.buf.chunk_mut()[6] & 0xe0) as u16) << 8 | value,
-        );
+        let write_value = ((self.buf.chunk_mut()[6] & 0xe0) as u16) << 8 | value;
+        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[6..8], write_value);
     }
     #[inline]
     pub fn set_ttl(&mut self, value: u8) {
@@ -494,9 +491,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> EolMessage<T> {
         &mut self.buf.as_mut()[1..]
     }
     #[inline]
-    pub fn build_message(buf: T) -> Self {
+    pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 1);
-        &mut buf.as_mut()[..1].copy_from_slice(EOL_HEADER_ARRAY);
+        &mut buf.as_mut()[..1].copy_from_slice(&EOL_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -549,9 +546,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> NopMessage<T> {
         &mut self.buf.as_mut()[1..]
     }
     #[inline]
-    pub fn build_message(buf: T) -> Self {
+    pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 1);
-        &mut buf.as_mut()[..1].copy_from_slice(NOP_HEADER_ARRAY);
+        &mut buf.as_mut()[..1].copy_from_slice(&NOP_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -620,6 +617,10 @@ impl<T: AsRef<[u8]>> TimestampMessage<T> {
     pub fn flg(&self) -> u8 {
         self.buf.as_ref()[3] & 0xf
     }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.as_ref()[1])
+    }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> TimestampMessage<T> {
     #[inline]
@@ -628,9 +629,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TimestampMessage<T> {
         &mut self.buf.as_mut()[header_len..]
     }
     #[inline]
-    pub fn build_message(buf: T) -> Self {
+    pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 4);
-        &mut buf.as_mut()[..4].copy_from_slice(TIMESTAMP_HEADER_ARRAY);
+        &mut buf.as_mut()[..4].copy_from_slice(&TIMESTAMP_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -656,6 +657,10 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TimestampMessage<T> {
     pub fn set_flg(&mut self, value: u8) {
         assert!(value <= 0xf);
         self.buf.as_mut()[3] = (self.buf.as_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.as_mut()[1] = (value);
     }
 }
 
@@ -710,6 +715,10 @@ impl<T: AsRef<[u8]>> RecordRouteMessage<T> {
     pub fn pointer(&self) -> u8 {
         self.buf.as_ref()[2]
     }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.as_ref()[1])
+    }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> RecordRouteMessage<T> {
     #[inline]
@@ -718,9 +727,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RecordRouteMessage<T> {
         &mut self.buf.as_mut()[header_len..]
     }
     #[inline]
-    pub fn build_message(buf: T) -> Self {
+    pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 3);
-        &mut buf.as_mut()[..3].copy_from_slice(RECORDROUTE_HEADER_ARRAY);
+        &mut buf.as_mut()[..3].copy_from_slice(&RECORDROUTE_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -736,6 +745,10 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RecordRouteMessage<T> {
     #[inline]
     pub fn set_pointer(&mut self, value: u8) {
         self.buf.as_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.as_mut()[1] = (value);
     }
 }
 
@@ -795,9 +808,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
         &mut self.buf.as_mut()[header_len..]
     }
     #[inline]
-    pub fn build_message(buf: T) -> Self {
+    pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 4);
-        &mut buf.as_mut()[..4].copy_from_slice(ROUTEALERT_HEADER_ARRAY);
+        &mut buf.as_mut()[..4].copy_from_slice(&ROUTEALERT_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -817,11 +830,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
 }
 
 pub enum Ipv4OptGroup<T> {
-    Eol_(Eol<T>),
-    Nop_(Nop<T>),
-    Timestamp_(Timestamp<T>),
-    RecordRoute_(RecordRoute<T>),
-    RouteAlert_(RouteAlert<T>),
+    Eol_(EolMessage<T>),
+    Nop_(NopMessage<T>),
+    Timestamp_(TimestampMessage<T>),
+    RecordRoute_(RecordRouteMessage<T>),
+    RouteAlert_(RouteAlertMessage<T>),
 }
 impl<T: AsRef<[u8]>> Ipv4OptGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
@@ -830,11 +843,12 @@ impl<T: AsRef<[u8]>> Ipv4OptGroup<T> {
         }
         let cond_value = buf.as_ref()[0];
         match cond_value {
-            0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::EolMessage_(msg)),
-            1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::NopMessage_(msg)),
-            68 => TimestampMessage::parse(buf).map(|msg| Ipv4OptGroup::TimestampMessage_(msg)),
-            7 => RecordRouteMessage::parse(buf).map(|msg| Ipv4OptGroup::RecordRouteMessage_(msg)),
-            148 => RouteAlertMessage::parse(buf).map(|msg| Ipv4OptGroup::RouteAlertMessage_(msg)),
+            0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::Eol_(msg)),
+            1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::Nop_(msg)),
+            68 => TimestampMessage::parse(buf).map(|msg| Ipv4OptGroup::Timestamp_(msg)),
+            7 => RecordRouteMessage::parse(buf).map(|msg| Ipv4OptGroup::RecordRoute_(msg)),
+            148 => RouteAlertMessage::parse(buf).map(|msg| Ipv4OptGroup::RouteAlert_(msg)),
+            _ => Err(buf),
         }
     }
 }
