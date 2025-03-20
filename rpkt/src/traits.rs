@@ -5,6 +5,11 @@ pub trait PktBuf: Buf {
     fn trim_off(&mut self, cnt: usize);
 }
 
+pub trait PktBufMut: PktBuf {
+    fn chunk_headroom(&self) -> usize;
+    fn chunk_mut(&mut self) -> &mut [u8];
+}
+
 impl<T: PktBuf + ?Sized> PktBuf for &mut T {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
@@ -17,12 +22,7 @@ impl<T: PktBuf + ?Sized> PktBuf for &mut T {
     }
 }
 
-pub trait PktMut: PktBuf {
-    fn chunk_headroom(&self) -> usize;
-    fn chunk_mut(&mut self) -> &mut [u8];
-}
-
-impl<T: PktMut + ?Sized> PktMut for &mut T {
+impl<T: PktBufMut + ?Sized> PktBufMut for &mut T {
     #[inline]
     fn chunk_mut(&mut self) -> &mut [u8] {
         (**self).chunk_mut()

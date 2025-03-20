@@ -1,7 +1,10 @@
+use core::{marker::PhantomData, slice};
+
 use bytes::Buf;
 
-use crate::{PktBuf, PktMut};
+use crate::{PktBuf, PktBufMut};
 
+/// A container type that turns a byte slice into `PktBuf`.
 #[derive(Debug)]
 pub struct Cursor<'a> {
     chunk: &'a [u8],
@@ -9,6 +12,7 @@ pub struct Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
+    /// Create a new `Cursor` from a byte slice.
     #[inline]
     pub fn new(buf: &'a [u8]) -> Self {
         Cursor {
@@ -17,23 +21,20 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    /// Return the original byte slice.
     #[inline]
     pub fn buf(&self) -> &'a [u8] {
-        unsafe { std::slice::from_raw_parts(self.start_addr, self.cursor() + self.chunk.len()) }
+        unsafe { slice::from_raw_parts(self.start_addr, self.cursor() + self.chunk.len()) }
     }
 
-    #[inline]
-    pub fn chunk_shared_lifetime(&self) -> &'a [u8] {
-        self.chunk
-    }
-
+    /// Calculate the current cursor position.
     #[inline]
     pub fn cursor(&self) -> usize {
         unsafe { self.chunk.as_ptr().offset_from(self.start_addr) as usize }
     }
 }
 
-// custom implementation for &[u8]
+// implement Buf
 impl<'a> Buf for Cursor<'a> {
     #[inline]
     fn remaining(&self) -> usize {
@@ -52,13 +53,17 @@ impl<'a> Buf for Cursor<'a> {
     }
 }
 
+// implement PktBuf
 impl<'a> PktBuf for Cursor<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
-        self.chunk = unsafe {
-            std::slice::from_raw_parts(self.chunk.as_ptr().sub(cnt), self.chunk.len() + cnt)
-        };
+        let new_cursor = self.cursor() - cnt;
+        unsafe {
+            let new_chunk_start = self.start_addr.add(new_cursor);
+            let new_chunk_len = self.chunk.len() + cnt;
+            self.chunk = slice::from_raw_parts(new_chunk_start, new_chunk_len);
+        }
     }
 
     #[inline]
@@ -68,80 +73,88 @@ impl<'a> PktBuf for Cursor<'a> {
     }
 }
 
+/// A mutable container type that turns a mutable byte slice into `PktBufMut`.
 #[derive(Debug)]
 pub struct CursorMut<'a> {
-    chunk: &'a mut [u8],
-    start_addr: *const u8,
+    chunk_addr: *mut u8,
+    chunk_len: usize,
+    start_addr: *mut u8,
+    _data: PhantomData<&'a mut [u8]>,
 }
 
 impl<'a> CursorMut<'a> {
+    /// Create a new `CursorMut` from a byte slice.
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> Self {
         let start_addr = buf.as_mut_ptr();
+        let chunk_len = buf.len();
         CursorMut {
-            chunk: buf,
+            chunk_addr: start_addr,
+            chunk_len,
             start_addr,
+            _data: PhantomData,
         }
     }
 
+    /// Return the original byte slice.
     #[inline]
-    pub fn buf(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.start_addr, self.cursor() + self.chunk.len()) }
+    pub fn buf(&mut self) -> &mut [u8] {
+        let len = self.cursor() + self.chunk_len;
+        unsafe { slice::from_raw_parts_mut(self.start_addr, len) }
     }
 
-    #[inline]
-    pub fn chunk_mut_shared_lifetime(self) -> &'a mut [u8] {
-        self.chunk
-    }
-
+    /// Calculate the current cursor position.
     #[inline]
     pub fn cursor(&self) -> usize {
-        unsafe { self.chunk.as_ptr().offset_from(self.start_addr) as usize }
+        unsafe { self.chunk_addr.offset_from(self.start_addr) as usize }
     }
 }
 
+// implement Buf
 impl<'a> Buf for CursorMut<'a> {
     #[inline]
     fn remaining(&self) -> usize {
-        self.chunk.len()
+        self.chunk_len
     }
 
     #[inline]
     fn chunk(&self) -> &[u8] {
-        self.chunk
+        unsafe { slice::from_raw_parts(self.chunk_addr as *const u8, self.chunk_len) }
     }
 
     #[inline]
     fn advance(&mut self, cnt: usize) {
-        assert!(cnt <= self.chunk.len());
-        self.chunk = unsafe {
-            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr().add(cnt), self.chunk.len() - cnt)
-        };
+        assert!(cnt <= self.chunk_len);
+        unsafe {
+            self.chunk_addr = self.chunk_addr.add(cnt);
+            self.chunk_len -= cnt;
+        }
     }
 }
 
+// implement PktBuf
 impl<'a> PktBuf for CursorMut<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
-        self.chunk = unsafe {
-            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr().sub(cnt), self.chunk.len() + cnt)
-        };
+        unsafe {
+            self.chunk_addr = self.chunk_addr.sub(cnt);
+            self.chunk_len += cnt;
+        }
     }
 
     #[inline]
     fn trim_off(&mut self, cnt: usize) {
-        assert!(cnt <= self.remaining());
-        self.chunk = unsafe {
-            std::slice::from_raw_parts_mut(self.chunk.as_mut_ptr(), self.chunk.len() - cnt)
-        };
+        assert!(cnt <= self.chunk_len);
+        self.chunk_len -= cnt;
     }
 }
 
-impl<'a> PktMut for CursorMut<'a> {
+// implement PktBufMut
+impl<'a> PktBufMut for CursorMut<'a> {
     #[inline]
     fn chunk_mut(&mut self) -> &mut [u8] {
-        self.chunk
+        unsafe { slice::from_raw_parts_mut(self.chunk_addr, self.chunk_len) }
     }
 
     #[inline]
@@ -200,7 +213,7 @@ mod tests {
             assert_eq!(c_pos, cursor.cursor());
             assert_eq!(cursor.buf(), &c[..]);
             assert_eq!(cursor.remaining(), 1000 - c_pos);
-            assert_eq!(cursor.chunk_mut(), &mut c[c_pos..]);
+            assert_eq!(cursor.chunk(), &mut c[c_pos..]);
         }
 
         for c_pos in 0..1001 {
