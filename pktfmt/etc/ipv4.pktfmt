@@ -1,5 +1,11 @@
 %%
-use std::io;
+#![allow(missing_docs)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+use super::{IpProtocol, Ipv4Addr};
 %%
 
 packet Ipv4 {

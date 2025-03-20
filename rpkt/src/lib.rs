@@ -3,6 +3,9 @@
 
 //! Provide utilities for parsing and constructing network packets.
 
+#[cfg(feature = "std")]
+extern crate std;
+
 #[macro_use]
 mod macros;
 
@@ -15,6 +18,7 @@ pub use cursors::{Cursor, CursorMut};
 pub mod checksum_utils;
 
 pub mod ether;
+pub mod ipv4;
 // pub mod arp;
 // pub mod ether;
 // pub mod icmpv4;

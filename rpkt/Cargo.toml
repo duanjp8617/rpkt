@@ -19,3 +19,4 @@ std = []
 [dependencies]
 byteorder = "1"
 bytes = "1"
+smoltcp = "0.12"

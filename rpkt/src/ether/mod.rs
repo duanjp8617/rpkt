@@ -1,3 +1,5 @@
+//! Ethernet frame.
+
 use core::fmt;
 
 enum_sim! {
