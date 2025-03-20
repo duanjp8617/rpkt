@@ -23,6 +23,9 @@ version-compare = "0.1.1"
 bindgen = "0.69.4"
 cc = "1"
 
+[profile.release]
+lto = "fat"
+
 [features]
 # `multiseg` feature enables non-contiguous `Mbuf` and `Pbuf`
 # default = ["multiseg"]

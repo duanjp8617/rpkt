@@ -1,11 +1,17 @@
 %%
-use std::io;
+#![allow(missing_docs)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::ether::{EtherAddr, EtherType};
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
 %%
 
 packet Ether {
     header = [
-        dest_mac = Field {bit = 48, repr = &[u8], arg = %%MacAddr%%, },
-        src_mac = Field {bit = 48, repr = &[u8], arg = %%MacAddr%%},
+        dst_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%, },
+        src_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
     ]
 }

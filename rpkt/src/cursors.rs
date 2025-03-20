@@ -237,4 +237,58 @@ mod tests {
             assert_eq!(cursor.chunk_mut(), &mut c[n..(1000 - c_pos)]);
         }
     }
+
+    #[test]
+    #[should_panic]
+    fn cursor_advance_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = Cursor::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.advance(10000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cursor_moveback_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = Cursor::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.move_back(10000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cursor_trimoff_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = Cursor::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.trim_off(10000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cursor_mut_advance_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = CursorMut::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.advance(10000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cursor_mut_moveback_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = CursorMut::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.move_back(10000);
+    }
+
+    #[test]
+    #[should_panic]
+    fn cursor_mut_trimoff_too_much() {
+        let mut b = [10; 1000];
+        let mut cursor = CursorMut::new(&mut b[..]);
+        cursor.advance(407);
+        cursor.trim_off(10000);
+    }
 }

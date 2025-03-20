@@ -57,7 +57,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
             LengthField::None => {
                 // Fixed header length.
                 guards.push(format!(
-                    "{buf_name}.chunk_headeroom()>={}",
+                    "{buf_name}.chunk_headroom()>={}",
                     self.header.header_len_in_bytes()
                 ));
                 format!("{}", self.header.header_len_in_bytes())
@@ -66,7 +66,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // Variable header length with undefined computing expression.
                 write!(output, "let header_len = header.header_len() as usize;\n").unwrap();
                 guards.push(format!("header_len>={}", self.header.header_len_in_bytes()));
-                guards.push(format!("header_len<={buf_name}.chunk_headeroom()"));
+                guards.push(format!("header_len<={buf_name}.chunk_headroom()"));
                 "header_len".to_string()
             }
             LengthField::Expr { expr } => {

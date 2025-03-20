@@ -251,8 +251,7 @@ impl<'a> PacketGen<'a> {
         let build = Build::new(self.packet().header(), self.packet().length().as_slice());
 
         {
-            let mut impl_block =
-                impl_block("T:PktBuf", &self.packet_struct_name(), "T", &mut output);
+            let mut impl_block = impl_block("T:Buf", &self.packet_struct_name(), "T", &mut output);
 
             // Basic container-buffer conversion.
             Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
@@ -261,9 +260,6 @@ impl<'a> PacketGen<'a> {
 
             // Packet parse with format checking.
             parse.code_gen_for_pktbuf("parse", "buf", "T", impl_block.get_writer());
-
-            // Packet payload.
-            payload.code_gen_for_pktbuf("payload", "buf", "T", impl_block.get_writer());
 
             // Fixed length header slice.
             Container::code_gen_for_header_slice(
@@ -315,7 +311,15 @@ impl<'a> PacketGen<'a> {
 
         {
             let mut impl_block =
-                impl_block("T:BufMut", &self.packet_struct_name(), "T", &mut output);
+                impl_block("T:PktBuf", &self.packet_struct_name(), "T", &mut output);
+
+            // Packet payload.
+            payload.code_gen_for_pktbuf("payload", "buf", "T", impl_block.get_writer());
+        }
+
+        {
+            let mut impl_block =
+                impl_block("T:PktBufMut", &self.packet_struct_name(), "T", &mut output);
 
             // Packet build.
             build.code_gen_for_pktbuf(
@@ -381,7 +385,7 @@ impl<'a> PacketGen<'a> {
 
             // Specialized parse for Cursor with format checking.
             parse.code_gen_for_contiguous_buffer(
-                "parse_for_cursor",
+                "parse_from_cursor",
                 "buf",
                 "Cursor<'a>",
                 ".chunk()",
@@ -394,7 +398,7 @@ impl<'a> PacketGen<'a> {
                 write!(ht_writer.get_writer(), "{s}").unwrap();
             };
             payload.code_gen_for_contiguous_buffer(
-                "payload_for_cursor",
+                "payload_as_cursor",
                 "&",
                 "buf",
                 "Cursor<'_>",
@@ -414,7 +418,7 @@ impl<'a> PacketGen<'a> {
 
             // Specialized parse for CursorMut with format checking.
             parse.code_gen_for_contiguous_buffer(
-                "parse_for_cursor_mut",
+                "parse_from_cursor_mut",
                 "buf",
                 "CursorMut<'a>",
                 ".chunk()",
@@ -427,7 +431,7 @@ impl<'a> PacketGen<'a> {
                 write!(ht_writer.get_writer(), "{s}").unwrap();
             };
             payload.code_gen_for_contiguous_buffer(
-                "payload_for_cursor_mut",
+                "payload_as_cursor_mut",
                 "&mut ",
                 "buf",
                 "CursorMut<'_>",

@@ -1,10 +1,7 @@
 [workspace]
 members = [
   "rpkt",
-  "rpkt-dpdk",
-  "pktfmt",
-  "examples",
-  "benches",
+  "pktfmt"
 ]
 resolver = "2"
 

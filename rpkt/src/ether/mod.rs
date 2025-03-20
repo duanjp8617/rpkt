@@ -1,31 +1,39 @@
-use std::fmt;
+use core::fmt;
 
-///  This is copied directly from smoltcp.
+enum_sim! {
+    /// An enum-like type for representing Ethertype in Ethernet frame.
+    pub struct EtherType (u16) {
+        /// Frame payload is Arp protocol.
+        ARP =  0x0806,
+        /// Frame payload is Ipv4 protocol.
+        IPV4 = 0x0800,
+        /// Frame payload is Ipv6 protocol.
+        IPV6 = 0x86DD,
+    }
+}
+
+/// A six-octet Ethernet II address.
+///
+/// This is copied from smoltcp and renamed to `EtherAddr`.
 #[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default)]
-pub struct MacAddr(pub [u8; 6]);
+pub struct EtherAddr(pub [u8; 6]);
 
-impl MacAddr {
+impl EtherAddr {
     /// The broadcast address.
-    pub const BROADCAST: MacAddr = MacAddr([0xff; 6]);
+    pub const BROADCAST: EtherAddr = EtherAddr([0xff; 6]);
 
     /// Construct an Ethernet address from a sequence of octets, in big-endian.
     ///
-    /// inline is required to improve performance
-    ///
     /// # Panics
     /// The function panics if `data` is not six octets long.
-    #[inline]
-    pub fn from_bytes(data: &[u8]) -> MacAddr {
+    pub fn from_bytes(data: &[u8]) -> EtherAddr {
         let mut bytes = [0; 6];
         bytes.copy_from_slice(data);
-        MacAddr(bytes)
+        EtherAddr(bytes)
     }
 
     /// Return an Ethernet address as a sequence of octets, in big-endian.
-    ///
-    /// inline is required to improve performance
-    #[inline]
-    pub fn as_bytes(&self) -> &[u8] {
+    pub const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
@@ -39,19 +47,62 @@ impl MacAddr {
         *self == Self::BROADCAST
     }
 
-    /// Query whether the "multicast" bit in the OUI is set.
-    pub fn is_multicast(&self) -> bool {
+    /// Query whether the 'multicast' bit in the OUI is set.
+    pub const fn is_multicast(&self) -> bool {
         self.0[0] & 0x01 != 0
     }
 
-    /// Query whether the "locally administered" bit in the OUI is set.
-    pub fn is_local(&self) -> bool {
+    /// Query whether the 'locally administered' bit in the OUI is set.
+    pub const fn is_local(&self) -> bool {
         self.0[0] & 0x02 != 0
+    }
+
+    /// Parse a string with the form 'Aa:0b:Cc:11:02:33' into `EtherAddr`.
+    pub fn parse_from<T: AsRef<str>>(s: T) -> Option<Self> {
+        fn convert(c: char) -> Option<u8> {
+            match c {
+                '0' => Some(0),
+                '1' => Some(1),
+                '2' => Some(2),
+                '3' => Some(3),
+                '4' => Some(4),
+                '5' => Some(5),
+                '6' => Some(6),
+                '7' => Some(7),
+                '8' => Some(8),
+                '9' => Some(9),
+                'A' => Some(10),
+                'a' => Some(10),
+                'B' => Some(11),
+                'b' => Some(11),
+                'C' => Some(12),
+                'c' => Some(12),
+                'D' => Some(13),
+                'd' => Some(13),
+                'E' => Some(14),
+                'e' => Some(14),
+                'F' => Some(15),
+                'f' => Some(15),
+                _ => None,
+            }
+        }
+
+        let mut result = [0; 6];
+        let mut s = s.as_ref().split(":");
+        for i in 0..6 {
+            let mut hex = s.next()?.chars();
+            let n = convert(hex.next()?)? << 4;
+            result[i] = n | (convert(hex.next()?)?);
+            if hex.next().is_some() {
+                return None;
+            }
+        }
+        Some(Self(result))
     }
 }
 
-impl fmt::Display for MacAddr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl fmt::Display for EtherAddr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> fmt::Result {
         let bytes = self.0;
         write!(
             f,
@@ -61,29 +112,27 @@ impl fmt::Display for MacAddr {
     }
 }
 
-enum_sim! {
-    pub struct EtherType (u16) {
-        ARP =  0x0806,
-        IPV4 = 0x0800,
-        IPV6 = 0x86DD,
+mod generated;
+pub use generated::{EtherHeader, EtherPacket, ETHER_HEADER_LEN, ETHER_HEADER_TEMPLATE};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn etheraddr_parse_from() {
+        let s = "Aa:Bb:Cc:11:22:33";
+        assert_eq!(
+            EtherAddr::parse_from(s),
+            Some(EtherAddr::from_bytes(&[0xAa, 0xBb, 0xCc, 0x11, 0x22, 0x33]))
+        );
+        let s = "Aa:Bb:Cc:11:22";
+        assert_eq!(EtherAddr::parse_from(s), None);
+        let s = "Aaa:Bb:Cc:11:22:33";
+        assert_eq!(EtherAddr::parse_from(s), None);
+        let s = "Zaa:Bb:Cc:11:22:33";
+        assert_eq!(EtherAddr::parse_from(s), None);
+        let s = "a:Bb:Cc:11:22:33";
+        assert_eq!(EtherAddr::parse_from(s), None);
     }
 }
-
-impl fmt::Display for EtherType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            EtherType::ARP => write!(f, "ARP"),
-            EtherType::IPV4 => write!(f, "IPv4"),
-            EtherType::IPV6 => write!(f, "IPv6"),
-            _ => write!(f, "0x{:04x}", u16::from(*self)),
-        }
-    }
-}
-
-mod header;
-pub use header::{EtherHeader, ETHER_HEADER_LEN, ETHER_HEADER_TEMPLATE};
-
-mod packet;
-pub use self::packet::{
-    EtherPacket, ETHER_MAX_JUMBO_PKT_LEN, ETHER_MAX_LEN, ETHER_MIN_LEN, ETHER_MTU, ETHER_OVERHEAD,
-};

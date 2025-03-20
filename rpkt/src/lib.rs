@@ -3,6 +3,9 @@
 
 //! Provide utilities for parsing and constructing network packets.
 
+#[macro_use]
+mod macros;
+
 mod traits;
 pub use traits::{Buf, PktBuf, PktBufMut};
 
@@ -11,6 +14,7 @@ pub use cursors::{Cursor, CursorMut};
 
 pub mod checksum_utils;
 
+pub mod ether;
 // pub mod arp;
 // pub mod ether;
 // pub mod icmpv4;
