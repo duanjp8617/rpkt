@@ -1,22 +1,25 @@
-#[macro_use]
-mod macros;
+#![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
+#![no_std]
+
+//! Provide utilities for parsing and constructing network packets.
 
 mod traits;
-pub use traits::{Buf, PktBuf, PktMut};
-
-pub(crate) mod checksum_utils;
+pub use traits::{Buf, PktBuf, PktBufMut};
 
 mod cursors;
 pub use cursors::{Cursor, CursorMut};
 
-pub mod cursors_old;
+pub mod checksum_utils;
 
-pub mod arp;
-pub mod ether;
-pub mod icmpv4;
-pub mod icmpv6;
-pub mod ipsec;
-pub mod ipv4;
-pub mod ipv6;
-pub mod tcp;
-pub mod udp;
+
+// pub mod cursors_old;
+
+// pub mod arp;
+// pub mod ether;
+// pub mod icmpv4;
+// pub mod icmpv6;
+// pub mod ipsec;
+// pub mod ipv4;
+// pub mod ipv6;
+// pub mod tcp;
+// pub mod udp;
