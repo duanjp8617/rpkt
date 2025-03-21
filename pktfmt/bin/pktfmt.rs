@@ -69,7 +69,7 @@ Options:
 fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), utils::Error> {
     // Parse for the top level ast.
     let tokenizer = token::Tokenizer::new(file_text.text());
-    let (start_code, parsed_items, end_code_opt) = parser::TopLevelParser::new()
+    let (start_code, parsed_items) = parser::TopLevelParser::new()
         .parse(
             tokenizer
                 .into_iter()
@@ -89,7 +89,7 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
     // Do the code generation.
     write!(&mut output_f, "{start_code}").unwrap();
     writeln!(&mut output_f, "").unwrap();
-    for parsed_item in top_level.item_iter() {
+    for (parsed_item, code_opt) in top_level.item_iter() {
         match parsed_item {
             ast::ParsedItem::Packet_(p) => {
                 let header = codegen::HeaderGen::new(&p);
@@ -110,8 +110,11 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
             }
         }
         writeln!(&mut output_f, "").unwrap();
-    }
-    end_code_opt.map(|end_code| write!(&mut output_f, "{end_code}").unwrap());
+        code_opt.as_ref().map(|code| {
+            writeln!(&mut output_f, "{code}").unwrap();
+            writeln!(&mut output_f, "").unwrap();
+        });
+    }    
 
     Ok(())
 }

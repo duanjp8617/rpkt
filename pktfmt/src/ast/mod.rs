@@ -232,19 +232,19 @@ pub enum ParsedItem {
 }
 
 pub struct TopLevel<'a> {
-    items: &'a [(ParsedItem, (usize, usize))],
+    items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
     msg_groups: HashMap<&'a str, Vec<&'a Message>>,
 }
 
 impl<'a> TopLevel<'a> {
     pub fn new(
-        parsed_items: &'a [(ParsedItem, (usize, usize))],
+        parsed_items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
     ) -> Result<Self, (Error, (usize, usize))> {
         let mut all_names = HashSet::new();
         let mut all_msgs = HashMap::new();
         let mut msg_groups = Vec::new();
 
-        for (parsed_item, span) in parsed_items.iter() {
+        for ((parsed_item, span), _) in parsed_items.iter() {
             let name = match parsed_item {
                 ParsedItem::Packet_(p) => p.protocol_name(),
                 ParsedItem::Message_(m) => {
@@ -280,8 +280,8 @@ impl<'a> TopLevel<'a> {
         })
     }
 
-    pub fn item_iter(&self) -> impl Iterator<Item = &'a ParsedItem> {
-        self.items.iter().map(|t| &t.0)
+    pub fn item_iter(&self) -> impl Iterator<Item = (&'a ParsedItem, &'a Option<String>)> {
+        self.items.iter().map(|t| (&t.0 .0, &t.1))
     }
 
     pub fn msg_group(&self, msg_group_name: &'a str) -> Option<&Vec<&'a Message>> {
