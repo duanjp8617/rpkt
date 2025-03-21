@@ -48,7 +48,11 @@ pub mod options {
     // The Ipv4 Nop option
     pub use super::generated::{NopMessage, NOP_HEADER_ARRAY};
 
-    
+    pub use super::generated::{TimestampMessage, TIMESTAMP_HEADER_ARRAY};
 
+    pub use super::generated::{RecordRouteMessage, RECORDROUTE_HEADER_ARRAY};
 
+    pub use super::generated::{RouteAlertMessage, ROUTEALERT_HEADER_ARRAY};
+
+    pub use super::generated::Ipv4OptGroup;
 }

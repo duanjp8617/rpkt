@@ -204,7 +204,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
         .unwrap();
         write!(
             output,
-            "&mut buf.{buf_access}[..{}].copy_from_slice({target_slice_name});\n",
+            "(&mut buf.{buf_access}[..{}]).copy_from_slice({target_slice_name});\n",
             self.header.header_len_in_bytes()
         )
         .unwrap();

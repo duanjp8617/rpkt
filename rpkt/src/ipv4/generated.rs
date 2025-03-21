@@ -493,7 +493,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> EolMessage<T> {
     #[inline]
     pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 1);
-        &mut buf.as_mut()[..1].copy_from_slice(&EOL_HEADER_ARRAY[..]);
+        (&mut buf.as_mut()[..1]).copy_from_slice(&EOL_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -548,7 +548,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> NopMessage<T> {
     #[inline]
     pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 1);
-        &mut buf.as_mut()[..1].copy_from_slice(&NOP_HEADER_ARRAY[..]);
+        (&mut buf.as_mut()[..1]).copy_from_slice(&NOP_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -631,7 +631,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TimestampMessage<T> {
     #[inline]
     pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 4);
-        &mut buf.as_mut()[..4].copy_from_slice(&TIMESTAMP_HEADER_ARRAY[..]);
+        (&mut buf.as_mut()[..4]).copy_from_slice(&TIMESTAMP_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -729,7 +729,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RecordRouteMessage<T> {
     #[inline]
     pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 3);
-        &mut buf.as_mut()[..3].copy_from_slice(&RECORDROUTE_HEADER_ARRAY[..]);
+        (&mut buf.as_mut()[..3]).copy_from_slice(&RECORDROUTE_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -810,7 +810,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
     #[inline]
     pub fn build_message(mut buf: T) -> Self {
         assert!(buf.as_mut().len() >= 4);
-        &mut buf.as_mut()[..4].copy_from_slice(&ROUTEALERT_HEADER_ARRAY[..]);
+        (&mut buf.as_mut()[..4]).copy_from_slice(&ROUTEALERT_HEADER_ARRAY[..]);
         Self { buf }
     }
     #[inline]
@@ -829,6 +829,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
     }
 }
 
+#[derive(Debug)]
 pub enum Ipv4OptGroup<T> {
     Eol_(EolMessage<T>),
     Nop_(NopMessage<T>),

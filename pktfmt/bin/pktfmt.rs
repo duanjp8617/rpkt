@@ -7,7 +7,7 @@ use pktfmt::{ast, codegen, file_text, parser, token, utils};
 
 // A helper that will write an "error" line to the output channel.
 fn preceed_with_error(output: &mut dyn Write) -> &mut dyn Write {
-    writeln!(output, "error").unwrap();
+    write!(output, "error: ").unwrap();
     output
 }
 
@@ -15,11 +15,10 @@ fn handle_args(args: &Vec<String>) -> Result<(PathBuf, PathBuf), String> {
     let mut input_path = None;
     let mut output_path = None;
 
-    let help = r#"Usage: pktfmt <*.pktfmt> [options]
+    let help = r#"Usage: pktfmt *.pktfmt [options]
 Options:
   -o <file>   Generate the output in <file>.
-  -h          Display help information.
-"#;
+  -h          Display help information."#;
 
     let mut i = 1;
     while i < args.len() {
@@ -27,20 +26,20 @@ Options:
             // Find a ".pktfmt" suffix, which should be an input file
             match input_path {
                 None => input_path = Some(&args[i]),
-                Some(_) => return Err(format!("found another input file: {}", &args[i])),
+                Some(_) => return Err(format!("found another input file {}\n{help}", &args[i])),
             }
             i += 1;
         } else if &args[i] == "-o" && (i + 1 < args.len()) {
             match output_path {
                 None => output_path = Some(&args[i + 1]),
-                Some(_) => return Err(format!("found another output file: {}", &args[i + 1])),
+                Some(_) => return Err(format!("found another output file {}\n{help}", &args[i + 1])),
             }
             i += 2;
         } else if &args[i] == "-h" {
             print!("{help}");
             std::process::exit(0);
         } else {
-            i += 1
+            return Err(format!("invalid argument {}\n{help}", &args[i]));
         }
     }
 
@@ -52,18 +51,17 @@ Options:
                 Some(i) => i + 1,
                 None => 0,
             };
-            if start_idx == end_idx {
-                Err(format!("invalid input file name: {i}"))
-            } else {
-                Ok((
-                    PathBuf::from(i),
-                    std::env::current_dir()
-                        .unwrap()
-                        .join(format!("{}.rs", &i[start_idx..end_idx])),
-                ))
-            }
+            assert!(start_idx != end_idx);
+            let output_file = std::env::current_dir()
+                .unwrap()
+                .join(format!("{}.rs", &i[start_idx..end_idx]));
+            println!(
+                "warning: using {} as the output file",
+                output_file.display()
+            );
+            Ok((PathBuf::from(i), output_file))
         }
-        _ => Err(format!("missing input file")),
+        _ => Err(format!("missing input arguments\n{help}")),
     }
 }
 

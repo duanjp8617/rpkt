@@ -928,7 +928,7 @@ impl<'a> GroupMessageGen<'a> {
     }
 
     fn code_gen_for_enum(&self, enum_name: &str, buf_type: &str, output: &mut dyn Write) {
-        write!(output, "pub enum {enum_name}<{buf_type}> {{\n").unwrap();
+        write!(output, "#[derive(Debug)]\npub enum {enum_name}<{buf_type}> {{\n").unwrap();
         for msg in self.msgs.iter() {
             let msg_name = msg.protocol_name().to_string();
             write!(
