@@ -13,7 +13,7 @@ use super::{Hardware, Operation};
 
 packet Arp {
     header = [
-        hardware_type = Field{bit = 16, arg = %%Hardware%%, default = 1},
+        hardware_type = Field{bit = 16, arg = %%Hardware%%, default = @1},
         protocol_type = Field{bit = 16, arg = %%EtherType%%, default = 0x0806},
         hardware_addr_len = Field{bit = 8, default = 6},
         protocol_addr_len = Field{bit = 8, default = 4},
