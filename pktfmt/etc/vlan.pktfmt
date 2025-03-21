@@ -1,0 +1,31 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::ether::EtherType;
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+%%
+
+packet Vlan {
+    header = [
+        priority = Field {bit = 3},
+        dei_flag = Field {bit = 1, default=0},
+        vlan_id = Field {bit = 12, default=1},
+        ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
+    ]
+}
+
+packet VlanDot3 {
+    header = [
+        priority = Field {bit = 3},
+        dei_flag = Field {bit = 1, default=0},
+        vlan_id = Field {bit = 12, default=1},
+        packet_len_ = Field {bit = 16, default = 4, gen = false},
+    ],
+    length = [
+        packet_len = packet_len_
+    ]
+}
