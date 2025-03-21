@@ -1,8 +1,23 @@
-mod header;
-pub use header::{TcpHeader, TCP_HEADER_LEN, TCP_HEADER_LEN_MAX, TCP_HEADER_TEMPLATE};
+mod generated;
+pub use generated::{TcpHeader, TcpPacket, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 
-mod packet;
-pub use packet::TcpPacket;
+/// Tcp options.
+pub mod options {
+    pub use super::generated::{EolMessage, EOL_HEADER_ARRAY};
 
-mod option;
-pub use option::{TcpOptionSack, TcpOption, TcpOptionIter, TcpOptionWriter};
+    pub use super::generated::{NopMessage, NOP_HEADER_ARRAY};
+
+    pub use super::generated::{MssMessage, MSS_HEADER_ARRAY};
+
+    pub use super::generated::{WsoptMessage, WSOPT_HEADER_ARRAY};
+
+    pub use super::generated::{SackpermMessage, SACKPERM_HEADER_ARRAY};
+
+    pub use super::generated::{SackMessage, SACK_HEADER_ARRAY};
+
+    pub use super::generated::{TsMessage, TS_HEADER_ARRAY};
+
+    pub use super::generated::{FoMessage, FO_HEADER_ARRAY};
+
+    pub use super::generated::TcpOptGroup;
+}

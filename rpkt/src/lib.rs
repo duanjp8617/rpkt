@@ -21,6 +21,7 @@ pub mod arp;
 pub mod ether;
 pub mod ipv4;
 pub mod udp;
+pub mod tcp;
 // pub mod arp;
 // pub mod ether;
 // pub mod icmpv4;
