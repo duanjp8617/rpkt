@@ -10,185 +10,10 @@ use crate::{Cursor, CursorMut};
 /// A constant that defines the fixed byte length of the Ipv4 protocol header.
 pub const IPV4_HEADER_LEN: usize = 20;
 /// A fixed Ipv4 header.
-pub const IPV4_HEADER_TEMPLATE: Ipv4Header<[u8; 20]> = Ipv4Header {
-    buf: [
-        0x45, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00,
-    ],
-};
-
-#[derive(Debug, Clone, Copy)]
-pub struct Ipv4Header<T> {
-    buf: T,
-}
-impl<T: AsRef<[u8]>> Ipv4Header<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
-        if remaining_len < 20 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        Ok(container)
-    }
-    #[inline]
-    pub fn header_slice(&self) -> &[u8] {
-        &self.buf.as_ref()[0..20]
-    }
-    #[inline]
-    pub fn version(&self) -> u8 {
-        self.buf.as_ref()[0] >> 4
-    }
-    #[inline]
-    pub fn dscp(&self) -> u8 {
-        self.buf.as_ref()[1] >> 2
-    }
-    #[inline]
-    pub fn ecn(&self) -> u8 {
-        self.buf.as_ref()[1] & 0x3
-    }
-    #[inline]
-    pub fn ident(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[4..6])
-    }
-    #[inline]
-    pub fn flag_reserved(&self) -> u8 {
-        self.buf.as_ref()[6] >> 7
-    }
-    #[inline]
-    pub fn dont_frag(&self) -> bool {
-        self.buf.as_ref()[6] & 0x40 != 0
-    }
-    #[inline]
-    pub fn more_frag(&self) -> bool {
-        self.buf.as_ref()[6] & 0x20 != 0
-    }
-    #[inline]
-    pub fn frag_offset(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[6..8]) & 0x1fff
-    }
-    #[inline]
-    pub fn ttl(&self) -> u8 {
-        self.buf.as_ref()[8]
-    }
-    #[inline]
-    pub fn protocol(&self) -> IpProtocol {
-        IpProtocol::from(self.buf.as_ref()[9])
-    }
-    #[inline]
-    pub fn checksum(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[10..12])
-    }
-    #[inline]
-    pub fn src_ip(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.as_ref()[12..16]))
-    }
-    #[inline]
-    pub fn dst_ip(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.as_ref()[16..20]))
-    }
-    #[inline]
-    pub fn header_len(&self) -> u8 {
-        (self.buf.as_ref()[0] & 0xf) * 4
-    }
-    #[inline]
-    pub fn packet_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.as_ref()[2..4]))
-    }
-}
-impl<T: AsMut<[u8]>> Ipv4Header<T> {
-    #[inline]
-    pub fn header_slice_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[0..20]
-    }
-    #[inline]
-    pub fn set_version(&mut self, value: u8) {
-        assert!(value == 4);
-        self.buf.as_mut()[0] = (self.buf.as_mut()[0] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_dscp(&mut self, value: u8) {
-        assert!(value <= 0x3f);
-        self.buf.as_mut()[1] = (self.buf.as_mut()[1] & 0x03) | (value << 2);
-    }
-    #[inline]
-    pub fn set_ecn(&mut self, value: u8) {
-        assert!(value <= 0x3);
-        self.buf.as_mut()[1] = (self.buf.as_mut()[1] & 0xfc) | value;
-    }
-    #[inline]
-    pub fn set_ident(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[4..6], value);
-    }
-    #[inline]
-    pub fn set_flag_reserved(&mut self, value: u8) {
-        assert!(value <= 0x1);
-        self.buf.as_mut()[6] = (self.buf.as_mut()[6] & 0x7f) | (value << 7);
-    }
-    #[inline]
-    pub fn set_dont_frag(&mut self, value: bool) {
-        if value {
-            self.buf.as_mut()[6] = self.buf.as_mut()[6] | 0x40
-        } else {
-            self.buf.as_mut()[6] = self.buf.as_mut()[6] & 0xbf
-        }
-    }
-    #[inline]
-    pub fn set_more_frag(&mut self, value: bool) {
-        if value {
-            self.buf.as_mut()[6] = self.buf.as_mut()[6] | 0x20
-        } else {
-            self.buf.as_mut()[6] = self.buf.as_mut()[6] & 0xdf
-        }
-    }
-    #[inline]
-    pub fn set_frag_offset(&mut self, value: u16) {
-        assert!(value <= 0x1fff);
-        let write_value = ((self.buf.as_mut()[6] & 0xe0) as u16) << 8 | value;
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[6..8], write_value);
-    }
-    #[inline]
-    pub fn set_ttl(&mut self, value: u8) {
-        self.buf.as_mut()[8] = value;
-    }
-    #[inline]
-    pub fn set_protocol(&mut self, value: IpProtocol) {
-        self.buf.as_mut()[9] = u8::from(value);
-    }
-    #[inline]
-    pub fn set_checksum(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[10..12], value);
-    }
-    #[inline]
-    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[12..16], u32::from(value));
-    }
-    #[inline]
-    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[16..20], u32::from(value));
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        assert!((value <= 60) && (value % 4 == 0));
-        self.buf.as_mut()[0] = (self.buf.as_mut()[0] & 0xf0) | (value / 4);
-    }
-    #[inline]
-    pub fn set_packet_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], (value));
-    }
-}
+pub const IPV4_HEADER_TEMPLATE: [u8; 20] = [
+    0x45, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+];
 
 #[derive(Debug, Clone, Copy)]
 pub struct Ipv4Packet<T> {
@@ -309,13 +134,13 @@ impl<T: PktBuf> Ipv4Packet<T> {
 }
 impl<T: PktBufMut> Ipv4Packet<T> {
     #[inline]
-    pub fn prepend_header<HT: AsRef<[u8]>>(mut buf: T, header: &Ipv4Header<HT>) -> Self {
-        let header_len = header.header_len() as usize;
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20]) -> Self {
+        let header_len = Ipv4Packet::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len >= 20) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         let packet_len = buf.remaining();
         assert!(packet_len <= 65535);
-        (&mut buf.chunk_mut()[0..20]).copy_from_slice(header.header_slice());
+        (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
         container.set_packet_len(packet_len as u16);
         container

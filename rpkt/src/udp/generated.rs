@@ -9,79 +9,7 @@ use crate::{Cursor, CursorMut};
 /// A constant that defines the fixed byte length of the Udp protocol header.
 pub const UDP_HEADER_LEN: usize = 8;
 /// A fixed Udp header.
-pub const UDP_HEADER_TEMPLATE: UdpHeader<[u8; 8]> = UdpHeader {
-    buf: [0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00],
-};
-
-#[derive(Debug, Clone, Copy)]
-pub struct UdpHeader<T> {
-    buf: T,
-}
-impl<T: AsRef<[u8]>> UdpHeader<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
-        if remaining_len < 8 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        Ok(container)
-    }
-    #[inline]
-    pub fn header_slice(&self) -> &[u8] {
-        &self.buf.as_ref()[0..8]
-    }
-    #[inline]
-    pub fn src_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
-    }
-    #[inline]
-    pub fn dst_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[2..4])
-    }
-    #[inline]
-    pub fn checksum(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[6..8])
-    }
-    #[inline]
-    pub fn packet_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.as_ref()[4..6]))
-    }
-}
-impl<T: AsMut<[u8]>> UdpHeader<T> {
-    #[inline]
-    pub fn header_slice_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[0..8]
-    }
-    #[inline]
-    pub fn set_src_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
-    }
-    #[inline]
-    pub fn set_dst_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], value);
-    }
-    #[inline]
-    pub fn set_checksum(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[6..8], value);
-    }
-    #[inline]
-    pub fn set_packet_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[4..6], (value));
-    }
-}
+pub const UDP_HEADER_TEMPLATE: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct UdpPacket<T> {
@@ -150,12 +78,12 @@ impl<T: PktBuf> UdpPacket<T> {
 }
 impl<T: PktBufMut> UdpPacket<T> {
     #[inline]
-    pub fn prepend_header<HT: AsRef<[u8]>>(mut buf: T, header: &UdpHeader<HT>) -> Self {
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
         assert!(buf.chunk_headroom() >= 8);
         buf.move_back(8);
         let packet_len = buf.remaining();
         assert!(packet_len <= 65535);
-        (&mut buf.chunk_mut()[0..8]).copy_from_slice(header.header_slice());
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
         container.set_packet_len(packet_len as u16);
         container

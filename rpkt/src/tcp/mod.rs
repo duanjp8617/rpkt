@@ -1,7 +1,7 @@
 //! Tcp protocol.
 
 mod generated;
-pub use generated::{TcpHeader, TcpPacket, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
+pub use generated::{TcpPacket, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 
 /// Tcp options.
 pub mod options {

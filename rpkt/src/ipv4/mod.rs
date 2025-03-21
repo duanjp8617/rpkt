@@ -38,7 +38,7 @@ enum_sim! {
 }
 
 mod generated;
-pub use generated::{Ipv4Header, Ipv4Packet, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
+pub use generated::{Ipv4Packet, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 
 /// The Ipv4 options.
 pub mod options {

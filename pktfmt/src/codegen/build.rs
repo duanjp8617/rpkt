@@ -27,6 +27,7 @@ impl<'a> Build<'a> {
         buf_type: &str,
         header_name: &str,
         header_type: &str,
+        protocol_name: &str,
         output: &mut dyn Write,
     ) {
         match (&self.length[1], &self.length[2]) {
@@ -64,14 +65,18 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
             }
             LengthField::Undefined => {
                 // Variable header length with undefined computing expression.
-                write!(output, "let header_len = header.header_len() as usize;\n").unwrap();
+                write!(output, "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n").unwrap();
                 guards.push(format!("header_len>={}", self.header.header_len_in_bytes()));
                 guards.push(format!("header_len<={buf_name}.chunk_headroom()"));
                 "header_len".to_string()
             }
             LengthField::Expr { expr } => {
                 // Header field is defined with computing expression.
-                write!(output, "let header_len = header.header_len() as usize;\n").unwrap();
+                write!(
+                    output,
+                    "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n"
+                )
+                .unwrap();
                 let (field, _) = self.header.field(expr.field_name()).unwrap();
                 if field.default_fix {
                     // Variable header length with fixed default value.
@@ -98,7 +103,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // copy the packet content in
                 write!(
                     output,
-                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(header.header_slice());\n",
+                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(&header.as_ref()[..]);\n",
                     self.header.header_len_in_bytes()
                 )
                 .unwrap();
@@ -122,7 +127,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // copy the packet content in
                 write!(
                     output,
-                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(header.header_slice());\n",
+                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(&header.as_ref()[..]);\n",
                     self.header.header_len_in_bytes()
                 )
                 .unwrap();
@@ -157,7 +162,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // copy the packet content in
                 write!(
                     output,
-                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(header.header_slice());\n",
+                    "(&mut {buf_name}.chunk_mut()[0..{}]).copy_from_slice(&header.as_ref()[..]);\n",
                     self.header.header_len_in_bytes()
                 )
                 .unwrap();
