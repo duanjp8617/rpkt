@@ -1,5 +1,14 @@
 %%
-use std::io;
+#![allow(missing_docs)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::ether::{EtherAddr, EtherType};
+use crate::ipv4::Ipv4Addr;
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+
+use super::{Hardware, Operation};
 %%
 
 packet Arp {
@@ -9,9 +18,9 @@ packet Arp {
         hardware_addr_len = Field{bit = 8, default = 6},
         protocol_addr_len = Field{bit = 8, default = 4},
         operation = Field{bit = 16, arg = %%Operation%%, default = 1},
-        sender_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%MacAddr%%},
+        sender_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         sender_protocol_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
-        target_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%MacAdd4%%},
+        target_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         target_protocol_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
     ]
 }

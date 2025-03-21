@@ -17,6 +17,7 @@ pub use cursors::{Cursor, CursorMut};
 
 pub mod checksum_utils;
 
+pub mod arp;
 pub mod ether;
 pub mod ipv4;
 // pub mod arp;
