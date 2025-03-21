@@ -1,5 +1,6 @@
 %%
 #![allow(missing_docs)]
+#![allow(unused_parens)]
 
 use byteorder::{ByteOrder, NetworkEndian};
 
@@ -13,5 +14,16 @@ packet Ether {
         dst_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
         src_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
         ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
+    ]
+}
+
+packet EthDot3 {
+    header = [
+        dst_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
+        src_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
+        packet_len_ = Field {bit = 16, default = 14, gen = false},
+    ],
+    length = [
+        packet_len = packet_len_
     ]
 }

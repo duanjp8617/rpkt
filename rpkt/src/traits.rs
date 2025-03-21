@@ -1,12 +1,20 @@
 pub use bytes::Buf;
 
+/// The PktBuf trait.
 pub trait PktBuf: Buf {
+    /// Move cursor back.
     fn move_back(&mut self, cnt: usize);
+
+    /// Remove trailing bytes.
     fn trim_off(&mut self, cnt: usize);
 }
 
+/// The PktBufMut trait.
 pub trait PktBufMut: PktBuf {
+    /// Size of the chunk headroom.
     fn chunk_headroom(&self) -> usize;
+
+    /// A mutable chunk slice.
     fn chunk_mut(&mut self) -> &mut [u8];
 }
 

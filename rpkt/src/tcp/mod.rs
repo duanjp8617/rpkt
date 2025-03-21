@@ -1,3 +1,5 @@
+//! Tcp protocol.
+
 mod generated;
 pub use generated::{TcpHeader, TcpPacket, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 

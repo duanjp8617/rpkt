@@ -1,4 +1,4 @@
-//! Ethernet frame.
+//! Ethernet II frame.
 
 use core::fmt;
 
@@ -115,7 +115,45 @@ impl fmt::Display for EtherAddr {
 }
 
 mod generated;
+
+use byteorder::{ByteOrder, NetworkEndian};
+
 pub use generated::{EtherHeader, EtherPacket, ETHER_HEADER_LEN, ETHER_HEADER_TEMPLATE};
+
+/// Check if the byte slice stores valid Ethernet II frame.
+pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
+    if buf.as_ref().len() >= 14 {
+        // Ethertypes: These are 16-bit identifiers appearing as the initial
+        // two octets after the MAC destination and source (or after a
+        // tag) which, when considered as an unsigned integer, are equal
+        // to or larger than 0x0600.
+        //
+        // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
+        // More: IEEE Std 802.3 Clause 3.2.6
+        let value = NetworkEndian::read_u16(&buf.as_ref()[12..14]);
+        value >= 0x0600
+    } else {
+        false
+    }
+}
+
+pub use generated::{EthDot3Header, EthDot3Packet, ETHDOT3_HEADER_LEN, ETHDOT3_HEADER_TEMPLATE};
+
+/// Check if the byte slice stores valid IEEE 802.3 frame.
+pub fn store_ieee_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {
+    if buf.as_ref().len() >= 14 {
+        // LSAPs: ... Such a length must, when considered as an
+        // unsigned integer, be less than 0x5DC or it could be mistaken as
+        // an Ethertype...
+        //
+        // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
+        // More: IEEE Std 802.3 Clause 3.2.6
+        let value = NetworkEndian::read_u16(&buf.as_ref()[12..14]);
+        value <= 0x05DC
+    } else {
+        false
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -1,3 +1,5 @@
+//! Arp protocol.
+
 enum_sim! {
     /// Hardware type of the arp protocol.
     pub struct Hardware (u16) {
