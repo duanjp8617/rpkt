@@ -2,8 +2,14 @@ use std::borrow::Borrow;
 use std::path::PathBuf;
 use std::{fs::File, io::Read};
 
-pub fn file_to_packet<T: Borrow<PathBuf>>(fname: T) -> Vec<u8> {
-    let mut file = File::open(fname.borrow()).unwrap();
+pub fn file_to_packet(fname: &str) -> Vec<u8> {
+    // The test is executed under the crate root directory.
+    let mut program_path = std::env::current_dir().unwrap();
+    program_path.push("tests");
+    program_path.push("packet_examples");
+    program_path.push(fname);
+
+    let mut file = File::open(program_path).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
     let content = content.trim();

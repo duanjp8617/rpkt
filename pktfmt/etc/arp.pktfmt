@@ -14,13 +14,13 @@ use super::{Hardware, Operation};
 packet Arp {
     header = [
         hardware_type = Field{bit = 16, arg = %%Hardware%%, default = @1},
-        protocol_type = Field{bit = 16, arg = %%EtherType%%, default = 0x0806},
-        hardware_addr_len = Field{bit = 8, default = 6},
-        protocol_addr_len = Field{bit = 8, default = 4},
+        protocol_type = Field{bit = 16, arg = %%EtherType%%, default = @0x0800},
+        hardware_addr_len = Field{bit = 8, default = @6},
+        protocol_addr_len = Field{bit = 8, default = @4},
         operation = Field{bit = 16, arg = %%Operation%%, default = 1},
-        sender_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
-        sender_protocol_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
-        target_hardware_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
-        target_protocol_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
+        sender_ether_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
+        sender_ipv4_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
+        target_ether_addr = Field{bit = 48, repr = &[u8], arg = %%EtherAddr%%},
+        target_ipv4_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
     ]
 }
