@@ -20,6 +20,7 @@ pub mod checksum_utils;
 pub mod arp;
 pub mod ether;
 pub mod ipv4;
+pub mod llc;
 pub mod tcp;
 pub mod udp;
 pub mod vlan;

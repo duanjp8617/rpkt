@@ -4,19 +4,9 @@ use common::file_to_packet;
 use rpkt::arp::*;
 use rpkt::ether::*;
 use rpkt::ipv4::*;
-use rpkt::{Buf, PktBuf};
+use rpkt::llc::*;
+use rpkt::Buf;
 use rpkt::{Cursor, CursorMut};
-
-#[test]
-fn fuck() {
-    // The test is executed under the crate root directory.
-    let res = file_to_packet("ArpResponsePacket.dat");
-
-    for c in res.iter() {
-        print!("{:02x}", c);
-    }
-    println!();
-}
 
 #[test]
 fn eth_and_arp_packet_parsing() {
@@ -50,9 +40,10 @@ fn eth_and_arp_packet_parsing() {
 
 #[test]
 fn arp_packet_creation() {
-    let packet = file_to_packet("ArpRequestPacket.dat");
-    let mut target = [0; ETHER_HEADER_LEN + ARP_HEADER_LEN];
     {
+        let packet = file_to_packet("ArpRequestPacket.dat");
+        let mut target = [0; ETHER_HEADER_LEN + ARP_HEADER_LEN];
+
         let mut pkt = CursorMut::new(&mut target[..]);
         pkt.advance(ETHER_HEADER_LEN + ARP_HEADER_LEN);
 
@@ -77,4 +68,59 @@ fn arp_packet_creation() {
 
         assert_eq!(&target[..], &packet[..]);
     }
+
+    {
+        let packet = file_to_packet("ArpResponsePacket.dat");
+        let mut target = [0; ETHER_HEADER_LEN + ARP_HEADER_LEN];
+
+        let mut pkt = CursorMut::new(&mut target[..]);
+        pkt.advance(ETHER_HEADER_LEN + ARP_HEADER_LEN);
+
+        let mut arp_pkt = ArpPacket::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
+        assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
+        assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
+        assert_eq!(arp_pkt.hardware_addr_len(), 6);
+        assert_eq!(arp_pkt.protocol_addr_len(), 4);
+        assert_eq!(arp_pkt.operation(), Operation::REQUEST);
+
+        arp_pkt.set_operation(Operation::REPLY);
+        arp_pkt.set_sender_ether_addr(EtherAddr::parse_from("30:46:9a:23:fb:fa").unwrap());
+        arp_pkt.set_target_ether_addr(EtherAddr::parse_from("6c:f0:49:b2:de:6e").unwrap());
+        arp_pkt.set_sender_ipv4_addr(Ipv4Addr::new(10, 0, 0, 138));
+        arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(10, 0, 0, 1));
+
+        let mut eth_pkt = EtherPacket::prepend_header(arp_pkt.release(), &ETHER_HEADER_TEMPLATE);
+        assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
+
+        eth_pkt.set_ethertype(EtherType::ARP);
+        eth_pkt.set_src_addr(EtherAddr::parse_from("30:46:9a:23:fb:fa").unwrap());
+        eth_pkt.set_dst_addr(EtherAddr::parse_from("6c:f0:49:b2:de:6e").unwrap());
+
+        assert_eq!(&target[..], &packet[..target.len()]);
+    }
+}
+
+#[test]
+fn eth_dot3_layer_parsing_test() {
+    let packet = file_to_packet("EthDot3.dat");
+
+    let pkt = Cursor::new(&packet[..]);
+    assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
+    assert_eq!(store_ether_frame(pkt.chunk()), false);
+    let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+    assert_eq!(
+        ethdot3_pkt.src_addr(),
+        EtherAddr::parse_from("00:13:f7:11:5e:db").unwrap()
+    );
+    assert_eq!(
+        ethdot3_pkt.dst_addr(),
+        EtherAddr::parse_from("01:80:c2:00:00:00").unwrap()
+    );
+    assert_eq!(ethdot3_pkt.packet_len(), 38);
+
+    let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+    assert_eq!(llc_pkt.buf().chunk().len(), 24);
+    assert_eq!(llc_pkt.dsap(), BPDU_CONST);
+    assert_eq!(llc_pkt.ssap(), BPDU_CONST);
+    assert_eq!(llc_pkt.control(), 0x03);
 }

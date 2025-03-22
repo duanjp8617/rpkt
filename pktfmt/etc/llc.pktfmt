@@ -1,0 +1,18 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::ether::{EtherAddr, EtherType};
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+%%
+
+packet Llc {
+    header = [
+        dsap = Field {bit = 8, default=0x42},
+        ssap = Field {bit = 8, default=0x42},
+        control = Field {bit = 8, default=0x3},
+    ]
+}
