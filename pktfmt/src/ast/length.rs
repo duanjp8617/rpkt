@@ -391,16 +391,26 @@ impl UsableAlgExpr {
 
     /// Dump a guard condition to the `output` that can be used to protect the
     /// reverse calculation expression.
-    pub fn reverse_exec_guard(&self, y_str: &str) -> String {
+    pub fn reverse_exec_guard(&self, y_str: &str) -> Vec<String> {
+        let mut res = vec![];
         match self {
-            Self::SimpleMult(_, mult) | Self::AddMult(_, _, mult) => {
-                format!("{}%{}==0", y_str, mult)
+            Self::SimpleAdd(_, add) => {
+                res.push(format!("{y_str}>={add}"));
+            }
+            Self::SimpleMult(_, mult) => {
+                res.push(format!("{y_str}%{mult}==0"));
             }
             Self::MultAdd(_, mult, add) => {
-                format!("({}-{})%{}==0", y_str, add, mult)
+                res.push(format!("{y_str}>={add}"));
+                res.push(format!("({y_str}-{add})%{mult}==0"));
             }
-            _ => "".to_string(),
+            Self::AddMult(_, add, mult) => {
+                res.push(format!("{y_str}%{mult}==0"));
+                res.push(format!("{y_str}/{mult}>={add}"));
+            }
+            _ => {}
         }
+        res
     }
 
     /// Given a result string `y_str`, dump the expression for reverse

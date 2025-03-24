@@ -54,11 +54,11 @@ message RstpConfBpdu {
 
 %%
 impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
-    /// Get the StpConfBpdu part of the RstpConfBpdu
+    /// Get the `StpConfBpduMessage` part of the `RstpConfBpduMessage`.
     ///
-    /// Stp protocol is a layered protocol. The RstConfBpdu message actually
-    /// contains the StpConfBpdu message. This method retrieves the StpConfBpdu
-    /// message part.
+    /// Stp protocol is a layered protocol. The `RstpConfBpduMessage` contains
+    /// the `StpConfBpduMessage`, which is the first 35 bytes. This method
+    /// retrieves the `StpConfBpduMessage` part.
     ///
     /// # Panics
     ///
@@ -68,12 +68,12 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
         StpConfBpduMessage::parse_unchecked(&self.buf.as_ref()[..35])
     }
 }
-impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {    
-    /// Get the mutable StpConfBpdu part of the RstpConfBpdu
+impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {
+    /// Get the mutable `StpConfBpduMessage` part of the `RstpConfBpduMessage`.
     ///
-    /// Stp protocol is a layered protocol. The RstConfBpdu message actually
-    /// contains the StpConfBpdu message. This method retrieves the StpConfBpdu
-    /// message part.
+    /// Stp protocol is a layered protocol. The `RstpConfBpduMessage` contains
+    /// the `StpConfBpduMessage`, which is the first 35 bytes. This method
+    /// retrieves the mutable `StpConfBpduMessage` part.
     ///
     /// # Panics
     ///
@@ -83,6 +83,7 @@ impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {
         StpConfBpduMessage::parse_unchecked(&mut self.buf.as_mut()[..35])
     }
 }
+
 %%
 
 message MstpConfBpdu {
@@ -110,22 +111,96 @@ message MstpConfBpdu {
         remain_id = Field {bit = 8}
     ],
     length = [
-        header_len = ,
+        header_len = version3_len + 38,
     ]
 }
 
 %%
 impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
+    /// Get the number of the `MstiConfMessage` contained in the
+    /// `MstpConfBpduMessage`.
+    ///
+    /// This method returns `None` if the `MstpConfBpduMessage` has an invalid
+    /// format.
     #[inline]
-    pub fn header_len(&self) -> usize {
-        (NetworkEndian::read_u16(&self.buf.as_ref()[36..38])) as usize + 38
+    pub fn num_of_msti_msg(&self) -> Option<usize> {
+        if (self.header_len() - 102) % 16 != 0 {
+            None
+        } else {
+            Some(((self.header_len() - 102) / 16) as usize)
+        }
+    }
+
+    /// Get the `RstpConfBpduMessage` part of the `MstpConfBpduMessage`.
+    ///
+    /// Stp protocol is a layered protocol. `MstpConfBpduMessage` contains the
+    /// `RstpConfBpduMessage`, which is the first 36 bytes. This method
+    /// retrieves the `RstpConfBpduMessage` part.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `self.buf.len() < 36`.
+    #[inline]
+    pub fn rstp_conf_bpdu_part(&self) -> RstpConfBpduMessage<&[u8]> {
+        RstpConfBpduMessage::parse_unchecked(&self.buf.as_ref()[..36])
+    }
+
+    /// Get the `index`-th `MstiConfMessage` from the `MstpConfBpduMessage`.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
+    /// `MstiConfMessage`.
+    #[inline]
+    pub fn msti_conf_message(&self, index: usize) -> MstiConfMessage<&[u8]> {
+        let offset = 16 * index;
+        MstiConfMessage::parse_unchecked(&self.buf.as_ref()[102 + offset..118 + offset])
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
+    /// Set the number of the `MstiConfMessage` contained in the
+    /// `MstpConfBpduMessage`.
     #[inline]
-    pub fn set_header_len(&mut self, value: usize) {
-        assert!((value <= 65573) && (value >= 102) && ((value - 102) % 16 == 0));
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[36..38], ((value - 38) as u16));
+    pub fn set_num_of_msti_msg(&mut self, num: u32) {
+        self.set_header_len(102 + num * 16);
+    }
+
+    /// Get the mutable `RstpConfBpduMessage` part of the `MstpConfBpduMessage`.
+    ///
+    /// Stp protocol is a layered protocol. `MstpConfBpduMessage` contains the
+    /// `RstpConfBpduMessage`, which is the first 36 bytes. This method
+    /// retrieves the mutable `RstpConfBpduMessage`  part.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `self.buf.len() < 36`.
+    #[inline]
+    pub fn rstp_conf_bpdu_part_mut(&mut self) -> RstpConfBpduMessage<&mut [u8]> {
+        RstpConfBpduMessage::parse_unchecked(&mut self.buf.as_mut()[..36])
+    }
+
+    /// Get the `index`-th mutable `MstiConfMessage` from the
+    /// `MstpConfBpduMessage`.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
+    /// `MstiConfMessage`.
+    #[inline]
+    pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<&mut [u8]> {
+        let offset = 16 * index;
+        MstiConfMessage::parse_unchecked(&mut self.buf.as_mut()[102 + offset..118 + offset])
     }
 }
 %%
+
+message MstiConf {
+    header = [
+        flags = Field {bit = 8},
+        regional_root_id = Field {bit = 64},
+        path_cost = Field {bit = 32},
+        bridge_priority = Field {bit = 8},
+        port_priority = Field {bit = 8},
+        remaining_hops = Field {bit = 8},
+    ]
+}

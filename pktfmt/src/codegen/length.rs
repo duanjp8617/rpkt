@@ -171,11 +171,11 @@ impl<'a> LengthSetMethod<'a> {
             }
         }
 
-        let guard_str = self.expr.reverse_exec_guard(write_value);
-        if guard_str.len() > 0 {
+        let reverse_exec_guards = self.expr.reverse_exec_guard(write_value);
+        if reverse_exec_guards.len() > 0 {
             // This guard condition ensures that the `write_value`
             // can be divided without remainder.
-            guards.push(guard_str);
+            guards.extend(reverse_exec_guards);
         }
 
         // If the guard conditions are present, we prepend them to the generated method.
