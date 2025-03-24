@@ -3,10 +3,6 @@
 
 use byteorder::{ByteOrder, NetworkEndian};
 
-use crate::ether::{EtherAddr, EtherType};
-use crate::{Buf, PktBuf, PktBufMut};
-use crate::{Cursor, CursorMut};
-
 /// A fixed StpTcnBpdu header array.
 pub const STPTCNBPDU_HEADER_ARRAY: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
 #[derive(Debug, Clone, Copy)]
