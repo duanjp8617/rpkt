@@ -1,9 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
-use crate::ether::{EtherAddr, EtherType};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 

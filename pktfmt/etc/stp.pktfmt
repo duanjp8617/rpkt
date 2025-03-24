@@ -1,0 +1,131 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use byteorder::{ByteOrder, NetworkEndian};
+
+use crate::ether::{EtherAddr, EtherType};
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+%%
+
+message StpTcnBpdu {
+    header = [
+        proto_id = Field {bit = 16, default=@0x00},
+        version = Field {bit = 8, default=@0x0},
+        type_ = Field {bit = 8, default=@0x80},
+    ]
+}
+
+message StpConfBpdu {
+    header = [
+        proto_id = Field {bit = 16, default=@0x00},
+        version = Field {bit = 8, default=@0x0},
+        type_ = Field {bit = 8, default=@0x0},
+        flag = Field {bit = 8},
+        root_id = Field {bit = 64},
+        path_cost = Field {bit = 32},
+        bridge_id = Field {bit = 64},
+        port_id = Field {bit = 16},
+        msg_age = Field {bit = 16},
+        max_age = Field {bit = 16},
+        hello_time = Field {bit = 16},
+        forward_delay = Field {bit = 16}
+    ]
+}
+
+message RstpConfBpdu {
+    header = [
+        proto_id = Field {bit = 16, default=@0x00},
+        version = Field {bit = 8, default=@0x2},
+        type_ = Field {bit = 8, default=@0x2},
+        flag = Field {bit = 8, gen=false},
+        root_id = Field {bit = 64, gen=false},
+        path_cost = Field {bit = 32, gen=false},
+        bridge_id = Field {bit = 64, gen=false},
+        port_id = Field {bit = 16, gen=false},
+        msg_age = Field {bit = 16, gen=false},
+        max_age = Field {bit = 16, gen=false},
+        hello_time = Field {bit = 16, gen=false},
+        forward_delay = Field {bit = 16, gen=false},
+        version1_len = Field {bit=8, default=@0}
+    ]
+}
+
+%%
+impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
+    /// Get the StpConfBpdu part of the RstpConfBpdu
+    ///
+    /// Stp protocol is a layered protocol. The RstConfBpdu message actually
+    /// contains the StpConfBpdu message. This method retrieves the StpConfBpdu
+    /// message part.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `self.buf.len() < 35`.
+    #[inline]
+    pub fn stp_conf_bpdu_part(&self) -> StpConfBpduMessage<&[u8]> {
+        StpConfBpduMessage::parse_unchecked(&self.buf.as_ref()[..35])
+    }
+}
+impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {    
+    /// Get the mutable StpConfBpdu part of the RstpConfBpdu
+    ///
+    /// Stp protocol is a layered protocol. The RstConfBpdu message actually
+    /// contains the StpConfBpdu message. This method retrieves the StpConfBpdu
+    /// message part.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `self.buf.len() < 35`.
+    #[inline]
+    pub fn stp_conf_bpdu_part_mut(&mut self) -> StpConfBpduMessage<&mut [u8]> {
+        StpConfBpduMessage::parse_unchecked(&mut self.buf.as_mut()[..35])
+    }
+}
+%%
+
+message MstpConfBpdu {
+    header = [
+        proto_id = Field {bit = 16, default=@0x00},
+        version = Field {bit = 8, default=@0x3},
+        type_ = Field {bit = 8, default=@0x2},
+        flag = Field {bit = 8, gen=false},
+        root_id = Field {bit = 64, gen=false},
+        path_cost = Field {bit = 32, gen=false},
+        bridge_id = Field {bit = 64, gen=false},
+        port_id = Field {bit = 16, gen=false},
+        msg_age = Field {bit = 16, gen=false},
+        max_age = Field {bit = 16, gen=false},
+        hello_time = Field {bit = 16, gen=false},
+        forward_delay = Field {bit = 16, gen=false},
+        version1_len = Field {bit=8, default=@0, gen=false},
+        version3_len = Field {bit = 16, default=64, gen=false},
+        mst_config_format_selector = Field {bit = 8},
+        mst_config_name = Field {bit = 256, repr=&[u8]},
+        mst_config_revision = Field {bit = 16},
+        mst_config_digest = Field {bit = 128, repr=&[u8]},
+        irpc = Field {bit = 32},
+        cist_bridge_id = Field {bit = 64},
+        remain_id = Field {bit = 8}
+    ],
+    length = [
+        header_len = ,
+    ]
+}
+
+%%
+impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
+    #[inline]
+    pub fn header_len(&self) -> usize {
+        (NetworkEndian::read_u16(&self.buf.as_ref()[36..38])) as usize + 38
+    }
+}
+impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
+    #[inline]
+    pub fn set_header_len(&mut self, value: usize) {
+        assert!((value <= 65573) && (value >= 102) && ((value - 102) % 16 == 0));
+        NetworkEndian::write_u16(&mut self.buf.as_mut()[36..38], ((value - 38) as u16));
+    }
+}
+%%
