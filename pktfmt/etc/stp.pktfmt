@@ -3,21 +3,23 @@
 #![allow(unused_parens)]
 
 use byteorder::{ByteOrder, NetworkEndian};
+
+use super::{StpType, StpVersion};
 %%
 
 message StpTcnBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
-        version = Field {bit = 8, default=@0x0},
-        type_ = Field {bit = 8, default=@0x80},
+        version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
+        type_ = Field {bit = 8, arg = %%StpType%%, default=@0x80},
     ]
 }
 
 message StpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
-        version = Field {bit = 8, default=@0x0},
-        type_ = Field {bit = 8, default=@0x0},
+        version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
+        type_ = Field {bit = 8, arg = %%StpType%%, default=@0x0},
         flag = Field {bit = 8},
         root_id = Field {bit = 64},
         path_cost = Field {bit = 32},
@@ -33,8 +35,8 @@ message StpConfBpdu {
 message RstpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
-        version = Field {bit = 8, default=@0x2},
-        type_ = Field {bit = 8, default=@0x2},
+        version = Field {bit = 8, arg = %%StpVersion%%, default=@0x2},
+        type_ = Field {bit = 8, arg = %%StpType%%, default=@0x2},
         flag = Field {bit = 8, gen=false},
         root_id = Field {bit = 64, gen=false},
         path_cost = Field {bit = 32, gen=false},
@@ -85,8 +87,8 @@ impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {
 message MstpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
-        version = Field {bit = 8, default=@0x3},
-        type_ = Field {bit = 8, default=@0x2},
+        version = Field {bit = 8, arg = %%StpVersion%%, default=@0x3},
+        type_ = Field {bit = 8, arg = %%StpType%%, default=@0x2},
         flag = Field {bit = 8, gen=false},
         root_id = Field {bit = 64, gen=false},
         path_cost = Field {bit = 32, gen=false},
@@ -200,3 +202,30 @@ message MstiConf {
         remaining_hops = Field {bit = 8},
     ]
 }
+
+%%
+#[derive(Debug)]
+pub enum StpMessageGroup<T> {
+    StpTcn(StpTcnBpduMessage<T>),
+    StpConf(StpConfBpduMessage<T>),
+    RstpConf(RstpConfBpduMessage<T>),
+    MstpConf(MstpConfBpduMessage<T>),
+}
+impl<T: AsRef<[u8]>> Ipv4OptGroup<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.as_ref().len() < 3 {
+            return Err(buf);
+        }
+        let v = buf.as_ref()[2];
+        let t = buf.as_ref()[3];
+        match cond_value {
+            0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::Eol_(msg)),
+            1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::Nop_(msg)),
+            68 => TimestampMessage::parse(buf).map(|msg| Ipv4OptGroup::Timestamp_(msg)),
+            7 => RecordRouteMessage::parse(buf).map(|msg| Ipv4OptGroup::RecordRoute_(msg)),
+            148 => RouteAlertMessage::parse(buf).map(|msg| Ipv4OptGroup::RouteAlert_(msg)),
+            _ => Err(buf),
+        }
+    }
+}
+%%

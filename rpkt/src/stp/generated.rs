@@ -3,6 +3,8 @@
 
 use byteorder::{ByteOrder, NetworkEndian};
 
+use super::{StpType, StpVersion};
+
 /// A fixed StpTcnBpdu header array.
 pub const STPTCNBPDU_HEADER_ARRAY: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
 #[derive(Debug, Clone, Copy)]
@@ -40,12 +42,12 @@ impl<T: AsRef<[u8]>> StpTcnBpduMessage<T> {
         NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
     }
     #[inline]
-    pub fn version(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn version(&self) -> StpVersion {
+        StpVersion::from(self.buf.as_ref()[2])
     }
     #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[3]
+    pub fn type_(&self) -> StpType {
+        StpType::from(self.buf.as_ref()[3])
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpTcnBpduMessage<T> {
@@ -65,12 +67,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpTcnBpduMessage<T> {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
     }
     #[inline]
-    pub fn set_version(&mut self, value: u8) {
+    pub fn set_version(&mut self, value: StpVersion) {
+        let value = u8::from(value);
         assert!(value == 0);
         self.buf.as_mut()[2] = value;
     }
     #[inline]
-    pub fn set_type_(&mut self, value: u8) {
+    pub fn set_type_(&mut self, value: StpType) {
+        let value = u8::from(value);
         assert!(value == 128);
         self.buf.as_mut()[3] = value;
     }
@@ -117,12 +121,12 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
         NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
     }
     #[inline]
-    pub fn version(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn version(&self) -> StpVersion {
+        StpVersion::from(self.buf.as_ref()[2])
     }
     #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[3]
+    pub fn type_(&self) -> StpType {
+        StpType::from(self.buf.as_ref()[3])
     }
     #[inline]
     pub fn flag(&self) -> u8 {
@@ -178,12 +182,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
     }
     #[inline]
-    pub fn set_version(&mut self, value: u8) {
+    pub fn set_version(&mut self, value: StpVersion) {
+        let value = u8::from(value);
         assert!(value == 0);
         self.buf.as_mut()[2] = value;
     }
     #[inline]
-    pub fn set_type_(&mut self, value: u8) {
+    pub fn set_type_(&mut self, value: StpType) {
+        let value = u8::from(value);
         assert!(value == 0);
         self.buf.as_mut()[3] = value;
     }
@@ -266,12 +272,12 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
         NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
     }
     #[inline]
-    pub fn version(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn version(&self) -> StpVersion {
+        StpVersion::from(self.buf.as_ref()[2])
     }
     #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[3]
+    pub fn type_(&self) -> StpType {
+        StpType::from(self.buf.as_ref()[3])
     }
     #[inline]
     pub fn version1_len(&self) -> u8 {
@@ -295,12 +301,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
     }
     #[inline]
-    pub fn set_version(&mut self, value: u8) {
+    pub fn set_version(&mut self, value: StpVersion) {
+        let value = u8::from(value);
         assert!(value == 2);
         self.buf.as_mut()[2] = value;
     }
     #[inline]
-    pub fn set_type_(&mut self, value: u8) {
+    pub fn set_type_(&mut self, value: StpType) {
+        let value = u8::from(value);
         assert!(value == 2);
         self.buf.as_mut()[3] = value;
     }
@@ -398,12 +406,12 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
         NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
     }
     #[inline]
-    pub fn version(&self) -> u8 {
-        self.buf.as_ref()[2]
+    pub fn version(&self) -> StpVersion {
+        StpVersion::from(self.buf.as_ref()[2])
     }
     #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[3]
+    pub fn type_(&self) -> StpType {
+        StpType::from(self.buf.as_ref()[3])
     }
     #[inline]
     pub fn mst_config_format_selector(&self) -> u8 {
@@ -461,12 +469,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
         NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
     }
     #[inline]
-    pub fn set_version(&mut self, value: u8) {
+    pub fn set_version(&mut self, value: StpVersion) {
+        let value = u8::from(value);
         assert!(value == 3);
         self.buf.as_mut()[2] = value;
     }
     #[inline]
-    pub fn set_type_(&mut self, value: u8) {
+    pub fn set_type_(&mut self, value: StpType) {
+        let value = u8::from(value);
         assert!(value == 2);
         self.buf.as_mut()[3] = value;
     }
@@ -675,5 +685,29 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
     #[inline]
     pub fn set_remaining_hops(&mut self, value: u8) {
         self.buf.as_mut()[15] = value;
+    }
+}
+
+#[derive(Debug)]
+pub enum StpMessageGroup<T> {
+    StpTcn(StpTcnBpduMessage<T>),
+    StpConf(StpConfBpduMessage<T>),
+    RstpConf(RstpConfBpduMessage<T>),
+    MstpConf(MstpConfBpduMessage<T>),
+}
+impl<T: AsRef<[u8]>> StpMessageGroup<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.as_ref().len() < 3 {
+            return Err(buf);
+        }
+        let v = buf.as_ref()[2];
+        let t = buf.as_ref()[3];
+        match (t, v) {
+            (0, 0) => StpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpConf(msg)),
+            (2, 2) => RstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::RstpConf(msg)),
+            (2, 3) => MstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::MstpConf(msg)),
+            (0x80, 0) => StpTcnBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpTcn(msg)),
+            _ => Err(buf),
+        }
     }
 }
