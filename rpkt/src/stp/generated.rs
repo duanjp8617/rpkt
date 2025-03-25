@@ -3,7 +3,7 @@
 
 use byteorder::{ByteOrder, NetworkEndian};
 
-use super::{StpType, StpVersion};
+use super::{BridgeId, StpType, StpVersion};
 
 /// A fixed StpTcnBpdu header array.
 pub const STPTCNBPDU_HEADER_ARRAY: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
@@ -133,16 +133,16 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
         self.buf.as_ref()[4]
     }
     #[inline]
-    pub fn root_id(&self) -> u64 {
-        NetworkEndian::read_u64(&self.buf.as_ref()[5..13])
+    pub fn root_id(&self) -> BridgeId {
+        BridgeId::from_bytes(&self.buf.as_ref()[5..13])
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
         NetworkEndian::read_u32(&self.buf.as_ref()[13..17])
     }
     #[inline]
-    pub fn bridge_id(&self) -> u64 {
-        NetworkEndian::read_u64(&self.buf.as_ref()[17..25])
+    pub fn bridge_id(&self) -> BridgeId {
+        BridgeId::from_bytes(&self.buf.as_ref()[17..25])
     }
     #[inline]
     pub fn port_id(&self) -> u16 {
@@ -198,16 +198,16 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
         self.buf.as_mut()[4] = value;
     }
     #[inline]
-    pub fn set_root_id(&mut self, value: u64) {
-        NetworkEndian::write_u64(&mut self.buf.as_mut()[5..13], value);
+    pub fn set_root_id(&mut self, value: BridgeId) {
+        (&mut self.buf.as_mut()[5..13]).copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
         NetworkEndian::write_u32(&mut self.buf.as_mut()[13..17], value);
     }
     #[inline]
-    pub fn set_bridge_id(&mut self, value: u64) {
-        NetworkEndian::write_u64(&mut self.buf.as_mut()[17..25], value);
+    pub fn set_bridge_id(&mut self, value: BridgeId) {
+        (&mut self.buf.as_mut()[17..25]).copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
@@ -434,8 +434,8 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
         NetworkEndian::read_u32(&self.buf.as_ref()[89..93])
     }
     #[inline]
-    pub fn cist_bridge_id(&self) -> u64 {
-        NetworkEndian::read_u64(&self.buf.as_ref()[93..101])
+    pub fn cist_bridge_id(&self) -> BridgeId {
+        BridgeId::from_bytes(&self.buf.as_ref()[93..101])
     }
     #[inline]
     pub fn remain_id(&self) -> u8 {
@@ -501,8 +501,8 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
         NetworkEndian::write_u32(&mut self.buf.as_mut()[89..93], value);
     }
     #[inline]
-    pub fn set_cist_bridge_id(&mut self, value: u64) {
-        NetworkEndian::write_u64(&mut self.buf.as_mut()[93..101], value);
+    pub fn set_cist_bridge_id(&mut self, value: BridgeId) {
+        (&mut self.buf.as_mut()[93..101]).copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_remain_id(&mut self, value: u8) {
@@ -631,8 +631,8 @@ impl<T: AsRef<[u8]>> MstiConfMessage<T> {
         self.buf.as_ref()[0]
     }
     #[inline]
-    pub fn regional_root_id(&self) -> u64 {
-        NetworkEndian::read_u64(&self.buf.as_ref()[1..9])
+    pub fn regional_root_id(&self) -> BridgeId {
+        BridgeId::from_bytes(&self.buf.as_ref()[1..9])
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
@@ -667,8 +667,8 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
         self.buf.as_mut()[0] = value;
     }
     #[inline]
-    pub fn set_regional_root_id(&mut self, value: u64) {
-        NetworkEndian::write_u64(&mut self.buf.as_mut()[1..9], value);
+    pub fn set_regional_root_id(&mut self, value: BridgeId) {
+        (&mut self.buf.as_mut()[1..9]).copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {

@@ -24,14 +24,47 @@ packet Ipv4 {
         ttl = Field{bit = 8},
         protocol = Field{bit = 8, arg = %%IpProtocol%%},
         checksum = Field{bit = 16},
-        src_ip = Field{bit = 32, arg = %%Ipv4Addr%%},
-        dst_ip = Field{bit = 32, arg = %%Ipv4Addr%%},
+        src_ip = Field{bit = 32, gen=false},
+        dst_ip = Field{bit = 32, gen=false},
     ],
     length = [
         header_len = data_off*4,
         packet_len = packet_len_
     ]
 }
+
+%%
+impl<T: Buf> Ipv4Packet<T> {
+    #[inline]
+    pub fn src_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::new(
+            self.buf.chunk()[12],
+            self.buf.chunk()[13],
+            self.buf.chunk()[14],
+            self.buf.chunk()[15],
+        )
+    }
+    #[inline]
+    pub fn dst_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::new(
+            self.buf.chunk()[16],
+            self.buf.chunk()[17],
+            self.buf.chunk()[18],
+            self.buf.chunk()[19],
+        )
+    }
+}
+impl<T: PktBufMut> Ipv4Packet<T> {
+    #[inline]
+    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&value.octets());
+    }
+    #[inline]
+    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.octets());
+    }
+}
+%%
 
 message Eol {
     header = [

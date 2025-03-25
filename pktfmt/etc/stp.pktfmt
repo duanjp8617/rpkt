@@ -4,7 +4,7 @@
 
 use byteorder::{ByteOrder, NetworkEndian};
 
-use super::{StpType, StpVersion};
+use super::{StpType, StpVersion, BridgeId};
 %%
 
 message StpTcnBpdu {
@@ -21,9 +21,9 @@ message StpConfBpdu {
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
         type_ = Field {bit = 8, arg = %%StpType%%, default=@0x0},
         flag = Field {bit = 8},
-        root_id = Field {bit = 64},
+        root_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
         path_cost = Field {bit = 32},
-        bridge_id = Field {bit = 64},
+        bridge_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
         port_id = Field {bit = 16},
         msg_age = Field {bit = 16},
         max_age = Field {bit = 16},
@@ -38,9 +38,9 @@ message RstpConfBpdu {
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x2},
         type_ = Field {bit = 8, arg = %%StpType%%, default=@0x2},
         flag = Field {bit = 8, gen=false},
-        root_id = Field {bit = 64, gen=false},
+        root_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%, gen=false},
         path_cost = Field {bit = 32, gen=false},
-        bridge_id = Field {bit = 64, gen=false},
+        bridge_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%, gen=false},
         port_id = Field {bit = 16, gen=false},
         msg_age = Field {bit = 16, gen=false},
         max_age = Field {bit = 16, gen=false},
@@ -90,9 +90,9 @@ message MstpConfBpdu {
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x3},
         type_ = Field {bit = 8, arg = %%StpType%%, default=@0x2},
         flag = Field {bit = 8, gen=false},
-        root_id = Field {bit = 64, gen=false},
+        root_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%, gen=false},
         path_cost = Field {bit = 32, gen=false},
-        bridge_id = Field {bit = 64, gen=false},
+        bridge_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%, gen=false},
         port_id = Field {bit = 16, gen=false},
         msg_age = Field {bit = 16, gen=false},
         max_age = Field {bit = 16, gen=false},
@@ -105,7 +105,7 @@ message MstpConfBpdu {
         mst_config_revision = Field {bit = 16},
         mst_config_digest = Field {bit = 128, repr=&[u8]},
         irpc = Field {bit = 32},
-        cist_bridge_id = Field {bit = 64},
+        cist_bridge_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
         remain_id = Field {bit = 8}
     ],
     length = [
@@ -195,7 +195,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
 message MstiConf {
     header = [
         flags = Field {bit = 8},
-        regional_root_id = Field {bit = 64},
+        regional_root_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
         path_cost = Field {bit = 32},
         bridge_priority = Field {bit = 8},
         port_priority = Field {bit = 8},
@@ -211,19 +211,18 @@ pub enum StpMessageGroup<T> {
     RstpConf(RstpConfBpduMessage<T>),
     MstpConf(MstpConfBpduMessage<T>),
 }
-impl<T: AsRef<[u8]>> Ipv4OptGroup<T> {
+impl<T: AsRef<[u8]>> StpMessageGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.as_ref().len() < 3 {
             return Err(buf);
         }
         let v = buf.as_ref()[2];
         let t = buf.as_ref()[3];
-        match cond_value {
-            0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::Eol_(msg)),
-            1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::Nop_(msg)),
-            68 => TimestampMessage::parse(buf).map(|msg| Ipv4OptGroup::Timestamp_(msg)),
-            7 => RecordRouteMessage::parse(buf).map(|msg| Ipv4OptGroup::RecordRoute_(msg)),
-            148 => RouteAlertMessage::parse(buf).map(|msg| Ipv4OptGroup::RouteAlert_(msg)),
+        match (t, v) {
+            (0, 0) => StpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpConf(msg)),
+            (2, 2) => RstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::RstpConf(msg)),
+            (2, 3) => MstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::MstpConf(msg)),
+            (0x80, 0) => StpTcnBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpTcn(msg)),
             _ => Err(buf),
         }
     }

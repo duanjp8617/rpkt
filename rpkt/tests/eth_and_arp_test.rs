@@ -1,5 +1,5 @@
 mod common;
-use common::file_to_packet;
+use common::*;
 
 use rpkt::arp::*;
 use rpkt::ether::*;
@@ -116,11 +116,12 @@ fn eth_dot3_layer_parsing_test() {
         ethdot3_pkt.dst_addr(),
         EtherAddr::parse_from("01:80:c2:00:00:00").unwrap()
     );
-    assert_eq!(ethdot3_pkt.packet_len(), 38);
+    assert_eq!(ethdot3_pkt.payload_len(), 38);
 
     let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
-    assert_eq!(llc_pkt.buf().chunk().len(), 24);
     assert_eq!(llc_pkt.dsap(), BPDU_CONST);
     assert_eq!(llc_pkt.ssap(), BPDU_CONST);
     assert_eq!(llc_pkt.control(), 0x03);
+
+    assert_eq!(llc_pkt.payload().chunk().len(), 35);
 }

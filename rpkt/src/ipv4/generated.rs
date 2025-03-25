@@ -102,14 +102,6 @@ impl<T: Buf> Ipv4Packet<T> {
         NetworkEndian::read_u16(&self.buf.chunk()[10..12])
     }
     #[inline]
-    pub fn src_ip(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.chunk()[12..16]))
-    }
-    #[inline]
-    pub fn dst_ip(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.chunk()[16..20]))
-    }
-    #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.chunk()[0] & 0xf) * 4
     }
@@ -209,14 +201,6 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         NetworkEndian::write_u16(&mut self.buf.chunk_mut()[10..12], value);
     }
     #[inline]
-    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[12..16], u32::from(value));
-    }
-    #[inline]
-    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[16..20], u32::from(value));
-    }
-    #[inline]
     pub fn set_header_len(&mut self, value: u8) {
         assert!((value <= 60) && (value % 4 == 0));
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | (value / 4);
@@ -270,6 +254,37 @@ impl<'a> Ipv4Packet<CursorMut<'a>> {
         let header_len = self.header_len() as usize;
         let packet_len = self.packet_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..packet_len])
+    }
+}
+
+impl<T: Buf> Ipv4Packet<T> {
+    #[inline]
+    pub fn src_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::new(
+            self.buf.chunk()[12],
+            self.buf.chunk()[13],
+            self.buf.chunk()[14],
+            self.buf.chunk()[15],
+        )
+    }
+    #[inline]
+    pub fn dst_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::new(
+            self.buf.chunk()[16],
+            self.buf.chunk()[17],
+            self.buf.chunk()[18],
+            self.buf.chunk()[19],
+        )
+    }
+}
+impl<T: PktBufMut> Ipv4Packet<T> {
+    #[inline]
+    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&value.octets());
+    }
+    #[inline]
+    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.octets());
     }
 }
 

@@ -149,9 +149,7 @@ impl<T: Buf> EthDot3Packet<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 14)
-            || ((container.packet_len() as usize) > container.buf.remaining())
-        {
+        if (container.payload_len() as usize) + 14 > container.buf.remaining() {
             return Err(container.buf);
         }
         Ok(container)
@@ -169,15 +167,15 @@ impl<T: Buf> EthDot3Packet<T> {
         EtherAddr::from_bytes(&self.buf.chunk()[6..12])
     }
     #[inline]
-    pub fn packet_len(&self) -> u16 {
+    pub fn payload_len(&self) -> u16 {
         (NetworkEndian::read_u16(&self.buf.chunk()[12..14]))
     }
 }
 impl<T: PktBuf> EthDot3Packet<T> {
     #[inline]
     pub fn payload(self) -> T {
-        assert!((self.packet_len() as usize) <= self.buf.remaining());
-        let trim_size = self.buf.remaining() - self.packet_len() as usize;
+        assert!(14 + self.payload_len() as usize <= self.buf.remaining());
+        let trim_size = self.buf.remaining() - (14 + self.payload_len() as usize);
         let mut buf = self.buf;
         if trim_size > 0 {
             buf.trim_off(trim_size);
@@ -190,12 +188,12 @@ impl<T: PktBufMut> EthDot3Packet<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 14]) -> Self {
         assert!(buf.chunk_headroom() >= 14);
+        let payload_len = buf.remaining();
+        assert!(payload_len <= 65535);
         buf.move_back(14);
-        let packet_len = buf.remaining();
-        assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..14]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_packet_len(packet_len as u16);
+        container.set_payload_len(payload_len as u16);
         container
     }
     #[inline]
@@ -207,7 +205,7 @@ impl<T: PktBufMut> EthDot3Packet<T> {
         (&mut self.buf.chunk_mut()[6..12]).copy_from_slice(value.as_bytes());
     }
     #[inline]
-    pub fn set_packet_len(&mut self, value: u16) {
+    pub fn set_payload_len(&mut self, value: u16) {
         NetworkEndian::write_u16(&mut self.buf.chunk_mut()[12..14], (value));
     }
 }
@@ -219,17 +217,15 @@ impl<'a> EthDot3Packet<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 14)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        if (container.payload_len() as usize) + 14 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[14..packet_len])
+        let payload_len = self.payload_len() as usize;
+        Cursor::new(&self.buf.chunk()[14..(14 + payload_len)])
     }
 }
 impl<'a> EthDot3Packet<CursorMut<'a>> {
@@ -240,16 +236,14 @@ impl<'a> EthDot3Packet<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 14)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        if (container.payload_len() as usize) + 14 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[14..packet_len])
+        let payload_len = self.payload_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[14..(14 + payload_len)])
     }
 }

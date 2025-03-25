@@ -23,9 +23,9 @@ packet VlanDot3 {
         priority = Field {bit = 3},
         dei_flag = Field {bit = 1, default=0},
         vlan_id = Field {bit = 12, default=1},
-        packet_len_ = Field {bit = 16, default = 4, gen = false},
+        payload_len_ = Field {bit = 16, default = 4, gen = false},
     ],
     length = [
-        packet_len = packet_len_
+        payload_len = payload_len_
     ]
 }

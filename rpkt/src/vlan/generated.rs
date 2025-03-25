@@ -157,9 +157,7 @@ impl<T: Buf> VlanDot3Packet<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 4)
-            || ((container.packet_len() as usize) > container.buf.remaining())
-        {
+        if (container.payload_len() as usize) + 4 > container.buf.remaining() {
             return Err(container.buf);
         }
         Ok(container)
@@ -181,15 +179,15 @@ impl<T: Buf> VlanDot3Packet<T> {
         NetworkEndian::read_u16(&self.buf.chunk()[0..2]) & 0xfff
     }
     #[inline]
-    pub fn packet_len(&self) -> u16 {
+    pub fn payload_len(&self) -> u16 {
         (NetworkEndian::read_u16(&self.buf.chunk()[2..4]))
     }
 }
 impl<T: PktBuf> VlanDot3Packet<T> {
     #[inline]
     pub fn payload(self) -> T {
-        assert!((self.packet_len() as usize) <= self.buf.remaining());
-        let trim_size = self.buf.remaining() - self.packet_len() as usize;
+        assert!(4 + self.payload_len() as usize <= self.buf.remaining());
+        let trim_size = self.buf.remaining() - (4 + self.payload_len() as usize);
         let mut buf = self.buf;
         if trim_size > 0 {
             buf.trim_off(trim_size);
@@ -202,12 +200,12 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
+        let payload_len = buf.remaining();
+        assert!(payload_len <= 65535);
         buf.move_back(4);
-        let packet_len = buf.remaining();
-        assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_packet_len(packet_len as u16);
+        container.set_payload_len(payload_len as u16);
         container
     }
     #[inline]
@@ -227,7 +225,7 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
         NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], write_value);
     }
     #[inline]
-    pub fn set_packet_len(&mut self, value: u16) {
+    pub fn set_payload_len(&mut self, value: u16) {
         NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], (value));
     }
 }
@@ -239,17 +237,15 @@ impl<'a> VlanDot3Packet<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 4)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        if (container.payload_len() as usize) + 4 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[4..packet_len])
+        let payload_len = self.payload_len() as usize;
+        Cursor::new(&self.buf.chunk()[4..(4 + payload_len)])
     }
 }
 impl<'a> VlanDot3Packet<CursorMut<'a>> {
@@ -260,16 +256,14 @@ impl<'a> VlanDot3Packet<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 4)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        if (container.payload_len() as usize) + 4 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[4..packet_len])
+        let payload_len = self.payload_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[4..(4 + payload_len)])
     }
 }

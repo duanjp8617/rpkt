@@ -2,6 +2,8 @@
 
 use core::fmt;
 
+use byteorder::{ByteOrder, NetworkEndian};
+
 enum_sim! {
     /// An enum-like type for representing Ethertype in Ethernet frame.
     pub struct EtherType (u16) {
@@ -11,6 +13,8 @@ enum_sim! {
         IPV4 = 0x0800,
         /// Ethernet frame payloadis Ipv6 protocol.
         IPV6 = 0x86DD,
+        /// Ethernet frame payload contains vlan tag.
+        VLAN = 0x8100
     }
 }
 
@@ -115,8 +119,6 @@ impl fmt::Display for EtherAddr {
 }
 
 mod generated;
-
-use byteorder::{ByteOrder, NetworkEndian};
 
 pub use generated::{EtherPacket, ETHER_HEADER_LEN, ETHER_HEADER_TEMPLATE};
 
