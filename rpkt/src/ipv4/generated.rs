@@ -100,6 +100,18 @@ impl<T: Buf> Ipv4Packet<T> {
         u16::from_be_bytes((&self.buf.chunk()[10..12]).try_into().unwrap())
     }
     #[inline]
+    pub fn src_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[12..16]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
+    pub fn dst_ip(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[16..20]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.chunk()[0] & 0xf) * 4
     }
@@ -199,6 +211,14 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         (&mut self.buf.chunk_mut()[10..12]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
+    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
+    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
     pub fn set_header_len(&mut self, value: u8) {
         assert!((value <= 60) && (value % 4 == 0));
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | (value / 4);
@@ -255,6 +275,7 @@ impl<'a> Ipv4Packet<CursorMut<'a>> {
     }
 }
 
+/*
 impl<T: Buf> Ipv4Packet<T> {
     #[inline]
     pub fn src_ip(&self) -> Ipv4Addr {
@@ -285,6 +306,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.octets());
     }
 }
+*/
 
 /// A fixed Eol header array.
 pub const EOL_HEADER_ARRAY: [u8; 1] = [0x00];
