@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
@@ -56,19 +54,19 @@ impl<T: Buf> TcpPacket<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[0..2])
+        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[2..4])
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
     #[inline]
     pub fn seq_num(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.chunk()[4..8])
+        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
     }
     #[inline]
     pub fn ack_num(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.chunk()[8..12])
+        u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
     }
     #[inline]
     pub fn reserved(&self) -> u8 {
@@ -108,15 +106,15 @@ impl<T: Buf> TcpPacket<T> {
     }
     #[inline]
     pub fn window_size(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[14..16])
+        u16::from_be_bytes((&self.buf.chunk()[14..16]).try_into().unwrap())
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[16..18])
+        u16::from_be_bytes((&self.buf.chunk()[16..18]).try_into().unwrap())
     }
     #[inline]
     pub fn urgent_pointer(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[18..20])
+        u16::from_be_bytes((&self.buf.chunk()[18..20]).try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -148,19 +146,19 @@ impl<T: PktBufMut> TcpPacket<T> {
     }
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], value);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], value);
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_seq_num(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[4..8], value);
+        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_ack_num(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[8..12], value);
+        (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_reserved(&mut self, value: u8) {
@@ -233,15 +231,15 @@ impl<T: PktBufMut> TcpPacket<T> {
     }
     #[inline]
     pub fn set_window_size(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[14..16], value);
+        (&mut self.buf.chunk_mut()[14..16]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[16..18], value);
+        (&mut self.buf.chunk_mut()[16..18]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_urgent_pointer(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[18..20], value);
+        (&mut self.buf.chunk_mut()[18..20]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {
@@ -444,7 +442,7 @@ impl<T: AsRef<[u8]>> MssMessage<T> {
     }
     #[inline]
     pub fn mss(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[2..4])
+        u16::from_be_bytes((&self.buf.as_ref()[2..4]).try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -470,7 +468,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MssMessage<T> {
     }
     #[inline]
     pub fn set_mss(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], value);
+        (&mut self.buf.as_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {
@@ -747,11 +745,11 @@ impl<T: AsRef<[u8]>> TsMessage<T> {
     }
     #[inline]
     pub fn ts(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.as_ref()[2..6])
+        u32::from_be_bytes((&self.buf.as_ref()[2..6]).try_into().unwrap())
     }
     #[inline]
     pub fn ts_echo(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.as_ref()[6..10])
+        u32::from_be_bytes((&self.buf.as_ref()[6..10]).try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -777,11 +775,11 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> TsMessage<T> {
     }
     #[inline]
     pub fn set_ts(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[2..6], value);
+        (&mut self.buf.as_mut()[2..6]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_ts_echo(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[6..10], value);
+        (&mut self.buf.as_mut()[6..10]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {

@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use super::{IpProtocol, Ipv4Addr};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
@@ -71,7 +69,7 @@ impl<T: Buf> Ipv4Packet<T> {
     }
     #[inline]
     pub fn ident(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[4..6])
+        u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())
     }
     #[inline]
     pub fn flag_reserved(&self) -> u8 {
@@ -87,7 +85,7 @@ impl<T: Buf> Ipv4Packet<T> {
     }
     #[inline]
     pub fn frag_offset(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[6..8]) & 0x1fff
+        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap()) & 0x1fff
     }
     #[inline]
     pub fn ttl(&self) -> u8 {
@@ -99,7 +97,7 @@ impl<T: Buf> Ipv4Packet<T> {
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[10..12])
+        u16::from_be_bytes((&self.buf.chunk()[10..12]).try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -107,7 +105,7 @@ impl<T: Buf> Ipv4Packet<T> {
     }
     #[inline]
     pub fn packet_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.chunk()[2..4]))
+        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
     }
 }
 impl<T: PktBuf> Ipv4Packet<T> {
@@ -159,7 +157,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     }
     #[inline]
     pub fn set_ident(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[4..6], value);
+        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_flag_reserved(&mut self, value: u8) {
@@ -186,7 +184,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     pub fn set_frag_offset(&mut self, value: u16) {
         assert!(value <= 0x1fff);
         let write_value = ((self.buf.chunk_mut()[6] & 0xe0) as u16) << 8 | value;
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[6..8], write_value);
+        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_ttl(&mut self, value: u8) {
@@ -198,7 +196,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[10..12], value);
+        (&mut self.buf.chunk_mut()[10..12]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {
@@ -207,7 +205,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     }
     #[inline]
     pub fn set_packet_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], (value));
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> Ipv4Packet<Cursor<'a>> {
@@ -634,7 +632,7 @@ impl<T: AsRef<[u8]>> RouteAlertMessage<T> {
     }
     #[inline]
     pub fn data(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[2..4])
+        u16::from_be_bytes((&self.buf.as_ref()[2..4]).try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -660,7 +658,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
     }
     #[inline]
     pub fn set_data(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[2..4], value);
+        (&mut self.buf.as_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {

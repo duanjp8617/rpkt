@@ -2,8 +2,6 @@
 
 use core::fmt;
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 enum_sim! {
     /// An enum-like type for representing Ethertype in Ethernet frame.
     pub struct EtherType (u16) {
@@ -132,7 +130,7 @@ pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
         //
         // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
         // More: IEEE Std 802.3 Clause 3.2.6
-        let value = NetworkEndian::read_u16(&buf.as_ref()[12..14]);
+        let value = u16::from_be_bytes((&buf.as_ref()[12..14]).try_into().unwrap());
         value >= 0x0600
     } else {
         false
@@ -150,7 +148,7 @@ pub fn store_ieee_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {
         //
         // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
         // More: IEEE Std 802.3 Clause 3.2.6
-        let value = NetworkEndian::read_u16(&buf.as_ref()[12..14]);
+        let value = u16::from_be_bytes((&buf.as_ref()[12..14]).try_into().unwrap());
         value <= 0x05DC
     } else {
         false

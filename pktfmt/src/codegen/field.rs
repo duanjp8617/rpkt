@@ -195,7 +195,7 @@ impl<'a> FieldGetMethod<'a> {
                 {
                     // Create a new writer that will prepend a method for reading a byte slice
                     // as an integer type while honoring endianess.
-                    let mut new = network_endian_read(&mut output, self.field.bit);
+                    let mut new = endian_read(&mut output, self.field.bit, self.field.net_endian);
 
                     // Fill in the byteslice that need to be read from.
                     write!(
@@ -505,16 +505,16 @@ impl<'a> FieldSetMethod<'a> {
 
                     // Create a new writer that will prepend a method for writing to a byte
                     // slice while honoring endianess.
-                    let mut field_writer = network_endian_write(&mut output, self.field.bit);
-
-                    // Create a mutable byte slice covering the field area.
-                    write!(
-                        field_writer.get_writer(),
-                        "&mut {target_slice}[{}..{}],",
-                        self.start.byte_pos(),
-                        self.start.byte_pos() + byte_len(self.field.bit)
-                    )
-                    .unwrap();
+                    let mut field_writer = endian_write(
+                        &mut output,
+                        &format!(
+                            "&mut {target_slice}[{}..{}]",
+                            self.start.byte_pos(),
+                            self.start.byte_pos() + byte_len(self.field.bit)
+                        ),
+                        self.field.bit,
+                        self.field.net_endian,
+                    );
 
                     // The field area contains no extra bits, so
                     // we directly write the `write_value` to the field area.
@@ -566,16 +566,19 @@ impl<'a> FieldSetMethod<'a> {
 
                     // Create a new writer that will prepend a method for writing an integer type
                     // to to a byte slice while honoring endianess.
-                    let mut field_writer = network_endian_write(&mut output, self.field.bit);
+                    let mut field_writer = endian_write(
+                        &mut output,
+                        &format!(
+                            "&mut {target_slice}[{}..{}]",
+                            self.start.byte_pos(),
+                            self.start.byte_pos() + byte_len(self.field.bit)
+                        ),
+                        self.field.bit,
+                        self.field.net_endian,
+                    );
 
                     // Specify the target slice to write to.
-                    write!(
-                        field_writer.get_writer(),
-                        "&mut {target_slice}[{}..{}], write_value",
-                        self.start.byte_pos(),
-                        self.start.byte_pos() + byte_len(self.field.bit)
-                    )
-                    .unwrap();
+                    write!(field_writer.get_writer(), "write_value").unwrap();
                 }
             }
             _ => {
@@ -636,35 +639,84 @@ impl<'a> FieldSetMethod<'a> {
 
 // Append corresponding read method that honors the network endianess to the
 // input `writer`. We use the `byteorder` crate just like `smoltcp` here.
-fn network_endian_read<T: Write>(writer: T, bit_len: u64) -> HeadTailWriter<T> {
+fn endian_read<T: Write>(writer: T, bit_len: u64, net_endian: bool) -> HeadTailWriter<T> {
     let byte_len = byte_len(bit_len);
+    let rust_default_method = if net_endian {
+        "from_be_bytes"
+    } else {
+        "from_le_bytes"
+    };
+    let rpkt_defined_method = if net_endian {
+        "read_uint_from_be_bytes"
+    } else {
+        "read_uint_from_le_bytes"
+    };
     match byte_len {
-        2 => HeadTailWriter::new(writer, "u16::from_be_bytes((", ").try_into().unwrap())"),
-        3 => HeadTailWriter::new(writer, "NetworkEndian::read_u24(", ")"),
-        4 => HeadTailWriter::new(writer, "u32::from_be_bytes((", ").try_into().unwrap())"),
-        5 | 6 | 7 => HeadTailWriter::new(
+        2 => HeadTailWriter::new(
             writer,
-            "NetworkEndian::read_uint(",
-            &format!(", {byte_len})"),
+            &format!("u16::{rust_default_method}(("),
+            ").try_into().unwrap())",
         ),
-        8 => HeadTailWriter::new(writer, "u64::from_be_bytes((", ").try_into().unwrap())"),
+        3 => HeadTailWriter::new(writer, "(read_uint_from_be_bytes(", ") as u32)"),
+        4 => HeadTailWriter::new(
+            writer,
+            &format!("u32::{rust_default_method}(("),
+            ").try_into().unwrap())",
+        ),
+        5 | 6 | 7 => HeadTailWriter::new(writer, &format!("{rpkt_defined_method}("), ")"),
+        8 => HeadTailWriter::new(
+            writer,
+            &format!("u64::{rust_default_method}(("),
+            ").try_into().unwrap())",
+        ),
         _ => panic!(),
     }
 }
 
 // Similar to `network_endian_read`, but it appends the write method.
-fn network_endian_write<T: Write>(writer: T, bit_len: u64) -> HeadTailWriter<T> {
+fn endian_write<T: Write>(
+    writer: T,
+    write_to: &str,
+    bit_len: u64,
+    net_endian: bool,
+) -> HeadTailWriter<T> {
     let byte_len = byte_len(bit_len);
+    let rust_default_method = if net_endian {
+        "to_be_bytes"
+    } else {
+        "to_le_bytes"
+    };
+    let rpkt_defined_method = if net_endian {
+        "write_uint_as_be_bytes"
+    } else {
+        "write_uint_as_le_bytes"
+    };
     match byte_len {
-        2 => HeadTailWriter::new(writer, "NetworkEndian::write_u16(", ");"),
-        3 => HeadTailWriter::new(writer, "NetworkEndian::write_u24(", ");"),
-        4 => HeadTailWriter::new(writer, "NetworkEndian::write_u32(", ");"),
+        2 => HeadTailWriter::new(
+            writer,
+            &format!("({write_to}).copy_from_slice(&"),
+            &format!(".{rust_default_method}());"),
+        ),
+        3 => HeadTailWriter::new(
+            writer,
+            &format!("{rpkt_defined_method}({write_to},"),
+            " as u64);",
+        ),
+        4 => HeadTailWriter::new(
+            writer,
+            &format!("({write_to}).copy_from_slice(&"),
+            &format!(".{rust_default_method}());"),
+        ),
         5 | 6 | 7 => HeadTailWriter::new(
             writer,
-            "NetworkEndian::write_uint(",
-            &format!(",{byte_len});"),
+            &format!("{rpkt_defined_method}({write_to},"),
+            " as u64);",
         ),
-        8 => HeadTailWriter::new(writer, "NetworkEndian::write_u64(", ");"),
+        8 => HeadTailWriter::new(
+            writer,
+            &format!("({write_to}).copy_from_slice(&"),
+            &format!(".{rust_default_method}());"),
+        ),
         _ => panic!(),
     }
 }

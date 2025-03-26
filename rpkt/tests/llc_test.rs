@@ -15,7 +15,6 @@ use rpkt::{Cursor, CursorMut};
 fn llc_parsing_test() {
     {
         let packet = file_to_packet("StpConf.dat");
-        to_hex_dump("StpConf.dat");
 
         let pkt = Cursor::new(&packet[..]);
         assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);

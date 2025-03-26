@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
@@ -48,19 +46,19 @@ impl<T: Buf> UdpPacket<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[0..2])
+        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[2..4])
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[6..8])
+        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
     #[inline]
     pub fn packet_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.chunk()[4..6]))
+        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
     }
 }
 impl<T: PktBuf> UdpPacket<T> {
@@ -90,19 +88,19 @@ impl<T: PktBufMut> UdpPacket<T> {
     }
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], value);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], value);
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[6..8], value);
+        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_packet_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[4..6], (value));
+        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> UdpPacket<Cursor<'a>> {

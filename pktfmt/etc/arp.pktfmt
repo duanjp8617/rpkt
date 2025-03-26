@@ -1,8 +1,6 @@
 %%
 #![allow(missing_docs)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::ether::{EtherAddr, EtherType};
 use crate::ipv4::Ipv4Addr;
 use crate::{Buf, PktBuf, PktBufMut};

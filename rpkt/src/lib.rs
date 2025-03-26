@@ -26,6 +26,7 @@ pub mod tcp;
 pub mod udp;
 pub mod vlan;
 
+#[allow(unused)]
 mod endian;
 // pub mod arp;
 // pub mod ether;

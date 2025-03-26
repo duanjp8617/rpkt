@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::ether::{EtherAddr, EtherType};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
@@ -54,7 +52,9 @@ impl<T: Buf> EtherPacket<T> {
     }
     #[inline]
     pub fn ethertype(&self) -> EtherType {
-        EtherType::from(NetworkEndian::read_u16(&self.buf.chunk()[12..14]))
+        EtherType::from(u16::from_be_bytes(
+            (&self.buf.chunk()[12..14]).try_into().unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> EtherPacket<T> {
@@ -83,7 +83,7 @@ impl<T: PktBufMut> EtherPacket<T> {
     }
     #[inline]
     pub fn set_ethertype(&mut self, value: EtherType) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[12..14], u16::from(value));
+        (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> EtherPacket<Cursor<'a>> {
@@ -168,7 +168,7 @@ impl<T: Buf> EthDot3Packet<T> {
     }
     #[inline]
     pub fn payload_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.chunk()[12..14]))
+        (u16::from_be_bytes((&self.buf.chunk()[12..14]).try_into().unwrap()))
     }
 }
 impl<T: PktBuf> EthDot3Packet<T> {
@@ -206,7 +206,7 @@ impl<T: PktBufMut> EthDot3Packet<T> {
     }
     #[inline]
     pub fn set_payload_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[12..14], (value));
+        (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> EthDot3Packet<Cursor<'a>> {

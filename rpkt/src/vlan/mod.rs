@@ -1,5 +1,3 @@
-use byteorder::{ByteOrder, NetworkEndian};
-
 mod generated;
 
 pub use generated::{VlanPacket, VLAN_HEADER_LEN, VLAN_HEADER_TEMPLATE};
@@ -14,7 +12,7 @@ pub fn vlan_tag_for_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
         //
         // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
         // More: IEEE Std 802.3 Clause 3.2.6
-        let value = NetworkEndian::read_u16(&buf.as_ref()[2..4]);
+        let value = u16::from_be_bytes((&buf.as_ref()[2..4]).try_into().unwrap());
         value >= 0x0600
     } else {
         false
@@ -32,7 +30,7 @@ pub fn vlan_tag_for_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {
         //
         // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
         // More: IEEE Std 802.3 Clause 3.2.6
-        let value = NetworkEndian::read_u16(&buf.as_ref()[2..4]);
+        let value = u16::from_be_bytes((&buf.as_ref()[2..4]).try_into().unwrap());
         value <= 0x05DC
     } else {
         false

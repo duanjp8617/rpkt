@@ -2,9 +2,7 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
-use super::{StpType, StpVersion, BridgeId};
+use super::{BridgeId, StpType, StpVersion};
 %%
 
 message StpTcnBpdu {

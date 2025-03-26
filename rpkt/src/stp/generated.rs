@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use super::{BridgeId, StpType, StpVersion};
 
 /// A fixed StpTcnBpdu header array.
@@ -39,7 +37,7 @@ impl<T: AsRef<[u8]>> StpTcnBpduMessage<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
+        u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
@@ -64,7 +62,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpTcnBpduMessage<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
+        (&mut self.buf.as_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
@@ -118,7 +116,7 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
+        u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
@@ -138,7 +136,7 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.as_ref()[13..17])
+        u32::from_be_bytes((&self.buf.as_ref()[13..17]).try_into().unwrap())
     }
     #[inline]
     pub fn bridge_id(&self) -> BridgeId {
@@ -146,23 +144,23 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn port_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[25..27])
+        u16::from_be_bytes((&self.buf.as_ref()[25..27]).try_into().unwrap())
     }
     #[inline]
     pub fn msg_age(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[27..29])
+        u16::from_be_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
     }
     #[inline]
     pub fn max_age(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[29..31])
+        u16::from_be_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
     }
     #[inline]
     pub fn hello_time(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[31..33])
+        u16::from_be_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
     }
     #[inline]
     pub fn forward_delay(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[33..35])
+        u16::from_be_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
@@ -179,7 +177,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
+        (&mut self.buf.as_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
@@ -203,7 +201,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[13..17], value);
+        (&mut self.buf.as_mut()[13..17]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_id(&mut self, value: BridgeId) {
@@ -211,23 +209,23 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[25..27], value);
+        (&mut self.buf.as_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_msg_age(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[27..29], value);
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_max_age(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[29..31], value);
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_hello_time(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[31..33], value);
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_forward_delay(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[33..35], value);
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_be_bytes());
     }
 }
 
@@ -269,7 +267,7 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
+        u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
@@ -298,7 +296,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
+        (&mut self.buf.as_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
@@ -403,7 +401,7 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[0..2])
+        u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
@@ -423,7 +421,7 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn mst_config_revision(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.as_ref()[71..73])
+        u16::from_be_bytes((&self.buf.as_ref()[71..73]).try_into().unwrap())
     }
     #[inline]
     pub fn mst_config_digest(&self) -> &[u8] {
@@ -431,7 +429,7 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn irpc(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.as_ref()[89..93])
+        u32::from_be_bytes((&self.buf.as_ref()[89..93]).try_into().unwrap())
     }
     #[inline]
     pub fn cist_bridge_id(&self) -> BridgeId {
@@ -443,7 +441,7 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn header_len(&self) -> u32 {
-        (NetworkEndian::read_u16(&self.buf.as_ref()[36..38])) as u32 + 38
+        (u16::from_be_bytes((&self.buf.as_ref()[36..38]).try_into().unwrap())) as u32 + 38
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
@@ -466,7 +464,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[0..2], value);
+        (&mut self.buf.as_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
@@ -490,7 +488,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn set_mst_config_revision(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[71..73], value);
+        (&mut self.buf.as_mut()[71..73]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_mst_config_digest(&mut self, value: &[u8]) {
@@ -498,7 +496,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     }
     #[inline]
     pub fn set_irpc(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[89..93], value);
+        (&mut self.buf.as_mut()[89..93]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_cist_bridge_id(&mut self, value: BridgeId) {
@@ -511,7 +509,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_header_len(&mut self, value: u32) {
         assert!((value <= 65573) && (value >= 38));
-        NetworkEndian::write_u16(&mut self.buf.as_mut()[36..38], ((value - 38) as u16));
+        (&mut self.buf.as_mut()[36..38]).copy_from_slice(&((value - 38) as u16).to_be_bytes());
     }
 }
 
@@ -636,7 +634,7 @@ impl<T: AsRef<[u8]>> MstiConfMessage<T> {
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        NetworkEndian::read_u32(&self.buf.as_ref()[9..13])
+        u32::from_be_bytes((&self.buf.as_ref()[9..13]).try_into().unwrap())
     }
     #[inline]
     pub fn bridge_priority(&self) -> u8 {
@@ -672,7 +670,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        NetworkEndian::write_u32(&mut self.buf.as_mut()[9..13], value);
+        (&mut self.buf.as_mut()[9..13]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_priority(&mut self, value: u8) {

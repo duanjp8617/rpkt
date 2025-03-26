@@ -1,5 +1,3 @@
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::ether::EtherAddr;
 
 mod generated;
@@ -79,7 +77,7 @@ impl BridgeId {
     /// Get the system id extention from the `BridgeId`.
     #[inline]
     pub fn sys_id_ext(&self) -> u16 {
-        NetworkEndian::read_u16(&self.0[0..2]) & 0xfff
+        u16::from_be_bytes((&self.0[0..2]).try_into().unwrap()) & 0xfff
     }
 
     /// Get the mac address from the `BridgeId`.
@@ -107,7 +105,7 @@ impl BridgeId {
     pub fn set_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
         let write_value = ((self.0[0] & 0xf0) as u16) << 8 | value;
-        NetworkEndian::write_u16(&mut self.0[0..2], write_value);
+        (&mut self.0[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
 
     /// Set the mac address for the `BridgeId`.

@@ -2,8 +2,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 %%

@@ -1,7 +1,6 @@
 //! Provide utilitiy functions for calculating packet checksums.
 
 /// The checksum computing functions are taken directly from smol-tcp.
-use byteorder::{ByteOrder, NetworkEndian};
 use bytes::Buf;
 
 /// Compute an RFC 1071 compliant checksum (without the final complement) from
@@ -40,7 +39,7 @@ pub fn from_slice(mut data: &[u8]) -> u16 {
         let mut d = &data[..CHUNK_SIZE];
         // ... take by 2 bytes and sum them.
         while d.len() >= 2 {
-            accum += NetworkEndian::read_u16(d) as u32;
+            accum += u16::from_be_bytes((&d[..2]).try_into().unwrap()) as u32;
             d = &d[2..];
         }
 
@@ -50,7 +49,7 @@ pub fn from_slice(mut data: &[u8]) -> u16 {
     // Sum the rest that does not fit the last 32-byte chunk,
     // taking by 2 bytes.
     while data.len() >= 2 {
-        accum += NetworkEndian::read_u16(data) as u32;
+        accum += u16::from_be_bytes((&data[..2]).try_into().unwrap()) as u32;
         data = &data[2..];
     }
 
@@ -84,7 +83,7 @@ fn from_slice_with_tail_byte(
         .map(|byte| {
             let byte_array = [byte, data[0]];
             data = &data[1..];
-            NetworkEndian::read_u16(&byte_array[..]) as u32
+            u16::from_be_bytes(byte_array) as u32
         })
         .unwrap_or(0);
 
@@ -94,7 +93,7 @@ fn from_slice_with_tail_byte(
         let mut d = &data[..CHUNK_SIZE];
         // ... take by 2 bytes and sum them.
         while d.len() >= 2 {
-            *accum += NetworkEndian::read_u16(d) as u32;
+            *accum += u16::from_be_bytes((&d[..2]).try_into().unwrap()) as u32;
             d = &d[2..];
         }
 
@@ -104,7 +103,7 @@ fn from_slice_with_tail_byte(
     // Sum the rest that does not fit the last 32-byte chunk,
     // taking by 2 bytes.
     while data.len() >= 2 {
-        *accum += NetworkEndian::read_u16(data) as u32;
+        *accum += u16::from_be_bytes((&data[..2]).try_into().unwrap()) as u32;
         data = &data[2..];
     }
 

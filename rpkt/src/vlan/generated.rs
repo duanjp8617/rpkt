@@ -1,8 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::ether::EtherType;
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
@@ -52,11 +50,13 @@ impl<T: Buf> VlanPacket<T> {
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[0..2]) & 0xfff
+        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap()) & 0xfff
     }
     #[inline]
     pub fn ethertype(&self) -> EtherType {
-        EtherType::from(NetworkEndian::read_u16(&self.buf.chunk()[2..4]))
+        EtherType::from(u16::from_be_bytes(
+            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> VlanPacket<T> {
@@ -89,11 +89,11 @@ impl<T: PktBufMut> VlanPacket<T> {
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
         let write_value = ((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8 | value;
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], write_value);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_ethertype(&mut self, value: EtherType) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], u16::from(value));
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> VlanPacket<Cursor<'a>> {
@@ -176,11 +176,11 @@ impl<T: Buf> VlanDot3Packet<T> {
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
-        NetworkEndian::read_u16(&self.buf.chunk()[0..2]) & 0xfff
+        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap()) & 0xfff
     }
     #[inline]
     pub fn payload_len(&self) -> u16 {
-        (NetworkEndian::read_u16(&self.buf.chunk()[2..4]))
+        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
     }
 }
 impl<T: PktBuf> VlanDot3Packet<T> {
@@ -222,11 +222,11 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
         let write_value = ((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8 | value;
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], write_value);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_payload_len(&mut self, value: u16) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], (value));
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> VlanDot3Packet<Cursor<'a>> {

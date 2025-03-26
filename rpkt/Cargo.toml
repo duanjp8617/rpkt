@@ -17,5 +17,4 @@ default = ["std"]
 std = []
 
 [dependencies]
-byteorder = "1"
 bytes = "1"

@@ -1,7 +1,5 @@
 #![allow(missing_docs)]
 
-use byteorder::{ByteOrder, NetworkEndian};
-
 use crate::ether::{EtherAddr, EtherType};
 use crate::ipv4::Ipv4Addr;
 use crate::{Buf, PktBuf, PktBufMut};
@@ -49,11 +47,15 @@ impl<T: Buf> ArpPacket<T> {
     }
     #[inline]
     pub fn hardware_type(&self) -> Hardware {
-        Hardware::from(NetworkEndian::read_u16(&self.buf.chunk()[0..2]))
+        Hardware::from(u16::from_be_bytes(
+            (&self.buf.chunk()[0..2]).try_into().unwrap(),
+        ))
     }
     #[inline]
     pub fn protocol_type(&self) -> EtherType {
-        EtherType::from(NetworkEndian::read_u16(&self.buf.chunk()[2..4]))
+        EtherType::from(u16::from_be_bytes(
+            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+        ))
     }
     #[inline]
     pub fn hardware_addr_len(&self) -> u8 {
@@ -65,7 +67,9 @@ impl<T: Buf> ArpPacket<T> {
     }
     #[inline]
     pub fn operation(&self) -> Operation {
-        Operation::from(NetworkEndian::read_u16(&self.buf.chunk()[6..8]))
+        Operation::from(u16::from_be_bytes(
+            (&self.buf.chunk()[6..8]).try_into().unwrap(),
+        ))
     }
     #[inline]
     pub fn sender_ether_addr(&self) -> EtherAddr {
@@ -73,7 +77,9 @@ impl<T: Buf> ArpPacket<T> {
     }
     #[inline]
     pub fn sender_ipv4_addr(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.chunk()[14..18]))
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[14..18]).try_into().unwrap(),
+        ))
     }
     #[inline]
     pub fn target_ether_addr(&self) -> EtherAddr {
@@ -81,7 +87,9 @@ impl<T: Buf> ArpPacket<T> {
     }
     #[inline]
     pub fn target_ipv4_addr(&self) -> Ipv4Addr {
-        Ipv4Addr::from(NetworkEndian::read_u32(&self.buf.chunk()[24..28]))
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[24..28]).try_into().unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> ArpPacket<T> {
@@ -104,13 +112,13 @@ impl<T: PktBufMut> ArpPacket<T> {
     pub fn set_hardware_type(&mut self, value: Hardware) {
         let value = u16::from(value);
         assert!(value == 1);
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[0..2], value);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_protocol_type(&mut self, value: EtherType) {
         let value = u16::from(value);
         assert!(value == 2048);
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[2..4], value);
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_hardware_addr_len(&mut self, value: u8) {
@@ -124,7 +132,7 @@ impl<T: PktBufMut> ArpPacket<T> {
     }
     #[inline]
     pub fn set_operation(&mut self, value: Operation) {
-        NetworkEndian::write_u16(&mut self.buf.chunk_mut()[6..8], u16::from(value));
+        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
     #[inline]
     pub fn set_sender_ether_addr(&mut self, value: EtherAddr) {
@@ -132,7 +140,7 @@ impl<T: PktBufMut> ArpPacket<T> {
     }
     #[inline]
     pub fn set_sender_ipv4_addr(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[14..18], u32::from(value));
+        (&mut self.buf.chunk_mut()[14..18]).copy_from_slice(&u32::from(value).to_be_bytes());
     }
     #[inline]
     pub fn set_target_ether_addr(&mut self, value: EtherAddr) {
@@ -140,7 +148,7 @@ impl<T: PktBufMut> ArpPacket<T> {
     }
     #[inline]
     pub fn set_target_ipv4_addr(&mut self, value: Ipv4Addr) {
-        NetworkEndian::write_u32(&mut self.buf.chunk_mut()[24..28], u32::from(value));
+        (&mut self.buf.chunk_mut()[24..28]).copy_from_slice(&u32::from(value).to_be_bytes());
     }
 }
 impl<'a> ArpPacket<Cursor<'a>> {
