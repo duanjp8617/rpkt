@@ -96,3 +96,62 @@ fn stp_configuration_creation_tests() {
         &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_ARRAY.len()]
     );
 }
+
+#[test]
+fn stp_configuration_edit_tests() {
+    let mut edited_packet = file_to_packet("StpConf.dat");
+
+    let pkt = CursorMut::new(&mut edited_packet[..]);
+    assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
+    assert_eq!(store_ether_frame(pkt.chunk()), false);
+    let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+
+    assert_eq!(ethdot3_pkt.payload_len(), 38);
+
+    let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+    assert_eq!(llc_pkt.buf().chunk().len(), 38);
+    assert_eq!(llc_pkt.dsap(), BPDU_CONST);
+    assert_eq!(llc_pkt.ssap(), BPDU_CONST);
+    assert_eq!(llc_pkt.control(), 0x03);
+
+    let mut payload = llc_pkt.payload();
+    let res = StpMessageGroup::group_parse(payload.chunk_mut()).unwrap();
+    let edited_stp_conf = match res {
+        StpMessageGroup::StpConf(mut msg) => {
+            msg.set_flag(0x13);
+            msg.set_root_priority(4096);
+            msg.set_root_sys_id_ext(290);
+            msg.set_root_mac_addr(EtherAddr::parse_from("33:44:55:66:77:88").unwrap());
+            msg.set_path_cost(7);
+            msg.set_bridge_priority(40960);
+            msg.set_bridge_sys_id_ext(2834);
+            msg.set_bridge_mac_addr(EtherAddr::parse_from("34:87:65:99:88:77").unwrap());
+            msg.set_port_id(0x1111);
+            msg.set_msg_age(7);
+            msg.set_max_age(12);
+            msg.set_hello_time(3);
+            msg.set_forward_delay(9);
+            msg.release()
+        }
+        _ => panic!(),
+    };
+
+    let packet = file_to_packet("StpConfEdit1.dat");
+
+    let pkt = Cursor::new(&packet[..]);
+    assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
+    assert_eq!(store_ether_frame(pkt.chunk()), false);
+    let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+
+    assert_eq!(ethdot3_pkt.payload_len(), 38);
+
+    let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+    assert_eq!(llc_pkt.buf().chunk().len(), 38);
+    assert_eq!(llc_pkt.dsap(), BPDU_CONST);
+    assert_eq!(llc_pkt.ssap(), BPDU_CONST);
+    assert_eq!(llc_pkt.control(), 0x03);
+
+    let payload = llc_pkt.payload();
+
+    assert_eq!(payload.chunk(), edited_stp_conf);
+}
