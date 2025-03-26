@@ -301,5 +301,100 @@ fn rapid_stp_creation_tests() {
 
 #[test]
 fn multiple_stp_parsing_tests() {
-    to_hex_dump("StpMultiple.dat");
+    {
+        let packet = file_to_packet("StpMultiple.dat");
+
+        let pkt = Cursor::new(&packet[..]);
+        assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
+        assert_eq!(store_ether_frame(pkt.chunk()), false);
+        let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+
+        assert_eq!(ethdot3_pkt.payload_len(), 121);
+
+        let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+        assert_eq!(llc_pkt.buf().chunk().len(), 121);
+        assert_eq!(llc_pkt.dsap(), BPDU_CONST);
+        assert_eq!(llc_pkt.ssap(), BPDU_CONST);
+        assert_eq!(llc_pkt.control(), 0x03);
+
+        let payload = llc_pkt.payload();
+        let res = StpMessageGroup::group_parse(payload.chunk()).unwrap();
+        match res {
+            StpMessageGroup::MstpConf(msg) => {
+                assert_eq!(msg.proto_id(), 0);
+                assert_eq!(msg.version(), StpVersion::MSTP);
+                assert_eq!(msg.type_(), StpType::RSTP_OR_MSTP);
+
+                assert_eq!(msg.flag(), 0x7c);
+                let root_id = msg.root_id();
+                assert_eq!(root_id, 0x8000000c305dd100);
+                assert_eq!(msg.root_priority(), 32768);
+                assert_eq!(msg.root_sys_id_ext(), 0);
+                assert_eq!(
+                    msg.root_mac_addr(),
+                    EtherAddr::parse_from("00:0c:30:5d:d1:00").unwrap()
+                );
+
+                assert_eq!(msg.path_cost(), 0x0);
+
+                let bridge_id = msg.bridge_id();
+                assert_eq!(bridge_id, 0x8000000c305dd100);
+                assert_eq!(msg.bridge_priority(), 32768);
+                assert_eq!(msg.bridge_sys_id_ext(), 0);
+                assert_eq!(
+                    msg.bridge_mac_addr(),
+                    EtherAddr::parse_from("00:0c:30:5d:d1:00").unwrap()
+                );
+                assert_eq!(msg.port_id(), 0x8005);
+                assert_eq!(msg.msg_age(), 0);
+                assert_eq!(msg.max_age(), 20);
+                assert_eq!(msg.hello_time(), 2);
+                assert_eq!(msg.forward_delay(), 15);
+                assert_eq!(msg.version1_len(), 0);
+                assert_eq!(msg.version3_len(), 80);
+
+                assert_eq!(
+                    msg.header_len() as usize,
+                    MSTPCONFBPDU_HEADER_ARRAY.len() + MSTICONF_HEADER_ARRAY.len()
+                );
+
+                assert_eq!(msg.mst_config_format_selector(), 0x0);
+                assert_eq!(msg.mst_config_name(), &[0; 256 / 8][..]);
+                assert_eq!(msg.mst_config_revision(), 0);
+                assert_eq!(
+                    msg.mst_config_digest(),
+                    &[
+                        0x55, 0xbf, 0x4e, 0x8a, 0x44, 0xb2, 0x5d, 0x44, 0x28, 0x68, 0x54, 0x9c,
+                        0x1b, 0xf7, 0x72, 0x0f
+                    ][..]
+                );
+                assert_eq!(msg.irpc(), 200000);
+                assert_eq!(msg.cist_bridge_id(), 0x8000001aa197d180);
+                assert_eq!(msg.cist_bridge_priority(), 32768);
+                assert_eq!(msg.cist_bridge_sys_id_ext(), 0);
+                assert_eq!(
+                    msg.cist_bridge_mac_addr(),
+                    EtherAddr::parse_from("00:1a:a1:97:d1:80").unwrap()
+                );
+                assert_eq!(msg.remain_id(), 19);
+
+                assert_eq!(msg.num_of_msti_msg(), Some(1));
+
+                let msti_msg = msg.msti_conf_message(0);
+                assert_eq!(msti_msg.flags(), 0x7c);
+                assert_eq!(msti_msg.regional_root_id(), 0x8005000c305dd100);
+                assert_eq!(msti_msg.regional_root_priority(), 8 * 4096);
+                assert_eq!(msti_msg.regional_root_sys_id_ext(), 5);
+                assert_eq!(
+                    msti_msg.regional_root_mac_addr(),
+                    EtherAddr::parse_from("00:0c:30:5d:d1:00").unwrap()
+                );
+                assert_eq!(msti_msg.path_cost(), 200000);
+                assert_eq!(msti_msg.bridge_priority(), 8 << 4);
+                assert_eq!(msti_msg.port_priority(), 8 << 4);
+                assert_eq!(msti_msg.remaining_hops(), 19);
+            }
+            _ => panic!(),
+        }
+    }
 }

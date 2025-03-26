@@ -848,6 +848,12 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
 }
 
 impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
+    /// Get the **version3_len** field value.
+    #[inline]
+    pub fn version3_len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.as_ref()[36..38]).try_into().unwrap())
+    }
+
     /// Get the root id priority from the `MstpConfBpduMessage`.
     ///
     /// Note: the result is a a multiple of 4096.
