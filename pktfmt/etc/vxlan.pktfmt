@@ -1,0 +1,24 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+%%
+
+packet Vxlan {
+    header = [
+        gbp_extention = Field {bit = 1, arg = bool},
+        reserved_0 = Field {bit = 3},
+        vni_present = Field {bit = 1, arg = bool},
+        reserved_1 = Field {bit = 4},
+        dont_learn = Field {bit = 1, arg = bool},
+        reserved_2 = Field {bit = 2},
+        policy_applied = Field {bit = 1, arg = bool},
+        reserved_3 = Field {bit = 3},
+        group_id = Field {bit = 16},
+        vni = Field { bit = 24},
+        reserved_4 = Field {bit = 8}
+    ]
+}

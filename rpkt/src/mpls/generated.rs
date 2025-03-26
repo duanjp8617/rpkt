@@ -81,7 +81,7 @@ impl<T: PktBufMut> MplsPacket<T> {
     }
     #[inline]
     pub fn set_experimental_bits(&mut self, value: u8) {
-        assert!(value == 0);
+        assert!(value <= 0x7);
         self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf1) | (value << 1);
     }
     #[inline]

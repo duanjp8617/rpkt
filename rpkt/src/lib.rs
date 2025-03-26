@@ -26,6 +26,7 @@ pub mod stp;
 pub mod tcp;
 pub mod udp;
 pub mod vlan;
+pub mod vxlan;
 
 #[allow(unused)]
 mod endian;
