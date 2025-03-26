@@ -298,3 +298,8 @@ fn rapid_stp_creation_tests() {
         &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_ARRAY.len()]
     );
 }
+
+#[test]
+fn multiple_stp_parsing_tests() {
+    to_hex_dump("StpMultiple.dat");
+}
