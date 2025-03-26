@@ -3,7 +3,7 @@
 
 use crate::ether::EtherAddr;
 
-use super::{BridgeId, StpType, StpVersion};
+use super::{StpType, StpVersion};
 
 /// A fixed StpTcnBpdu header array.
 pub const STPTCNBPDU_HEADER_ARRAY: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
@@ -1037,8 +1037,12 @@ impl<T: AsRef<[u8]>> MstiConfMessage<T> {
         self.buf.as_ref()[0]
     }
     #[inline]
-    pub fn regional_root_id(&self) -> BridgeId {
-        BridgeId::from_bytes(&self.buf.as_ref()[1..9])
+    pub fn regional_root_sys_id_ext(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.as_ref()[1..3]).try_into().unwrap()) & 0xfff
+    }
+    #[inline]
+    pub fn regional_root_mac_addr(&self) -> EtherAddr {
+        EtherAddr::from_bytes(&self.buf.as_ref()[3..9])
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
@@ -1073,8 +1077,14 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
         self.buf.as_mut()[0] = value;
     }
     #[inline]
-    pub fn set_regional_root_id(&mut self, value: BridgeId) {
-        (&mut self.buf.as_mut()[1..9]).copy_from_slice(value.as_bytes());
+    pub fn set_regional_root_sys_id_ext(&mut self, value: u16) {
+        assert!(value <= 0xfff);
+        let write_value = ((self.buf.as_mut()[1] & 0xf0) as u16) << 8 | value;
+        (&mut self.buf.as_mut()[1..3]).copy_from_slice(&write_value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_regional_root_mac_addr(&mut self, value: EtherAddr) {
+        (&mut self.buf.as_mut()[3..9]).copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
@@ -1091,6 +1101,44 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
     #[inline]
     pub fn set_remaining_hops(&mut self, value: u8) {
         self.buf.as_mut()[15] = value;
+    }
+}
+
+impl<T: AsRef<[u8]>> MstiConfMessage<T> {
+    /// Get the regional root id priority from the `MstiConfMessage`.
+    ///
+    /// Note: the result is a a multiple of 4096.
+    #[inline]
+    pub fn regional_root_priority(&self) -> u16 {
+        ((self.buf.as_ref()[1] >> 4) as u16) << 12
+    }
+
+    /// Get the regional root id as `u64`.
+    #[inline]
+    pub fn regional_root_id(&self) -> u64 {
+        u64::from_be_bytes((&self.buf.as_ref()[1..9]).try_into().unwrap())
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
+    /// Set the regional root id priority for the `MstiConfMessage`.
+    ///
+    /// Note: the input `value` must be a multiple of 4096.
+    ///
+    /// # Panics
+    ///
+    /// The lower 12 bits of `value` is not all zero.
+    #[inline]
+    pub fn set_regional_root_priority(&mut self, value: u16) {
+        assert!(value & 0x0fff == 0);
+        let value = (value >> 12) as u8;
+        self.buf.as_mut()[1] = (self.buf.as_mut()[1] & 0x0f) | (value << 4);
+    }
+
+    /// Set the regional root id from `value`.
+    #[inline]
+    pub fn set_regional_root_id(&mut self, value: u64) {
+        (&mut self.buf.as_mut()[1..9]).copy_from_slice(&value.to_be_bytes());
     }
 }
 

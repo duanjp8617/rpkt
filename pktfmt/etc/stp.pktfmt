@@ -395,7 +395,9 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
 message MstiConf {
     header = [
         flags = Field {bit = 8},
-        regional_root_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
+        regional_root_priority = Field {bit = 4, gen = false},
+        regional_root_sys_id_ext = Field {bit = 12},
+        regional_root_mac_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         path_cost = Field {bit = 32},
         bridge_priority = Field {bit = 8},
         port_priority = Field {bit = 8},
@@ -404,6 +406,45 @@ message MstiConf {
 }
 
 %%
+impl<T: AsRef<[u8]>> MstiConfMessage<T> {
+    /// Get the regional root id priority from the `MstiConfMessage`.
+    ///
+    /// Note: the result is a a multiple of 4096.
+    #[inline]
+    pub fn regional_root_priority(&self) -> u16 {
+        ((self.buf.as_ref()[1] >> 4) as u16) << 12
+    }
+
+    /// Get the regional root id as `u64`.
+    #[inline]
+    pub fn regional_root_id(&self) -> u64 {
+        u64::from_be_bytes((&self.buf.as_ref()[1..9]).try_into().unwrap())
+    }
+}
+
+impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
+    /// Set the regional root id priority for the `MstiConfMessage`.
+    ///
+    /// Note: the input `value` must be a multiple of 4096.
+    ///
+    /// # Panics
+    ///
+    /// The lower 12 bits of `value` is not all zero.
+    #[inline]
+    pub fn set_regional_root_priority(&mut self, value: u16) {
+        assert!(value & 0x0fff == 0);
+        let value = (value >> 12) as u8;
+        self.buf.as_mut()[1] = (self.buf.as_mut()[1] & 0x0f) | (value << 4);
+    }
+
+    /// Set the regional root id from `value`. 
+    #[inline]
+    pub fn set_regional_root_id(&mut self, value: u64) {
+        (&mut self.buf.as_mut()[1..9]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+
+
 #[derive(Debug)]
 pub enum StpMessageGroup<T> {
     StpTcn(StpTcnBpduMessage<T>),
