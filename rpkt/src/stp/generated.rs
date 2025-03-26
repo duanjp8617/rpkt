@@ -371,6 +371,50 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
         StpType::from(self.buf.as_ref()[3])
     }
     #[inline]
+    pub fn flag(&self) -> u8 {
+        self.buf.as_ref()[4]
+    }
+    #[inline]
+    pub fn root_sys_id_ext(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.as_ref()[5..7]).try_into().unwrap()) & 0xfff
+    }
+    #[inline]
+    pub fn root_mac_addr(&self) -> EtherAddr {
+        EtherAddr::from_bytes(&self.buf.as_ref()[7..13])
+    }
+    #[inline]
+    pub fn path_cost(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.as_ref()[13..17]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn bridge_sys_id_ext(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.as_ref()[17..19]).try_into().unwrap()) & 0xfff
+    }
+    #[inline]
+    pub fn bridge_mac_addr(&self) -> EtherAddr {
+        EtherAddr::from_bytes(&self.buf.as_ref()[19..25])
+    }
+    #[inline]
+    pub fn port_id(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.as_ref()[25..27]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+    }
+    #[inline]
     pub fn version1_len(&self) -> u8 {
         self.buf.as_ref()[35]
     }
@@ -404,40 +448,127 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
         self.buf.as_mut()[3] = value;
     }
     #[inline]
+    pub fn set_flag(&mut self, value: u8) {
+        self.buf.as_mut()[4] = value;
+    }
+    #[inline]
+    pub fn set_root_sys_id_ext(&mut self, value: u16) {
+        assert!(value <= 0xfff);
+        let write_value = ((self.buf.as_mut()[5] & 0xf0) as u16) << 8 | value;
+        (&mut self.buf.as_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_root_mac_addr(&mut self, value: EtherAddr) {
+        (&mut self.buf.as_mut()[7..13]).copy_from_slice(value.as_bytes());
+    }
+    #[inline]
+    pub fn set_path_cost(&mut self, value: u32) {
+        (&mut self.buf.as_mut()[13..17]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
+        assert!(value <= 0xfff);
+        let write_value = ((self.buf.as_mut()[17] & 0xf0) as u16) << 8 | value;
+        (&mut self.buf.as_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_bridge_mac_addr(&mut self, value: EtherAddr) {
+        (&mut self.buf.as_mut()[19..25]).copy_from_slice(value.as_bytes());
+    }
+    #[inline]
+    pub fn set_port_id(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+    }
+    #[inline]
     pub fn set_version1_len(&mut self, value: u8) {
-        assert!(value == 0);
         self.buf.as_mut()[35] = value;
     }
 }
 
 impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
-    /// Get the `StpConfBpduMessage` part of the `RstpConfBpduMessage`.
+    /// Get the root id priority from the `RstpConfBpduMessage`.
     ///
-    /// Stp protocol is a layered protocol. The `RstpConfBpduMessage` contains
-    /// the `StpConfBpduMessage`, which is the first 35 bytes. This method
-    /// retrieves the `StpConfBpduMessage` part.
-    ///
-    /// # Panics
-    ///
-    /// This method panics if `self.buf.len() < 35`.
+    /// Note: the result is a a multiple of 4096.
     #[inline]
-    pub fn stp_conf_bpdu_part(&self) -> StpConfBpduMessage<&[u8]> {
-        StpConfBpduMessage::parse_unchecked(&self.buf.as_ref()[..35])
+    pub fn root_priority(&self) -> u16 {
+        ((self.buf.as_ref()[5] >> 4) as u16) << 12
+    }
+
+    /// Get the bridge id priority from the `RstpConfBpduMessage`.
+    ///
+    /// Note: the result is a a multiple of 4096.
+    #[inline]
+    pub fn bridge_priority(&self) -> u16 {
+        ((self.buf.as_ref()[17] >> 4) as u16) << 12
+    }
+
+    /// Get the root id as `u64`.
+    #[inline]
+    pub fn root_id(&self) -> u64 {
+        u64::from_be_bytes((&self.buf.as_ref()[5..13]).try_into().unwrap())
+    }
+
+    /// Get the bridge id as `u64`.
+    #[inline]
+    pub fn bridge_id(&self) -> u64 {
+        u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
     }
 }
-impl<T: AsMut<[u8]>> RstpConfBpduMessage<T> {
-    /// Get the mutable `StpConfBpduMessage` part of the `RstpConfBpduMessage`.
+impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
+    /// Set the root priority for the `RstpConfBpduMessage`.
     ///
-    /// Stp protocol is a layered protocol. The `RstpConfBpduMessage` contains
-    /// the `StpConfBpduMessage`, which is the first 35 bytes. This method
-    /// retrieves the mutable `StpConfBpduMessage` part.
+    /// Note: the input `value` must be a multiple of 4096.
     ///
     /// # Panics
     ///
-    /// This method panics if `self.buf.len() < 35`.
+    /// The lower 12 bits of `value` is not all zero.
     #[inline]
-    pub fn stp_conf_bpdu_part_mut(&mut self) -> StpConfBpduMessage<&mut [u8]> {
-        StpConfBpduMessage::parse_unchecked(&mut self.buf.as_mut()[..35])
+    pub fn set_root_priority(&mut self, value: u16) {
+        assert!(value & 0x0fff == 0);
+        let value = (value >> 12) as u8;
+        self.buf.as_mut()[5] = (self.buf.as_mut()[5] & 0x0f) | (value << 4);
+    }
+
+    /// Set the bridge priority for the `RstpConfBpduMessage`.
+    ///
+    /// Note: the input `value` must be a multiple of 4096.
+    ///
+    /// # Panics
+    ///
+    /// The lower 12 bits of `value` is not all zero.
+    #[inline]
+    pub fn set_bridge_priority(&mut self, value: u16) {
+        assert!(value & 0x0fff == 0);
+        let value = (value >> 12) as u8;
+        self.buf.as_mut()[17] = (self.buf.as_mut()[17] & 0x0f) | (value << 4);
+    }
+
+    /// Set the root id from `value`.
+    #[inline]
+    pub fn set_root_id(&mut self, value: u64) {
+        (&mut self.buf.as_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
+    }
+
+    /// Set the bridge id from `value`.
+    #[inline]
+    pub fn set_bridge_id(&mut self, value: u64) {
+        (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
 }
 
