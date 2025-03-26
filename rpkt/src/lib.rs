@@ -21,6 +21,7 @@ pub mod arp;
 pub mod ether;
 pub mod ipv4;
 pub mod llc;
+pub mod mpls;
 pub mod stp;
 pub mod tcp;
 pub mod udp;

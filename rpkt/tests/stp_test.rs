@@ -4,7 +4,6 @@ use common::*;
 use rpkt::ether::*;
 use rpkt::llc::*;
 use rpkt::stp::*;
-use rpkt::vlan::*;
 use rpkt::Buf;
 use rpkt::PktBufMut;
 use rpkt::{Cursor, CursorMut};
