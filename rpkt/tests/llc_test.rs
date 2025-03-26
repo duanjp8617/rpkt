@@ -63,19 +63,13 @@ fn llc_creation_test() {
     pkt_buf.advance(ETHER_HEADER_LEN + LLC_HEADER_LEN);
 
     let mut stp_conf_msg = StpConfBpduMessage::build_message(pkt_buf.chunk_mut());
-    let buf = [0x80, 0x64, 0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00];
-    let bridge_id = BridgeId::from_bytes(&buf[..]);
-    assert_eq!(bridge_id.priority(), 32768);
-    assert_eq!(bridge_id.sys_id_ext(), 100);
-    assert_eq!(
-        bridge_id.mac_addr(),
-        EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00])
-    );
-    stp_conf_msg.set_root_id(bridge_id);
+    stp_conf_msg.set_root_priority(32768);
+    stp_conf_msg.set_root_sys_id_ext(100);
+    stp_conf_msg.set_root_mac_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00]));
     stp_conf_msg.set_path_cost(4);
-    let buf = [0x80, 0x64, 0x00, 0x1c, 0x0e, 0x87, 0x85, 0x00];
-    let bridge_id = BridgeId::from_bytes(&buf[..]);
-    stp_conf_msg.set_bridge_id(bridge_id);
+    stp_conf_msg.set_bridge_priority(32768);
+    stp_conf_msg.set_bridge_sys_id_ext(100);
+    stp_conf_msg.set_bridge_mac_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x85, 0x00]));
     stp_conf_msg.set_port_id(0x8004);
     stp_conf_msg.set_msg_age(1);
     stp_conf_msg.set_max_age(20);
