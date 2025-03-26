@@ -268,7 +268,7 @@ fn rapid_stp_parsing_tests() {
 
 #[test]
 fn rapid_stp_creation_tests() {
-    let mut buf: [u8; 64] = [0; 64];
+    let mut buf: [u8; 256] = [0; 256];
 
     let mut pkt_buf = CursorMut::new(
         &mut buf[..ETHER_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_ARRAY.len()],
@@ -397,4 +397,38 @@ fn multiple_stp_parsing_tests() {
             _ => panic!(),
         }
     }
+}
+
+#[test]
+fn multiple_stp_creation_tests() {
+    to_hex_dump("StpMultipleWithoutConfig.dat");
+    let mut buf: [u8; 256] = [0; 256];
+
+    let mut pkt_buf = CursorMut::new(
+        &mut buf[..ETHER_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_ARRAY.len()],
+    );
+    pkt_buf.advance(ETHER_HEADER_LEN + LLC_HEADER_LEN);
+
+    let mut rstp_conf_msg = RstpConfBpduMessage::build_message(pkt_buf.chunk_mut());
+    rstp_conf_msg.set_flag(0x3d);
+    rstp_conf_msg.set_root_id(0x6001000d65adf600);
+    rstp_conf_msg.set_path_cost(0x0a);
+    rstp_conf_msg.set_bridge_id(0x8001000bfd860f00);
+    rstp_conf_msg.set_port_id(0x8001);
+    rstp_conf_msg.set_msg_age(1);
+    rstp_conf_msg.set_max_age(20);
+    rstp_conf_msg.set_hello_time(2);
+    rstp_conf_msg.set_forward_delay(15);
+    rstp_conf_msg.set_version1_len(0);
+
+    let llc_pkt = LlcPacket::prepend_header(pkt_buf, &LLC_HEADER_TEMPLATE);
+    let mut eth_pkt = EthDot3Packet::prepend_header(llc_pkt.release(), &ETHDOT3_HEADER_TEMPLATE);
+    eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
+    eth_pkt.set_src_addr(EtherAddr([0x00, 0x01, 0x01, 0x00, 0x00, 0x01]));
+
+    let target = file_to_packet("StpRapid.dat");
+    assert_eq!(
+        eth_pkt.release().chunk(),
+        &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_ARRAY.len()]
+    );
 }
