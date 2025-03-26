@@ -23,10 +23,10 @@ message StpConfBpdu {
         path_cost = Field {bit = 32},
         bridge_id = Field {bit = 64, repr = &[u8], arg = %%BridgeId%%},
         port_id = Field {bit = 16},
-        msg_age = Field {bit = 16},
-        max_age = Field {bit = 16},
-        hello_time = Field {bit = 16},
-        forward_delay = Field {bit = 16}
+        msg_age = Field {bit = 16, net_endian=false},
+        max_age = Field {bit = 16, net_endian=false},
+        hello_time = Field {bit = 16, net_endian=false},
+        forward_delay = Field {bit = 16, net_endian=false}
     ]
 }
 

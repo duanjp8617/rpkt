@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use byteorder::{ByteOrder, NetworkEndian};
+use byteorder::{ByteOrder, NativeEndian, NetworkEndian};
 
 use crate::utils::{byte_len, Spanned};
 
@@ -306,12 +306,23 @@ impl Header {
                                     // The field has the form:
                                     // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
                                     // |   field                     |
-                                    NetworkEndian::write_uint(
-                                        &mut target_slice[start.byte_pos() as usize
-                                            ..(start.byte_pos() + byte_len(field.bit)) as usize],
-                                        default_val as u64,
-                                        byte_len(field.bit) as usize,
-                                    );
+                                    if field.net_endian {
+                                        NetworkEndian::write_uint(
+                                            &mut target_slice[start.byte_pos() as usize
+                                                ..(start.byte_pos() + byte_len(field.bit))
+                                                    as usize],
+                                            default_val as u64,
+                                            byte_len(field.bit) as usize,
+                                        );
+                                    } else {
+                                        NativeEndian::write_uint(
+                                            &mut target_slice[start.byte_pos() as usize
+                                                ..(start.byte_pos() + byte_len(field.bit))
+                                                    as usize],
+                                            default_val as u64,
+                                            byte_len(field.bit) as usize,
+                                        );
+                                    }
                                 } else {
                                     let end = start.next_pos(field.bit);
                                     let default_val = match &field.default {
@@ -346,13 +357,23 @@ impl Header {
                                                 as u64)
                                                 << (8 * (byte_len(field.bit) - 1));
 
-                                        NetworkEndian::write_uint(
-                                            &mut target_slice[start.byte_pos() as usize
-                                                ..(start.byte_pos() + byte_len(field.bit))
-                                                    as usize],
-                                            rest_of_field | (default_val as u64),
-                                            byte_len(field.bit) as usize,
-                                        );
+                                        if field.net_endian {
+                                            NetworkEndian::write_uint(
+                                                &mut target_slice[start.byte_pos() as usize
+                                                    ..(start.byte_pos() + byte_len(field.bit))
+                                                        as usize],
+                                                rest_of_field | (default_val as u64),
+                                                byte_len(field.bit) as usize,
+                                            );
+                                        } else {
+                                            NativeEndian::write_uint(
+                                                &mut target_slice[start.byte_pos() as usize
+                                                    ..(start.byte_pos() + byte_len(field.bit))
+                                                        as usize],
+                                                rest_of_field | (default_val as u64),
+                                                byte_len(field.bit) as usize,
+                                            );
+                                        }
                                     } else {
                                         // The field has the form:
                                         // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
@@ -366,14 +387,25 @@ impl Header {
                                         let rest_of_field = (target_slice[end.byte_pos() as usize]
                                             & bit_mask)
                                             as u64;
-                                        NetworkEndian::write_uint(
-                                            &mut target_slice[start.byte_pos() as usize
-                                                ..(start.byte_pos() + byte_len(field.bit))
-                                                    as usize],
-                                            rest_of_field
-                                                | ((default_val as u64) << (7 - end.bit_pos())),
-                                            byte_len(field.bit) as usize,
-                                        );
+                                        if field.net_endian {
+                                            NetworkEndian::write_uint(
+                                                &mut target_slice[start.byte_pos() as usize
+                                                    ..(start.byte_pos() + byte_len(field.bit))
+                                                        as usize],
+                                                rest_of_field
+                                                    | ((default_val as u64) << (7 - end.bit_pos())),
+                                                byte_len(field.bit) as usize,
+                                            );
+                                        } else {
+                                            NativeEndian::write_uint(
+                                                &mut target_slice[start.byte_pos() as usize
+                                                    ..(start.byte_pos() + byte_len(field.bit))
+                                                        as usize],
+                                                rest_of_field
+                                                    | ((default_val as u64) << (7 - end.bit_pos())),
+                                                byte_len(field.bit) as usize,
+                                            );
+                                        }
                                     }
                                 }
                             }

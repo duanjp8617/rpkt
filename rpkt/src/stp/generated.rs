@@ -148,19 +148,19 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn msg_age(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
     }
     #[inline]
     pub fn max_age(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
     }
     #[inline]
     pub fn hello_time(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
     }
     #[inline]
     pub fn forward_delay(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
@@ -213,19 +213,19 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     }
     #[inline]
     pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
     }
     #[inline]
     pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
     }
     #[inline]
     pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
     }
     #[inline]
     pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 
