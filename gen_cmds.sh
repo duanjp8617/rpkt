@@ -2,7 +2,7 @@
 
 # Define a list of strings
 # strings=("arp" "ether" "ipv4" "llc" "stp" "tcp" "udp" "vlan")
-strings=("ipv4")
+strings=("stp")
 
 # Iterate over the list
 for item in "${strings[@]}"; do

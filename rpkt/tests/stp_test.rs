@@ -10,7 +10,7 @@ use rpkt::PktBufMut;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
-fn llc_parsing_test() {
+fn stp_configuration_parsing_tests() {
     {
         let packet = file_to_packet("StpConf.dat");
 
@@ -29,32 +29,51 @@ fn llc_parsing_test() {
 
         let payload = llc_pkt.payload();
         let res = StpMessageGroup::group_parse(payload.chunk()).unwrap();
-        assert_eq!(matches!(res, StpMessageGroup::StpConf(_)), true);
-    }
+        match res {
+            StpMessageGroup::StpConf(msg) => {
+                assert_eq!(msg.proto_id(), 0);
+                assert_eq!(msg.version(), StpVersion::STP);
+                assert_eq!(msg.type_(), StpType::STP_CONF);
 
-    {
-        let pkt = file_to_packet("llc_vlan.dat");
-        let pkt = Cursor::new(&pkt[..]);
+                assert_eq!(msg.flag(), 0);
+                let root_id = msg.root_id();
+                assert_eq!(
+                    u64::from_be_bytes(root_id.as_bytes().try_into().unwrap()),
+                    0x8064001c0e877800
+                );
+                assert_eq!(root_id.priority(), 32768);
+                assert_eq!(root_id.sys_id_ext(), 100);
+                assert_eq!(
+                    root_id.mac_addr(),
+                    EtherAddr::parse_from("00:1c:0e:87:78:00").unwrap()
+                );
 
-        let eth_pkt = EtherPacket::parse(pkt).unwrap();
-        assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
+                assert_eq!(msg.path_cost(), 0x4);
 
-        let eth_payload = eth_pkt.payload();
-        assert_eq!(vlan_tag_for_dot3_frame(eth_payload.chunk()), true);
-        assert_eq!(vlan_tag_for_ether_frame(eth_payload.chunk()), false);
-
-        let vlan_dot3 = VlanDot3Packet::parse(eth_payload).unwrap();
-        assert_eq!(vlan_dot3.payload_len(), 357);
-
-        let llc_pkt = LlcPacket::parse(vlan_dot3.payload()).unwrap();
-        assert_eq!(llc_pkt.ssap(), 0xaa);
-        assert_eq!(llc_pkt.dsap(), 0xaa);
-        assert_eq!(llc_pkt.control(), 0x03);
+                let bridge_id = msg.bridge_id();
+                assert_eq!(
+                    u64::from_be_bytes(bridge_id.as_bytes().try_into().unwrap()),
+                    0x8064001c0e878500
+                );
+                assert_eq!(bridge_id.priority(), 32768);
+                assert_eq!(bridge_id.sys_id_ext(), 100);
+                assert_eq!(
+                    bridge_id.mac_addr(),
+                    EtherAddr::parse_from("00:1c:0e:87:85:00").unwrap()
+                );
+                assert_eq!(msg.port_id(), 0x8004);
+                assert_eq!(msg.msg_age(), 1);
+                assert_eq!(msg.max_age(), 20);
+                assert_eq!(msg.hello_time(), 2);
+                assert_eq!(msg.forward_delay(), 15);
+            }
+            _ => panic!(),
+        }
     }
 }
 
 #[test]
-fn llc_creation_test() {
+fn stp_configuration_creation_tests() {
     let mut buf: [u8; 64] = [0; 64];
 
     let mut pkt_buf = CursorMut::new(
