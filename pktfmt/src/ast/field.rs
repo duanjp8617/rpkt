@@ -15,7 +15,9 @@ pub struct Field {
     pub default: DefaultVal,
     /// Whether the accesser methods of this field is public.
     pub gen: bool,
-    /// Whether the default value of this field is fixed. 
+    /// Whether the field has network endianness (big endian).
+    pub net_endian: bool,
+    /// Whether the default value of this field is fixed.
     pub default_fix: bool,
 }
 
@@ -33,6 +35,7 @@ impl Field {
         arg: Option<Arg>,
         default: Option<(DefaultVal, bool)>,
         gen: Option<bool>,
+        net_endian: Option<bool>,
     ) -> Result<Self, Error> {
         if bit == 0 || (bit > 64 && bit % 8 != 0) || (bit > MAX_MTU_IN_BYTES * 8) {
             // 1. bit size 0 is not allowed.
@@ -86,6 +89,7 @@ impl Field {
         }
 
         let gen = gen.unwrap_or(true);
+        let net_endian = net_endian.unwrap_or(true);
 
         Ok(Field {
             bit,
@@ -93,6 +97,7 @@ impl Field {
             arg,
             default,
             gen,
+            net_endian,
             default_fix,
         })
     }

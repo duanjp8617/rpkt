@@ -639,15 +639,15 @@ impl<'a> FieldSetMethod<'a> {
 fn network_endian_read<T: Write>(writer: T, bit_len: u64) -> HeadTailWriter<T> {
     let byte_len = byte_len(bit_len);
     match byte_len {
-        2 => HeadTailWriter::new(writer, "NetworkEndian::read_u16(", ")"),
+        2 => HeadTailWriter::new(writer, "u16::from_be_bytes((", ").try_into().unwrap())"),
         3 => HeadTailWriter::new(writer, "NetworkEndian::read_u24(", ")"),
-        4 => HeadTailWriter::new(writer, "NetworkEndian::read_u32(", ")"),
+        4 => HeadTailWriter::new(writer, "u32::from_be_bytes((", ").try_into().unwrap())"),
         5 | 6 | 7 => HeadTailWriter::new(
             writer,
             "NetworkEndian::read_uint(",
             &format!(", {byte_len})"),
         ),
-        8 => HeadTailWriter::new(writer, "NetworkEndian::read_u64(", ")"),
+        8 => HeadTailWriter::new(writer, "u64::from_be_bytes((", ").try_into().unwrap())"),
         _ => panic!(),
     }
 }
