@@ -45,8 +45,8 @@ impl<T: Buf> VlanPacket<T> {
         self.buf.chunk()[0] >> 5
     }
     #[inline]
-    pub fn dei_flag(&self) -> u8 {
-        (self.buf.chunk()[0] >> 4) & 0x1
+    pub fn dei_flag(&self) -> bool {
+        self.buf.chunk()[0] & 0x10 != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
@@ -81,9 +81,12 @@ impl<T: PktBufMut> VlanPacket<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x1f) | (value << 5);
     }
     #[inline]
-    pub fn set_dei_flag(&mut self, value: u8) {
-        assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+    pub fn set_dei_flag(&mut self, value: bool) {
+        if value {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x10
+        } else {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0xef
+        }
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
@@ -171,8 +174,8 @@ impl<T: Buf> VlanDot3Packet<T> {
         self.buf.chunk()[0] >> 5
     }
     #[inline]
-    pub fn dei_flag(&self) -> u8 {
-        (self.buf.chunk()[0] >> 4) & 0x1
+    pub fn dei_flag(&self) -> bool {
+        self.buf.chunk()[0] & 0x10 != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
@@ -214,9 +217,12 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x1f) | (value << 5);
     }
     #[inline]
-    pub fn set_dei_flag(&mut self, value: u8) {
-        assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+    pub fn set_dei_flag(&mut self, value: bool) {
+        if value {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x10
+        } else {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0xef
+        }
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {

@@ -10,7 +10,7 @@ use crate::{Cursor, CursorMut};
 packet Vlan {
     header = [
         priority = Field {bit = 3},
-        dei_flag = Field {bit = 1, default=0},
+        dei_flag = Field {bit = 1, arg=bool},
         vlan_id = Field {bit = 12, default=1},
         ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
     ]
@@ -19,7 +19,7 @@ packet Vlan {
 packet VlanDot3 {
     header = [
         priority = Field {bit = 3},
-        dei_flag = Field {bit = 1, default=0},
+        dei_flag = Field {bit = 1, arg=bool},
         vlan_id = Field {bit = 12, default=1},
         payload_len_ = Field {bit = 16, default = 4, gen = false},
     ],
