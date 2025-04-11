@@ -100,13 +100,13 @@ impl<T: Buf> Ipv4Packet<T> {
         u16::from_be_bytes((&self.buf.chunk()[10..12]).try_into().unwrap())
     }
     #[inline]
-    pub fn src_ip(&self) -> Ipv4Addr {
+    pub fn src_addr(&self) -> Ipv4Addr {
         Ipv4Addr::from(u32::from_be_bytes(
             (&self.buf.chunk()[12..16]).try_into().unwrap(),
         ))
     }
     #[inline]
-    pub fn dst_ip(&self) -> Ipv4Addr {
+    pub fn dst_addr(&self) -> Ipv4Addr {
         Ipv4Addr::from(u32::from_be_bytes(
             (&self.buf.chunk()[16..20]).try_into().unwrap(),
         ))
@@ -211,11 +211,11 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         (&mut self.buf.chunk_mut()[10..12]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_src_ip(&mut self, value: Ipv4Addr) {
+    pub fn set_src_addr(&mut self, value: Ipv4Addr) {
         (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&u32::from(value).to_be_bytes());
     }
     #[inline]
-    pub fn set_dst_ip(&mut self, value: Ipv4Addr) {
+    pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
         (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
     }
     #[inline]

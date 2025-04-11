@@ -22,8 +22,8 @@ packet Ipv4 {
         ttl = Field{bit = 8},
         protocol = Field{bit = 8, arg = %%IpProtocol%%},
         checksum = Field{bit = 16},
-        src_ip = Field{bit = 32, arg = %%Ipv4Addr%%},
-        dst_ip = Field{bit = 32, arg = %%Ipv4Addr%%},
+        src_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
+        dst_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
     ],
     length = [
         header_len = data_off*4,

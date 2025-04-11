@@ -12,7 +12,12 @@ enum_sim! {
         /// Ethernet frame payloadis Ipv6 protocol.
         IPV6 = 0x86DD,
         /// Ethernet frame payload contains vlan tag.
-        VLAN = 0x8100
+        VLAN = 0x8100,
+        /// Ethernet frame payload contains 802.1ad QinQ tag.
+        QINQ = 0x88a8,
+        /// Ethernet frame payload contains MPLS tag.
+        MPLS = 0x8847,
+
     }
 }
 

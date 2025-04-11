@@ -18,3 +18,4 @@ std = []
 
 [dependencies]
 bytes = "1"
+byteorder = "1"

@@ -38,17 +38,15 @@ fn pack_size(n: u64) -> usize {
 
 #[inline]
 pub(crate) fn write_uint_as_be_bytes(buf: &mut [u8], n: u64) {
-    let n_size = pack_size(n);
-    assert!(n_size == buf.len());
-    let start = 8 - n_size;
+    assert!(pack_size(n) <= buf.len());
+    let start = 8 - buf.len();
     buf.copy_from_slice(&n.to_be_bytes()[start..]);
 }
 
 #[inline]
 pub(crate) fn write_uint_as_le_bytes(buf: &mut [u8], n: u64) {
-    let n_size = pack_size(n);
-    assert!(n_size == buf.len());
-    buf.copy_from_slice(&n.to_le_bytes()[..n_size]);
+    assert!(pack_size(n) <= buf.len());
+    buf.copy_from_slice(&n.to_le_bytes()[..buf.len()]);
 }
 
 #[test]
@@ -56,51 +54,58 @@ fn test_read_write_uint_be() {
     let n: u64 = 123124324;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_be_bytes(&mut buf[start..], n);
+    write_uint_as_be_bytes(&mut buf[..], n);
     assert_eq!(read_uint_from_be_bytes(&buf[start..]), n);
+    assert_eq!(read_uint_from_be_bytes(&buf[..]), n);
 
     let n: u64 = 3435666;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_be_bytes(&mut buf[start..], n);
+    write_uint_as_be_bytes(&mut buf[..], n);
     assert_eq!(read_uint_from_be_bytes(&buf[start..]), n);
+    assert_eq!(read_uint_from_be_bytes(&buf[..]), n);
 
     let n: u64 = 57874;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_be_bytes(&mut buf[start..], n);
+    write_uint_as_be_bytes(&mut buf[..], n);
     assert_eq!(read_uint_from_be_bytes(&buf[start..]), n);
+    assert_eq!(read_uint_from_be_bytes(&buf[..]), n);
 
     let n: u64 = 127;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_be_bytes(&mut buf[start..], n);
+    write_uint_as_be_bytes(&mut buf[..], n);
     assert_eq!(read_uint_from_be_bytes(&buf[start..]), n);
+    assert_eq!(read_uint_from_be_bytes(&buf[..]), n);
 }
 
 #[test]
 fn test_read_write_uint_le() {
     let n: u64 = 123124324;
     let mut buf = [0; 8];
-    let start = 8 - pack_size(n);
-    write_uint_as_le_bytes(&mut buf[start..], n);
-    assert_eq!(read_uint_from_le_bytes(&buf[start..]), n);
+    write_uint_as_le_bytes(&mut buf[..], n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..]), n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..pack_size(n)]), n);
 
     let n: u64 = 3435666;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_le_bytes(&mut buf[start..], n);
-    assert_eq!(read_uint_from_le_bytes(&buf[start..]), n);
+    write_uint_as_le_bytes(&mut buf[..], n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..]), n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..pack_size(n)]), n);
 
     let n: u64 = 57874;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_le_bytes(&mut buf[start..], n);
-    assert_eq!(read_uint_from_le_bytes(&buf[start..]), n);
+    write_uint_as_le_bytes(&mut buf[..], n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..]), n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..pack_size(n)]), n);
 
     let n: u64 = 127;
     let mut buf = [0; 8];
     let start = 8 - pack_size(n);
-    write_uint_as_le_bytes(&mut buf[start..], n);
-    assert_eq!(read_uint_from_le_bytes(&buf[start..]), n);
+    write_uint_as_le_bytes(&mut buf[..], n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..]), n);
+    assert_eq!(read_uint_from_le_bytes(&buf[..pack_size(n)]), n);
 }
