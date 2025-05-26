@@ -657,7 +657,7 @@ fn endian_read<T: Write>(writer: T, bit_len: u64, net_endian: bool) -> HeadTailW
             &format!("u16::{rust_default_method}(("),
             ").try_into().unwrap())",
         ),
-        3 => HeadTailWriter::new(writer, "(read_uint_from_be_bytes(", ") as u32)"),
+        3 => HeadTailWriter::new(writer, &format!("({rpkt_defined_method}("), ") as u32)"),
         4 => HeadTailWriter::new(
             writer,
             &format!("u32::{rust_default_method}(("),

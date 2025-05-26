@@ -17,7 +17,7 @@ pub use length::*;
 mod cond;
 pub use cond::*;
 
-/// The top level ast type for the `packet`` definition
+/// The top level ast type for the packet definition.
 #[derive(Debug)]
 pub struct Packet {
     protocol_name: String,
@@ -51,10 +51,10 @@ impl Packet {
     }
 }
 
-/// Top level ast type for `message` definition.
+/// Top level ast type for message definition.
 ///
-/// It is basically the same as `Packet`, except that it carries conditional
-/// field.
+/// It is basically the same as `Packet`, except that it carries
+/// a conditional field.
 #[derive(Debug)]
 pub struct Message {
     protocol_name: String,
