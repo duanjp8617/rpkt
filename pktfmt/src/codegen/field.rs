@@ -128,11 +128,21 @@ impl<'a> FieldGetMethod<'a> {
                     reader.get_writer(),
                     "&{target_slice}[{}..{}]",
                     self.start.byte_pos(),
-                    end.byte_pos()
+                    end.byte_pos() + 1
                 )
                 .unwrap();
             }
             String::from_utf8(buf).unwrap()
+        };
+
+        let read_value = if end.bit_pos() < 7 {
+            // The field has the following format:
+            // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+            //     |   field ......      |
+            // We will right-shift the field value.
+            format!("{read_value}>>{}", 7 - end.bit_pos())
+        } else {
+            read_value
         };
 
         let read_value = if self.start.bit_pos() > 0 {
@@ -141,29 +151,11 @@ impl<'a> FieldGetMethod<'a> {
             //     |   field ......      |
             // We will `and` the field value with:
             // 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-            format!(
-                "{read_value}&{}",
-                ones_mask(
-                    0,
-                    8 * (end.byte_pos() - self.start.byte_pos())
-                        + (7 - (self.start.bit_pos())) as u64
-                )
-            )
-        } else {
-            read_value
-        };
-
-        let read_value = if end.bit_pos() < 7 {
-            // The field has the following format:
-            // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-            //     |   field ......      |
-            // We will right-shift the field value.
-            if self.start.bit_pos() > 0 {
-                // `read_value` contains an and expression.
-                // We wrap it in a bracket.
-                format!("({read_value})>>{}", 7 - end.bit_pos())
+            if end.bit_pos() < 7 {
+                // Wrap the `and` expression in brackets.
+                format!("({read_value})&{}", ones_mask(0, self.field.bit - 1))
             } else {
-                format!("{read_value}>>{}", 7 - end.bit_pos())
+                format!("{read_value}&{}", ones_mask(0, self.field.bit - 1))
             }
         } else {
             read_value
@@ -188,25 +180,23 @@ impl<'a> FieldGetMethod<'a> {
                     output,
                     "&{target_slice}[{}..{}]",
                     self.start.byte_pos(),
-                    end.byte_pos()
+                    end.byte_pos() + 1
                 )
                 .unwrap();
             }
-            BuiltinTypes::U8 if self.start.byte_pos() < end.byte_pos() => {
-                // The field covers two bytes:
-                // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                //           | field |
-                let mut u8_converter = HeadTailWriter::new(&mut output, "(", ") as u8");
-
-                write!(
-                    u8_converter.get_writer(),
-                    "{}",
-                    self.read_multi_bytes(target_slice)
-                )
-                .unwrap();
-            }
-            BuiltinTypes::U8 => {
+            BuiltinTypes::U8 if self.start.byte_pos() == end.byte_pos() => {
+                // Handle single-byte field separately.
                 let byte_value = format!("{target_slice}[{}]", self.start.byte_pos());
+
+                let byte_value = if end.bit_pos() < 7 {
+                    // The field has the following format:
+                    // 0 1 2 3 4 5 6 7
+                    //   | field |
+                    // We will right-shift the field value.
+                    format!("{byte_value}>>{}", 7 - end.bit_pos())
+                } else {
+                    byte_value
+                };
 
                 let byte_value = if self.start.bit_pos() > 0 {
                     // The field has the following format:
@@ -214,23 +204,10 @@ impl<'a> FieldGetMethod<'a> {
                     //   | field |
                     // We will `and` the field value with:
                     // 0 1 1 1 1 1 1 1
-                    format!(
-                        "{byte_value}&{}",
-                        ones_mask(0, (7 - (self.start.bit_pos())) as u64)
-                    )
-                } else {
-                    byte_value
-                };
-
-                let byte_value = if end.bit_pos() < 7 {
-                    // The field has the following format:
-                    // 0 1 2 3 4 5 6 7
-                    //   | field |
-                    // We will right-shift the field value.
-                    if self.start.bit_pos() > 0 {
-                        format!("({byte_value})>>{}", 7 - end.bit_pos())
+                    if end.bit_pos() < 7 {
+                        format!("({byte_value})&{}", ones_mask(0, self.field.bit - 1))
                     } else {
-                        format!("{byte_value}>>{}", 7 - end.bit_pos())
+                        format!("{byte_value}&{}", ones_mask(0, self.field.bit - 1))
                     }
                 } else {
                     byte_value
@@ -238,10 +215,10 @@ impl<'a> FieldGetMethod<'a> {
 
                 write!(&mut output, "{byte_value}").unwrap();
             }
-            BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
+            BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
                 let mut converter =
                     if end.byte_pos() - self.start.byte_pos() + 1 > byte_len(self.field.bit) {
-                        // For a 16-bit field, it will look like this:
+                        // For a 16-bit field, it covers 3 bytes and looks like this:
                         // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
                         //   | 16-bit field in 3 bytes     |
                         // Need to cast the type to `repr` type.
@@ -938,7 +915,7 @@ mod tests {
             "Field {bit  = 3}",
             FieldGetMethod,
             read_repr,
-            "((self.buf.as_ref()[0]<<1)|(self.buf.as_ref()[1]>>7))&0x7",
+            "((u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>7)&0x7) as u8",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_ref()"
         );
@@ -947,7 +924,7 @@ mod tests {
             "Field {bit  = 8}",
             FieldGetMethod,
             read_repr,
-            "(self.buf.as_ref()[0]<<6)|(self.buf.as_ref()[1]>>2)",
+            "((u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>2)&0xff) as u8",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_ref()"
         );
@@ -959,7 +936,7 @@ mod tests {
             "Field {bit  = 9}",
             FieldGetMethod,
             read_repr,
-            "NetworkEndian::read_u16(&self.buf.as_ref()[0..2])>>7",
+            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>7",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -968,7 +945,7 @@ mod tests {
             "Field {bit  = 14}",
             FieldGetMethod,
             read_repr,
-            "NetworkEndian::read_u16(&self.buf.as_ref()[0..2])&0x3fff",
+            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())&0x3fff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -977,7 +954,7 @@ mod tests {
             "Field {bit  = 16}",
             FieldGetMethod,
             read_repr,
-            "NetworkEndian::read_u16(&self.buf.as_ref()[0..2])",
+            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -995,7 +972,7 @@ mod tests {
             "Field {bit  = 55}",
             FieldGetMethod,
             read_repr,
-            "NetworkEndian::read_uint(&self.buf.as_ref()[3..10], 7)>>1",
+            "read_uint_from_be_bytes(&self.buf.as_ref()[3..10])>>1",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -1003,8 +980,8 @@ mod tests {
         do_test_field_codegen!(
             "Field {bit  = 60}",
             FieldGetMethod,
-            read_repr,
-            "NetworkEndian::read_u64(&self.buf.as_ref()[3..11])&0xfffffffffffffff",
+            read_repr,                             
+            "u64::from_be_bytes((&self.buf.as_ref()[3..11]).try_into().unwrap())&0xfffffffffffffff",
             BitPos::new(3 * 8 + 4),
             "self.buf.as_ref()"
         );
