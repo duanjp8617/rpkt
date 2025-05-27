@@ -46,17 +46,14 @@ impl<'a> FieldGetMethod<'a> {
 
     /// Generate a get method to access the field with name `field_name` from
     /// the buffer slice `target_slice`.
-    /// The generated method is written to `output`.
+    ///
+    /// It will generate the following method:
+    /// pub fn field_name(&self) -> FieldArgType {
+    /// ...
+    /// }
     pub fn code_gen(&self, field_name: &str, target_slice: &str, mut output: &mut dyn Write) {
         if self.field.gen {
-            // We only generate the get method if `gen` is true
-
-            // Generate function definition for a field get method.
-            // It will generate:
-            // pub fn field_name(&self) -> FieldArgType {
-            // ...
-            // }
-            // writeln!(output, "#[inline]").unwrap();
+            // We only generate the get method if `gen` is true.
             let func_def = format!(
                 "#[inline]\npub fn {field_name}(&self)->{}{{\n",
                 self.field.arg.to_string()
@@ -77,7 +74,7 @@ impl<'a> FieldGetMethod<'a> {
         match &self.field.arg {
             Arg::Code(code) => {
                 // `arg` is a rust type.
-                // We force a converter that turns the `repr`-typed value
+                // We force a conversion that turns the `repr`-typed value
                 // into `arg`-typed one.
                 let mut into_writer = HeadTailWriter::new(
                     &mut output,
@@ -94,10 +91,10 @@ impl<'a> FieldGetMethod<'a> {
                     self.read_repr(target_slice, output);
                 } else {
                     // `arg` is bool and field.bit == 1.
+                    debug_assert!(self.field.bit == 1 && *defined_arg == BuiltinTypes::Bool);
+
                     // We generate fast-path code for converting the single-bit
                     // field to bool type.
-                    // The code has the form: "field_slice[field_index]&0x1 != 0",
-                    // evaluting to `true` if the field bit is 1, and `false` otherwise.
                     write!(
                         output,
                         "{target_slice}[{}]&{} != 0",
@@ -113,163 +110,161 @@ impl<'a> FieldGetMethod<'a> {
         }
     }
 
-    // Generae a code piece that read the field from the `target_slice` into
-    // a `repr`-typed value.
-    //
-    // Note: this is the top-level method that combines `read_field` and
-    // `read_field_cross_byte`.
-    pub fn read_repr(&self, target_slice: &str, output: &mut dyn Write) {
+    // Read the field value into a `String`.
+    // The field is stored in `target_slice` and covers multiple bytes.
+    fn read_multi_bytes(&self, target_slice: &str) -> String {
         let end = self.start.next_pos(self.field.bit);
-        if self.field.bit <= 8 && self.start.byte_pos() != end.byte_pos() {
-            self.read_field_cross_byte(target_slice, output);
+
+        // Read the field value from the byteslice.
+        let read_value = {
+            let mut buf: Vec<u8> = Vec::new();
+            {
+                let mut reader = endian_read(
+                    &mut buf,
+                    end.byte_pos() - self.start.byte_pos() + 1,
+                    self.field.net_endian,
+                );
+                write!(
+                    reader.get_writer(),
+                    "&{target_slice}[{}..{}]",
+                    self.start.byte_pos(),
+                    end.byte_pos()
+                )
+                .unwrap();
+            }
+            String::from_utf8(buf).unwrap()
+        };
+
+        let read_value = if self.start.bit_pos() > 0 {
+            // The field has the following format:
+            // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+            //     |   field ......      |
+            // We will `and` the field value with:
+            // 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+            format!(
+                "{read_value}&{}",
+                ones_mask(
+                    0,
+                    8 * (end.byte_pos() - self.start.byte_pos())
+                        + (7 - (self.start.bit_pos())) as u64
+                )
+            )
         } else {
-            self.read_field(target_slice, output);
-        }
+            read_value
+        };
+
+        let read_value = if end.bit_pos() < 7 {
+            // The field has the following format:
+            // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+            //     |   field ......      |
+            // We will right-shift the field value.
+            if self.start.bit_pos() > 0 {
+                // `read_value` contains an and expression.
+                // We wrap it in a bracket.
+                format!("({read_value})>>{}", 7 - end.bit_pos())
+            } else {
+                format!("{read_value}>>{}", 7 - end.bit_pos())
+            }
+        } else {
+            read_value
+        };
+
+        read_value
     }
 
     // Generae a code piece that read the field from the `target_slice` into a
     // `repr`-typed value.
-    //
-    // Note: this method does not handle the condition that the `repr` is `U8` and
-    // the field crosses the byte boundary.
-    fn read_field(&self, target_slice: &str, mut output: &mut dyn Write) {
+    pub fn read_repr(&self, target_slice: &str, mut output: &mut dyn Write) {
         // The ending `BitPos` of the current header field.
         let end = self.start.next_pos(self.field.bit);
 
         match self.field.repr {
             BuiltinTypes::ByteSlice => {
-                // The `repr` is a `ByteSlice`.
                 // The field has the following form:
                 // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
                 // |          field              |
-                // The field covers the entire byte slice and can be directly read out.
+                // It covers the entire byte slice and can be directly read out.
                 write!(
                     output,
                     "&{target_slice}[{}..{}]",
                     self.start.byte_pos(),
-                    self.start.byte_pos() + byte_len(self.field.bit)
+                    end.byte_pos()
+                )
+                .unwrap();
+            }
+            BuiltinTypes::U8 if self.start.byte_pos() < end.byte_pos() => {
+                // The field covers two bytes:
+                // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+                //           | field |
+                let mut u8_converter = HeadTailWriter::new(&mut output, "(", ") as u8");
+
+                write!(
+                    u8_converter.get_writer(),
+                    "{}",
+                    self.read_multi_bytes(target_slice)
                 )
                 .unwrap();
             }
             BuiltinTypes::U8 => {
-                // Index the actual byte containing the field.
-                let read_byte = format!("{target_slice}[{}]", self.start.byte_pos());
+                let byte_value = format!("{target_slice}[{}]", self.start.byte_pos());
 
-                if end.bit_pos() < 7 && self.start.bit_pos() > 0 {
-                    // The field has the following form:
+                let byte_value = if self.start.bit_pos() > 0 {
+                    // The field has the following format:
                     // 0 1 2 3 4 5 6 7
                     //   | field |
-                    // We perform a right shift followed by bitwise and.
-                    // This will clear the extra bits on the target byte
-                    // and align the field to the 7th bit position.
-                    write!(
-                        output,
-                        "({read_byte}>>{})&{}",
-                        7 - u64::from(end.bit_pos()),
-                        ones_mask(0, self.field.bit - 1)
+                    // We will `and` the field value with:
+                    // 0 1 1 1 1 1 1 1
+                    format!(
+                        "{byte_value}&{}",
+                        ones_mask(0, (7 - (self.start.bit_pos())) as u64)
                     )
-                    .unwrap();
-                } else if end.bit_pos() < 7 {
-                    // The field has the following form:
-                    // 0 1 2 3 4 5 6 7
-                    // | field |
-                    // We only perform right shift.
-                    write!(output, "{read_byte}>>{}", 7 - end.bit_pos()).unwrap();
-                } else if self.start.bit_pos() > 0 {
-                    // The field has the following form:
-                    // 0 1 2 3 4 5 6 7
-                    //       | field |
-                    // We only perform bitwise and.
-                    write!(output, "{read_byte}&{}", ones_mask(0, self.field.bit - 1)).unwrap();
                 } else {
-                    // The field has the following form:
+                    byte_value
+                };
+
+                let byte_value = if end.bit_pos() < 7 {
+                    // The field has the following format:
                     // 0 1 2 3 4 5 6 7
-                    // |     field   |
-                    // We directly index the underlying byte.
-                    write!(output, "{read_byte}").unwrap();
-                }
+                    //   | field |
+                    // We will right-shift the field value.
+                    if self.start.bit_pos() > 0 {
+                        format!("({byte_value})>>{}", 7 - end.bit_pos())
+                    } else {
+                        format!("{byte_value}>>{}", 7 - end.bit_pos())
+                    }
+                } else {
+                    byte_value
+                };
+
+                write!(&mut output, "{byte_value}").unwrap();
             }
             BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
-                // The field is stored over multiple bytes and will be read
-                // as an integer type while honoring the network endianess.
-                {
-                    // Create a new writer that will prepend a method for reading a byte slice
-                    // as an integer type while honoring endianess.
-                    let mut new = endian_read(&mut output, self.field.bit, self.field.net_endian);
+                let mut converter =
+                    if end.byte_pos() - self.start.byte_pos() + 1 > byte_len(self.field.bit) {
+                        // For a 16-bit field, it will look like this:
+                        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+                        //   | 16-bit field in 3 bytes     |
+                        // Need to cast the type to `repr` type.
+                        HeadTailWriter::new(
+                            &mut output,
+                            "(",
+                            &format!(") as {}", self.field.repr.to_string()),
+                        )
+                    } else {
+                        HeadTailWriter::new(&mut output, "", "")
+                    };
 
-                    // Fill in the byteslice that need to be read from.
-                    write!(
-                        new.get_writer(),
-                        "&{target_slice}[{}..{}]",
-                        self.start.byte_pos(),
-                        self.start.byte_pos() + byte_len(self.field.bit)
-                    )
-                    .unwrap();
-                }
-
-                if end.bit_pos() < 7 {
-                    // The field has the form:
-                    // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                    // |     field           |
-                    // We perform a right shift.
-                    write!(output, ">>{}", 7 - end.bit_pos()).unwrap();
-                } else if self.start.bit_pos() > 0 {
-                    // The field has the form:
-                    // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                    //         |     field           |
-                    // We perform a bitwise and.
-                    write!(output, "&{}", ones_mask(0, self.field.bit - 1)).unwrap();
-                } else {
-                    // The field has the form:
-                    // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                    // |      field                  |
-                    // We just do nothing.
-                }
+                write!(
+                    converter.get_writer(),
+                    "{}",
+                    self.read_multi_bytes(target_slice)
+                )
+                .unwrap();
             }
             _ => {
                 // bool type is handled by a separate fast path
                 panic!()
             }
-        }
-    }
-
-    // Generae a code piece that read a field if field's `repr` is `U8` and
-    // the field crosses byte boundaries.
-    fn read_field_cross_byte(&self, target_slice: &str, output: &mut dyn Write) {
-        let end = self.start.next_pos(self.field.bit);
-
-        // The field will have the following form:
-        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-        //       |     fie-ld    |
-        // The field is splitted into two parts by the byte boundary:
-        // The 1st part ("({}[{}]<<{})") is :
-        // 0 1 2 3 4 5 6 7
-        //       |  fie- |
-        // We need to left a left-shift to make room for the 2nd part.
-        // The 2nd part ("({}[{}]>>{})") is :
-        // 0 1 2 3 4 5 6 7
-        // |-ld|
-        // The 2nd part should right-shift to 7th bit.
-        // Finally, we glue the two parts together with bitwise or.
-        let read_result = format!(
-            "({target_slice}[{}]<<{})|({target_slice}[{}]>>{})",
-            self.start.byte_pos(),
-            end.bit_pos() + 1,
-            end.byte_pos(),
-            7 - end.bit_pos()
-        );
-
-        if self.field.bit < 8 {
-            // Clear the extra bits if the field size is smaller than 8.
-            write!(
-                output,
-                "({read_result})&{}",
-                ones_mask(0, self.field.bit - 1)
-            )
-            .unwrap();
-        } else {
-            // Otherwise, read the field as it is.
-            write!(output, "{read_result}").unwrap();
         }
     }
 }
@@ -637,10 +632,9 @@ impl<'a> FieldSetMethod<'a> {
     }
 }
 
-// Append corresponding read method that honors the network endianess to the
-// input `writer`. We use the `byteorder` crate just like `smoltcp` here.
-fn endian_read<T: Write>(writer: T, bit_len: u64, net_endian: bool) -> HeadTailWriter<T> {
-    let byte_len = byte_len(bit_len);
+// Create a `HeadTailWriter` that can be used to read from a field slice while
+// honoring the endianess of the field.
+fn endian_read<T: Write>(writer: T, byte_len: u64, net_endian: bool) -> HeadTailWriter<T> {
     let rust_default_method = if net_endian {
         "from_be_bytes"
     } else {
@@ -673,14 +667,14 @@ fn endian_read<T: Write>(writer: T, bit_len: u64, net_endian: bool) -> HeadTailW
     }
 }
 
-// Similar to `network_endian_read`, but it appends the write method.
+// Create a `HeadTailWriter` that can be used to write to a field slice while
+// honoring the endianess of the field.
 fn endian_write<T: Write>(
     writer: T,
     write_to: &str,
-    bit_len: u64,
+    byte_len: u64,
     net_endian: bool,
 ) -> HeadTailWriter<T> {
-    let byte_len = byte_len(bit_len);
     let rust_default_method = if net_endian {
         "to_be_bytes"
     } else {
@@ -722,6 +716,11 @@ fn endian_write<T: Write>(
 }
 
 // Generate bit mask with all ones from `low`-th bit to the `high`-th bit.
+// Note, the most significant bit is the left-most bit.
+// bit indexes: 7 6 5 4 3 2 1 0
+// bit values:  0 0 1 1 1 1 1 1  -> 0x3f
+//                  ^         ^
+//                 high      low
 fn ones_mask(mut low: u64, high: u64) -> String {
     assert!(low <= high && high < 64);
 
@@ -750,6 +749,11 @@ fn ones_mask(mut low: u64, high: u64) -> String {
 }
 
 // Generate bit mask with all zeros from `low`-th bit to the `high`-th bit.
+// The most significant bit is the left-most bit.
+// bit indexes: 7 6 5 4 3 2 1 0
+// bit values:  1 1 0 0 0 0 0 0  -> 0xC0
+//                  ^         ^
+//                 high      low
 fn zeros_mask(mut low: u64, high: u64) -> String {
     assert!(low <= high && high < 64);
 
@@ -788,11 +792,7 @@ fn zeros_mask(mut low: u64, high: u64) -> String {
     s
 }
 
-// If the `arg` is a rust type, then the rust type must implement a convert
-// method that turns the `repr`-typed value into a `arg`-typed one.
-//
-// Take `Ipv4Addr` as an example, it should implement:
-// pub fn Ipv4Addr::from_byte_slice(value: &[u8]) -> Ipv4Addr {...}
+// Convert the `repr` type to the resulting rust type defined by `arg`.
 fn to_rust_type(repr: BuiltinTypes, rust_type_code: &str) -> String {
     match repr {
         BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
@@ -805,11 +805,7 @@ fn to_rust_type(repr: BuiltinTypes, rust_type_code: &str) -> String {
     }
 }
 
-// If the `arg` is a rust type, then the rust type must implement a convert
-// method that turns the `arg`-typed value into a `repr`-typed one.
-//
-// Take `EtherType` as an example, it should implement:
-// pub fn EtherType::as_u16(&self) -> u16 {...}
+// Convert the rust type defined by `arg` to the `repr` type.
 fn rust_var_as_repr(var_name: &str, repr: BuiltinTypes) -> String {
     match repr {
         BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
@@ -831,6 +827,9 @@ mod tests {
 
     #[test]
     fn test_bit_mask() {
+        assert_eq!("0x3f", &ones_mask(0, 5)[..]);
+        assert_eq!("0xc0", &zeros_mask(0, 5)[..]);
+
         fn to_num_back_to_hex_string(bit_mask: String) {
             assert_eq!(
                 bit_mask,
