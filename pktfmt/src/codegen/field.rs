@@ -216,20 +216,19 @@ impl<'a> FieldGetMethod<'a> {
                 write!(&mut output, "{byte_value}").unwrap();
             }
             BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
-                let mut converter =
-                    if end.byte_pos() - self.start.byte_pos() + 1 > byte_len(self.field.bit) {
-                        // For a 16-bit field, it covers 3 bytes and looks like this:
-                        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
-                        //   | 16-bit field in 3 bytes     |
-                        // Need to cast the type to `repr` type.
-                        HeadTailWriter::new(
-                            &mut output,
-                            "(",
-                            &format!(") as {}", self.field.repr.to_string()),
-                        )
-                    } else {
-                        HeadTailWriter::new(&mut output, "", "")
-                    };
+                let mut converter = if endian_read_type(end.byte_pos() - self.start.byte_pos() + 1)
+                    != self.field.repr
+                {
+                    // The type after endian read does not match `repr` type.
+                    // We force a conversion here.
+                    HeadTailWriter::new(
+                        &mut output,
+                        "(",
+                        &format!(") as {}", self.field.repr.to_string()),
+                    )
+                } else {
+                    HeadTailWriter::new(&mut output, "", "")
+                };
 
                 write!(
                     converter.get_writer(),
@@ -609,6 +608,16 @@ impl<'a> FieldSetMethod<'a> {
     }
 }
 
+// Calculate the resulting type after endian read.
+fn endian_read_type(byte_len: u64) -> BuiltinTypes {
+    match byte_len {
+        2 => BuiltinTypes::U16,
+        3 | 4 => BuiltinTypes::U32,
+        5 | 6 | 7 | 8 => BuiltinTypes::U64,
+        _ => panic!(),
+    }
+}
+
 // Create a `HeadTailWriter` that can be used to read from a field slice while
 // honoring the endianess of the field.
 fn endian_read<T: Write>(writer: T, byte_len: u64, net_endian: bool) -> HeadTailWriter<T> {
@@ -980,7 +989,7 @@ mod tests {
         do_test_field_codegen!(
             "Field {bit  = 60}",
             FieldGetMethod,
-            read_repr,                             
+            read_repr,
             "u64::from_be_bytes((&self.buf.as_ref()[3..11]).try_into().unwrap())&0xfffffffffffffff",
             BitPos::new(3 * 8 + 4),
             "self.buf.as_ref()"
@@ -1013,6 +1022,27 @@ mod tests {
             read_as_arg,
             "self.buf.as_ref()[13]&0x80 != 0",
             BitPos::new(13 * 8 + 0),
+            "self.buf.as_ref()"
+        );
+    }
+
+    #[test]
+    fn test_read_repr_multi_bytes() {
+        do_test_field_codegen!(
+            "Field {bit  = 15}",
+            FieldGetMethod,
+            read_repr,
+            "(((read_uint_from_be_bytes(&self.buf.as_ref()[0..3]) as u32)>>7)&0x7fff) as u16",
+            BitPos::new(0 * 8 + 2),
+            "self.buf.as_ref()"
+        );
+
+        do_test_field_codegen!(
+            "Field {bit  = 24}",
+            FieldGetMethod,
+            read_repr,
+            "(u32::from_be_bytes((&self.buf.as_ref()[0..4]).try_into().unwrap())>>6)&0xffffff",
+            BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
     }
