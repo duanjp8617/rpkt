@@ -216,7 +216,7 @@ impl<'a> FieldGetMethod<'a> {
                 write!(&mut output, "{byte_value}").unwrap();
             }
             BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
-                let mut converter = if endian_read_type(end.byte_pos() - self.start.byte_pos() + 1)
+                let mut converter = if endian_rw_type(end.byte_pos() - self.start.byte_pos() + 1)
                     != self.field.repr
                 {
                     // The type after endian read does not match `repr` type.
@@ -609,11 +609,11 @@ impl<'a> FieldSetMethod<'a> {
 }
 
 // Calculate the resulting type after endian read.
-fn endian_read_type(byte_len: u64) -> BuiltinTypes {
+fn endian_rw_type(byte_len: u64) -> BuiltinTypes {
     match byte_len {
         2 => BuiltinTypes::U16,
-        3 | 4 => BuiltinTypes::U32,
-        5 | 6 | 7 | 8 => BuiltinTypes::U64,
+        4 => BuiltinTypes::U32,
+        3 | 5 | 6 | 7 | 8 => BuiltinTypes::U64,
         _ => panic!(),
     }
 }
@@ -637,13 +637,12 @@ fn endian_read<T: Write>(writer: T, byte_len: u64, net_endian: bool) -> HeadTail
             &format!("u16::{rust_default_method}(("),
             ").try_into().unwrap())",
         ),
-        3 => HeadTailWriter::new(writer, &format!("({rpkt_defined_method}("), ") as u32)"),
         4 => HeadTailWriter::new(
             writer,
             &format!("u32::{rust_default_method}(("),
             ").try_into().unwrap())",
         ),
-        5 | 6 | 7 => HeadTailWriter::new(writer, &format!("{rpkt_defined_method}("), ")"),
+        3 | 5 | 6 | 7 => HeadTailWriter::new(writer, &format!("{rpkt_defined_method}("), ")"),
         8 => HeadTailWriter::new(
             writer,
             &format!("u64::{rust_default_method}(("),
@@ -677,17 +676,12 @@ fn endian_write<T: Write>(
             &format!("({write_to}).copy_from_slice(&"),
             &format!(".{rust_default_method}());"),
         ),
-        3 => HeadTailWriter::new(
-            writer,
-            &format!("{rpkt_defined_method}({write_to},"),
-            " as u64);",
-        ),
         4 => HeadTailWriter::new(
             writer,
             &format!("({write_to}).copy_from_slice(&"),
             &format!(".{rust_default_method}());"),
         ),
-        5 | 6 | 7 => HeadTailWriter::new(
+        3 | 5 | 6 | 7 => HeadTailWriter::new(
             writer,
             &format!("{rpkt_defined_method}({write_to},"),
             " as u64);",
@@ -1032,7 +1026,7 @@ mod tests {
             "Field {bit  = 15}",
             FieldGetMethod,
             read_repr,
-            "(((read_uint_from_be_bytes(&self.buf.as_ref()[0..3]) as u32)>>7)&0x7fff) as u16",
+            "((read_uint_from_be_bytes(&self.buf.as_ref()[0..3])>>7)&0x7fff) as u16",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
