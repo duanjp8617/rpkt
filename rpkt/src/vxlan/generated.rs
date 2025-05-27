@@ -54,7 +54,7 @@ impl<T: Buf> VxlanPacket<T> {
     }
     #[inline]
     pub fn reserved_1(&self) -> u8 {
-        ((self.buf.chunk()[0] << 1) | (self.buf.chunk()[1] >> 7)) & 0xf
+        ((u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap()) >> 7) & 0xf) as u8
     }
     #[inline]
     pub fn dont_learn(&self) -> bool {
@@ -78,7 +78,7 @@ impl<T: Buf> VxlanPacket<T> {
     }
     #[inline]
     pub fn vni(&self) -> u32 {
-        (read_uint_from_be_bytes(&self.buf.chunk()[4..7]) as u32)
+        (read_uint_from_be_bytes(&self.buf.chunk()[4..7])) as u32
     }
     #[inline]
     pub fn reserved_4(&self) -> u8 {
@@ -125,8 +125,10 @@ impl<T: PktBufMut> VxlanPacket<T> {
     #[inline]
     pub fn set_reserved_1(&mut self, value: u8) {
         assert!(value <= 0xf);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf8) | (value >> 1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x7f) | (value << 7);
+        let write_value = ((value << 7) as u16)
+            | (((self.buf.chunk_mut()[0] & 0xf8) as u16) << 8)
+            | ((self.buf.chunk_mut()[1] & 0x7f) as u16);
+        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_dont_learn(&mut self, value: bool) {
@@ -161,7 +163,7 @@ impl<T: PktBufMut> VxlanPacket<T> {
     #[inline]
     pub fn set_vni(&mut self, value: u32) {
         assert!(value <= 0xffffff);
-        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[4..7], value as u64);
+        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[4..7], (value as u64));
     }
     #[inline]
     pub fn set_reserved_4(&mut self, value: u8) {

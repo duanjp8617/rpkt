@@ -208,7 +208,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[5] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[5] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -222,7 +222,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[17] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[17] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -454,7 +454,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[5] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[5] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -468,7 +468,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[17] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[17] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -761,7 +761,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[5] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[5] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -775,7 +775,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[17] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[17] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -829,7 +829,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_cist_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[93] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[93] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[93..95]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -1085,7 +1085,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
     #[inline]
     pub fn set_regional_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.as_mut()[1] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.as_mut()[1] & 0xf0) as u16) << 8);
         (&mut self.buf.as_mut()[1..3]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]

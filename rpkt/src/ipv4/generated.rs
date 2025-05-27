@@ -195,7 +195,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     #[inline]
     pub fn set_frag_offset(&mut self, value: u16) {
         assert!(value <= 0x1fff);
-        let write_value = ((self.buf.chunk_mut()[6] & 0xe0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.chunk_mut()[6] & 0xe0) as u16) << 8);
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]

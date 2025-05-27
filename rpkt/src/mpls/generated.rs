@@ -42,7 +42,7 @@ impl<T: Buf> MplsPacket<T> {
     }
     #[inline]
     pub fn label(&self) -> u32 {
-        (read_uint_from_be_bytes(&self.buf.chunk()[0..3]) as u32) >> 4
+        (read_uint_from_be_bytes(&self.buf.chunk()[0..3]) >> 4) as u32
     }
     #[inline]
     pub fn experimental_bits(&self) -> u8 {
@@ -76,8 +76,8 @@ impl<T: PktBufMut> MplsPacket<T> {
     #[inline]
     pub fn set_label(&mut self, value: u32) {
         assert!(value <= 0xfffff);
-        let write_value = (self.buf.chunk_mut()[2] & 0xf) as u32 | (value << 4);
-        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[0..3], write_value as u64);
+        let write_value = ((value << 4) as u64) | ((self.buf.chunk_mut()[2] & 0xf) as u64);
+        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[0..3], write_value);
     }
     #[inline]
     pub fn set_experimental_bits(&mut self, value: u8) {

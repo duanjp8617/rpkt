@@ -91,7 +91,7 @@ impl<T: PktBufMut> VlanPacket<T> {
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8);
         (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
@@ -227,7 +227,7 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = ((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8 | value;
+        let write_value = value | (((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8);
         (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
