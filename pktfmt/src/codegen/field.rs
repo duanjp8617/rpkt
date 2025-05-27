@@ -199,11 +199,12 @@ impl<'a> FieldGetMethod<'a> {
                 };
 
                 let byte_value = if self.start.bit_pos() > 0 {
-                    // The field has the following format:
+                    // The field value stored in the current `byte_value`
+                    //  has the following format:
                     // 0 1 2 3 4 5 6 7
-                    //   | field |
+                    //       | field |
                     // We will `and` the field value with:
-                    // 0 1 1 1 1 1 1 1
+                    // 0 0 0 1 1 1 1 1
                     if end.bit_pos() < 7 {
                         format!("({byte_value})&{}", ones_mask(0, self.field.bit - 1))
                     } else {

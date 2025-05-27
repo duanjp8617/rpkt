@@ -55,45 +55,54 @@ impl Header {
             .into_iter()
             .enumerate()
             .map(|(field_idx, (sp_str, field))| {
-                if field_position.get(&sp_str.item).is_some() {
-                    // header error 1
+                if field_position.get(&sp_str.item).is_some() {                    
                     return_err!((
                         Error::header(1, format!("duplicated header field name {}", &sp_str.item)),
                         sp_str.span
                     ))
-                } else if invalid_field_names.contains(&sp_str.item[..]) {
-                     // header error 8
+                } else if invalid_field_names.contains(&sp_str.item[..]) {                     
                      return_err!((
-                        Error::header(8, format!("invalid header field name {}", &sp_str.item)),
+                        Error::header(2, format!("invalid header field name {}", &sp_str.item)),
                         sp_str.span
                     ))
-                }else {
+                } else {
                     // calculate the start and end bit position of the header
                     let start = BitPos::new(global_bit_pos);
                     let end = start.next_pos(field.bit);
 
-                    if field.bit > 8 && start.bit_pos != 0 && end.bit_pos != 7 {
-                        // header error 2
-                        // If the header field contains multiple bytes, then one of two ends must 
-                        // be aligned to the byte boudary. In this branch, neither of the two ends
-                        // are aligned to the byte boundary, we report an error.
+                    if field.bit <= 64 && (end.byte_pos - start.byte_pos > 7) {                        
+                        // The [56-64]-bit header field spans more than 8 bytes.
                         return_err!((
                             Error::header(
-                                2,
+                                3,
                                 format!(
-                                    "header field {} is not correctly aligned to the byte boundaries",
+                                    "header field {} spans more than 8 bytes",
                                     &sp_str.item
                                 )
                             ),
                             sp_str.span
                         ))
-                    } else {
+                    }
+                    else if field.repr == BuiltinTypes::ByteSlice && start.bit_pos != 0 {
+                        // If `repr` is `ByteSlice`, then the left-side of the field should 
+                        // be aligned to the byte boundary.
+                        return_err!((
+                            Error::header(
+                                4,
+                                format!(
+                                    "header field {} has `ByteSlice` as `repr` type and is not aligned to byte boundary",
+                                    &sp_str.item
+                                )
+                            ),
+                            sp_str.span
+                        ))
+                    }
+                    else {
                         global_bit_pos += field.bit;
-                        if global_bit_pos / 8 > MAX_MTU_IN_BYTES {
-                            // header error 4
+                        if global_bit_pos / 8 > MAX_MTU_IN_BYTES {                            
                             return_err!((
                                 Error::header(
-                                    4,
+                                    5,
                                     format!(
                                         "header byte length is at least {}, exceeding the maximum MTU size {}",
                                         global_bit_pos / 8,
@@ -112,11 +121,10 @@ impl Header {
             })
             .collect::<Result<Vec<_>, (Error, (usize, usize))>>()?;
 
-        if global_bit_pos % 8 != 0 {
-            // header error 3
+        if global_bit_pos % 8 != 0 {            
             return_err!((
                 Error::header(
-                    3,
+                    6,
                     format!(
                         "invalid header bit length {}, not dividable by 8",
                         global_bit_pos
@@ -438,26 +446,26 @@ pub struct BitPos {
 }
 
 impl BitPos {
-    pub(crate) fn new(global_bit_pos: u64) -> Self {
+    pub fn new(global_bit_pos: u64) -> Self {
         Self {
             byte_pos: global_bit_pos / 8,
             bit_pos: (global_bit_pos % 8) as u8,
         }
     }
 
-    pub(crate) fn to_global_pos(&self) -> u64 {
+    pub fn to_global_pos(&self) -> u64 {
         self.byte_pos * 8 + (self.bit_pos as u64)
     }
 
-    pub(crate) fn next_pos(&self, len: u64) -> Self {
+    pub fn next_pos(&self, len: u64) -> Self {
         Self::new(self.to_global_pos() + len - 1)
     }
 
-    pub(crate) fn byte_pos(&self) -> u64 {
+    pub fn byte_pos(&self) -> u64 {
         self.byte_pos
     }
 
-    pub(crate) fn bit_pos(&self) -> u8 {
+    pub fn bit_pos(&self) -> u8 {
         self.bit_pos
     }
 }
