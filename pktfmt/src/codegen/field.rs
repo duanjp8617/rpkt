@@ -258,7 +258,11 @@ impl<'a> FieldSetMethod<'a> {
 
     /// Generate a set method to set an input value `write_value` to
     /// the field area with name `field_name` on the byte slice `target_slice`.
-    /// The generated method is written to `output`.
+    ///
+    /// It generates the following code generate:
+    /// pub fn set_field_name(&mut self, write_value: FieldArgType) {
+    /// ...
+    /// }
     pub fn code_gen(
         &self,
         field_name: &str,
@@ -267,18 +271,12 @@ impl<'a> FieldSetMethod<'a> {
         mut output: &mut dyn Write,
     ) {
         if self.field.gen {
-            // Generate function definition for a field set method.
-            // It will generate:
-            // pub fn set_field_name(&mut self, write_value: FieldArgType) {
-            // ...
-            // }
             let func_def = format!(
                 "#[inline]\npub fn set_{field_name}(&mut self, {write_value}:{}){{\n",
                 self.field.arg.to_string()
             );
             let mut func_def_writer = HeadTailWriter::new(&mut output, &func_def, "\n}\n");
 
-            // Fill in the function body for a field set method.
             self.write_as_arg(target_slice, write_value, func_def_writer.get_writer());
         }
     }
@@ -378,12 +376,20 @@ impl<'a> FieldSetMethod<'a> {
                 let write_target = format!("{target_slice}[{}]", self.start.byte_pos());
 
                 let write_value = if end.bit_pos() < 7 {
+                    // The field looks like:
+                    // 0 1 2 3 4 5 6 7
+                    //   | field |
+                    // Left shift `write_value` to correct position.
                     format!("{write_value}<<{}", 7 - u64::from(end.bit_pos()))
                 } else {
                     write_value.to_string()
                 };
 
                 if self.start.bit_pos() != 0 || end.bit_pos() != 7 {
+                    // The field looks like:
+                    // 0 1 2 3 4 5 6 7
+                    // * | field | * *
+                    // Take the bits marked by `*` out into `rest_of_bits`.
                     let rest_of_bits = format!(
                         "({target_slice}[{}]&{})",
                         self.start.byte_pos(),
@@ -393,6 +399,7 @@ impl<'a> FieldSetMethod<'a> {
                         )
                     );
 
+                    // Combine `write_value` with `rest_of_bits`.
                     if end.bit_pos() < 7 {
                         write!(output, "{write_target}={rest_of_bits}|({write_value});").unwrap();
                     } else {
@@ -407,6 +414,10 @@ impl<'a> FieldSetMethod<'a> {
                 let rw_type = endian_rw_type(end.byte_pos() - self.start.byte_pos() + 1);
 
                 let write_value = if end.bit_pos() < 7 {
+                    // The field looks like:
+                    // 0 1 2 3 4 5 6 7
+                    //   | field |
+                    // Left shift `write_value` to correct position.
                     format!("({write_value}<<{})", 7 - u64::from(end.bit_pos()))
                 } else {
                     write_value.to_string()
@@ -420,8 +431,13 @@ impl<'a> FieldSetMethod<'a> {
                     write_value
                 };
 
-                if self.start.bit_pos() != 0 || end.bit_pos() != 7 {
+                let write_value = if self.start.bit_pos() != 0 || end.bit_pos() != 7 {
                     let write_value = if self.start.bit_pos() > 0 {
+                        // The field looks like:
+                        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+                        // * | field  ......       |
+                        // Update `write_value` so that it is `or`ed with the
+                        // bits marked by `*`.
                         format!(
                             "{write_value}|((({target_slice}[{}]&{}) as {}) << {})",
                             self.start.byte_pos(),
@@ -434,6 +450,11 @@ impl<'a> FieldSetMethod<'a> {
                     };
 
                     let write_value = if end.bit_pos() < 7 {
+                        // The field looks like:
+                        // 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+                        //   | field  ......       | * * *
+                        // Update `write_value` so that it is `or`ed with the
+                        // bits marked by `*`.
                         format!(
                             "{write_value}|(({target_slice}[{}]&{}) as {})",
                             end.byte_pos(),
@@ -444,31 +465,24 @@ impl<'a> FieldSetMethod<'a> {
                         write_value
                     };
 
+                    // Assign the `write_value` to a local variable.
                     write!(&mut output, "let write_value={write_value};\n").unwrap();
-                    let mut field_writer = endian_write(
-                        &mut output,
-                        &format!(
-                            "&mut {target_slice}[{}..{}]",
-                            self.start.byte_pos(),
-                            end.byte_pos() + 1
-                        ),
-                        end.byte_pos() - self.start.byte_pos() + 1,
-                        self.field.net_endian,
-                    );
-                    write!(field_writer.get_writer(), "write_value").unwrap();
+                    "write_value".to_string()
                 } else {
-                    let mut field_writer = endian_write(
-                        &mut output,
-                        &format!(
-                            "&mut {target_slice}[{}..{}]",
-                            self.start.byte_pos(),
-                            end.byte_pos() + 1
-                        ),
-                        end.byte_pos() - self.start.byte_pos() + 1,
-                        self.field.net_endian,
-                    );
-                    write!(field_writer.get_writer(), "{write_value}").unwrap();
+                    write_value
                 };
+
+                let mut field_writer = endian_write(
+                    &mut output,
+                    &format!(
+                        "&mut {target_slice}[{}..{}]",
+                        self.start.byte_pos(),
+                        end.byte_pos() + 1
+                    ),
+                    end.byte_pos() - self.start.byte_pos() + 1,
+                    self.field.net_endian,
+                );
+                write!(field_writer.get_writer(), "{write_value}").unwrap();
             }
             _ => {
                 // bool type is handled by the fast path
