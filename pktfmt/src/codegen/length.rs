@@ -216,17 +216,12 @@ impl<'a> LengthSetMethod<'a> {
         );
     }
 
-    pub fn length_access_method_io_type(&self) -> BuiltinTypes {
-        length_access_method_io_type(&self.expr, &self.field)
-    }
-
     pub fn max_length(&self) -> u64 {
         self.expr.exec(max_value(self.field.bit).unwrap()).unwrap()
     }
 }
 
-// Find out the input and output types of a length field.
-fn length_access_method_io_type(expr: &UsableAlgExpr, field: &Field) -> BuiltinTypes {
+pub fn length_access_method_io_type(expr: &UsableAlgExpr, field: &Field) -> BuiltinTypes {
     let max_length = expr.exec(max_value(field.bit).unwrap()).unwrap();
     if max_length <= (u8::MAX as u64) {
         BuiltinTypes::U8

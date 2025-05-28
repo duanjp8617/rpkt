@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::ast::{DefaultVal, Header, LengthField};
 
-use super::{guard_assert_str, LengthSetMethod};
+use super::{guard_assert_str, length::length_access_method_io_type, LengthSetMethod};
 
 /// A generator for various parse methods.
 ///
@@ -138,9 +138,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 write!(
                     output,
                     "container.set_payload_len(payload_len as {});\n",
-                    payload_length_set
-                        .length_access_method_io_type()
-                        .to_string()
+                    length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
                 write!(output, "container\n").unwrap();
@@ -173,7 +171,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 write!(
                     output,
                     "container.set_packet_len(packet_len as {});\n",
-                    packet_length_set.length_access_method_io_type().to_string()
+                    length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
                 write!(output, "container\n").unwrap();
