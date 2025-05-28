@@ -225,12 +225,14 @@ pub(crate) fn max_value(bit: u64) -> Option<u64> {
     }
 }
 
+/// The core items that are used for code generation.
 pub enum ParsedItem {
     Packet_(Packet),
     Message_(Message),
     MessageGroupName_(MessageGroupName),
 }
 
+/// The top-level ast node produced by the parser.
 pub struct TopLevel<'a> {
     items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
     msg_groups: HashMap<&'a str, Vec<&'a Message>>,
