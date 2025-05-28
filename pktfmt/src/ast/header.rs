@@ -71,7 +71,7 @@ impl Header {
                     let end = start.next_pos(field.bit);
 
                     if field.bit <= 64 && (end.byte_pos - start.byte_pos > 7) {                        
-                        // The [56-64]-bit header field spans more than 8 bytes.
+                        // The [56-64]-bit header field may spans more than 8 bytes.
                         return_err!((
                             Error::header(
                                 3,

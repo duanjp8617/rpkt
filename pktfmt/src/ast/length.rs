@@ -62,7 +62,6 @@ impl Length {
                 res.check_length_field(header, 2)?;
             }
             _ => {
-                // length error 1
                 return_err!(Error::length(1, "invalid packet length format".to_string()))
             }
         }
@@ -86,9 +85,8 @@ impl Length {
                 res.check_length_field(header, 0)?;
             }
             _ => {
-                // length error 1
                 return_err!(Error::length(
-                    14,
+                    2,
                     "invalid message length format".to_string()
                 ))
             }
@@ -111,19 +109,17 @@ impl Length {
 
                 // make sure that the field name contained in the expr correspond to a field
                 // in the header, if it fails, we generate:
-                // length error 8
                 let name = expr.field_name();
                 let (field, _) = header.field(name).ok_or(Error::length(
-                    8,
+                    3,
                     format!("invalid length expression field name {}", name),
                 ))?;
 
                 // make sure that the bit size of the field used for length calculation does not
                 // exceeds the size of usize.
                 if field.bit > (std::mem::size_of::<usize>() as u64) * 8 {
-                    // length error 11
                     return_err!(Error::length(
-                        11,
+                        4,
                         format!(
                             "the bit size {} of length field {} exceeds the bit size {} of usize",
                             field.bit,
@@ -135,9 +131,8 @@ impl Length {
 
                 // make sure that the `gen` of field is marked as false
                 if field.gen {
-                    // length error 13
                     return_err!(Error::length(
-                        13,
+                        5,
                         format!("the 'gen' of field {} should be false", name)
                     ))
                 }
@@ -148,9 +143,8 @@ impl Length {
                     Arg::BuiltinTypes(arg)
                         if (field.repr != BuiltinTypes::ByteSlice) && (field.repr == arg) => {}
                     _ => {
-                        // length error 9
                         return_err!(Error::length(
-                            9,
+                            6,
                             format!(
                                 "the field used by length expression is invalid: {:?}",
                                 field
@@ -162,9 +156,8 @@ impl Length {
                 // Second, only the field for header_len can be associated with a fixed default
                 // value
                 if field.default_fix && index != 0 {
-                    // length error 2:
                     return_err!(Error::length(
-                        2,
+                        7,
                         format!(
                             "field {} used for computing the {} can not have a fixed default value",
                             name, LENGTH_FIELDS[index]
@@ -173,11 +166,9 @@ impl Length {
                 }
 
                 // Finally, we check whether the length computed using the field is valid.
-
                 let x_max = max_value(field.bit).unwrap();
-                // length error 5
                 let max_length = expr.exec(x_max).ok_or(Error::length(
-                    5,
+                    8,
                     format!(
                         "the length can not be calculated for {} using the max field value {}",
                         LENGTH_FIELDS[index], x_max
@@ -185,9 +176,8 @@ impl Length {
                 ))?;
                 // the maximum length can not exceed the max mtu.
                 if max_length > MAX_MTU_IN_BYTES {
-                    // length error 6
                     return_err!(Error::length(
-                        6,
+                        9,
                         format!(
                             "max length {} of {} exceeds MTU limit",
                             max_length, LENGTH_FIELDS[index]
@@ -206,9 +196,8 @@ impl Length {
                     };
                     let computed_default_length = expr.exec(default_val).unwrap();
                     if header_len > computed_default_length {
-                        // length error 12
                         return_err!(Error::length(
-                            12,
+                            10,
                             format!(
                                 "the default length {} of {} is smaller than the fixed header length {}",
                                 computed_default_length, LENGTH_FIELDS[index], header_len
@@ -220,9 +209,8 @@ impl Length {
                     // expression. if fail, generate the following error:
                     match expr.reverse_exec(header_len) {
                         None => {
-                            // length error 7
                             return_err!(Error::length(
-                                7,
+                                11,
                                 format!(
                                     "header length {} can not be derived from the {} expression",
                                     header_len, LENGTH_FIELDS[index]

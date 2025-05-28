@@ -68,8 +68,8 @@ impl Cond {
         compared_values.insert(first_cond.1);
 
         for cond in conds_iter {
-            // make sure that subsequent cond's field name
-            // is the same as the first cond
+            // Make sure that subsequent cond's field name
+            // is the same as the first cond,
             if cond.0 != first_cond.0 {
                 return_err!(Error::field(
                     5,
@@ -80,7 +80,7 @@ impl Cond {
                 ))
             }
 
-            // and that subsequent cond's compared value is unique
+            // and that subsequent cond's compared value is unique,
             if compared_values.get(&cond.1).is_some() {
                 return_err!(Error::field(
                     6,
@@ -88,7 +88,7 @@ impl Cond {
                 ))
             }
 
-            // and that the subsequent cond passes the check
+            // and that the subsequent cond passes the check.
             cond_checker(cond)?;
 
             compared_values.insert(cond.1);
