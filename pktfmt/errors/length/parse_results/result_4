@@ -1,0 +1,10 @@
+ast error
+at ./error_4.pktfmt 17:5-20:5
+         ~~~~~~~~~~
+17 |     length = [
+18 |         header_len =field_1*4,
+19 |         payload_len =field_2*3,
+20 |     ]
+     ^^^^^
+length error 4:
+the bit size 128 of length field field_1 exceeds the bit size 64 of usize

@@ -185,7 +185,7 @@ impl Length {
                     ))
                 }
 
-                if index == 0 || index == 2 {
+                if index == 0 {
                     // if the length field is the header_len or packet_len, we also need to ensure
                     // that the length computed using the default value is large enough to hold the
                     // fixed header.
@@ -435,8 +435,8 @@ pub(crate) enum AlgExpr {
 impl AlgExpr {
     // length error 10: algorithmic expression is too complex
     pub(crate) fn try_take_usable_alg_expr(&self) -> Result<UsableAlgExpr, Error> {
-        self.try_take_all_types().ok_or(Error::field(
-            10,
+        self.try_take_all_types().ok_or(Error::length(
+            12,
             format!(
             "the form of the algorithmic expression is too complex, only simple ones are supported"
         ),

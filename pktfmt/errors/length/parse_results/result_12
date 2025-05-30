@@ -1,0 +1,6 @@
+ast error
+at ./error_12.pktfmt 20:21-31
+20 |         header_len =field_1/4-2,
+                         ^^^^^^^^^^^
+length error 12:
+the form of the algorithmic expression is too complex, only simple ones are supported

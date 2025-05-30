@@ -1,0 +1,10 @@
+ast error
+at ./error_3.pktfmt 16:5-19:5
+         ~~~~~~~~~~
+16 |     length = [
+17 |         header_len =field_5*3,
+18 |         payload_len =field_2*3,
+19 |     ]
+     ^^^^^
+length error 3:
+invalid length expression field name field_5

@@ -1,0 +1,10 @@
+ast error
+at ./error_7.pktfmt 19:5-22:5
+         ~~~~~~~~~~
+19 |     length = [
+20 |         header_len =field_1,
+21 |         payload_len =field_2*3,
+22 |     ]
+     ^^^^^
+length error 7:
+field field_2 used for computing the payload_len can not have a fixed default value

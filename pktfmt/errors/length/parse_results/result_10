@@ -1,0 +1,10 @@
+ast error
+at ./error_10.pktfmt 20:5-23:5
+         ~~~~~~~~~~
+20 |     length = [
+21 |         header_len =field_1,
+22 |         payload_len =field_2*3,
+23 |     ]
+     ^^^^^
+length error 10:
+the default length 1 of header_len is smaller than the fixed header length 3

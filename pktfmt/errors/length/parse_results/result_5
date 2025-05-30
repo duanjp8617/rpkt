@@ -1,0 +1,10 @@
+ast error
+at ./error_5.pktfmt 16:5-19:5
+         ~~~~~~~~~~
+16 |     length = [
+17 |         header_len =field_1*3,
+18 |         payload_len =field_2*3,
+19 |     ]
+     ^^^^^
+length error 5:
+the 'gen' of field field_1 should be false

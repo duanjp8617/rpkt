@@ -1,0 +1,10 @@
+ast error
+at ./error_9.pktfmt 17:5-20:5
+         ~~~~~~~~~~
+17 |     length = [
+18 |         header_len =field_1*1000000000,
+19 |         payload_len =field_2*3,
+20 |     ]
+     ^^^^^
+length error 9:
+max length 255000000000 of header_len exceeds MTU limit

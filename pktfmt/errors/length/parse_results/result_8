@@ -1,0 +1,10 @@
+ast error
+at ./error_8.pktfmt 17:5-20:5
+         ~~~~~~~~~~
+17 |     length = [
+18 |         header_len =field_1*4611686018427387904,
+19 |         payload_len =field_2*3,
+20 |     ]
+     ^^^^^
+length error 8:
+the length can not be calculated for header_len using the max field value 255

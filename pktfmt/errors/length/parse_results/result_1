@@ -1,0 +1,11 @@
+ast error
+at ./error_1.pktfmt 17:5-21:5
+         ~~~~~~~~~~
+17 |     length = [
+18 |         header_len =field_1*3,
+19 |         payload_len =,
+20 |         packet_len=
+21 |     ]
+     ^^^^^
+length error 1:
+invalid packet length format
