@@ -1,0 +1,6 @@
+ast error
+at ./error_1.pktfmt 16:5-39
+16 |     cond = (type_ == 1)||(field_1 == 2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 1:
+invalid field name in cond expression: type_

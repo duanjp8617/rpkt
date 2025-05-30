@@ -1,0 +1,6 @@
+ast error
+at ./error_3.pktfmt 16:5-43
+16 |     cond = (field_1 == 700)||(field_1 == 2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 3:
+compared value 700 is too large

@@ -30,27 +30,27 @@ impl Cond {
         // 4. the field's `gen` is true, meaning that it is not a length-related field.
         let cond_checker = |cond: &(String, u64)| -> Result<(), Error> {
             let (field_name, compared_value) = (&cond.0, &cond.1);
-            let (field, _) = header.field(field_name).ok_or(Error::field(
+            let (field, _) = header.field(field_name).ok_or(Error::cond(
                 1,
                 format!("invalid field name in cond expression: {field_name}"),
             ))?;
 
             if field.repr == BuiltinTypes::ByteSlice {
-                return_err!(Error::field(
+                return_err!(Error::cond(
                     2,
                     "field repr can not be a byte slice".to_string()
                 ));
             }
 
             if *compared_value > max_value(field.bit).unwrap() {
-                return_err!(Error::field(
+                return_err!(Error::cond(
                     3,
                     format!("compared value {compared_value} is too large")
                 ));
             }
 
             if !field.gen {
-                return_err!(Error::field(4, "field gen must be true".to_string()));
+                return_err!(Error::cond(4, "field gen must be true".to_string()));
             }
 
             Ok(())
@@ -71,7 +71,7 @@ impl Cond {
             // Make sure that subsequent cond's field name
             // is the same as the first cond,
             if cond.0 != first_cond.0 {
-                return_err!(Error::field(
+                return_err!(Error::cond(
                     5,
                     format!(
                         "field name {} does not match that in the first condition",
@@ -82,7 +82,7 @@ impl Cond {
 
             // and that subsequent cond's compared value is unique,
             if compared_values.get(&cond.1).is_some() {
-                return_err!(Error::field(
+                return_err!(Error::cond(
                     6,
                     format!("the compared value {} has appeared", cond.1),
                 ))

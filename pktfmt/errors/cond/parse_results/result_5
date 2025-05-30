@@ -1,0 +1,6 @@
+ast error
+at ./error_5.pktfmt 16:5-41
+16 |     cond = (field_2 == 1)||(field_1 == 2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 5:
+field name field_1 does not match that in the first condition

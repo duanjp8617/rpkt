@@ -1,0 +1,6 @@
+ast error
+at ./error_4.pktfmt 17:5-41
+17 |     cond = (field_1 == 3)||(field_1 == 2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 4:
+field gen must be true

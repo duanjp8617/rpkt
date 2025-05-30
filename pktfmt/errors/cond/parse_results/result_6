@@ -1,0 +1,6 @@
+ast error
+at ./error_6.pktfmt 16:5-41
+16 |     cond = (field_1 == 1)||(field_1 == 1)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 6:
+the compared value 1 has appeared
