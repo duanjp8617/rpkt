@@ -1,0 +1,10 @@
+ast error
+at ./pktfmt/errors/field/error_3.pktfmt 6:23-9:9
+                          ~~~~~~~
+6 |         fake_field1 = Field {
+7 |             bit = 8, 
+8 |             arg = u16,
+9 |         }
+    ^^^^^^^^^
+field error 3:
+invalid arg u16 under repr u8

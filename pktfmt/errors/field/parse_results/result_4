@@ -1,0 +1,11 @@
+ast error
+at ./pktfmt/errors/field/error_4.pktfmt 6:23-10:9
+                           ~~~~~~~
+ 6 |         fake_field1 = Field {
+ 7 |             bit = 1, 
+ 8 |             arg = bool,
+ 9 |             default = 5
+10 |         }
+     ^^^^^^^^^
+field error 4:
+invalid default 5 for boolean arg, should be true or false

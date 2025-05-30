@@ -1,0 +1,11 @@
+ast error
+at ./pktfmt/errors/field/error_7.pktfmt 6:18-10:9
+                      ~~~~~~~
+ 6 |         field1 = Field {
+ 7 |             bit = 32,
+ 8 |             repr = &[u8],
+ 9 |             default = @[4,4,4,4]
+10 |         },
+     ^^^^^^^^^
+field error 7:
+default can not be fixed for bool value and byte array

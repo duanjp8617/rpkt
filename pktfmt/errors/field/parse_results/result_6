@@ -1,0 +1,10 @@
+ast error
+at ./pktfmt/errors/field/error_6.pktfmt 6:23-9:9
+                          ~~~~~~~
+6 |         fake_field1 = Field {
+7 |             bit = 4,
+8 |             default = 1000
+9 |         },
+    ^^^^^^^^^
+field error 6:
+invalid default 1000 , should be no larger than 15

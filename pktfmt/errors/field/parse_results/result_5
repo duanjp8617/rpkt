@@ -1,0 +1,12 @@
+ast error
+at ./pktfmt/errors/field/error_5.pktfmt 6:23-11:9
+                           ~~~~~~~
+ 6 |         fake_field1 = Field {
+ 7 |             bit = 16,
+ 8 |             repr = &[u8],
+ 9 |             arg = &[u8],
+10 |             default = [0,1,2]
+11 |         }
+     ^^^^^^^^^
+field error 5:
+invalid default [0, 1, 2], should be 2-byte array

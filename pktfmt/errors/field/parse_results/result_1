@@ -1,0 +1,12 @@
+ast error
+at ./pktfmt/errors/field/error_1.pktfmt 6:23-8:9
+                          ~~~~~~~
+6 |         fake_field1 = Field {
+7 |             bit = 65, 
+8 |         },
+    ^^^^^^^^^
+field error 1:
+invalid bit 65, the following bit values are invalid:
+1. bit == 0,
+2. bit > 64 && bit % 8 != 0, 
+3. bit > 33554424
