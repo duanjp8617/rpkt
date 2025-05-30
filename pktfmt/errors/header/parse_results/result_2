@@ -1,0 +1,6 @@
+ast error
+at ./error_2.pktfmt 9:9-12
+9 |         type = Field {
+            ^^^^
+header error 2:
+invalid header field name type

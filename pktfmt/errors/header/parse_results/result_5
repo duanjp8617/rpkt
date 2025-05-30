@@ -1,0 +1,13 @@
+ast error
+at ./error_5.pktfmt 5:5-18:5
+         ~~~~~~~~~~
+ 5 |     header = [
+ 6 |         field_1 = Field {
+ 7 |             bit = 8, 
+......
+16 |             bit = 8, 
+17 |         }
+18 |     ]
+     ^^^^^
+header error 5:
+header byte length is at least 4194305, exceeding the maximum MTU size 4194303

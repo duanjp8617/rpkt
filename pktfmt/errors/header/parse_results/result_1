@@ -1,0 +1,6 @@
+ast error
+at ./error_1.pktfmt 9:9-19
+9 |         field_name1 = Field {
+            ^^^^^^^^^^^
+header error 1:
+duplicated header field name field_name1

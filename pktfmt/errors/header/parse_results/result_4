@@ -1,0 +1,6 @@
+ast error
+at ./error_4.pktfmt 9:9-19
+9 |         field_name2 = Field {
+            ^^^^^^^^^^^
+header error 4:
+header field field_name2 has `ByteSlice` as `repr` type and is not aligned to byte boundary

@@ -1,0 +1,18 @@
+%%
+%%
+
+packet FakeProto {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        type = Field {
+            bit = 8, 
+            gen = false
+        }
+    ],
+    length = [
+        header_len = type*8
+    ]
+}
+

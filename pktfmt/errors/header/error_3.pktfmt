@@ -1,0 +1,17 @@
+%%
+%%
+
+packet FakeProto {
+    header = [
+        field_name1 = Field {
+            bit = 1, 
+        },
+        field_name2 = Field {
+            bit = 64, 
+        },
+        field_name3 = Field {
+            bit = 7, 
+        }
+    ]
+}
+

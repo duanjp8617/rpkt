@@ -1,0 +1,6 @@
+ast error
+at ./error_3.pktfmt 9:9-19
+9 |         field_name2 = Field {
+            ^^^^^^^^^^^
+header error 3:
+header field field_name2 spans more than 8 bytes

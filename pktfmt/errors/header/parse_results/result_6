@@ -1,0 +1,13 @@
+ast error
+at ./error_6.pktfmt 5:5-15:5
+         ~~~~~~~~~~
+ 5 |     header = [
+ 6 |         field_1 = Field {
+ 7 |             bit = 8, 
+......
+13 |             bit = 5, 
+14 |         }
+15 |     ]
+     ^^^^^
+header error 6:
+invalid header bit length 21, not dividable by 8
