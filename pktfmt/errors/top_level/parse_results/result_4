@@ -1,5 +1,5 @@
 ast error
-at error_4.pktfmt 50:1-53:1
+at ./error_4.pktfmt 50:1-53:1
      ~~~~~~~~~~~~~~~~~~~~
 50 | message_group G1 = [
 51 |     Proto2,    

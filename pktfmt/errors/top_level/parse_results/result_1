@@ -1,5 +1,5 @@
 ast error
-at error_1.pktfmt 15:1-24:1
+at ./error_1.pktfmt 15:1-24:1
      ~~~~~~~~~~~~~~~~
 15 | message Proto1 {
 16 |     header = [

@@ -43,10 +43,11 @@ for tuple in "${tuples[@]}"; do
   
   echo "处理协议: $name, 错误数量: $count"
   
+  cd $SCRIPT_DIR/$name
   # 内层循环：从1迭代到数字值
   for ((i=1; i<=$count; i++)); do
     # 组成输入文件名
-    input_file="${SCRIPT_DIR}/${name}/error_${i}.pktfmt"
+    input_file="./error_${i}.pktfmt"
     echo "处理输入文件: $input_file"
     
     # 检查输入文件是否存在

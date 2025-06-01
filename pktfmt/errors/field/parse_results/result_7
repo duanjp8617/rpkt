@@ -1,5 +1,5 @@
 ast error
-at ./pktfmt/errors/field/error_7.pktfmt 6:18-10:9
+at ./error_7.pktfmt 6:18-10:9
                       ~~~~~~~
  6 |         field1 = Field {
  7 |             bit = 32,
