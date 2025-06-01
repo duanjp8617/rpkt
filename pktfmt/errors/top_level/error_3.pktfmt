@@ -1,0 +1,55 @@
+%%
+%%
+
+packet Proto1 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ]
+}
+
+message Proto2 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ],
+    cond=(field_name1==3)
+}
+
+message Proto3 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ],
+    cond=(field_name1==4)
+}
+
+message Proto4 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ],
+    cond=(field_name1==5)
+}
+
+message_group G1 = [
+    Proto1,
+    Proto2,
+    Proto3,
+]

@@ -1,0 +1,11 @@
+ast error
+at error_3.pktfmt 51:1-55:1
+     ~~~~~~~~~~~~~~~~~~~~
+51 | message_group G1 = [
+52 |     Proto1,
+53 |     Proto2,
+54 |     Proto3,
+55 | ]
+     ^
+top level error 3:
+message Proto1 is not defined

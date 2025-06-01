@@ -1,0 +1,10 @@
+ast error
+at error_4.pktfmt 50:1-53:1
+     ~~~~~~~~~~~~~~~~~~~~
+50 | message_group G1 = [
+51 |     Proto2,    
+52 |     Proto3,
+53 | ]
+     ^
+top level error 4:
+cond of message Proto3 is not defined

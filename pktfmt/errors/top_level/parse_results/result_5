@@ -1,0 +1,10 @@
+ast error
+at error_5.pktfmt 51:1-54:1
+     ~~~~~~~~~~~~~~~~~~~~
+51 | message_group G1 = [
+52 |     Proto2,    
+53 |     Proto3,
+54 | ]
+     ^
+top level error 5:
+the cond field of message Proto3 is not the same as that of message Proto2

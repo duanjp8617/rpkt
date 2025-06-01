@@ -1,0 +1,24 @@
+%%
+%%
+
+packet Proto1 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ]
+}
+
+message Proto1 {
+    header = [
+        field_name1 = Field {
+            bit = 8, 
+        },
+        field_name2 = Field {
+            bit = 8, 
+        }
+    ]
+}

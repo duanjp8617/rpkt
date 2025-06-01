@@ -350,7 +350,7 @@ impl<'a> TopLevel<'a> {
             // 5. the compared value should not be the same.
             for compared_value in subsequent_cond.compared_values() {
                 if compared_values_dedup.contains(compared_value) {
-                    return_err!(Error::top_level(6, format!("message {name} appears twice")))
+                    return_err!(Error::top_level(6, format!("cond value {compared_value} appears twice")))
                 }
                 compared_values_dedup.insert(*compared_value);
             }
