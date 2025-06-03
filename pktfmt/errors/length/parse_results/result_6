@@ -7,4 +7,4 @@ at ./error_6.pktfmt 19:5-22:5
 22 |     ]
      ^^^^^
 length error 6:
-the field used by length expression is invalid: Field { bit: 16, repr: ByteSlice, arg: BuiltinTypes(ByteSlice), default: Bytes([0, 0]), gen: false, net_endian: true, default_fix: false }
+the field used by length expression is invalid: Field { bit: 16, repr: ByteSlice, arg: BuiltinTypes(ByteSlice), default: Bytes([0, 0]), gen: false, default_fix: false }
