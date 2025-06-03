@@ -11,11 +11,13 @@ packet Fake {
     header = [
         f1 = Field{bit = 3, default = 3},
         f2 = Field{bit = 13, default = 0xa0},
-        f3 = Field{bit = 1, arg = bool, default=true},
-        f4 = Field{bit = 16, default = 0xf1f2},
-        f5 = Field{bit = 7, default=0x4a},
-        f6 = Field{bit = 16, repr = &[u8], default=[0xa1,0xb3]},
-        f7 = Field{bit = 13, default = 0x1fb0},
-        f8 = Field{bit = 3, default = 5}
+        f3 = Field{bit = 11, default = 0xae},
+        f4 = Field{bit = 13, default = 0x7f7},
+        f5 = Field{bit = 1, arg = bool, default=true},
+        f6 = Field{bit = 16, default = 0xf1f2},
+        f7 = Field{bit = 7, default=0x4a},
+        f8 = Field{bit = 16, repr = &[u8], default=[0xa1,0xb3]},
+        f9 = Field{bit = 13, default = 0x1fb0},
+        f10 = Field{bit = 3, default = 5}
     ]
 }

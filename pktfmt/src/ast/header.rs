@@ -263,7 +263,7 @@ impl Header {
                         // bits marked by `*`.
                         let mut bit_mask: u8 = 0x00;
                         for i in (7 - start.bit_pos() + 1)..8 {
-                            bit_mask = bit_mask & (1 << i);
+                            bit_mask = bit_mask | (1 << i);
                         }
                         let rest_of_field = ((target_slice[start.byte_pos() as usize] & bit_mask)
                             as u64)
@@ -281,7 +281,7 @@ impl Header {
                         // bits marked by `*`.
                         let mut bit_mask: u8 = 0x00;
                         for i in 0..(7 - end.bit_pos()) {
-                            bit_mask = bit_mask & (1 << i);
+                            bit_mask = bit_mask | (1 << i);
                         }
                         let rest_of_field =
                             (target_slice[end.byte_pos() as usize] & bit_mask) as u64;
