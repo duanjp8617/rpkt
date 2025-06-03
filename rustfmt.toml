@@ -1,5 +1,0 @@
-# Set the maximum width for lines (including documentation)
-# max_width = 100
-
-# Automatically wrap documentation comments to fit within max_width
-wrap_comments = true

@@ -410,7 +410,7 @@ impl<'a> FieldSetMethod<'a> {
                     write!(output, "{write_target}={write_value};").unwrap();
                 };
             }
-            BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {                
+            BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
                 let rw_type = endian_rw_type(end.byte_pos() - self.start.byte_pos() + 1);
 
                 let write_value = if end.bit_pos() < 7 {
