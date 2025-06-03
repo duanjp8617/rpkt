@@ -29,10 +29,10 @@ message StpConfBpdu {
         bridge_sys_id_ext = Field {bit = 12},
         bridge_mac_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         port_id = Field {bit = 16},
-        msg_age = Field {bit = 16, net_endian=false},
-        max_age = Field {bit = 16, net_endian=false},
-        hello_time = Field {bit = 16, net_endian=false},
-        forward_delay = Field {bit = 16, net_endian=false}
+        msg_age = Field {bit = 16, gen=false},
+        max_age = Field {bit = 16, gen=false},
+        hello_time = Field {bit = 16, gen=false},
+        forward_delay = Field {bit = 16, gen=false}
     ]
 }
 
@@ -64,6 +64,26 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn bridge_id(&self) -> u64 {
         u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+    
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+    
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+    
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
@@ -106,6 +126,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     pub fn set_bridge_id(&mut self, value: u64) {
         (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+    
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+    }
 }
 %%
 
@@ -123,10 +163,10 @@ message RstpConfBpdu {
         bridge_sys_id_ext = Field {bit = 12},
         bridge_mac_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         port_id = Field {bit = 16},
-        msg_age = Field {bit = 16, net_endian=false},
-        max_age = Field {bit = 16, net_endian=false},
-        hello_time = Field {bit = 16, net_endian=false},
-        forward_delay = Field {bit = 16, net_endian=false},
+        msg_age = Field {bit = 16, gen=false},
+        max_age = Field {bit = 16, gen=false},
+        hello_time = Field {bit = 16, gen=false},
+        forward_delay = Field {bit = 16, gen=false},
         version1_len = Field {bit=8}
     ]
 }
@@ -159,6 +199,26 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn bridge_id(&self) -> u64 {
         u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
@@ -201,6 +261,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     pub fn set_bridge_id(&mut self, value: u64) {
         (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+    
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+    }
 }
 %%
 
@@ -218,10 +298,10 @@ message MstpConfBpdu {
         bridge_sys_id_ext = Field {bit = 12},
         bridge_mac_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%%},
         port_id = Field {bit = 16},
-        msg_age = Field {bit = 16, net_endian=false},
-        max_age = Field {bit = 16, net_endian=false},
-        hello_time = Field {bit = 16, net_endian=false},
-        forward_delay = Field {bit = 16, net_endian=false},
+        msg_age = Field {bit = 16, gen=false},
+        max_age = Field {bit = 16, gen=false},
+        hello_time = Field {bit = 16, gen=false},
+        forward_delay = Field {bit = 16, gen=false},
         version1_len = Field {bit=8},
         version3_len = Field {bit = 16, default=64, gen=false},
         mst_config_format_selector = Field {bit = 8},
@@ -314,6 +394,26 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
         let offset = 16 * index;
         MstiConfMessage::parse_unchecked(&self.buf.as_ref()[102 + offset..118 + offset])
     }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+    
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+    }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     /// Set the root priority for the `MstpConfBpduMessage`.
@@ -363,7 +463,7 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     /// # Panics
     ///
     /// The lower 12 bits of `value` is not all zero.
-        #[inline]
+    #[inline]
     pub fn set_cist_bridge_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
@@ -394,6 +494,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<&mut [u8]> {
         let offset = 16 * index;
         MstiConfMessage::parse_unchecked(&mut self.buf.as_mut()[102 + offset..118 + offset])
+    }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+    
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 %%
