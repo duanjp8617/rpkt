@@ -29,7 +29,6 @@ extern {
         "arg" => Token::Arg,
         "default" => Token::Default,
         "gen" => Token::Gen,
-        "net_endian" => Token::NetEndian,
 
         // length
         "length" => Token::Length,
@@ -158,10 +157,9 @@ pub Field: Field = {
         <arg: ("," "arg" "=" <Arg>)?>
         <opt_default_fix: ("," "default" "=" <DefaultValWithFixFlag>)?>
         <gen: ("," "gen" "=" <Bool>)?>
-        <net_endian: ("," "net_endian" "=" <Bool>)?>
         ","?
     "}" <r: @R> =>? {
-        Field::new(bit, repr, arg, opt_default_fix, gen, net_endian).map_err(|err| {
+        Field::new(bit, repr, arg, opt_default_fix, gen).map_err(|err| {
             let error = Error::Ast {err, span: (l, r)};
             ParseError::User{ error }
         })

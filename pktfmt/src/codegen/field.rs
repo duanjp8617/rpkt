@@ -119,11 +119,7 @@ impl<'a> FieldGetMethod<'a> {
         let read_value = {
             let mut buf: Vec<u8> = Vec::new();
             {
-                let mut reader = endian_read(
-                    &mut buf,
-                    end.byte_pos() - self.start.byte_pos() + 1,
-                    self.field.net_endian,
-                );
+                let mut reader = network_read(&mut buf, end.byte_pos() - self.start.byte_pos() + 1);
                 write!(
                     reader.get_writer(),
                     "&{target_slice}[{}..{}]",
@@ -472,7 +468,7 @@ impl<'a> FieldSetMethod<'a> {
                     write_value
                 };
 
-                let mut field_writer = endian_write(
+                let mut field_writer = network_write(
                     &mut output,
                     &format!(
                         "&mut {target_slice}[{}..{}]",
@@ -480,7 +476,6 @@ impl<'a> FieldSetMethod<'a> {
                         end.byte_pos() + 1
                     ),
                     end.byte_pos() - self.start.byte_pos() + 1,
-                    self.field.net_endian,
                 );
                 write!(field_writer.get_writer(), "{write_value}").unwrap();
             }
@@ -504,17 +499,9 @@ fn endian_rw_type(byte_len: u64) -> BuiltinTypes {
 
 // Create a `HeadTailWriter` that can be used to read from a field slice while
 // honoring the endianess of the field.
-fn endian_read<T: Write>(writer: T, byte_len: u64, net_endian: bool) -> HeadTailWriter<T> {
-    let rust_default_method = if net_endian {
-        "from_be_bytes"
-    } else {
-        "from_le_bytes"
-    };
-    let rpkt_defined_method = if net_endian {
-        "read_uint_from_be_bytes"
-    } else {
-        "read_uint_from_le_bytes"
-    };
+fn network_read<T: Write>(writer: T, byte_len: u64) -> HeadTailWriter<T> {
+    let rust_default_method = "from_be_bytes";
+    let rpkt_defined_method = "read_uint_from_be_bytes";
     match byte_len {
         2 => HeadTailWriter::new(
             writer,
@@ -538,22 +525,9 @@ fn endian_read<T: Write>(writer: T, byte_len: u64, net_endian: bool) -> HeadTail
 
 // Create a `HeadTailWriter` that can be used to write to a field slice while
 // honoring the endianess of the field.
-fn endian_write<T: Write>(
-    writer: T,
-    write_to: &str,
-    byte_len: u64,
-    net_endian: bool,
-) -> HeadTailWriter<T> {
-    let rust_default_method = if net_endian {
-        "to_be_bytes"
-    } else {
-        "to_le_bytes"
-    };
-    let rpkt_defined_method = if net_endian {
-        "write_uint_as_be_bytes"
-    } else {
-        "write_uint_as_le_bytes"
-    };
+fn network_write<T: Write>(writer: T, write_to: &str, byte_len: u64) -> HeadTailWriter<T> {
+    let rust_default_method = "to_be_bytes";
+    let rpkt_defined_method = "write_uint_as_be_bytes";
     match byte_len {
         2 => HeadTailWriter::new(
             writer,

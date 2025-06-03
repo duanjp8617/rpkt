@@ -136,7 +136,6 @@ const KEYWORDS: &[(&str, Token)] = &[
     ("arg", Token::Arg),
     ("default", Token::Default),
     ("gen", Token::Gen),
-    ("net_endian", Token::NetEndian),
     ("length", Token::Length),
     ("header_len", Token::HeaderLen),
     ("payload_len", Token::PayloadLen),

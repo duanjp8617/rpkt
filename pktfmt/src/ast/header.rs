@@ -290,21 +290,11 @@ impl Header {
                         write_value
                     };
 
-                    if field.net_endian {
-                        NetworkEndian::write_uint(
-                            &mut target_slice
-                                [start.byte_pos() as usize..(end.byte_pos() + 1) as usize],
-                            write_value,
-                            (end.byte_pos() - start.byte_pos() + 1) as usize,
-                        );
-                    } else {
-                        NativeEndian::write_uint(
-                            &mut target_slice
-                                [start.byte_pos() as usize..(end.byte_pos() + 1) as usize],
-                            write_value,
-                            (end.byte_pos() - start.byte_pos() + 1) as usize,
-                        );
-                    }
+                    NetworkEndian::write_uint(
+                        &mut target_slice[start.byte_pos() as usize..(end.byte_pos() + 1) as usize],
+                        write_value,
+                        (end.byte_pos() - start.byte_pos() + 1) as usize,
+                    );
                 }
                 _ => panic!(),
             }
