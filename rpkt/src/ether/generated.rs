@@ -117,8 +117,7 @@ impl<'a> EtherPacket<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the EthDot3 protocol
-/// header.
+/// A constant that defines the fixed byte length of the EthDot3 protocol header.
 pub const ETHDOT3_HEADER_LEN: usize = 14;
 /// A fixed EthDot3 header.
 pub const ETHDOT3_HEADER_TEMPLATE: [u8; 14] = [

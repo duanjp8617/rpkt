@@ -130,8 +130,7 @@ impl<'a> VlanPacket<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the VlanDot3 protocol
-/// header.
+/// A constant that defines the fixed byte length of the VlanDot3 protocol header.
 pub const VLANDOT3_HEADER_LEN: usize = 4;
 /// A fixed VlanDot3 header.
 pub const VLANDOT3_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];

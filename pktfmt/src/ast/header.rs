@@ -199,6 +199,13 @@ impl Header {
                     let start_byte_pos = start.byte_pos() as usize;
                     let default_val = match &field.default {
                         DefaultVal::Num(b) => *b,
+                        DefaultVal::Bool(flag) => {
+                            if *flag {
+                                1
+                            } else {
+                                0
+                            }
+                        }
                         _ => panic!(),
                     };
 
