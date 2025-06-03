@@ -8,5 +8,6 @@ strings=("arp" "ether" "ipv4" "llc" "mpls" "stp" "tcp" "udp" "vlan" "vxlan")
 for item in "${strings[@]}"; do
   echo $item
   ./target/debug/pktfmt ./pktfmt/protocols/$item.pktfmt -o ./rpkt/src/$item/generated.rs
+  rustfmt ./rpkt/src/$item/generated.rs
 done
 
