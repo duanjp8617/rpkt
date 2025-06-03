@@ -28,8 +28,6 @@ pub mod udp;
 pub mod vlan;
 pub mod vxlan;
 
-pub mod fake;
-
 #[allow(unused)]
 mod endian;
 // pub mod arp;
