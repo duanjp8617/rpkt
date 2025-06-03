@@ -156,22 +156,6 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     pub fn port_id(&self) -> u16 {
         u16::from_be_bytes((&self.buf.as_ref()[25..27]).try_into().unwrap())
     }
-    #[inline]
-    pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
-    }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     #[inline]
@@ -233,22 +217,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     pub fn set_port_id(&mut self, value: u16) {
         (&mut self.buf.as_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
     }
-    #[inline]
-    pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
-    }
 }
 
 impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
@@ -278,6 +246,26 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn bridge_id(&self) -> u64 {
         u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
@@ -319,6 +307,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     #[inline]
     pub fn set_bridge_id(&mut self, value: u64) {
         (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
+    }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 
@@ -399,22 +407,6 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
         u16::from_be_bytes((&self.buf.as_ref()[25..27]).try_into().unwrap())
     }
     #[inline]
-    pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
-    }
-    #[inline]
     pub fn version1_len(&self) -> u8 {
         self.buf.as_ref()[35]
     }
@@ -480,22 +472,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
         (&mut self.buf.as_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
     pub fn set_version1_len(&mut self, value: u8) {
         self.buf.as_mut()[35] = value;
     }
@@ -528,6 +504,26 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn bridge_id(&self) -> u64 {
         u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
@@ -569,6 +565,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     #[inline]
     pub fn set_bridge_id(&mut self, value: u64) {
         (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
+    }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 
@@ -662,22 +678,6 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn port_id(&self) -> u16 {
         u16::from_be_bytes((&self.buf.as_ref()[25..27]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
     }
     #[inline]
     pub fn version1_len(&self) -> u8 {
@@ -785,22 +785,6 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
         (&mut self.buf.as_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
-    }
-    #[inline]
-    pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
-    }
-    #[inline]
-    pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
     #[inline]
     pub fn set_version1_len(&mut self, value: u8) {
@@ -921,6 +905,26 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
         let offset = 16 * index;
         MstiConfMessage::parse_unchecked(&self.buf.as_ref()[102 + offset..118 + offset])
     }
+
+    #[inline]
+    pub fn msg_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn max_age(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn hello_time(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+    }
+
+    #[inline]
+    pub fn forward_delay(&self) -> u16 {
+        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+    }
 }
 impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     /// Set the root priority for the `MstpConfBpduMessage`.
@@ -1001,6 +1005,26 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<&mut [u8]> {
         let offset = 16 * index;
         MstiConfMessage::parse_unchecked(&mut self.buf.as_mut()[102 + offset..118 + offset])
+    }
+
+    #[inline]
+    pub fn set_msg_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_max_age(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_hello_time(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[inline]
+    pub fn set_forward_delay(&mut self, value: u16) {
+        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 

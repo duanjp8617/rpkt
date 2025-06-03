@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use byteorder::{ByteOrder, NativeEndian, NetworkEndian};
+use byteorder::{ByteOrder, NetworkEndian};
 
 use crate::utils::Spanned;
 
