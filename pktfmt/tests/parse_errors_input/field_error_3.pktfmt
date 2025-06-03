@@ -1,9 +1,0 @@
-packet FakeProto {
-    header = [
-        fake_field1 = Field {
-            bit = 8, 
-            arg = u16,
-        }
-    ]
-}
-
