@@ -17,6 +17,14 @@ pub const IPV4_HEADER_TEMPLATE: [u8; 20] = [
 pub struct Ipv4Packet<T> {
     buf: T,
 }
+impl<'a> Ipv4Packet<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_mut_slice_unchecked(buf: &'a mut [u8]) -> Self {
+        Self {
+            buf: CursorMut::new(buf),
+        }
+    }
+}
 impl<T: Buf> Ipv4Packet<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
@@ -136,14 +144,14 @@ impl<T: PktBuf> Ipv4Packet<T> {
 }
 impl<T: PktBufMut> Ipv4Packet<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20]) -> Self {
-        let header_len = Ipv4Packet::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 20) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20], header_len: u8) -> Self {
+        assert!((header_len >= 20) && (header_len as usize <= buf.chunk_headroom()));
+        buf.move_back(header_len as usize);
         let packet_len = buf.remaining();
         assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
+        container.set_header_len(header_len);
         container.set_packet_len(packet_len as u16);
         container
     }
