@@ -7,7 +7,6 @@ use rpkt::ipv4::*;
 use rpkt::mpls::*;
 use rpkt::udp::*;
 use rpkt::vlan::*;
-use rpkt::vxlan;
 use rpkt::vxlan::*;
 use rpkt::Buf;
 use rpkt::{Cursor, CursorMut};
