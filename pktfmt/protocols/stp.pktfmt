@@ -2,6 +2,8 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
+use crate::traits::*;
+use crate::cursors::*;
 use crate::ether::EtherAddr;
 
 use super::{StpType, StpVersion};
@@ -37,19 +39,19 @@ message StpConfBpdu {
 }
 
 %%
-impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
+impl<T: Buf> StpConfBpduMessage<T> {
     /// Get the root id priority from the `StpConfBpduMessage`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn root_priority(&self) -> u16 {
-        ((self.buf.as_ref()[5] >> 4) as u16) << 12
+        ((self.buf.chunk()[5] >> 4) as u16) << 12
     }
 
     /// Get the root id as `u64`.
     #[inline]
     pub fn root_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[5..13]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
     /// Get the bridge id priority from the `StpConfBpduMessage`.
@@ -57,36 +59,36 @@ impl<T: AsRef<[u8]>> StpConfBpduMessage<T> {
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn bridge_priority(&self) -> u16 {
-        ((self.buf.as_ref()[17] >> 4) as u16) << 12
+        ((self.buf.chunk()[17] >> 4) as u16) << 12
     }
 
     /// Get the bridge id as `u64`.
     #[inline]
     pub fn bridge_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[17..25]).try_into().unwrap())
     }
 
     #[inline]
     pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[27..29]).try_into().unwrap())
     }
     
     #[inline]
     pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[29..31]).try_into().unwrap())
     }
     
     #[inline]
     pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[31..33]).try_into().unwrap())
     }
     
     #[inline]
     pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
+impl<T: PktBufMut> StpConfBpduMessage<T> {
     /// Set the root priority for the `StpConfBpduMessage`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
@@ -98,13 +100,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     pub fn set_root_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[5] = (self.buf.as_mut()[5] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x0f) | (value << 4);
     }
 
     /// Set the root id from `value`.
     #[inline]
     pub fn set_root_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the bridge priority for the `StpConfBpduMessage`.
@@ -118,33 +120,33 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> StpConfBpduMessage<T> {
     pub fn set_bridge_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[17] = (self.buf.as_mut()[17] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[17] = (self.buf.chunk_mut()[17] & 0x0f) | (value << 4);
     }
 
     /// Set the bridge id from `value`.
     #[inline]
     pub fn set_bridge_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
 
     #[inline]
     pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
     }
     
     #[inline]
     pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 %%
@@ -172,19 +174,19 @@ message RstpConfBpdu {
 }
 
 %%
-impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
+impl<T: Buf> RstpConfBpduMessage<T> {
     /// Get the root id priority from the `RstpConfBpduMessage`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn root_priority(&self) -> u16 {
-        ((self.buf.as_ref()[5] >> 4) as u16) << 12
+        ((self.buf.chunk()[5] >> 4) as u16) << 12
     }
 
     /// Get the root id as `u64`.
     #[inline]
     pub fn root_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[5..13]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
     /// Get the bridge id priority from the `RstpConfBpduMessage`.
@@ -192,36 +194,36 @@ impl<T: AsRef<[u8]>> RstpConfBpduMessage<T> {
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn bridge_priority(&self) -> u16 {
-        ((self.buf.as_ref()[17] >> 4) as u16) << 12
+        ((self.buf.chunk()[17] >> 4) as u16) << 12
     }
 
     /// Get the bridge id as `u64`.
     #[inline]
     pub fn bridge_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[17..25]).try_into().unwrap())
     }
 
     #[inline]
     pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[27..29]).try_into().unwrap())
     }
 
     #[inline]
     pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[29..31]).try_into().unwrap())
     }
 
     #[inline]
     pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[31..33]).try_into().unwrap())
     }
 
     #[inline]
     pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
+impl<T: PktBufMut> RstpConfBpduMessage<T> {
     /// Set the root priority for the `RstpConfBpduMessage`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
@@ -233,13 +235,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     pub fn set_root_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[5] = (self.buf.as_mut()[5] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x0f) | (value << 4);
     }
 
     /// Set the root id from `value`.
     #[inline]
     pub fn set_root_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the bridge priority for the `RstpConfBpduMessage`.
@@ -253,33 +255,33 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> RstpConfBpduMessage<T> {
     pub fn set_bridge_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[17] = (self.buf.as_mut()[17] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[17] = (self.buf.chunk_mut()[17] & 0x0f) | (value << 4);
     }
 
     /// Set the bridge id from `value`.
     #[inline]
     pub fn set_bridge_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
 
     #[inline]
     pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
     }
     
     #[inline]
     pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 %%
@@ -320,11 +322,11 @@ message MstpConfBpdu {
 }
 
 %%
-impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
+impl<T: Buf> MstpConfBpduMessage<T> {
     /// Get the **version3_len** field value.
     #[inline]
     pub fn version3_len(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[36..38]).try_into().unwrap())
+        u16::from_be_bytes((&self.buf.chunk()[36..38]).try_into().unwrap())
     }
 
     /// Get the root id priority from the `MstpConfBpduMessage`.
@@ -332,13 +334,13 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn root_priority(&self) -> u16 {
-        ((self.buf.as_ref()[5] >> 4) as u16) << 12
+        ((self.buf.chunk()[5] >> 4) as u16) << 12
     }
 
     /// Get the root id as `u64`.
     #[inline]
     pub fn root_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[5..13]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
     /// Get the bridge id priority from the `MstpConfBpduMessage`.
@@ -346,13 +348,13 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn bridge_priority(&self) -> u16 {
-        ((self.buf.as_ref()[17] >> 4) as u16) << 12
+        ((self.buf.chunk()[17] >> 4) as u16) << 12
     }
 
     /// Get the bridge id as `u64`.
     #[inline]
     pub fn bridge_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[17..25]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[17..25]).try_into().unwrap())
     }
 
     /// Get the cist bridge id priority from the `MstpConfBpduMessage`.
@@ -360,13 +362,13 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn cist_bridge_priority(&self) -> u16 {
-        ((self.buf.as_ref()[93] >> 4) as u16) << 12
+        ((self.buf.chunk()[93] >> 4) as u16) << 12
     }
 
     /// Get the cist bridge id as `u64`.
     #[inline]
     pub fn cist_bridge_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[93..101]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[93..101]).try_into().unwrap())
     }
 
     /// Get the number of the `MstiConfMessage` contained in the
@@ -390,32 +392,32 @@ impl<T: AsRef<[u8]>> MstpConfBpduMessage<T> {
     /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
     /// `MstiConfMessage`.
     #[inline]
-    pub fn msti_conf_message(&self, index: usize) -> MstiConfMessage<&[u8]> {
+    pub fn msti_conf_message(&self, index: usize) -> MstiConfMessage<Cursor<'_>> {
         let offset = 16 * index;
-        MstiConfMessage::parse_unchecked(&self.buf.as_ref()[102 + offset..118 + offset])
+        MstiConfMessage::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
     }
 
     #[inline]
     pub fn msg_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[27..29]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[27..29]).try_into().unwrap())
     }
-    
+
     #[inline]
     pub fn max_age(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[29..31]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[29..31]).try_into().unwrap())
     }
 
     #[inline]
     pub fn hello_time(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[31..33]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[31..33]).try_into().unwrap())
     }
 
     #[inline]
     pub fn forward_delay(&self) -> u16 {
-        u16::from_le_bytes((&self.buf.as_ref()[33..35]).try_into().unwrap())
+        u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
+impl<T: PktBufMut> MstpConfBpduMessage<T> {
     /// Set the root priority for the `MstpConfBpduMessage`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
@@ -427,13 +429,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     pub fn set_root_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[5] = (self.buf.as_mut()[5] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x0f) | (value << 4);
     }
 
     /// Set the root id from `value`.
     #[inline]
     pub fn set_root_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the bridge priority for the `MstpConfBpduMessage`.
@@ -447,13 +449,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     pub fn set_bridge_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[17] = (self.buf.as_mut()[17] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[17] = (self.buf.chunk_mut()[17] & 0x0f) | (value << 4);
     }
 
     /// Set the bridge id from `value`.
     #[inline]
     pub fn set_bridge_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the cist bridge id priority for the `MstpConfBpduMessage`.
@@ -467,13 +469,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     pub fn set_cist_bridge_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[93] = (self.buf.as_mut()[93] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[93] = (self.buf.chunk_mut()[93] & 0x0f) | (value << 4);
     }
 
     /// Set the cist bridge id from `value`.
     #[inline]
     pub fn set_cist_bridge_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[93..101]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[93..101]).copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the number of the `MstiConfMessage` contained in the
@@ -491,29 +493,29 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstpConfBpduMessage<T> {
     /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
     /// `MstiConfMessage`.
     #[inline]
-    pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<&mut [u8]> {
+    pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<CursorMut<'_>> {
         let offset = 16 * index;
-        MstiConfMessage::parse_unchecked(&mut self.buf.as_mut()[102 + offset..118 + offset])
+        MstiConfMessage::parse_unchecked(CursorMut::new(&mut self.buf.chunk_mut()[102 + offset..118 + offset]))
     }
 
     #[inline]
     pub fn set_msg_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[27..29]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_max_age(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[29..31]).copy_from_slice(&value.to_le_bytes());
     }
 
     #[inline]
     pub fn set_hello_time(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[31..33]).copy_from_slice(&value.to_le_bytes());
     }
-    
+
     #[inline]
     pub fn set_forward_delay(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
+        (&mut self.buf.chunk_mut()[33..35]).copy_from_slice(&value.to_le_bytes());
     }
 }
 %%
@@ -532,23 +534,23 @@ message MstiConf {
 }
 
 %%
-impl<T: AsRef<[u8]>> MstiConfMessage<T> {
+impl<T: Buf> MstiConfMessage<T> {
     /// Get the regional root id priority from the `MstiConfMessage`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
     pub fn regional_root_priority(&self) -> u16 {
-        ((self.buf.as_ref()[1] >> 4) as u16) << 12
+        ((self.buf.chunk()[1] >> 4) as u16) << 12
     }
 
     /// Get the regional root id as `u64`.
     #[inline]
     pub fn regional_root_id(&self) -> u64 {
-        u64::from_be_bytes((&self.buf.as_ref()[1..9]).try_into().unwrap())
+        u64::from_be_bytes((&self.buf.chunk()[1..9]).try_into().unwrap())
     }
 }
 
-impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
+impl<T: PktBufMut> MstiConfMessage<T> {
     /// Set the regional root id priority for the `MstiConfMessage`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
@@ -560,13 +562,13 @@ impl<T: AsRef<[u8]> + AsMut<[u8]>> MstiConfMessage<T> {
     pub fn set_regional_root_priority(&mut self, value: u16) {
         assert!(value & 0x0fff == 0);
         let value = (value >> 12) as u8;
-        self.buf.as_mut()[1] = (self.buf.as_mut()[1] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
 
     /// Set the regional root id from `value`. 
     #[inline]
     pub fn set_regional_root_id(&mut self, value: u64) {
-        (&mut self.buf.as_mut()[1..9]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[1..9]).copy_from_slice(&value.to_be_bytes());
     }
 }
 
@@ -578,13 +580,13 @@ pub enum StpMessageGroup<T> {
     RstpConf(RstpConfBpduMessage<T>),
     MstpConf(MstpConfBpduMessage<T>),
 }
-impl<T: AsRef<[u8]>> StpMessageGroup<T> {
+impl<T: Buf> StpMessageGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.as_ref().len() < 3 {
+        if buf.chunk().len() < 3 {
             return Err(buf);
         }
-        let v = buf.as_ref()[2];
-        let t = buf.as_ref()[3];
+        let v = buf.chunk()[2];
+        let t = buf.chunk()[3];
         match (t, v) {
             (0, 0) => StpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpConf(msg)),
             (2, 2) => RstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::RstpConf(msg)),

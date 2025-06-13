@@ -43,16 +43,20 @@ pub use generated::{Ipv4Packet, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 /// The Ipv4 options.
 pub mod options {
     // The Ipv4 Eol option
-    pub use super::generated::{EolMessage, EOL_HEADER_ARRAY};
+    pub use super::generated::{EolMessage, EOL_HEADER_LEN, EOL_HEADER_TEMPLATE};
 
     // The Ipv4 Nop option
-    pub use super::generated::{NopMessage, NOP_HEADER_ARRAY};
+    pub use super::generated::{NopMessage, NOP_HEADER_LEN, NOP_HEADER_TEMPLATE};
 
-    pub use super::generated::{TimestampMessage, TIMESTAMP_HEADER_ARRAY};
+    pub use super::generated::{TimestampMessage, TIMESTAMP_HEADER_LEN, TIMESTAMP_HEADER_TEMPLATE};
 
-    pub use super::generated::{RecordRouteMessage, RECORDROUTE_HEADER_ARRAY};
+    pub use super::generated::{
+        RecordRouteMessage, RECORDROUTE_HEADER_LEN, RECORDROUTE_HEADER_TEMPLATE,
+    };
 
-    pub use super::generated::{RouteAlertMessage, ROUTEALERT_HEADER_ARRAY};
+    pub use super::generated::{
+        RouteAlertMessage, ROUTEALERT_HEADER_LEN, ROUTEALERT_HEADER_TEMPLATE,
+    };
 
     pub use super::generated::Ipv4OptGroup;
 }

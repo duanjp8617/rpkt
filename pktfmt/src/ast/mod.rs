@@ -17,6 +17,14 @@ pub use length::*;
 mod cond;
 pub use cond::*;
 
+pub trait ProtoInfo {
+    fn protocol_name(&self) -> &str;
+    fn header(&self) -> &Header;
+    fn length(&self) -> &Length;
+    fn header_template(&self) -> &[u8];
+    fn generated_struct_name(&self) -> String;
+}
+
 /// The top level ast type for the packet definition.
 #[derive(Debug)]
 pub struct Packet {
@@ -33,21 +41,27 @@ impl Packet {
             length,
         }
     }
+}
 
-    pub fn protocol_name(&self) -> &str {
+impl ProtoInfo for Packet {
+    fn protocol_name(&self) -> &str {
         &self.protocol_name
     }
 
-    pub fn header(&self) -> &Header {
+    fn header(&self) -> &Header {
         &self.header
     }
 
-    pub fn length(&self) -> &Length {
+    fn length(&self) -> &Length {
         &self.length
     }
 
-    pub fn header_template(&self) -> &[u8] {
+    fn header_template(&self) -> &[u8] {
         self.header.header_template()
+    }
+
+    fn generated_struct_name(&self) -> String {
+        self.protocol_name().to_owned() + "Packet"
     }
 }
 
@@ -78,24 +92,30 @@ impl Message {
         }
     }
 
-    pub fn protocol_name(&self) -> &str {
-        &self.protocol_name
-    }
-
-    pub fn header(&self) -> &Header {
-        &self.header
-    }
-
-    pub fn length(&self) -> &Length {
-        &self.length
-    }
-
     pub fn cond(&self) -> &Option<Cond> {
         &self.cond
     }
+}
 
-    pub fn header_template(&self) -> &[u8] {
+impl ProtoInfo for Message {
+    fn protocol_name(&self) -> &str {
+        &self.protocol_name
+    }
+
+    fn header(&self) -> &Header {
+        &self.header
+    }
+
+    fn length(&self) -> &Length {
+        &self.length
+    }
+
+    fn header_template(&self) -> &[u8] {
         self.header.header_template()
+    }
+
+    fn generated_struct_name(&self) -> String {
+        self.protocol_name().to_owned() + "Message"
     }
 }
 
@@ -350,7 +370,10 @@ impl<'a> TopLevel<'a> {
             // 5. the compared value should not be the same.
             for compared_value in subsequent_cond.compared_values() {
                 if compared_values_dedup.contains(compared_value) {
-                    return_err!(Error::top_level(6, format!("cond value {compared_value} appears twice")))
+                    return_err!(Error::top_level(
+                        6,
+                        format!("cond value {compared_value} appears twice")
+                    ))
                 }
                 compared_values_dedup.insert(*compared_value);
             }

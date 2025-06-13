@@ -32,7 +32,12 @@ Options:
         } else if &args[i] == "-o" && (i + 1 < args.len()) {
             match output_path {
                 None => output_path = Some(&args[i + 1]),
-                Some(_) => return Err(format!("found another output file {}\n{help}", &args[i + 1])),
+                Some(_) => {
+                    return Err(format!(
+                        "found another output file {}\n{help}",
+                        &args[i + 1]
+                    ))
+                }
             }
             i += 2;
         } else if &args[i] == "-h" {
@@ -92,14 +97,17 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
     for (parsed_item, code_opt) in top_level.item_iter() {
         match parsed_item {
             ast::ParsedItem::Packet_(p) => {
-                let header = codegen::HeaderGen::new(&p);
+                let header = codegen::HeaderGen::new(p);
                 header.code_gen(&mut output_f);
                 writeln!(&mut output_f, "").unwrap();
-                let packet = codegen::PacketGen::new(&p);
+                let packet = codegen::PktMsgGen::new(&header);
                 packet.code_gen(&mut output_f);
             }
             ast::ParsedItem::Message_(m) => {
-                let message = codegen::MessageGen::new(m);
+                let header = codegen::HeaderGen::new(m);
+                header.code_gen(&mut output_f);
+                writeln!(&mut output_f, "").unwrap();
+                let message = codegen::PktMsgGen::new(&header);
                 message.code_gen(&mut output_f);
             }
             ast::ParsedItem::MessageGroupName_(mg) => {
@@ -114,7 +122,7 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
             writeln!(&mut output_f, "{code}").unwrap();
             writeln!(&mut output_f, "").unwrap();
         });
-    }    
+    }
 
     Ok(())
 }

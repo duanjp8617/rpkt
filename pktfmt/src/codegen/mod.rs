@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::ast::{BitPos, DefaultVal, Field, LengthField, Message, Packet};
+use crate::ast::{BitPos, DefaultVal, Field, LengthField, Message, ProtoInfo};
 
 mod container;
 use container::*;
@@ -77,13 +77,13 @@ fn guard_assert_str(guards: &Vec<String>, comp: &str) -> String {
     }
 }
 
-pub struct HeaderGen<'a> {
-    packet: &'a Packet,
+pub struct HeaderGen<'a, T> {
+    item: &'a T,
 }
 
-impl<'a> HeaderGen<'a> {
-    pub fn new(packet: &'a Packet) -> Self {
-        Self { packet }
+impl<'a, T: ProtoInfo> HeaderGen<'a, T> {
+    pub fn new(item: &'a T) -> Self {
+        Self { item }
     }
 
     pub fn code_gen(&self, output: &mut dyn Write) {
@@ -98,45 +98,40 @@ impl<'a> HeaderGen<'a> {
 
     // Return the name of the header length const.
     fn header_len_const_name(&self) -> String {
-        self.packet.protocol_name().to_uppercase() + "_HEADER_LEN"
+        self.item.protocol_name().to_uppercase() + "_HEADER_LEN"
     }
 
     // Return the name of the fixed header array.
     fn header_template_name(&self) -> String {
-        self.packet.protocol_name().to_uppercase() + "_HEADER_TEMPLATE"
+        self.item.protocol_name().to_uppercase() + "_HEADER_TEMPLATE"
     }
 
     fn code_gen_for_header_len_const(&self, output: &mut dyn Write) {
-        let header_len = self.packet.header().header_len_in_bytes();
+        let header_len = self.item.header().header_len_in_bytes();
 
         write!(
             output,
             "/// A constant that defines the fixed byte length of the {} protocol header.
 pub const {}: usize = {header_len};
 ",
-            &self.packet.protocol_name(),
+            &self.item.protocol_name(),
             self.header_len_const_name(),
         )
         .unwrap();
     }
 
     fn code_gen_for_header_template(&self, output: &mut dyn Write) {
-        writeln!(
-            output,
-            "/// A fixed {} header.",
-            self.packet.protocol_name()
-        )
-        .unwrap();
+        writeln!(output, "/// A fixed {} header.", self.item.protocol_name()).unwrap();
         write!(
             output,
             "pub const {}: [u8;{}] = [",
             self.header_template_name(),
-            self.packet.header().header_len_in_bytes(),
+            self.item.header().header_len_in_bytes(),
         )
         .unwrap();
 
-        for (idx, b) in self.packet.header().header_template().iter().enumerate() {
-            if idx < self.packet.header().header_template().len() - 1 {
+        for (idx, b) in self.item.header().header_template().iter().enumerate() {
+            if idx < self.item.header().header_template().len() - 1 {
                 write!(output, "0x{:02x},", b).unwrap();
             } else {
                 write!(output, "0x{:02x}];\n", b).unwrap()
@@ -146,33 +141,36 @@ pub const {}: usize = {header_len};
 }
 
 /// Packet type generator.
-pub struct PacketGen<'a> {
-    header_gen: HeaderGen<'a>,
+pub struct PktMsgGen<'a, T> {
+    header_gen: &'a HeaderGen<'a, T>,
 }
 
-impl<'a> PacketGen<'a> {
-    pub fn new(packet: &'a Packet) -> Self {
-        Self {
-            header_gen: HeaderGen::new(packet),
-        }
+impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
+    pub fn new(header_gen: &'a HeaderGen<'a, T>) -> Self {
+        Self { header_gen }
     }
 
     pub fn code_gen(&self, mut output: &mut dyn Write) {
         // Defines the header struct.
         let packet_struct_gen = Container {
-            container_struct_name: &self.packet_struct_name(),
+            container_struct_name: &self.item().generated_struct_name(),
             derives: &["Debug", "Clone", "Copy"],
         };
         packet_struct_gen.code_gen(output);
 
-        let fields = FieldGenerator::new(self.packet().header());
-        let length = LengthGenerator::new(self.packet().header(), self.packet().length());
-        let parse = Parse::new(self.packet().header(), self.packet().length().as_slice());
-        let payload = Payload::new(self.packet().header(), self.packet().length().as_slice());
-        let build = Build::new(self.packet().header(), self.packet().length().as_slice());
+        let fields = FieldGenerator::new(self.item().header());
+        let length = LengthGenerator::new(self.item().header(), self.item().length());
+        let parse = Parse::new(self.item().header(), self.item().length().as_slice());
+        let payload = Payload::new(self.item().header(), self.item().length().as_slice());
+        let build = Build::new(self.item().header(), self.item().length().as_slice());
 
         {
-            let mut impl_block = impl_block("T:Buf", &self.packet_struct_name(), "T", &mut output);
+            let mut impl_block = impl_block(
+                "T:Buf",
+                &self.item().generated_struct_name(),
+                "T",
+                &mut output,
+            );
 
             // Basic container-buffer conversion.
             Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
@@ -187,24 +185,23 @@ impl<'a> PacketGen<'a> {
                 "header_slice",
                 "&",
                 ".buf.chunk()",
-                &format!("{}", self.packet().header().header_len_in_bytes()),
+                &format!("{}", self.item().header().header_len_in_bytes()),
                 impl_block.get_writer(),
             );
 
             // Option slice.
-            if self.packet().length().at(0).appear() {
+            if self.item().length().at(0).appear() {
                 let mut do_generation = true;
-                match self.packet().length().at(0) {
+                match self.item().length().at(0) {
                     LengthField::Expr { expr } => {
-                        let (field, _) = self.packet().header().field(expr.field_name()).unwrap();
+                        let (field, _) = self.item().header().field(expr.field_name()).unwrap();
                         if field.default_fix {
                             let default_val = match field.default {
                                 DefaultVal::Num(n) => n,
                                 _ => panic!(),
                             };
                             let fixed_header_len = expr.exec(default_val).unwrap();
-                            if fixed_header_len
-                                == self.packet().header().header_len_in_bytes() as u64
+                            if fixed_header_len == self.item().header().header_len_in_bytes() as u64
                             {
                                 do_generation = false;
                             }
@@ -217,7 +214,7 @@ impl<'a> PacketGen<'a> {
                         "option_slice",
                         "&",
                         ".buf.chunk()",
-                        &format!("{}", self.packet().header().header_len_in_bytes()),
+                        &format!("{}", self.item().header().header_len_in_bytes()),
                         impl_block.get_writer(),
                     );
                 }
@@ -231,16 +228,24 @@ impl<'a> PacketGen<'a> {
         }
 
         {
-            let mut impl_block =
-                impl_block("T:PktBuf", &self.packet_struct_name(), "T", &mut output);
+            let mut impl_block = impl_block(
+                "T:PktBuf",
+                &self.item().generated_struct_name(),
+                "T",
+                &mut output,
+            );
 
             // Packet payload.
             payload.code_gen_for_pktbuf("payload", "buf", "T", impl_block.get_writer());
         }
 
         {
-            let mut impl_block =
-                impl_block("T:PktBufMut", &self.packet_struct_name(), "T", &mut output);
+            let mut impl_block = impl_block(
+                "T:PktBufMut",
+                &self.item().generated_struct_name(),
+                "T",
+                &mut output,
+            );
 
             // Packet build.
             build.code_gen_for_pktbuf(
@@ -249,24 +254,23 @@ impl<'a> PacketGen<'a> {
                 "buf",
                 "T",
                 "header",
-                &format!("&'a [u8; {}]", self.packet().header().header_len_in_bytes()),
+                &format!("&'a [u8; {}]", self.item().header().header_len_in_bytes()),
                 impl_block.get_writer(),
             );
 
             // Mutable option slice.
-            if self.packet().length().at(0).appear() {
+            if self.item().length().at(0).appear() {
                 let mut do_generation = true;
-                match self.packet().length().at(0) {
+                match self.item().length().at(0) {
                     LengthField::Expr { expr } => {
-                        let (field, _) = self.packet().header().field(expr.field_name()).unwrap();
+                        let (field, _) = self.item().header().field(expr.field_name()).unwrap();
                         if field.default_fix {
                             let default_val = match field.default {
                                 DefaultVal::Num(n) => n,
                                 _ => panic!(),
                             };
                             let fixed_header_len = expr.exec(default_val).unwrap();
-                            if fixed_header_len
-                                == self.packet().header().header_len_in_bytes() as u64
+                            if fixed_header_len == self.item().header().header_len_in_bytes() as u64
                             {
                                 do_generation = false;
                             }
@@ -279,7 +283,7 @@ impl<'a> PacketGen<'a> {
                         "option_slice_mut",
                         "&mut ",
                         ".buf.chunk_mut()",
-                        &format!("{}", self.packet().header().header_len_in_bytes()),
+                        &format!("{}", self.item().header().header_len_in_bytes()),
                         impl_block.get_writer(),
                     );
                 }
@@ -301,8 +305,12 @@ impl<'a> PacketGen<'a> {
         }
 
         {
-            let mut impl_block =
-                impl_block("'a", &self.packet_struct_name(), "Cursor<'a>", &mut output);
+            let mut impl_block = impl_block(
+                "'a",
+                &self.item().generated_struct_name(),
+                "Cursor<'a>",
+                &mut output,
+            );
 
             // Specialized parse for Cursor with format checking.
             parse.code_gen_for_contiguous_buffer(
@@ -332,7 +340,7 @@ impl<'a> PacketGen<'a> {
         {
             let mut impl_block = impl_block(
                 "'a",
-                &self.packet_struct_name(),
+                &self.item().generated_struct_name(),
                 "CursorMut<'a>",
                 &mut output,
             );
@@ -363,216 +371,8 @@ impl<'a> PacketGen<'a> {
         }
     }
 
-    // Obtain a reference to the packet contained in the `header_impl`.
-    fn packet(&self) -> &Packet {
-        self.header_gen.packet
-    }
-
-    // Obtain the type name of the packet struct.
-    fn packet_struct_name(&self) -> String {
-        self.packet().protocol_name().to_owned() + "Packet"
-    }
-}
-
-pub struct MessageGen<'a> {
-    message: &'a Message,
-}
-
-impl<'a> MessageGen<'a> {
-    pub fn new(message: &'a Message) -> Self {
-        Self { message }
-    }
-
-    pub fn code_gen(&self, mut output: &mut dyn Write) {
-        self.code_gen_for_header_array(output);
-
-        // Defines the header struct.
-        let header_struct_gen = Container {
-            container_struct_name: &self.message_struct_name(),
-            derives: &["Debug", "Clone", "Copy"],
-        };
-        header_struct_gen.code_gen(output);
-
-        let fields = FieldGenerator::new(self.message.header());
-        let length = LengthGenerator::new(self.message.header(), self.message.length());
-        let parse = Parse::new(self.message.header(), self.message.length().as_slice());
-        let payload = Payload::new(self.message.header(), self.message.length().as_slice());
-        let build = Build::new(self.message.header(), self.message.length().as_slice());
-
-        {
-            let mut impl_block = impl_block(
-                "T:AsRef<[u8]>",
-                &self.message_struct_name(),
-                "T",
-                &mut output,
-            );
-
-            // Bsasic container buffer conversion.
-            Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
-            Container::code_gen_for_buf("buf", "T", impl_block.get_writer());
-            Container::code_gen_for_release("buf", "T", impl_block.get_writer());
-
-            // Parse with format checking.
-            parse.code_gen_for_contiguous_buffer(
-                "parse",
-                "buf",
-                "T",
-                ".as_ref()",
-                impl_block.get_writer(),
-            );
-
-            // Message payload.
-            payload.code_gen_for_contiguous_buffer(
-                "payload",
-                "&",
-                "buf",
-                "&[u8]",
-                "as_ref()",
-                |writer, s| write!(writer, "{s}").unwrap(),
-                impl_block.get_writer(),
-            );
-
-            // Option slice.
-            if self.message.length().at(0).appear() {
-                let mut do_generation = true;
-                match self.message.length().at(0) {
-                    LengthField::Expr { expr } => {
-                        let (field, _) = self.message.header().field(expr.field_name()).unwrap();
-                        if field.default_fix {
-                            let default_val = match field.default {
-                                DefaultVal::Num(n) => n,
-                                _ => panic!(),
-                            };
-                            let fixed_header_len = expr.exec(default_val).unwrap();
-                            if fixed_header_len
-                                == self.message.header().header_len_in_bytes() as u64
-                            {
-                                do_generation = false;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                if do_generation {
-                    Container::code_gen_for_option_slice(
-                        "option_slice",
-                        "&",
-                        ".buf.as_ref()",
-                        &format!("{}", self.message.header().header_len_in_bytes()),
-                        impl_block.get_writer(),
-                    );
-                }
-            }
-
-            // Field getters.
-            fields.code_gen("self.buf.as_ref()", None, impl_block.get_writer());
-
-            // Length field setters.
-            length.code_gen("self.buf.as_ref()", None, impl_block.get_writer())
-        }
-
-        {
-            let mut impl_block = impl_block(
-                "T:AsRef<[u8]> + AsMut<[u8]>",
-                &self.message_struct_name(),
-                "T",
-                &mut output,
-            );
-
-            // Message mutable payload.
-            payload.code_gen_for_contiguous_buffer(
-                "payload_mut",
-                "&mut ",
-                "buf",
-                "&mut [u8]",
-                "as_mut()",
-                |writer, s| write!(writer, "{s}").unwrap(),
-                impl_block.get_writer(),
-            );
-
-            // Message build.
-            build.code_gen_for_contiguous_buffer(
-                "build_message",
-                "mut ",
-                "buf",
-                "T",
-                "as_mut()",
-                &format!("&{}[..]", &self.header_array_name()),
-                impl_block.get_writer(),
-            );
-
-            // Mutable option slice.
-            if self.message.length().at(0).appear() {
-                let mut do_generation = true;
-                match self.message.length().at(0) {
-                    LengthField::Expr { expr } => {
-                        let (field, _) = self.message.header().field(expr.field_name()).unwrap();
-                        if field.default_fix {
-                            let default_val = match field.default {
-                                DefaultVal::Num(n) => n,
-                                _ => panic!(),
-                            };
-                            let fixed_header_len = expr.exec(default_val).unwrap();
-                            if fixed_header_len
-                                == self.message.header().header_len_in_bytes() as u64
-                            {
-                                do_generation = false;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                if do_generation {
-                    Container::code_gen_for_option_slice(
-                        "option_slice_mut",
-                        "&mut ",
-                        ".buf.as_mut()",
-                        &format!("{}", self.message.header().header_len_in_bytes()),
-                        impl_block.get_writer(),
-                    );
-                }
-            }
-
-            // Field setters.
-            fields.code_gen("self.buf.as_mut()", Some("value"), impl_block.get_writer());
-
-            // Length field setters.
-            length.code_gen("self.buf.as_mut()", Some("value"), impl_block.get_writer());
-        }
-    }
-
-    // Return the name of the fixed header array.
-    fn header_array_name(&self) -> String {
-        self.message.protocol_name().to_uppercase() + "_HEADER_ARRAY"
-    }
-
-    // Return the name of the header struct.
-    fn message_struct_name(&self) -> String {
-        self.message.protocol_name().to_string() + "Message"
-    }
-
-    fn code_gen_for_header_array(&self, output: &mut dyn Write) {
-        writeln!(
-            output,
-            "/// A fixed {} header array.",
-            self.message.protocol_name()
-        )
-        .unwrap();
-        write!(
-            output,
-            "pub const {}: [u8;{}] = [",
-            self.header_array_name(),
-            self.message.header().header_len_in_bytes(),
-        )
-        .unwrap();
-
-        for (idx, b) in self.message.header().header_template().iter().enumerate() {
-            if idx < self.message.header().header_template().len() - 1 {
-                write!(output, "0x{:02x},", b).unwrap();
-            } else {
-                write!(output, "0x{:02x}];\n", b).unwrap()
-            }
-        }
+    fn item(&self) -> &'a T {
+        &self.header_gen.item
     }
 }
 
@@ -605,13 +405,13 @@ impl<'a> GroupMessageGen<'a> {
 
         {
             let mut impl_block =
-                impl_block("T:AsRef<[u8]>", &self.group_message_name, "T", &mut output);
+                impl_block("T:Buf", &self.group_message_name, "T", &mut output);
 
             self.code_gen_for_grouped_parse(
                 "group_parse",
                 "buf",
                 "T",
-                "as_ref()",
+                "chunk()",
                 impl_block.get_writer(),
             );
         }
@@ -628,7 +428,7 @@ impl<'a> GroupMessageGen<'a> {
             write!(
                 output,
                 "{msg_name}_({}<{buf_type}>),\n",
-                MessageGen::new(msg).message_struct_name()
+                msg.generated_struct_name()
             )
             .unwrap();
         }
@@ -675,8 +475,7 @@ impl<'a> GroupMessageGen<'a> {
             write!(output, "=> {{\n").unwrap();
 
             // Try to parse the buf into the corresponding message.
-            let message_gen = MessageGen::new(msg);
-            let msg_strut_name = message_gen.message_struct_name();
+            let msg_strut_name = msg.generated_struct_name();
             write!(
                 output,
                 "{msg_strut_name}::parse({buf_name}).map(|msg| {}::{}_(msg))\n",

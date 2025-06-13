@@ -6,7 +6,6 @@ use rpkt::llc::*;
 use rpkt::stp::*;
 use rpkt::vlan::*;
 use rpkt::Buf;
-use rpkt::PktBufMut;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
@@ -57,12 +56,12 @@ fn llc_parsing_test() {
 fn llc_creation_test() {
     let mut buf: [u8; 64] = [0; 64];
 
-    let mut pkt_buf = CursorMut::new(
-        &mut buf[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_ARRAY.len()],
-    );
-    pkt_buf.advance(ETHER_HEADER_LEN + LLC_HEADER_LEN);
+    let mut pkt_buf =
+        CursorMut::new(&mut buf[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]);
+    pkt_buf.advance(ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN);
 
-    let mut stp_conf_msg = StpConfBpduMessage::build_message(pkt_buf.chunk_mut());
+    let mut stp_conf_msg =
+        StpConfBpduMessage::prepend_header(pkt_buf, &STPCONFBPDU_HEADER_TEMPLATE);
     stp_conf_msg.set_root_priority(32768);
     stp_conf_msg.set_root_sys_id_ext(100);
     stp_conf_msg.set_root_mac_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00]));
@@ -76,7 +75,7 @@ fn llc_creation_test() {
     stp_conf_msg.set_hello_time(2);
     stp_conf_msg.set_forward_delay(15);
 
-    let llc_pkt = LlcPacket::prepend_header(pkt_buf, &LLC_HEADER_TEMPLATE);
+    let llc_pkt = LlcPacket::prepend_header(stp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt = EthDot3Packet::prepend_header(llc_pkt.release(), &ETHDOT3_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x85, 0x04]));
@@ -84,6 +83,6 @@ fn llc_creation_test() {
     let target = file_to_packet("StpConf.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_ARRAY.len()]
+        &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]
     );
 }

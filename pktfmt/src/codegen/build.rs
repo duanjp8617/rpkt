@@ -26,7 +26,7 @@ impl<'a> Build<'a> {
         buf_name: &str,
         buf_type: &str,
         header_name: &str,
-        header_type: &str,        
+        header_type: &str,
         output: &mut dyn Write,
     ) {
         match (&self.length[0], &self.length[1], &self.length[2]) {
@@ -203,6 +203,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
         write!(output, "}}\n").unwrap();
     }
 
+    #[allow(dead_code)]
     pub fn code_gen_for_contiguous_buffer(
         &self,
         method_name: &str,

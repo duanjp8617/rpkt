@@ -308,13 +308,16 @@ impl<T: PktBufMut> Ipv4Packet<T> {
 }
 */
 
-/// A fixed Eol header array.
-pub const EOL_HEADER_ARRAY: [u8; 1] = [0x00];
+/// A constant that defines the fixed byte length of the Eol protocol header.
+pub const EOL_HEADER_LEN: usize = 1;
+/// A fixed Eol header.
+pub const EOL_HEADER_TEMPLATE: [u8; 1] = [0x00];
+
 #[derive(Debug, Clone, Copy)]
 pub struct EolMessage<T> {
     buf: T,
 }
-impl<T: AsRef<[u8]>> EolMessage<T> {
+impl<T: Buf> EolMessage<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -329,62 +332,48 @@ impl<T: AsRef<[u8]>> EolMessage<T> {
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
-        if remaining_len < 1 {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 1 {
             return Err(buf);
         }
         let container = Self { buf };
         Ok(container)
     }
     #[inline]
-    pub fn payload(&self) -> &[u8] {
-        &self.buf.as_ref()[1..]
+    pub fn header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..1]
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[0]
+        self.buf.chunk()[0]
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> EolMessage<T> {
+impl<T: PktBuf> EolMessage<T> {
     #[inline]
-    pub fn payload_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[1..]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(1);
+        buf
     }
+}
+impl<T: PktBufMut> EolMessage<T> {
     #[inline]
-    pub fn build_message(mut buf: T) -> Self {
-        assert!(buf.as_mut().len() >= 1);
-        (&mut buf.as_mut()[..1]).copy_from_slice(&EOL_HEADER_ARRAY[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
+        assert!(buf.chunk_headroom() >= 1);
+        buf.move_back(1);
+        (&mut buf.chunk_mut()[0..1]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 0);
-        self.buf.as_mut()[0] = value;
+        self.buf.chunk_mut()[0] = value;
     }
 }
-
-/// A fixed Nop header array.
-pub const NOP_HEADER_ARRAY: [u8; 1] = [0x01];
-#[derive(Debug, Clone, Copy)]
-pub struct NopMessage<T> {
-    buf: T,
-}
-impl<T: AsRef<[u8]>> NopMessage<T> {
+impl<'a> EolMessage<Cursor<'a>> {
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
         if remaining_len < 1 {
             return Err(buf);
         }
@@ -392,39 +381,36 @@ impl<T: AsRef<[u8]>> NopMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn payload(&self) -> &[u8] {
-        &self.buf.as_ref()[1..]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[0]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[1..])
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> NopMessage<T> {
+impl<'a> EolMessage<CursorMut<'a>> {
     #[inline]
-    pub fn payload_mut(&mut self) -> &mut [u8] {
-        &mut self.buf.as_mut()[1..]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
     }
     #[inline]
-    pub fn build_message(mut buf: T) -> Self {
-        assert!(buf.as_mut().len() >= 1);
-        (&mut buf.as_mut()[..1]).copy_from_slice(&NOP_HEADER_ARRAY[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 1);
-        self.buf.as_mut()[0] = value;
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[1..])
     }
 }
 
-/// A fixed Timestamp header array.
-pub const TIMESTAMP_HEADER_ARRAY: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
+/// A constant that defines the fixed byte length of the Nop protocol header.
+pub const NOP_HEADER_LEN: usize = 1;
+/// A fixed Nop header.
+pub const NOP_HEADER_TEMPLATE: [u8; 1] = [0x01];
+
 #[derive(Debug, Clone, Copy)]
-pub struct TimestampMessage<T> {
+pub struct NopMessage<T> {
     buf: T,
 }
-impl<T: AsRef<[u8]>> TimestampMessage<T> {
+impl<T: Buf> NopMessage<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -439,7 +425,193 @@ impl<T: AsRef<[u8]>> TimestampMessage<T> {
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..1]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+}
+impl<T: PktBuf> NopMessage<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(1);
+        buf
+    }
+}
+impl<T: PktBufMut> NopMessage<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
+        assert!(buf.chunk_headroom() >= 1);
+        buf.move_back(1);
+        (&mut buf.chunk_mut()[0..1]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = value;
+    }
+}
+impl<'a> NopMessage<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[1..])
+    }
+}
+impl<'a> NopMessage<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+}
+
+/// A constant that defines the fixed byte length of the Timestamp protocol header.
+pub const TIMESTAMP_HEADER_LEN: usize = 4;
+/// A fixed Timestamp header.
+pub const TIMESTAMP_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct TimestampMessage<T> {
+    buf: T,
+}
+impl<T: Buf> TimestampMessage<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn option_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn pointer(&self) -> u8 {
+        self.buf.chunk()[2]
+    }
+    #[inline]
+    pub fn oflw(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn flg(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> TimestampMessage<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> TimestampMessage<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
+        assert!((header_len >= 4) && (header_len as usize <= buf.chunk_headroom()));
+        buf.move_back(header_len as usize);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        let mut container = Self { buf };
+        container.set_header_len(header_len);
+        container
+    }
+    #[inline]
+    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 68);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_pointer(&mut self, value: u8) {
+        self.buf.chunk_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_oflw(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_flg(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> TimestampMessage<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
         if remaining_len < 4 {
             return Err(buf);
         }
@@ -452,85 +624,43 @@ impl<T: AsRef<[u8]>> TimestampMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn payload(&self) -> &[u8] {
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        &self.buf.as_ref()[header_len..]
-    }
-    #[inline]
-    pub fn option_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.as_ref()[4..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[0]
-    }
-    #[inline]
-    pub fn pointer(&self) -> u8 {
-        self.buf.as_ref()[2]
-    }
-    #[inline]
-    pub fn oflw(&self) -> u8 {
-        self.buf.as_ref()[3] >> 4
-    }
-    #[inline]
-    pub fn flg(&self) -> u8 {
-        self.buf.as_ref()[3] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u8 {
-        (self.buf.as_ref()[1])
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> TimestampMessage<T> {
+impl<'a> TimestampMessage<CursorMut<'a>> {
     #[inline]
-    pub fn payload_mut(&mut self) -> &mut [u8] {
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        &mut self.buf.as_mut()[header_len..]
-    }
-    #[inline]
-    pub fn build_message(mut buf: T) -> Self {
-        assert!(buf.as_mut().len() >= 4);
-        (&mut buf.as_mut()[..4]).copy_from_slice(&TIMESTAMP_HEADER_ARRAY[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.as_mut()[4..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 68);
-        self.buf.as_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_pointer(&mut self, value: u8) {
-        self.buf.as_mut()[2] = value;
-    }
-    #[inline]
-    pub fn set_oflw(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.as_mut()[3] = (self.buf.as_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_flg(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.as_mut()[3] = (self.buf.as_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        self.buf.as_mut()[1] = (value);
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
 
-/// A fixed RecordRoute header array.
-pub const RECORDROUTE_HEADER_ARRAY: [u8; 3] = [0x07, 0x03, 0x04];
+/// A constant that defines the fixed byte length of the RecordRoute protocol header.
+pub const RECORDROUTE_HEADER_LEN: usize = 3;
+/// A fixed RecordRoute header.
+pub const RECORDROUTE_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
+
 #[derive(Debug, Clone, Copy)]
 pub struct RecordRouteMessage<T> {
     buf: T,
 }
-impl<T: AsRef<[u8]>> RecordRouteMessage<T> {
+impl<T: Buf> RecordRouteMessage<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -545,7 +675,82 @@ impl<T: AsRef<[u8]>> RecordRouteMessage<T> {
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 3 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..3]
+    }
+    #[inline]
+    pub fn option_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[3..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn pointer(&self) -> u8 {
+        self.buf.chunk()[2]
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> RecordRouteMessage<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> RecordRouteMessage<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3], header_len: u8) -> Self {
+        assert!((header_len >= 3) && (header_len as usize <= buf.chunk_headroom()));
+        buf.move_back(header_len as usize);
+        (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
+        let mut container = Self { buf };
+        container.set_header_len(header_len);
+        container
+    }
+    #[inline]
+    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[3..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 7);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_pointer(&mut self, value: u8) {
+        self.buf.chunk_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> RecordRouteMessage<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
         if remaining_len < 3 {
             return Err(buf);
         }
@@ -558,67 +763,43 @@ impl<T: AsRef<[u8]>> RecordRouteMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn payload(&self) -> &[u8] {
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        &self.buf.as_ref()[header_len..]
-    }
-    #[inline]
-    pub fn option_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.as_ref()[3..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[0]
-    }
-    #[inline]
-    pub fn pointer(&self) -> u8 {
-        self.buf.as_ref()[2]
-    }
-    #[inline]
-    pub fn header_len(&self) -> u8 {
-        (self.buf.as_ref()[1])
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> RecordRouteMessage<T> {
+impl<'a> RecordRouteMessage<CursorMut<'a>> {
     #[inline]
-    pub fn payload_mut(&mut self) -> &mut [u8] {
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 3 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        &mut self.buf.as_mut()[header_len..]
-    }
-    #[inline]
-    pub fn build_message(mut buf: T) -> Self {
-        assert!(buf.as_mut().len() >= 3);
-        (&mut buf.as_mut()[..3]).copy_from_slice(&RECORDROUTE_HEADER_ARRAY[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.as_mut()[3..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 7);
-        self.buf.as_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_pointer(&mut self, value: u8) {
-        self.buf.as_mut()[2] = value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        self.buf.as_mut()[1] = (value);
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
 
-/// A fixed RouteAlert header array.
-pub const ROUTEALERT_HEADER_ARRAY: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the RouteAlert protocol header.
+pub const ROUTEALERT_HEADER_LEN: usize = 4;
+/// A fixed RouteAlert header.
+pub const ROUTEALERT_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
+
 #[derive(Debug, Clone, Copy)]
 pub struct RouteAlertMessage<T> {
     buf: T,
 }
-impl<T: AsRef<[u8]>> RouteAlertMessage<T> {
+impl<T: Buf> RouteAlertMessage<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -633,7 +814,73 @@ impl<T: AsRef<[u8]>> RouteAlertMessage<T> {
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
-        let remaining_len = buf.as_ref().len();
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) != 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn data(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> RouteAlertMessage<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> RouteAlertMessage<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
+        assert!((header_len == 4) && (header_len as usize <= buf.chunk_headroom()));
+        buf.move_back(header_len as usize);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        let mut container = Self { buf };
+        container.set_header_len(header_len);
+        container
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 148);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_data(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        assert!((value == 4));
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> RouteAlertMessage<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
         if remaining_len < 4 {
             return Err(buf);
         }
@@ -644,48 +891,28 @@ impl<T: AsRef<[u8]>> RouteAlertMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn payload(&self) -> &[u8] {
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        &self.buf.as_ref()[header_len..]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.as_ref()[0]
-    }
-    #[inline]
-    pub fn data(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.as_ref()[2..4]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn header_len(&self) -> u8 {
-        (self.buf.as_ref()[1])
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<T: AsRef<[u8]> + AsMut<[u8]>> RouteAlertMessage<T> {
+impl<'a> RouteAlertMessage<CursorMut<'a>> {
     #[inline]
-    pub fn payload_mut(&mut self) -> &mut [u8] {
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if (container.header_len() as usize) != 4 {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        &mut self.buf.as_mut()[header_len..]
-    }
-    #[inline]
-    pub fn build_message(mut buf: T) -> Self {
-        assert!(buf.as_mut().len() >= 4);
-        (&mut buf.as_mut()[..4]).copy_from_slice(&ROUTEALERT_HEADER_ARRAY[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 148);
-        self.buf.as_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_data(&mut self, value: u16) {
-        (&mut self.buf.as_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        assert!((value == 4));
-        self.buf.as_mut()[1] = (value);
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
 
@@ -697,12 +924,12 @@ pub enum Ipv4OptGroup<T> {
     RecordRoute_(RecordRouteMessage<T>),
     RouteAlert_(RouteAlertMessage<T>),
 }
-impl<T: AsRef<[u8]>> Ipv4OptGroup<T> {
+impl<T: Buf> Ipv4OptGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.as_ref().len() < 1 {
+        if buf.chunk().len() < 1 {
             return Err(buf);
         }
-        let cond_value = buf.as_ref()[0];
+        let cond_value = buf.chunk()[0];
         match cond_value {
             0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::Eol_(msg)),
             1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::Nop_(msg)),

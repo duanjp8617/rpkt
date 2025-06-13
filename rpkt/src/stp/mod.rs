@@ -2,15 +2,15 @@ use crate::ether::EtherAddr;
 
 mod generated;
 
-pub use generated::{StpTcnBpduMessage, STPTCNBPDU_HEADER_ARRAY};
+pub use generated::{StpTcnBpduMessage, STPTCNBPDU_HEADER_LEN, STPTCNBPDU_HEADER_TEMPLATE};
 
-pub use generated::{StpConfBpduMessage, STPCONFBPDU_HEADER_ARRAY};
+pub use generated::{StpConfBpduMessage, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{RstpConfBpduMessage, RSTPCONFBPDU_HEADER_ARRAY};
+pub use generated::{RstpConfBpduMessage, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{MstpConfBpduMessage, MSTPCONFBPDU_HEADER_ARRAY};
+pub use generated::{MstpConfBpduMessage, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{MstiConfMessage, MSTICONF_HEADER_ARRAY};
+pub use generated::{MstiConfMessage, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
 
 pub use generated::StpMessageGroup;
 
