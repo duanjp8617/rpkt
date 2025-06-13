@@ -281,7 +281,11 @@ fn vxlan_parsing_and_creation_test() {
         assert_eq!(udp_pkt.packet_len(), 114);
         udp_pkt.set_checksum(0xad94);
 
-        let mut ip_pkt = Ipv4Packet::prepend_header(udp_pkt.release(), &IPV4_HEADER_TEMPLATE);
+        let mut ip_pkt = Ipv4Packet::prepend_header(
+            udp_pkt.release(),
+            &IPV4_HEADER_TEMPLATE,
+            IPV4_HEADER_TEMPLATE.len() as u8,
+        );
         assert_eq!(ip_pkt.version(), 4);
         assert_eq!(ip_pkt.header_len(), 20);
         ip_pkt.set_dscp(0);
