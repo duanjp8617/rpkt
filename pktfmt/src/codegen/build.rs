@@ -26,58 +26,47 @@ impl<'a> Build<'a> {
         buf_name: &str,
         buf_type: &str,
         header_name: &str,
-        header_type: &str,
-        protocol_name: &str,
+        header_type: &str,        
         output: &mut dyn Write,
     ) {
-        match (&self.length[1], &self.length[2]) {
-            (LengthField::Undefined, _) | (_, LengthField::Undefined) => {
-                // If either of the payload length or the packet length is
-                // undefined, then we can not proceed generating the code.
-                // This is because during the genneration process, we need to
-                // set either the payload or the packet length in the
-                // constructed packet.
-                // If payload or packet length is not defined, then we will not be able to know
-                // the exact field bit length used for calculating the payload or packet length.
-                // As a result, we can not correctly apply packet format checking.
+        match (&self.length[0], &self.length[1], &self.length[2]) {
+            (LengthField::Undefined, _, _)
+            | (_, LengthField::Undefined, _)
+            | (_, _, LengthField::Undefined) => {
+                // No matter which header field is undefined, we stop the generation.
+                // This is because during the genneration process, we need the concrete information about the header field
+                // that is used for calculating the variable length.
                 return;
             }
             _ => {}
         }
 
-        write!(
-            output,
-            "#[inline]
-pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {header_type}) -> Self {{
-"
-        )
-        .unwrap();
-
         let mut guards = Vec::new();
-        let header_len_var = match &self.length[0] {
+        let (move_back_header_len_var, set_header_len_var) = match &self.length[0] {
             LengthField::None => {
                 // Fixed header length.
+                write!(
+                    output,
+                    "#[inline]
+pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {header_type}) -> Self {{"
+                )
+                .unwrap();
                 guards.push(format!(
                     "{buf_name}.chunk_headroom()>={}",
                     self.header.header_len_in_bytes()
                 ));
-                format!("{}", self.header.header_len_in_bytes())
-            }
-            LengthField::Undefined => {
-                // Variable header length with undefined computing expression.
-                write!(output, "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n").unwrap();
-                guards.push(format!("header_len>={}", self.header.header_len_in_bytes()));
-                guards.push(format!("header_len<={buf_name}.chunk_headroom()"));
-                "header_len".to_string()
+                let item = format!("{}", self.header.header_len_in_bytes());
+                (item.clone(), item)
             }
             LengthField::Expr { expr } => {
                 // Header field is defined with computing expression.
+                let (field, _) = self.header.field(expr.field_name()).unwrap();
                 write!(
                     output,
-                    "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n"
+                    "#[inline]
+pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {header_type}, header_len: {}) -> Self {{", length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
-                let (field, _) = self.header.field(expr.field_name()).unwrap();
                 if field.default_fix {
                     // Variable header length with fixed default value.
                     let default_val = match field.default {
@@ -90,16 +79,23 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                     // Variable header length.
                     guards.push(format!("header_len>={}", self.header.header_len_in_bytes()));
                 }
-                guards.push(format!("header_len<={buf_name}.chunk_headroom()"));
-                "header_len".to_string()
+                guards.push(format!(
+                    "header_len as usize <= {buf_name}.chunk_headroom()"
+                ));
+                ("header_len as usize".to_string(), "header_len".to_string())
             }
+            _ => panic!(),
         };
         write!(output, "assert!({});\n", guard_assert_str(&guards, "&&")).unwrap();
 
         match (&self.length[1], &self.length[2]) {
             (LengthField::None, LengthField::None) => {
                 // move the cursor back
-                write!(output, "{buf_name}.move_back({header_len_var});\n",).unwrap();
+                write!(
+                    output,
+                    "{buf_name}.move_back({move_back_header_len_var});\n",
+                )
+                .unwrap();
                 // copy the packet content in
                 write!(
                     output,
@@ -107,9 +103,17 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                     self.header.header_len_in_bytes()
                 )
                 .unwrap();
-                // If we do not have variable payload length or packet length,
-                // we can construct a packet variable and return it
-                write!(output, "Self {{ {buf_name} }}\n",).unwrap();
+
+                if matches!(&self.length[0], LengthField::Expr { expr: _ }) {
+                    // build up the container
+                    write!(output, "let mut container = Self {{ {buf_name} }};\n",).unwrap();
+                    // update the variable header length
+                    write!(output, "container.set_header_len({set_header_len_var});\n",).unwrap();
+                    // return the container as it is
+                    write!(output, "container\n").unwrap();
+                } else {
+                    write!(output, "Self {{ {buf_name} }}\n",).unwrap();
+                }
             }
             (LengthField::Expr { expr }, LengthField::None) => {
                 write!(output, "let payload_len = {buf_name}.remaining();\n").unwrap();
@@ -123,7 +127,11 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 .unwrap();
 
                 // move the cursor back
-                write!(output, "{buf_name}.move_back({header_len_var});\n",).unwrap();
+                write!(
+                    output,
+                    "{buf_name}.move_back({move_back_header_len_var});\n",
+                )
+                .unwrap();
                 // copy the packet content in
                 write!(
                     output,
@@ -141,11 +149,19 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                     length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
+                if matches!(&self.length[0], LengthField::Expr { expr: _ }) {
+                    // update the variable header length
+                    write!(output, "container.set_header_len({set_header_len_var});\n",).unwrap();
+                }
                 write!(output, "container\n").unwrap();
             }
             (LengthField::None, LengthField::Expr { expr }) => {
                 // move the cursor back
-                write!(output, "{buf_name}.move_back({header_len_var});\n",).unwrap();
+                write!(
+                    output,
+                    "{buf_name}.move_back({move_back_header_len_var});\n",
+                )
+                .unwrap();
 
                 write!(output, "let packet_len = {buf_name}.remaining();\n").unwrap();
                 let (field, start) = self.header.field(expr.field_name()).unwrap();
@@ -174,6 +190,10 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                     length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
+                if matches!(&self.length[0], LengthField::Expr { expr: _ }) {
+                    // update the variable header length
+                    write!(output, "container.set_header_len({set_header_len_var});\n",).unwrap();
+                }
                 write!(output, "container\n").unwrap();
             }
             _ => {

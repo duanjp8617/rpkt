@@ -250,7 +250,6 @@ impl<'a> PacketGen<'a> {
                 "T",
                 "header",
                 &format!("&'a [u8; {}]", self.packet().header().header_len_in_bytes()),
-                &self.packet_struct_name(),
                 impl_block.get_writer(),
             );
 

@@ -17,14 +17,6 @@ pub const IPV4_HEADER_TEMPLATE: [u8; 20] = [
 pub struct Ipv4Packet<T> {
     buf: T,
 }
-impl<'a> Ipv4Packet<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_mut_slice_unchecked(buf: &'a mut [u8]) -> Self {
-        Self {
-            buf: CursorMut::new(buf),
-        }
-    }
-}
 impl<T: Buf> Ipv4Packet<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
@@ -151,8 +143,8 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_header_len(header_len);
         container.set_packet_len(packet_len as u16);
+        container.set_header_len(header_len);
         container
     }
     #[inline]
