@@ -1,0 +1,69 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+
+use super::{PPPoECode, PPPoETagType};
+%%
+
+packet PPPoE {
+    header = [
+        version = Field{bit = 4, default=@1},
+        type_ = Field{bit = 4, default=@1},
+        code = Field{bit = 8, arg=%%PPPoECode%%},
+        session_id = Field{bit = 16},
+        len = Field{bit = 16, gen=false}
+    ],
+    length = [
+        payload_len = len
+    ]
+}
+
+%%
+impl<T: PktBuf> PPPoEPacket<T> {
+    /// Get PPP session's payload type and payload buffer from a PPPoE packet.
+    ///
+    /// The returned packet buffer only contains the PPP session payload, the
+    /// payload type is removed from the buffer.
+    ///
+    /// # Panics
+    /// This function panics if the `code` field is not 0 and the chunk length
+    /// of the underlying packet buffer is smaller than 8.    
+    pub fn session_payload(self) -> (u16, T) {
+        assert!(self.code() == PPPoECode::SESSION && self.buf.chunk().len() >= 8);
+
+        let data_type = u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap());
+        let mut payload = self.payload();
+        payload.advance(2);
+        (data_type, payload)
+    }
+}
+
+impl<T: PktBufMut> PPPoEPacket<T> {
+    /// Prepend the payload type to the start of the payload buffer.
+    ///
+    /// The returned packet buffer contains the actual PPPoE session payload,
+    /// which can be used to construct the final PPPoE packet.
+    ///
+    /// # Panics
+    /// This function panics if `buf.chunk_headroom() < 2`.
+    pub fn prepend_session_payload_type(mut buf: T, payload_type: u16) -> T {
+        assert!(buf.chunk_headroom() >= 2);
+        buf.move_back(2);
+        (&mut buf.chunk_mut()[..2]).copy_from_slice(&payload_type.to_be_bytes());
+        buf
+    }
+}
+%%
+
+message PPPoETag {
+    header = [
+        type_ = Field{bit = 16, arg=%%PPPoETagType%%, default=0},
+        len = Field{bit = 16, default=4, gen = false}
+    ],
+    length = [
+        header_len = len
+    ]
+}
