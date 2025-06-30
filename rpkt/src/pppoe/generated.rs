@@ -318,3 +318,61 @@ impl<'a> PPPoETagMessage<CursorMut<'a>> {
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct PPPoETagMessageIter<'a> {
+    buf: &'a [u8],
+}
+
+impl<'a> PPPoETagMessageIter<'a> {
+    pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
+        Self { buf: message_slice }
+    }
+}
+
+impl<'a> Iterator for PPPoETagMessageIter<'a> {
+    type Item = PPPoETagMessage<Cursor<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match PPPoETagMessage::parse(self.buf) {
+            Ok(msg) => {
+                self.buf = &self.buf[msg.header_len() as usize..];
+                Some(PPPoETagMessage {
+                    buf: Cursor::new(&msg.buf()[..msg.header_len() as usize]),
+                })
+            }
+            Err(_) => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct PPPoETagMessageIterMut<'a> {
+    buf: &'a mut [u8],
+}
+
+impl<'a> PPPoETagMessageIterMut<'a> {
+    pub fn from_message_slice_mut(message_slice_mut: &'a mut [u8]) -> Self {
+        Self {
+            buf: message_slice_mut,
+        }
+    }
+}
+
+impl<'a> Iterator for PPPoETagMessageIterMut<'a> {
+    type Item = PPPoETagMessage<CursorMut<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match PPPoETagMessage::parse(&self.buf[..]) {
+            Ok(msg) => {
+                let header_len = msg.header_len() as usize;
+                let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                self.buf = snd;
+                Some(PPPoETagMessage {
+                    buf: CursorMut::new(fst),
+                })
+            }
+            Err(_) => None,
+        }
+    }
+}
