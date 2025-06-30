@@ -78,6 +78,10 @@ impl<'a> PPPoETagMessageIter<'a> {
     pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
         Self { buf: message_slice }
     }
+
+    pub fn buf(&self) -> &'a [u8] {
+        self.buf
+    }
 }
 
 impl<'a> Iterator for PPPoETagMessageIter<'a> {
@@ -106,6 +110,10 @@ impl<'a> PPPoETagMessageIterMut<'a> {
         Self {
             buf: message_slice_mut,
         }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
     }
 }
 

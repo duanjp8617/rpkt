@@ -328,6 +328,10 @@ impl<'a> PPPoETagMessageIter<'a> {
     pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
         Self { buf: message_slice }
     }
+
+    pub fn buf(&self) -> &'a [u8] {
+        self.buf
+    }
 }
 
 impl<'a> Iterator for PPPoETagMessageIter<'a> {
@@ -357,6 +361,10 @@ impl<'a> PPPoETagMessageIterMut<'a> {
             buf: message_slice_mut,
         }
     }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
+    }
 }
 
 impl<'a> Iterator for PPPoETagMessageIterMut<'a> {
@@ -373,6 +381,23 @@ impl<'a> Iterator for PPPoETagMessageIterMut<'a> {
                 })
             }
             Err(_) => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_name() {
+        let buf = [0; 1024];
+
+        let mut pbuf = Cursor::new(&buf[..]);
+
+        while let Ok(tag_msg) = PPPoETagMessage::parse(pbuf) {
+            assert_eq!(tag_msg.header_len(), 0);
+            pbuf = tag_msg.payload();
         }
     }
 }
