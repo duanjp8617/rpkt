@@ -2,6 +2,7 @@ use std::io::Write;
 
 use crate::ast::{LengthField, Message, ProtoInfo};
 
+use super::FieldGetMethod;
 use super::GroupMessageGen;
 
 // Generate the parse procedure for the imutable iterator of the grouped messages.
@@ -56,7 +57,7 @@ impl<'a> GroupIterGen<'a> {
     }
 
     pub fn code_gen(&self, output: &mut dyn Write) {
-        self.code_gen_for_single_msg(output);
+        self.code_gen_for_multiple_msgs(output);
     }
 
     fn code_gen_for_single_msg(&self, output: &mut dyn Write) {
@@ -70,10 +71,10 @@ impl<'a> GroupIterGen<'a> {
         write!(
             output,
             "impl<'a> Iterator for {msg_struct_name}Iter<'a> {{
-        type Item = {msg_struct_name}<Cursor<'a>>;
-        fn next(&mut self) -> Option<Self::Item> {{
-        {msg_struct_name}::parse(self.buf).map(|msg|{{
-        "
+type Item = {msg_struct_name}<Cursor<'a>>;
+fn next(&mut self) -> Option<Self::Item> {{
+{msg_struct_name}::parse(self.buf).map(|msg|{{
+"
         )
         .unwrap();
         iter_parse_for_msg(&msg, "msg", output);
@@ -89,21 +90,21 @@ impl<'a> GroupIterGen<'a> {
         write!(
             output,
             "impl<'a> Iterator for {msg_struct_name}IterMut<'a> {{
-        type Item = {msg_struct_name}<CursorMut<'a>>;
-        fn next(&mut self) -> Option<Self::Item> {{
-        match {msg_struct_name}::parse(&self.buf[..]) {{
-        Ok(msg) => {{
-        "
+type Item = {msg_struct_name}<CursorMut<'a>>;
+fn next(&mut self) -> Option<Self::Item> {{
+match {msg_struct_name}::parse(&self.buf[..]) {{
+Ok(msg) => {{
+"
         )
         .unwrap();
         iter_mut_parse_for_msg(&msg, "msg", output);
         write!(
             output,
             "Some(result)
-        }}
-        Err(_)=> None
-        }}}}}}
-        ",
+}}
+Err(_)=> None
+}}}}}}
+",
         )
         .unwrap();
     }
@@ -112,39 +113,91 @@ impl<'a> GroupIterGen<'a> {
         // Get the msg used for generating the iterator
         let group_struct_name = &self.group_msg_gen.group_message_name;
 
+        boilerplate_codegen(group_struct_name, output);
+
         // Generate imutable iterator impl.
         write!(
             output,
             "impl<'a> Iterator for {group_struct_name}Iter<'a> {{
 type Item = {group_struct_name}<Cursor<'a>>;
 fn next(&mut self) -> Option<Self::Item> {{
-match {group_struct_name}::group_parse(self.buf) {{
-Ok(msg) => {{
-match msg {{"
-        )
-        .unwrap();
-        for msg in &self.group_msg_gen.msgs {
-            write!(
-                output,
-                "{group_struct_name}::{}(msg) => {{\n",
-                (msg.protocol_name().to_string() + "_")
-            )
-            .unwrap();
-            iter_parse_for_msg(msg, "msg", output);
-            write!(output, "}}\n").unwrap();
-        }
-        write!(
-            output,
-            "}}
-}}
-Err(_) => None
-}}
-}}",
+"
         )
         .unwrap();
 
-        // Gnerate mutable iterator impl.
+        // Copy the similar procedure as in GroupMessageGen::code_gen_for_grouped_parse,
+        // but replace the core generation procedure for the iterator.
+        let buf_min_len = self
+            .group_msg_gen
+            .cond_pos
+            .next_pos(self.group_msg_gen.cond_field.bit)
+            .byte_pos()
+            + 1;
+        write!(output, "if self.buf.len() < {buf_min_len} {{\n").unwrap();
+        write!(output, "return None;\n").unwrap();
+        write!(output, "}}\n").unwrap();
+
+        let cond_field_access =
+            FieldGetMethod::new(&self.group_msg_gen.cond_field, self.group_msg_gen.cond_pos);
+        write!(output, "let cond_value = ").unwrap();
+        cond_field_access.read_repr("self.buf", output);
+        write!(output, ";\n").unwrap();
+
+        write!(output, "match cond_value {{\n").unwrap();
+        for msg in self.group_msg_gen.msgs.iter() {
+            let mut compared_values = (*msg).cond().as_ref().unwrap().compared_values().iter();
+            write!(output, "{}", compared_values.next().unwrap()).unwrap();
+            compared_values.for_each(|value| write!(output, "| {value}").unwrap());
+            write!(output, "=> {{\n").unwrap();
+            write!(
+                output,
+                "{}::parse(self.buf).map(|msg|{{\n",
+                msg.generated_struct_name()
+            )
+            .unwrap();
+            iter_parse_for_msg(&msg, "msg", output);
+            write!(
+                output,
+                "{group_struct_name}::{}_(result)\n }} ).ok()",
+                msg.protocol_name()
+            )
+            .unwrap();
+            // The match arm ending brackets
+            write!(output, "}}\n").unwrap();
+        }
+        // the match ending brakcets
+        write!(output, "_ => None }}\n").unwrap();
+
+        // the function and the impl closing brackets.
+        write!(output, "}}\n}}\n").unwrap();
     }
+    // match {group_struct_name}::group_parse(self.buf) {{
+    // Ok(msg) => {{
+    // match msg {{"
+    //         )
+    //         .unwrap();
+    //         for msg in &self.group_msg_gen.msgs {
+    //             write!(
+    //                 output,
+    //                 "{group_struct_name}::{}(msg) => {{\n",
+    //                 (msg.protocol_name().to_string() + "_")
+    //             )
+    //             .unwrap();
+    //             iter_parse_for_msg(msg, "msg", output);
+    //             write!(output, "}}\n").unwrap();
+    //         }
+    //         write!(
+    //             output,
+    //             "}}
+    // }}
+    // Err(_) => None
+    // }}
+    // }}",
+    //         )
+    //         .unwrap();
+
+    //         // Gnerate mutable iterator impl.
+    //     }
 }
 
 /// Generate the struct definition/constructor, etc..
