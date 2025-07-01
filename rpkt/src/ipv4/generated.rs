@@ -940,3 +940,161 @@ impl<T: Buf> Ipv4OptGroup<T> {
         }
     }
 }
+#[derive(Debug, Clone, Copy)]
+pub struct Ipv4OptGroupIter<'a> {
+    buf: &'a [u8],
+}
+impl<'a> Ipv4OptGroupIter<'a> {
+    pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
+        Self { buf: message_slice }
+    }
+
+    pub fn buf(&self) -> &'a [u8] {
+        self.buf
+    }
+}
+#[derive(Debug)]
+pub struct Ipv4OptGroupIterMut<'a> {
+    buf: &'a mut [u8],
+}
+impl<'a> Ipv4OptGroupIterMut<'a> {
+    pub fn from_message_slice_mut(message_slice_mut: &'a mut [u8]) -> Self {
+        Self {
+            buf: message_slice_mut,
+        }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
+    }
+}
+impl<'a> Iterator for Ipv4OptGroupIter<'a> {
+    type Item = Ipv4OptGroup<Cursor<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value = self.buf[0];
+        match cond_value {
+            0 => EolMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[1..];
+                    let result = EolMessage {
+                        buf: Cursor::new(&self.buf[..1]),
+                    };
+                    Ipv4OptGroup::Eol_(result)
+                })
+                .ok(),
+            1 => NopMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[1..];
+                    let result = NopMessage {
+                        buf: Cursor::new(&self.buf[..1]),
+                    };
+                    Ipv4OptGroup::Nop_(result)
+                })
+                .ok(),
+            68 => TimestampMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = TimestampMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    Ipv4OptGroup::Timestamp_(result)
+                })
+                .ok(),
+            7 => RecordRouteMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = RecordRouteMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    Ipv4OptGroup::RecordRoute_(result)
+                })
+                .ok(),
+            148 => RouteAlertMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = RouteAlertMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    Ipv4OptGroup::RouteAlert_(result)
+                })
+                .ok(),
+            _ => None,
+        }
+    }
+}
+impl<'a> Iterator for Ipv4OptGroupIterMut<'a> {
+    type Item = Ipv4OptGroup<CursorMut<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value = self.buf[0];
+        match cond_value {
+            0 => match EolMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    self.buf = snd;
+                    let result = EolMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4OptGroup::Eol_(result))
+                }
+                Err(_) => None,
+            },
+            1 => match NopMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    self.buf = snd;
+                    let result = NopMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4OptGroup::Nop_(result))
+                }
+                Err(_) => None,
+            },
+            68 => match TimestampMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = TimestampMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4OptGroup::Timestamp_(result))
+                }
+                Err(_) => None,
+            },
+            7 => match RecordRouteMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = RecordRouteMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4OptGroup::RecordRoute_(result))
+                }
+                Err(_) => None,
+            },
+            148 => match RouteAlertMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = RouteAlertMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4OptGroup::RouteAlert_(result))
+                }
+                Err(_) => None,
+            },
+            _ => None,
+        }
+    }
+}

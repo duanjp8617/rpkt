@@ -404,21 +404,60 @@ impl<'a> GroupMessageGen<'a> {
     }
 
     pub fn code_gen(&self, mut output: &mut dyn Write) {
-        self.code_gen_for_enum(&self.group_message_name, "T", output);
+        if self.msgs.len() > 1 {
+            self.code_gen_for_enum(&self.group_message_name, "T", output);
 
-        {
-            let mut impl_block = impl_block("T:Buf", &self.group_message_name, "T", &mut output);
+            {
+                let mut impl_block =
+                    impl_block("T:Buf", &self.group_message_name, "T", &mut output);
 
-            self.code_gen_for_grouped_parse(
-                "group_parse",
-                "buf",
-                "T",
-                "chunk()",
-                impl_block.get_writer(),
-            );
+                self.code_gen_for_grouped_parse(
+                    "group_parse",
+                    "buf",
+                    "T",
+                    ".chunk()",
+                    impl_block.get_writer(),
+                );
+            }
         }
 
         GroupIterGen::new(self).code_gen(output);
+    }
+
+    /// Perform a group parse on the buffer and process each group member with a closure.
+    pub fn parse_buffer(
+        &self,
+        output: &mut dyn Write,
+        buf_name: &str,
+        buf_access: &str,
+        mut handle_msg: impl FnMut(&Message, &mut dyn Write),
+        parse_error: &str,
+    ) {
+        // First, make sure that we can access the cond field from the buffer
+        let buf_min_len = self.cond_pos.next_pos(self.cond_field.bit).byte_pos() + 1;
+        write!(
+            output,
+            "if {buf_name}{buf_access}.len() < {buf_min_len} {{\n"
+        )
+        .unwrap();
+        write!(output, "return {parse_error};\n").unwrap();
+        write!(output, "}}\n").unwrap();
+
+        // Read the cond field.
+        let cond_field_access = FieldGetMethod::new(&self.cond_field, self.cond_pos);
+        write!(output, "let cond_value = ").unwrap();
+        cond_field_access.read_repr(&format!("{buf_name}{buf_access}"), output);
+        write!(output, ";\n").unwrap();
+
+        // For each message, perform the corresponding action defined by the closure.
+        write!(output, "match cond_value {{\n").unwrap();
+        for msg in self.msgs.iter() {
+            handle_msg(msg, output);
+        }
+        write!(output, "_ => {parse_error}").unwrap();
+
+        // Add the closing bracket for the match.
+        write!(output, "}}\n").unwrap();
     }
 
     fn code_gen_for_enum(&self, enum_name: &str, buf_type: &str, output: &mut dyn Write) {
@@ -445,7 +484,7 @@ impl<'a> GroupMessageGen<'a> {
         buf_name: &str,
         buf_type: &str,
         buf_access: &str,
-        mut output: &mut dyn Write,
+        output: &mut dyn Write,
     ) {
         write!(
             output,
@@ -453,25 +492,7 @@ impl<'a> GroupMessageGen<'a> {
         )
         .unwrap();
 
-        // First, make sure that we can access the cond field
-        let buf_min_len = self.cond_pos.next_pos(self.cond_field.bit).byte_pos() + 1;
-        write!(
-            output,
-            "if {buf_name}.{buf_access}.len() < {buf_min_len} {{\n"
-        )
-        .unwrap();
-        write!(output, "return Err({buf_name});\n").unwrap();
-        write!(output, "}}\n").unwrap();
-
-        // Read the cond field.
-        let cond_field_access = FieldGetMethod::new(&self.cond_field, self.cond_pos);
-        write!(output, "let cond_value = ").unwrap();
-        cond_field_access.read_repr(&format!("{buf_name}.{buf_access}"), &mut output);
-        write!(output, ";\n").unwrap();
-
-        // Match on different cond value for different output.
-        write!(output, "match cond_value {{\n").unwrap();
-        for msg in self.msgs.iter() {
+        let on_msg = |msg: &Message, output: &mut dyn Write| {
             // Write out the matched condition.
             let mut compared_values = (*msg).cond().as_ref().unwrap().compared_values().iter();
             write!(output, "{}", compared_values.next().unwrap()).unwrap();
@@ -489,9 +510,15 @@ impl<'a> GroupMessageGen<'a> {
             .unwrap();
 
             write!(output, "}}\n").unwrap();
-        }
-        write!(output, "_ => Err(buf)").unwrap();
-        write!(output, "}}\n").unwrap();
+        };
+
+        self.parse_buffer(
+            output,
+            buf_name,
+            buf_access,
+            on_msg,
+            &format!("Err({buf_name})"),
+        );
 
         write!(output, "}}\n").unwrap();
     }

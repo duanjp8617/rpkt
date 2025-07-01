@@ -21,5 +21,5 @@ pub mod options {
 
     pub use super::generated::{FoMessage, FO_HEADER_LEN, FO_HEADER_TEMPLATE};
 
-    pub use super::generated::TcpOptGroup;
+    pub use super::generated::{TcpOptGroup, TcpOptGroupIter, TcpOptGroupIterMut};
 }

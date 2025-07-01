@@ -1272,3 +1272,227 @@ impl<T: Buf> TcpOptGroup<T> {
         }
     }
 }
+#[derive(Debug, Clone, Copy)]
+pub struct TcpOptGroupIter<'a> {
+    buf: &'a [u8],
+}
+impl<'a> TcpOptGroupIter<'a> {
+    pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
+        Self { buf: message_slice }
+    }
+
+    pub fn buf(&self) -> &'a [u8] {
+        self.buf
+    }
+}
+#[derive(Debug)]
+pub struct TcpOptGroupIterMut<'a> {
+    buf: &'a mut [u8],
+}
+impl<'a> TcpOptGroupIterMut<'a> {
+    pub fn from_message_slice_mut(message_slice_mut: &'a mut [u8]) -> Self {
+        Self {
+            buf: message_slice_mut,
+        }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
+    }
+}
+impl<'a> Iterator for TcpOptGroupIter<'a> {
+    type Item = TcpOptGroup<Cursor<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value = self.buf[0];
+        match cond_value {
+            0 => EolMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[1..];
+                    let result = EolMessage {
+                        buf: Cursor::new(&self.buf[..1]),
+                    };
+                    TcpOptGroup::Eol_(result)
+                })
+                .ok(),
+            1 => NopMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[1..];
+                    let result = NopMessage {
+                        buf: Cursor::new(&self.buf[..1]),
+                    };
+                    TcpOptGroup::Nop_(result)
+                })
+                .ok(),
+            2 => MssMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = MssMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Mss_(result)
+                })
+                .ok(),
+            3 => WsoptMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = WsoptMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Wsopt_(result)
+                })
+                .ok(),
+            4 => SackpermMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = SackpermMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Sackperm_(result)
+                })
+                .ok(),
+            5 => SackMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = SackMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Sack_(result)
+                })
+                .ok(),
+            8 => TsMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = TsMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Ts_(result)
+                })
+                .ok(),
+            34 => FoMessage::parse(self.buf)
+                .map(|_msg| {
+                    self.buf = &self.buf[_msg.header_len() as usize..];
+                    let result = FoMessage {
+                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+                    };
+                    TcpOptGroup::Fo_(result)
+                })
+                .ok(),
+            _ => None,
+        }
+    }
+}
+impl<'a> Iterator for TcpOptGroupIterMut<'a> {
+    type Item = TcpOptGroup<CursorMut<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value = self.buf[0];
+        match cond_value {
+            0 => match EolMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    self.buf = snd;
+                    let result = EolMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Eol_(result))
+                }
+                Err(_) => None,
+            },
+            1 => match NopMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    self.buf = snd;
+                    let result = NopMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Nop_(result))
+                }
+                Err(_) => None,
+            },
+            2 => match MssMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = MssMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Mss_(result))
+                }
+                Err(_) => None,
+            },
+            3 => match WsoptMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = WsoptMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Wsopt_(result))
+                }
+                Err(_) => None,
+            },
+            4 => match SackpermMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = SackpermMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Sackperm_(result))
+                }
+                Err(_) => None,
+            },
+            5 => match SackMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = SackMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Sack_(result))
+                }
+                Err(_) => None,
+            },
+            8 => match TsMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = TsMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Ts_(result))
+                }
+                Err(_) => None,
+            },
+            34 => match FoMessage::parse(&self.buf[..]) {
+                Ok(_msg) => {
+                    let header_len = _msg.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = FoMessage {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(TcpOptGroup::Fo_(result))
+                }
+                Err(_) => None,
+            },
+            _ => None,
+        }
+    }
+}
