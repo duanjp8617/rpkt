@@ -43,7 +43,6 @@ pub fn iter_parse_for_msg(msg: &Message, msg_var: &str, output: &mut dyn Write) 
         LengthField::None => format!("{}", msg.header().header_len_in_bytes()),
         _ => format!("{msg_var}.header_len() as usize"),
     };
-    write!(output, "self.buf=&self.buf[{header_len_var}..];\n").unwrap();
     write!(
         output,
         "let result = {} {{
@@ -51,7 +50,8 @@ buf: Cursor::new(&self.buf[..{header_len_var}])
 }};\n",
         msg.generated_struct_name()
     )
-    .unwrap()
+    .unwrap();
+    write!(output, "self.buf=&self.buf[{header_len_var}..];\n").unwrap();
 }
 
 // Generate the parse procedure for the mutable iterator.

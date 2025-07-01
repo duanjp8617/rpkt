@@ -17,7 +17,10 @@ enum_sim! {
         QINQ = 0x88a8,
         /// Ethernet frame payload contains MPLS tag.
         MPLS = 0x8847,
-
+        /// Ethernet frame payload contains PPPoE session packet.
+        PPPOE_SESSION = 0x8864,
+        /// Ethernet frame payload contains PPPoE discovery packet.
+        PPPOE_DISCOVERY = 0x8863
     }
 }
 

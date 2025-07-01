@@ -64,7 +64,7 @@ message PPPoETag {
         len = Field{bit = 16, default=4, gen = false}
     ],
     length = [
-        header_len = len
+        header_len = len+4
     ],
     cond = (type_==0)
 }

@@ -239,8 +239,8 @@ impl<T: Buf> PPPoETagMessage<T> {
         ))
     }
     #[inline]
-    pub fn header_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())) as u32 + 4
     }
 }
 impl<T: PktBuf> PPPoETagMessage<T> {
@@ -254,7 +254,7 @@ impl<T: PktBuf> PPPoETagMessage<T> {
 }
 impl<T: PktBufMut> PPPoETagMessage<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u16) -> Self {
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u32) -> Self {
         assert!((header_len >= 4) && (header_len as usize <= buf.chunk_headroom()));
         buf.move_back(header_len as usize);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -272,8 +272,9 @@ impl<T: PktBufMut> PPPoETagMessage<T> {
         (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
     #[inline]
-    pub fn set_header_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65539) && (value >= 4));
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
     }
 }
 impl<'a> PPPoETagMessage<Cursor<'a>> {
@@ -352,10 +353,10 @@ impl<'a> Iterator for PPPoETagMessageIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         PPPoETagMessage::parse(self.buf)
             .map(|msg| {
-                self.buf = &self.buf[msg.header_len() as usize..];
                 let result = PPPoETagMessage {
                     buf: Cursor::new(&self.buf[..msg.header_len() as usize]),
                 };
+                self.buf = &self.buf[msg.header_len() as usize..];
                 result
             })
             .ok()

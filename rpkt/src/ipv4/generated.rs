@@ -978,46 +978,46 @@ impl<'a> Iterator for Ipv4OptGroupIter<'a> {
         match cond_value {
             0 => EolMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[1..];
                     let result = EolMessage {
                         buf: Cursor::new(&self.buf[..1]),
                     };
+                    self.buf = &self.buf[1..];
                     Ipv4OptGroup::Eol_(result)
                 })
                 .ok(),
             1 => NopMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[1..];
                     let result = NopMessage {
                         buf: Cursor::new(&self.buf[..1]),
                     };
+                    self.buf = &self.buf[1..];
                     Ipv4OptGroup::Nop_(result)
                 })
                 .ok(),
             68 => TimestampMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = TimestampMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     Ipv4OptGroup::Timestamp_(result)
                 })
                 .ok(),
             7 => RecordRouteMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = RecordRouteMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     Ipv4OptGroup::RecordRoute_(result)
                 })
                 .ok(),
             148 => RouteAlertMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = RouteAlertMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     Ipv4OptGroup::RouteAlert_(result)
                 })
                 .ok(),

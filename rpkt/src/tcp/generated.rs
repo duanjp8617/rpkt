@@ -1310,73 +1310,73 @@ impl<'a> Iterator for TcpOptGroupIter<'a> {
         match cond_value {
             0 => EolMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[1..];
                     let result = EolMessage {
                         buf: Cursor::new(&self.buf[..1]),
                     };
+                    self.buf = &self.buf[1..];
                     TcpOptGroup::Eol_(result)
                 })
                 .ok(),
             1 => NopMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[1..];
                     let result = NopMessage {
                         buf: Cursor::new(&self.buf[..1]),
                     };
+                    self.buf = &self.buf[1..];
                     TcpOptGroup::Nop_(result)
                 })
                 .ok(),
             2 => MssMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = MssMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Mss_(result)
                 })
                 .ok(),
             3 => WsoptMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = WsoptMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Wsopt_(result)
                 })
                 .ok(),
             4 => SackpermMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = SackpermMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Sackperm_(result)
                 })
                 .ok(),
             5 => SackMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = SackMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Sack_(result)
                 })
                 .ok(),
             8 => TsMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = TsMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Ts_(result)
                 })
                 .ok(),
             34 => FoMessage::parse(self.buf)
                 .map(|_msg| {
-                    self.buf = &self.buf[_msg.header_len() as usize..];
                     let result = FoMessage {
                         buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
                     };
+                    self.buf = &self.buf[_msg.header_len() as usize..];
                     TcpOptGroup::Fo_(result)
                 })
                 .ok(),
