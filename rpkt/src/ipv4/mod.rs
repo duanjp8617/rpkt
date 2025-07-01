@@ -58,5 +58,5 @@ pub mod options {
         RouteAlertMessage, ROUTEALERT_HEADER_LEN, ROUTEALERT_HEADER_TEMPLATE,
     };
 
-    pub use super::generated::Ipv4OptGroup;
+    pub use super::generated::{Ipv4OptGroup, Ipv4OptGroupIter, Ipv4OptGroupIterMut};
 }
