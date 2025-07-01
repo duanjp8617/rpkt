@@ -20,6 +20,9 @@ use payload::*;
 mod build;
 use build::*;
 
+mod iter;
+use iter::*;
+
 // A writer object that appends prefix string and prepends suffix string to the
 // underlying content.
 struct HeadTailWriter<T: Write> {
@@ -377,10 +380,10 @@ impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
 }
 
 pub struct GroupMessageGen<'a> {
-    group_message_name: String,
-    cond_field: Field,
-    cond_pos: BitPos,
-    msgs: Vec<&'a Message>,
+    pub group_message_name: String,
+    pub cond_field: Field,
+    pub cond_pos: BitPos,
+    pub msgs: Vec<&'a Message>,
 }
 
 impl<'a> GroupMessageGen<'a> {
@@ -404,8 +407,7 @@ impl<'a> GroupMessageGen<'a> {
         self.code_gen_for_enum(&self.group_message_name, "T", output);
 
         {
-            let mut impl_block =
-                impl_block("T:Buf", &self.group_message_name, "T", &mut output);
+            let mut impl_block = impl_block("T:Buf", &self.group_message_name, "T", &mut output);
 
             self.code_gen_for_grouped_parse(
                 "group_parse",
@@ -415,6 +417,8 @@ impl<'a> GroupMessageGen<'a> {
                 impl_block.get_writer(),
             );
         }
+
+        GroupIterGen::new(self).code_gen(output);
     }
 
     fn code_gen_for_enum(&self, enum_name: &str, buf_type: &str, output: &mut dyn Write) {
