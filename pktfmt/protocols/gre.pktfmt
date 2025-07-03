@@ -12,7 +12,7 @@ use super::{gre_header_len, gre_pptp_header_len};
 // The GRE protocol as defined in RFC1701
 packet Gre {
     header = [
-        checksum_present = Field {bit = 1},
+        checksum_present = Field {bit = 1, arg=bool},
         routing_present = Field {bit = 1, arg=bool},
         key_present = Field {bit = 1, arg=bool},
         sequence_present = Field {bit = 1, arg=bool},
@@ -173,15 +173,15 @@ impl<T: PktBufMut> GrePacket<T> {
 // The GRE packet that encapsulates a PPTP packet inside.
 packet GreForPPTP {
     header = [
-        checksum_present = Field {bit = 1, arg=bool},
-        routing_present = Field {bit = 1, arg=bool},
-        key_present = Field {bit = 1, arg=bool, default=true},
+        checksum_present = Field {bit = 1, arg=bool, default=@0},
+        routing_present = Field {bit = 1, arg=bool, default=@0},
+        key_present = Field {bit = 1, arg=bool, default=@1},
         sequence_present = Field {bit = 1, arg=bool},
         strict_source_route = Field {bit = 1, arg=bool},
         recursion_control = Field {bit = 3},
         ack_present = Field{bit = 1, arg=bool},
         flags = Field {bit = 4},
-        version = Field {bit = 3, default=@0},
+        version = Field {bit = 3, default=@1},
         protocol_type = Field {bit = 16, arg = %%EtherType%%},
         key_payload_length = Field{bit = 16, gen = false},
         key_call_id = Field{bit = 16}

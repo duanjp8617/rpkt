@@ -168,67 +168,43 @@ impl<T: PktBufMut> TcpPacket<T> {
     }
     #[inline]
     pub fn set_cwr(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x80
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0x7f
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0x7f) | (value << 7);
     }
     #[inline]
     pub fn set_ece(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x40
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xbf
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xbf) | (value << 6);
     }
     #[inline]
     pub fn set_urg(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x20
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xdf
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xdf) | (value << 5);
     }
     #[inline]
     pub fn set_ack(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x10
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xef
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xef) | (value << 4);
     }
     #[inline]
     pub fn set_psh(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x8
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xf7
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_rst(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x4
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xfb
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_syn(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x2
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xfd
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_fin(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] | 0x1
-        } else {
-            self.buf.chunk_mut()[13] = self.buf.chunk_mut()[13] & 0xfe
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfe) | value;
     }
     #[inline]
     pub fn set_window_size(&mut self, value: u16) {

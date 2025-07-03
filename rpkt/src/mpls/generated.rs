@@ -86,11 +86,8 @@ impl<T: PktBufMut> MplsPacket<T> {
     }
     #[inline]
     pub fn set_bottom_of_stack(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[2] = self.buf.chunk_mut()[2] | 0x1
-        } else {
-            self.buf.chunk_mut()[2] = self.buf.chunk_mut()[2] & 0xfe
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfe) | value;
     }
     #[inline]
     pub fn set_ttl(&mut self, value: u8) {

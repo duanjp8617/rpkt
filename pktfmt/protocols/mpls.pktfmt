@@ -11,7 +11,7 @@ packet Mpls {
     header = [
         label = Field {bit = 20},
         experimental_bits = Field {bit = 3, default=0},
-        bottom_of_stack = Field {bit = 1, arg=bool, default=false},
+        bottom_of_stack = Field {bit = 1, arg=bool, default=0},
         ttl = Field {bit = 8}
     ]
 }

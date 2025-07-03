@@ -82,11 +82,8 @@ impl<T: PktBufMut> VlanPacket<T> {
     }
     #[inline]
     pub fn set_dei_flag(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x10
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0xef
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
@@ -217,11 +214,8 @@ impl<T: PktBufMut> VlanDot3Packet<T> {
     }
     #[inline]
     pub fn set_dei_flag(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x10
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0xef
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {

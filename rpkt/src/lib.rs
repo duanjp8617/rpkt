@@ -28,7 +28,7 @@ pub mod udp;
 pub mod vlan;
 pub mod vxlan;
 pub mod pppoe;
-// pub mod gre;
+pub mod gre;
 
 #[allow(unused)]
 mod endian;

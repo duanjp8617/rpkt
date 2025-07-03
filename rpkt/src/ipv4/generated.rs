@@ -178,19 +178,13 @@ impl<T: PktBufMut> Ipv4Packet<T> {
     }
     #[inline]
     pub fn set_dont_frag(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[6] = self.buf.chunk_mut()[6] | 0x40
-        } else {
-            self.buf.chunk_mut()[6] = self.buf.chunk_mut()[6] & 0xbf
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0xbf) | (value << 6);
     }
     #[inline]
     pub fn set_more_frag(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[6] = self.buf.chunk_mut()[6] | 0x20
-        } else {
-            self.buf.chunk_mut()[6] = self.buf.chunk_mut()[6] & 0xdf
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0xdf) | (value << 5);
     }
     #[inline]
     pub fn set_frag_offset(&mut self, value: u16) {

@@ -103,11 +103,8 @@ impl<T: PktBufMut> VxlanPacket<T> {
     }
     #[inline]
     pub fn set_gbp_extention(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x80
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0x7f
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x7f) | (value << 7);
     }
     #[inline]
     pub fn set_reserved_0(&mut self, value: u8) {
@@ -116,11 +113,8 @@ impl<T: PktBufMut> VxlanPacket<T> {
     }
     #[inline]
     pub fn set_vni_present(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | 0x8
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & 0xf7
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_reserved_1(&mut self, value: u8) {
@@ -132,11 +126,8 @@ impl<T: PktBufMut> VxlanPacket<T> {
     }
     #[inline]
     pub fn set_dont_learn(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[1] = self.buf.chunk_mut()[1] | 0x40
-        } else {
-            self.buf.chunk_mut()[1] = self.buf.chunk_mut()[1] & 0xbf
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xbf) | (value << 6);
     }
     #[inline]
     pub fn set_reserved_2(&mut self, value: u8) {
@@ -145,11 +136,8 @@ impl<T: PktBufMut> VxlanPacket<T> {
     }
     #[inline]
     pub fn set_policy_applied(&mut self, value: bool) {
-        if value {
-            self.buf.chunk_mut()[1] = self.buf.chunk_mut()[1] | 0x8
-        } else {
-            self.buf.chunk_mut()[1] = self.buf.chunk_mut()[1] & 0xf7
-        }
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_reserved_3(&mut self, value: u8) {
