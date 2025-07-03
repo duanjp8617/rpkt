@@ -1,10 +1,15 @@
 %%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
 use crate::cursors::*;
 use crate::ether::EtherType;
 use crate::traits::*;
+
+use super::gre_fixed_header_len;
 %%
 
-// The GRE protocol as defined in RFC 1701
+// The GRE protocol as defined in RFC1701
 packet Gre {
     header = [
         checksum_present = Field {bit = 1, arg=bool},
@@ -12,10 +17,9 @@ packet Gre {
         key_present = Field {bit = 1, arg=bool},
         sequence_present = Field {bit = 1, arg=bool},
         strict_source_route = Field {bit = 1, arg=bool},
-        recursion_control = Field {bit = 3},
-        ack_present = Field {bit = 1, arg = bool},
-        flags = Field {bit = 4},
-        version = Field {bit = 3},
+        recursion_control = Field {bit = 3},        
+        flags = Field {bit = 5},
+        version = Field {bit = 3, default=@0},
         protocol_type = Field {bit = 16, arg = %%EtherType%%}
     ],
     length = [
@@ -23,3 +27,145 @@ packet Gre {
     ]
 }
 
+%%
+impl<T: Buf> GrePacket<T> {
+    /// Return the variable header length of Gre protocol.
+    ///
+    /// The header length of gre is determined by the bit value in the
+    /// header, including the `checksum_present`, `routing_present`,
+    /// `key_present` and `sequence_present` bit.
+    ///
+    /// So be careful when setting these bits, as it may pollute the underlying
+    /// packet on the buffer.
+    #[inline]
+    pub fn header_len(&self) -> usize {
+        let indicator = u16::from_be_bytes(self.buf.chunk()[..2].try_into().unwrap());
+        gre_fixed_header_len(indicator)
+    }
+
+    /// Return the checksum value.
+    ///
+    /// # Panics
+    /// This function panics if `self.checksum_present()` and `self.routing_present()`
+    /// are both `false`.
+    #[inline]
+    pub fn checksum(&self) -> u16 {
+        assert!(self.checksum_present() || self.routing_present());
+        u16::from_be_bytes(self.buf.chunk()[4..6].try_into().unwrap())
+    }
+
+    /// Return the offset value.
+    ///
+    /// # Panics
+    /// This function panics if `self.checksum_present()` and `self.routing_present()`
+    /// are both `false`.
+    #[inline]
+    pub fn offset(&self) -> u16 {
+        assert!(self.checksum_present() || self.routing_present());
+        u16::from_be_bytes(self.buf.chunk()[6..8].try_into().unwrap())
+    }
+
+    /// Return the key value.
+    ///
+    /// # Panics
+    /// This function panics if `self.key_present()` is `false`.
+    #[inline]
+    pub fn key(&self) -> u32 {
+        assert!(self.key_present());
+        if (self.checksum_present() || self.routing_present()) {
+            u32::from_be_bytes(self.buf.chunk()[8..12].try_into().unwrap())
+        } else {
+            u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+        }
+    }
+
+    /// Return the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()` is `false`.
+    #[inline]
+    pub fn sequence(&self) -> u32 {
+        assert!(self.sequence_present());
+
+        match (
+            (self.checksum_present() || self.routing_present()),
+            self.key_present(),
+        ) {
+            (false, false) => u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap()),
+            (true, false) | (false, true) => {
+                u32::from_be_bytes(self.buf.chunk()[8..12].try_into().unwrap())
+            }
+            (true, true) => u32::from_be_bytes(self.buf.chunk()[12..16].try_into().unwrap()),
+        }
+    }
+}
+
+impl<T: PktBufMut> GrePacket<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header = GrePacket::parse_unchecked(header.as_slice());
+        let header_len = header.header_len();
+        assert!(header_len <= buf.chunk_headroom());
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(header.buf);
+        let container = Self { buf };
+        container
+    }
+
+    /// Set the checksum value.
+    ///
+    /// # Panics
+    /// This function panics if `self.checksum_present()` and `self.routing_present()`
+    /// are both `false`.
+    #[inline]
+    pub fn set_checksum(&mut self, value: u16) {
+        assert!(self.checksum_present() || self.routing_present());
+        self.buf.chunk_mut()[4..6].copy_from_slice(&value.to_be_bytes());
+    }
+
+    /// Set the offset value.
+    ///
+    /// # Panics
+    /// This function panics if `self.checksum_present()` and `self.routing_present()`
+    /// are both `false`.
+    #[inline]
+    pub fn set_offset(&mut self, value: u16) {
+        assert!(self.checksum_present() || self.routing_present());
+        self.buf.chunk_mut()[6..8].copy_from_slice(&value.to_be_bytes());
+    }
+
+    /// Set the key value.
+    ///
+    /// # Panics
+    /// This function panics if `self.key_present()` is `false`.
+    #[inline]
+    pub fn set_key(&mut self, value: u32) {
+        assert!(self.key_present());
+        if (self.checksum_present() || self.routing_present()) {
+            self.buf.chunk_mut()[8..12].copy_from_slice(&value.to_be_bytes());
+        } else {
+            self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
+        }
+    }
+
+    /// Set the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()` is `false`.
+    #[inline]
+    pub fn set_sequence(&mut self, value: u32) {
+        assert!(self.sequence_present());
+
+        match (
+            (self.checksum_present() || self.routing_present()),
+            self.key_present(),
+        ) {
+            (false, false) => self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes()),
+            (true, false) | (false, true) => {
+                self.buf.chunk_mut()[8..12].copy_from_slice(&value.to_be_bytes());
+            }
+            (true, true) => self.buf.chunk_mut()[12..16].copy_from_slice(&value.to_be_bytes()),
+        }
+    }
+}
+%%
