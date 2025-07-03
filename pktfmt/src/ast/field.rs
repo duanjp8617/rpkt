@@ -32,7 +32,7 @@ impl Field {
         repr: Option<BuiltinTypes>,
         arg: Option<Arg>,
         default: Option<(DefaultVal, bool)>,
-        gen: Option<bool>
+        gen: Option<bool>,
     ) -> Result<Self, Error> {
         if bit == 0 || (bit > 64 && bit % 8 != 0) || (bit > MAX_MTU_IN_BYTES * 8) {
             // 1. bit size 0 is not allowed.
@@ -74,11 +74,11 @@ impl Field {
         if default_fix {
             // make sure that the default is not bool and byte array
             match &default {
-                DefaultVal::Bool(_) | DefaultVal::Bytes(_) => {
+                DefaultVal::Bytes(_) => {
                     // field error 7
                     return_err!(Error::field(
                         7,
-                        format!("default can not be fixed for bool value and byte array")
+                        format!("default can not be fixed for byte array")
                     ))
                 }
                 _ => {}
@@ -167,9 +167,7 @@ impl Field {
     fn infer_default_val(bit: u64, repr: &BuiltinTypes, arg: &Arg) -> DefaultVal {
         match repr {
             // Arg is is over-written with Bool, default to true
-            BuiltinTypes::U8 if arg == &Arg::BuiltinTypes(BuiltinTypes::Bool) => {
-                DefaultVal::Bool(bool::default())
-            }
+            BuiltinTypes::U8 if arg == &Arg::BuiltinTypes(BuiltinTypes::Bool) => DefaultVal::Num(0),
             // Arg is ByteSlice, default to Bytes.
             // The length of the bytes can be calculated as bit / 8
             BuiltinTypes::ByteSlice => {
@@ -193,13 +191,13 @@ impl Field {
             BuiltinTypes::U8 if arg == &Arg::BuiltinTypes(BuiltinTypes::Bool) => {
                 match &defined_default {
                     // Ok: Arg is is over-written with Bool, default could be bool
-                    DefaultVal::Bool(_) => Ok(defined_default),
+                    DefaultVal::Num(n) if *n <= 1 => Ok(defined_default),
                     _ => {
                         // field error 4
                         return_err!(Error::field(
                             4,
                             format!(
-                                "invalid default {} for boolean arg, should be true or false",
+                                "invalid default {} for boolean arg, should be 0 or 1",
                                 defined_default
                             )
                         ))

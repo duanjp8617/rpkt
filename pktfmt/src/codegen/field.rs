@@ -283,28 +283,22 @@ impl<'a> FieldSetMethod<'a> {
     pub fn write_as_arg(&self, target_slice: &str, write_value: &str, output: &mut dyn Write) {
         match &self.field.arg {
             Arg::BuiltinTypes(defined_arg) if *defined_arg != self.field.repr => {
-                // Generate a fast path method in case that
+                // Generate a special path method in case that
                 //`bit` is 1, `repr` is `U8` and `arg` is bool.
-                let start_byte_pos = self.start.byte_pos();
                 write!(
                     output,
-                    "if {write_value} {{
-{target_slice}[{start_byte_pos}]={target_slice}[{start_byte_pos}]|{}
-}} else {{
-{target_slice}[{start_byte_pos}]={target_slice}[{start_byte_pos}]&{}
-}}",
-                    ones_mask(
-                        7 - u64::from(self.start.bit_pos()),
-                        7 - u64::from(self.start.bit_pos())
-                    ),
-                    zeros_mask(
-                        7 - u64::from(self.start.bit_pos()),
-                        7 - u64::from(self.start.bit_pos())
-                    )
+                    "let {write_value} = if {write_value} {{ 1 }} else {{ 0 }};\n"
                 )
                 .unwrap();
+                if self.field.default_fix {
+                    let default_val = match self.field.default {
+                        DefaultVal::Num(n) => n,
+                        _ => panic!(),
+                    };
+                    write!(output, "assert!({write_value} == {});\n", default_val).unwrap();
+                }
 
-                // the fast path ends here
+                self.write_repr(target_slice, write_value, output);
                 return;
             }
             _ => {}
