@@ -44,11 +44,11 @@ impl<T: Buf> TcpPacket<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..20]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[20..header_len]
     }
@@ -141,7 +141,7 @@ impl<T: PktBufMut> TcpPacket<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[20..header_len]
     }
@@ -323,7 +323,7 @@ impl<T: Buf> EolMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..1]
     }
     #[inline]
@@ -416,7 +416,7 @@ impl<T: Buf> NopMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..1]
     }
     #[inline]
@@ -514,7 +514,7 @@ impl<T: Buf> MssMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]
@@ -640,7 +640,7 @@ impl<T: Buf> WsoptMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..3]
     }
     #[inline]
@@ -766,7 +766,7 @@ impl<T: Buf> SackpermMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..2]
     }
     #[inline]
@@ -884,11 +884,11 @@ impl<T: Buf> SackMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..2]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[2..header_len]
     }
@@ -921,7 +921,7 @@ impl<T: PktBufMut> SackMessage<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[2..header_len]
     }
@@ -1016,7 +1016,7 @@ impl<T: Buf> TsMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..10]
     }
     #[inline]
@@ -1153,7 +1153,7 @@ impl<T: Buf> FoMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..18]
     }
     #[inline]

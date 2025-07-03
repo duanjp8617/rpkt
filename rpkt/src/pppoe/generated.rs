@@ -41,7 +41,7 @@ impl<T: Buf> PPPoEPacket<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..6]
     }
     #[inline]
@@ -224,11 +224,11 @@ impl<T: Buf> PPPoETagMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[4..header_len]
     }
@@ -263,7 +263,7 @@ impl<T: PktBufMut> PPPoETagMessage<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[4..header_len]
     }

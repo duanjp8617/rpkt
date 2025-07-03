@@ -42,7 +42,7 @@ impl<T: Buf> ArpPacket<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..28]
     }
     #[inline]

@@ -37,7 +37,7 @@ impl<T: Buf> VlanPacket<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]
@@ -165,7 +165,7 @@ impl<T: Buf> VlanDot3Packet<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]

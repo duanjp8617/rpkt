@@ -80,34 +80,34 @@ fn pppoe_discovery_layer_parsing_test1() {
     let tag_msg = PPPoETagMessage::parse(payload).unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::SVC_NAME);
     assert_eq!(tag_msg.header_len(), 4);
-    assert_eq!(tag_msg.option_slice().len(), 0);
+    assert_eq!(tag_msg.var_header_slice().len(), 0);
 
     let tag_msg = PPPoETagMessage::parse(tag_msg.payload()).unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::HOST_UNIQ);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
     assert_eq!(
-        u32::from_be_bytes(tag_msg.option_slice().try_into().unwrap()),
+        u32::from_be_bytes(tag_msg.var_header_slice().try_into().unwrap()),
         0x64138518
     );
 
     let tag_msg = PPPoETagMessage::parse(tag_msg.payload()).unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_NAME);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
-    let s = String::from_utf8_lossy(tag_msg.option_slice());
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
+    let s = String::from_utf8_lossy(tag_msg.var_header_slice());
     assert_eq!(s, "BRAS");
 
     let tag_msg = PPPoETagMessage::parse(tag_msg.payload()).unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_COOKIE);
     assert_eq!(tag_msg.header_len(), 20);
-    assert_eq!(tag_msg.option_slice().len(), 16);
+    assert_eq!(tag_msg.var_header_slice().len(), 16);
     assert_eq!(
-        u64::from_be_bytes(tag_msg.option_slice()[0..8].try_into().unwrap()),
+        u64::from_be_bytes(tag_msg.var_header_slice()[0..8].try_into().unwrap()),
         0x3d0f0587062484f2
     );
     assert_eq!(
-        u64::from_be_bytes(tag_msg.option_slice()[8..16].try_into().unwrap()),
+        u64::from_be_bytes(tag_msg.var_header_slice()[8..16].try_into().unwrap()),
         0xdf32b9ddfd77bd5b
     );
 }
@@ -135,34 +135,34 @@ fn pppoe_discovery_layer_parsing_test2() {
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::SVC_NAME);
     assert_eq!(tag_msg.header_len(), 4);
-    assert_eq!(tag_msg.option_slice().len(), 0);
+    assert_eq!(tag_msg.var_header_slice().len(), 0);
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::HOST_UNIQ);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
     assert_eq!(
-        u32::from_be_bytes(tag_msg.option_slice().try_into().unwrap()),
+        u32::from_be_bytes(tag_msg.var_header_slice().try_into().unwrap()),
         0x64138518
     );
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_NAME);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
-    let s = String::from_utf8_lossy(tag_msg.option_slice());
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
+    let s = String::from_utf8_lossy(tag_msg.var_header_slice());
     assert_eq!(s, "BRAS");
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_COOKIE);
     assert_eq!(tag_msg.header_len(), 20);
-    assert_eq!(tag_msg.option_slice().len(), 16);
+    assert_eq!(tag_msg.var_header_slice().len(), 16);
     assert_eq!(
-        u64::from_le_bytes(tag_msg.option_slice()[0..8].try_into().unwrap()),
+        u64::from_le_bytes(tag_msg.var_header_slice()[0..8].try_into().unwrap()),
         0xf284240687050f3d
     );
     assert_eq!(
-        u64::from_le_bytes(tag_msg.option_slice()[8..16].try_into().unwrap()),
+        u64::from_le_bytes(tag_msg.var_header_slice()[8..16].try_into().unwrap()),
         0x5bbd77fdddb932df
     );
 
@@ -191,34 +191,34 @@ fn pppoe_discovery_layer_parsing_test3() {
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::SVC_NAME);
     assert_eq!(tag_msg.header_len(), 4);
-    assert_eq!(tag_msg.option_slice().len(), 0);
+    assert_eq!(tag_msg.var_header_slice().len(), 0);
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::HOST_UNIQ);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
     assert_eq!(
-        u32::from_be_bytes(tag_msg.option_slice().try_into().unwrap()),
+        u32::from_be_bytes(tag_msg.var_header_slice().try_into().unwrap()),
         0x64138518
     );
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_NAME);
     assert_eq!(tag_msg.header_len(), 8);
-    assert_eq!(tag_msg.option_slice().len(), 4);
-    let s = String::from_utf8_lossy(tag_msg.option_slice());
+    assert_eq!(tag_msg.var_header_slice().len(), 4);
+    let s = String::from_utf8_lossy(tag_msg.var_header_slice());
     assert_eq!(s, "BRAS");
 
     let tag_msg = iter.next().unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::AC_COOKIE);
     assert_eq!(tag_msg.header_len(), 20);
-    assert_eq!(tag_msg.option_slice().len(), 16);
+    assert_eq!(tag_msg.var_header_slice().len(), 16);
     assert_eq!(
-        u64::from_le_bytes(tag_msg.option_slice()[0..8].try_into().unwrap()),
+        u64::from_le_bytes(tag_msg.var_header_slice()[0..8].try_into().unwrap()),
         0xf284240687050f3d
     );
     assert_eq!(
-        u64::from_le_bytes(tag_msg.option_slice()[8..16].try_into().unwrap()),
+        u64::from_le_bytes(tag_msg.var_header_slice()[8..16].try_into().unwrap()),
         0x5bbd77fdddb932df
     );
 
@@ -236,17 +236,18 @@ fn pppoe_discovery_layer_creation_test() {
     let mut tag4 = PPPoETagMessage::prepend_header(pbuf, &PPPOETAG_HEADER_TEMPLATE, 20);
     tag4.set_type_(PPPoETagType::AC_COOKIE);
     assert_eq!(tag4.header_len(), 20);
-    tag4.option_slice_mut()[0..8].copy_from_slice(&(0xf284240687050f3d as u64).to_le_bytes());
-    tag4.option_slice_mut()[8..16].copy_from_slice(&(0x5bbd77fdddb932df as u64).to_le_bytes());
+    tag4.var_header_slice_mut()[0..8].copy_from_slice(&(0xf284240687050f3d as u64).to_le_bytes());
+    tag4.var_header_slice_mut()[8..16].copy_from_slice(&(0x5bbd77fdddb932df as u64).to_le_bytes());
 
     let mut tag3 = PPPoETagMessage::prepend_header(tag4.release(), &PPPOETAG_HEADER_TEMPLATE, 8);
     tag3.set_type_(PPPoETagType::AC_NAME);
     assert_eq!(tag3.header_len(), 8);
-    tag3.option_slice_mut().copy_from_slice("BRAS".as_bytes());
+    tag3.var_header_slice_mut()
+        .copy_from_slice("BRAS".as_bytes());
 
     let mut tag2 = PPPoETagMessage::prepend_header(tag3.release(), &PPPOETAG_HEADER_TEMPLATE, 8);
     tag2.set_type_(PPPoETagType::HOST_UNIQ);
-    tag2.option_slice_mut()
+    tag2.var_header_slice_mut()
         .copy_from_slice(&(0x64138518 as u32).to_be_bytes());
 
     let mut tag1 = PPPoETagMessage::prepend_header(tag2.release(), &PPPOETAG_HEADER_TEMPLATE, 4);

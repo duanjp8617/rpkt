@@ -39,7 +39,7 @@ impl<T: Buf> EtherPacket<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..14]
     }
     #[inline]
@@ -154,7 +154,7 @@ impl<T: Buf> EthDot3Packet<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..14]
     }
     #[inline]

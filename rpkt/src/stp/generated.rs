@@ -39,7 +39,7 @@ impl<T: Buf> StpTcnBpduMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]
@@ -156,7 +156,7 @@ impl<T: Buf> StpConfBpduMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..35]
     }
     #[inline]
@@ -444,7 +444,7 @@ impl<T: Buf> RstpConfBpduMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..36]
     }
     #[inline]
@@ -749,11 +749,11 @@ impl<T: Buf> MstpConfBpduMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..102]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[102..header_len]
     }
@@ -858,7 +858,7 @@ impl<T: PktBufMut> MstpConfBpduMessage<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[102..header_len]
     }
@@ -1231,7 +1231,7 @@ impl<T: Buf> MstiConfMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..16]
     }
     #[inline]

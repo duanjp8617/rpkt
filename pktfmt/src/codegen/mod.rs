@@ -184,8 +184,8 @@ impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
             parse.code_gen_for_pktbuf("parse", "buf", "T", impl_block.get_writer());
 
             // Fixed length header slice.
-            Container::code_gen_for_header_slice(
-                "header_slice",
+            Container::code_gen_for_fixed_header_slice(
+                "fix_header_slice",
                 "&",
                 ".buf.chunk()",
                 &format!("{}", self.item().header().header_len_in_bytes()),
@@ -213,8 +213,8 @@ impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
                     _ => {}
                 }
                 if do_generation {
-                    Container::code_gen_for_option_slice(
-                        "option_slice",
+                    Container::code_gen_for_variable_header_slice(
+                        "var_header_slice",
                         "&",
                         ".buf.chunk()",
                         &format!("{}", self.item().header().header_len_in_bytes()),
@@ -282,8 +282,8 @@ impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
                     _ => {}
                 }
                 if do_generation {
-                    Container::code_gen_for_option_slice(
-                        "option_slice_mut",
+                    Container::code_gen_for_variable_header_slice(
+                        "var_header_slice_mut",
                         "&mut ",
                         ".buf.chunk_mut()",
                         &format!("{}", self.item().header().header_len_in_bytes()),

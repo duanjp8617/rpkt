@@ -4,17 +4,22 @@ use crate::ether::EtherType;
 use crate::traits::*;
 %%
 
-packet GreBase {
+// The GRE protocol as defined in RFC 1701
+packet Gre {
     header = [
-        checksum_present = Field {bit = 1},
-        routing_present = Field {bit = 1},
-        key_present = Field {bit = 1},
-        sequence_present = Field {bit = 1},
-        strict_source_route = Field {bit = 1},
+        checksum_present = Field {bit = 1, arg=bool},
+        routing_present = Field {bit = 1, arg=bool},
+        key_present = Field {bit = 1, arg=bool},
+        sequence_present = Field {bit = 1, arg=bool},
+        strict_source_route = Field {bit = 1, arg=bool},
         recursion_control = Field {bit = 3},
-        flags = Field {bit = 5},
+        ack_present = Field {bit = 1, arg = bool},
+        flags = Field {bit = 4},
         version = Field {bit = 3},
         protocol_type = Field {bit = 16, arg = %%EtherType%%}
+    ],
+    length = [
+        header_len=
     ]
 }
 

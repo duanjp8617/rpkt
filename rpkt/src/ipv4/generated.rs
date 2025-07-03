@@ -47,11 +47,11 @@ impl<T: Buf> Ipv4Packet<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..20]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[20..header_len]
     }
@@ -148,7 +148,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[20..header_len]
     }
@@ -340,7 +340,7 @@ impl<T: Buf> EolMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..1]
     }
     #[inline]
@@ -433,7 +433,7 @@ impl<T: Buf> NopMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..1]
     }
     #[inline]
@@ -531,11 +531,11 @@ impl<T: Buf> TimestampMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[4..header_len]
     }
@@ -580,7 +580,7 @@ impl<T: PktBufMut> TimestampMessage<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[4..header_len]
     }
@@ -688,11 +688,11 @@ impl<T: Buf> RecordRouteMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..3]
     }
     #[inline]
-    pub fn option_slice(&self) -> &[u8] {
+    pub fn var_header_slice(&self) -> &[u8] {
         let header_len = (self.header_len() as usize);
         &self.buf.chunk()[3..header_len]
     }
@@ -729,7 +729,7 @@ impl<T: PktBufMut> RecordRouteMessage<T> {
         container
     }
     #[inline]
-    pub fn option_slice_mut(&mut self) -> &mut [u8] {
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[3..header_len]
     }
@@ -827,7 +827,7 @@ impl<T: Buf> RouteAlertMessage<T> {
         Ok(container)
     }
     #[inline]
-    pub fn header_slice(&self) -> &[u8] {
+    pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..4]
     }
     #[inline]

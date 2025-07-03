@@ -80,7 +80,7 @@ self.{buf_name}
         .unwrap();
     }
 
-    pub fn code_gen_for_header_slice(
+    pub fn code_gen_for_fixed_header_slice(
         method_name: &str,
         mutable_op: &str,
         buf_access: &str,
@@ -98,8 +98,8 @@ pub fn {method_name}({mutable_op}self) -> {mutable_op}[u8]{{
         .unwrap();
     }
 
-    // A generator for the option bytes.
-    pub fn code_gen_for_option_slice(
+    // A generator for accessing the variable part of the header.
+    pub fn code_gen_for_variable_header_slice(
         method_name: &str,
         mutable_op: &str,
         buf_access: &str,
