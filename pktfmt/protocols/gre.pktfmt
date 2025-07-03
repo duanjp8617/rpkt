@@ -6,7 +6,7 @@ use crate::cursors::*;
 use crate::ether::EtherType;
 use crate::traits::*;
 
-use super::gre_fixed_header_len;
+use super::{gre_header_len, gre_pptp_header_len};
 %%
 
 // The GRE protocol as defined in RFC1701
@@ -40,7 +40,7 @@ impl<T: Buf> GrePacket<T> {
     #[inline]
     pub fn header_len(&self) -> usize {
         let indicator = u16::from_be_bytes(self.buf.chunk()[..2].try_into().unwrap());
-        gre_fixed_header_len(indicator)
+        gre_header_len(indicator)
     }
 
     /// Return the checksum value.
@@ -169,3 +169,118 @@ impl<T: PktBufMut> GrePacket<T> {
     }
 }
 %%
+
+// The GRE packet that encapsulates a PPTP packet inside.
+packet GreForPPTP {
+    header = [
+        checksum_present = Field {bit = 1, arg=bool},
+        routing_present = Field {bit = 1, arg=bool},
+        key_present = Field {bit = 1, arg=bool, default=true},
+        sequence_present = Field {bit = 1, arg=bool},
+        strict_source_route = Field {bit = 1, arg=bool},
+        recursion_control = Field {bit = 3},
+        ack_present = Field{bit = 1, arg=bool},
+        flags = Field {bit = 4},
+        version = Field {bit = 3, default=@0},
+        protocol_type = Field {bit = 16, arg = %%EtherType%%},
+        key_payload_length = Field{bit = 16, gen = false},
+        key_call_id = Field{bit = 16}
+    ],
+    length = [
+        header_len=,
+        payload_len = key_payload_length
+    ]
+}
+
+%%
+impl<T: Buf> GreForPPTPPacket<T> {
+    /// Return the variable header length of Gre for PPTP protocol.
+    ///
+    /// The header length of gre is determined by the bit value in the
+    /// header, including the `sequence_present` bit and the `ack_present` bit.
+    ///
+    /// So be careful when setting these bits, as it may pollute the underlying
+    /// packet on the buffer.
+    #[inline]
+    pub fn header_len(&self) -> usize {
+        let indicator = u16::from_be_bytes(self.buf.chunk()[..2].try_into().unwrap());
+        gre_pptp_header_len(indicator)
+    }
+
+    /// Return the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()` is `false`.
+    #[inline]
+    pub fn sequence(&self) -> u32 {
+        assert!(self.sequence_present());
+        u32::from_be_bytes(self.buf.chunk()[8..12].try_into().unwrap())
+    }
+
+    /// Return the ack value.
+    ///
+    /// # Panics
+    /// This function panics if `self.ack_present()` is `false`.
+    #[inline]
+    pub fn ack(&self) -> u32 {
+        assert!(self.ack_present());
+
+        if self.sequence_present() {
+            u32::from_be_bytes(self.buf.chunk()[12..16].try_into().unwrap())
+        } else {
+            u32::from_be_bytes(self.buf.chunk()[8..12].try_into().unwrap())
+        }
+    }
+}
+
+impl<T: PktBufMut> GreForPPTPPacket<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
+        let header = GreForPPTPPacket::parse_unchecked(header.as_slice());
+        let header_len = header.header_len();
+        assert!(header_len <= buf.chunk_headroom());
+
+        let payload_len = buf.remaining();
+        assert!(payload_len <= 65535);
+
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(header.buf);
+        let mut container = Self { buf };
+        container.set_payload_len(payload_len as u16);
+
+        container
+    }
+
+    /// Set the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()` is `false`.
+    #[inline]
+    pub fn set_sequence(&mut self, value: u32) {
+        assert!(self.sequence_present());
+        self.buf.chunk_mut()[8..12].copy_from_slice(&value.to_be_bytes());
+    }
+
+    /// Set the ack value.
+    ///
+    /// # Panics
+    /// This function panics if `self.ack_present()` is `false`.
+    #[inline]
+    pub fn set_ack(&mut self, value: u32) {
+        assert!(self.ack_present());
+        if self.sequence_present() {
+            self.buf.chunk_mut()[12..16].copy_from_slice(&value.to_be_bytes());
+        } else {
+            self.buf.chunk_mut()[8..12].copy_from_slice(&value.to_be_bytes());
+        }
+    }
+}
+%%
+
+packet PPTP {
+    header = [
+        address = Field {bit = 8},
+        control = Field {bit = 8},
+        protocol = Field {bit = 16},
+    ]
+}
