@@ -1,0 +1,20 @@
+%%
+use crate::cursors::*;
+use crate::ether::EtherType;
+use crate::traits::*;
+%%
+
+packet GreBase {
+    header = [
+        checksum_present = Field {bit = 1},
+        routing_present = Field {bit = 1},
+        key_present = Field {bit = 1},
+        sequence_present = Field {bit = 1},
+        strict_source_route = Field {bit = 1},
+        recursion_control = Field {bit = 3},
+        flags = Field {bit = 5},
+        version = Field {bit = 3},
+        protocol_type = Field {bit = 16, arg = %%EtherType%%}
+    ]
+}
+

@@ -2,46 +2,16 @@ use crate::cursors::*;
 use crate::ether::EtherType;
 use crate::traits::*;
 
-mod generated;
-pub use generated::{GREBASE_HEADER_LEN, GREBASE_HEADER_TEMPLATE};
-
-// From left to right, we have 16 bits:
-// checksum (1)
-// routing (1)
-// key (1)
-// sequence number (1)
-// strict source route (1)
-// recursion control (3)
-// ack (1)
-// flags (4)
-// verison (3)
-#[inline]
-fn gre_fixed_header_len(indicator_field: u16) -> usize {
-    let options = [
-        // checksum
-        ((indicator_field & (1 << 15) != 0) | (indicator_field & (1 << 14) != 0)),
-        // key
-        indicator_field & (1 << 13) != 0,
-        // seq
-        indicator_field & (1 << 12) != 0,
-        // ack
-        indicator_field & (1 << 7) != 0,
-    ];
-
-    4 + options.iter().fold(0, |mut aggre, item| {
-        if *item {
-            aggre += 4;
-        }
-        aggre
-    })
-}
+/// A constant that defines the fixed byte length of the GreBase protocol header.
+pub const GREBASE_HEADER_LEN: usize = 4;
+/// A fixed GreBase header.
+pub const GREBASE_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct Gre<T> {
+pub struct GreBasePacket<T> {
     buf: T,
 }
-
-impl<T: Buf> Gre<T> {
+impl<T: Buf> GreBasePacket<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -58,11 +28,6 @@ impl<T: Buf> Gre<T> {
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
-            return Err(buf);
-        }
-        let gre_header_len =
-            gre_fixed_header_len(u16::from_be_bytes(buf.chunk()[0..2].try_into().unwrap()));
-        if gre_header_len < chunk_len {
             return Err(buf);
         }
         let container = Self { buf };
