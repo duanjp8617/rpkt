@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::ast::{BitPos, DefaultVal, Field, LengthField, Message, ProtoInfo};
+use crate::ast::{BitPos, DefaultVal, Field, LengthField, Packet};
 
 mod container;
 use container::*;
@@ -80,12 +80,12 @@ fn guard_assert_str(guards: &Vec<String>, comp: &str) -> String {
     }
 }
 
-pub struct HeaderGen<'a, T> {
-    item: &'a T,
+pub struct HeaderGen<'a> {
+    item: &'a Packet,
 }
 
-impl<'a, T: ProtoInfo> HeaderGen<'a, T> {
-    pub fn new(item: &'a T) -> Self {
+impl<'a> HeaderGen<'a> {
+    pub fn new(item: &'a Packet) -> Self {
         Self { item }
     }
 
@@ -144,12 +144,12 @@ pub const {}: usize = {header_len};
 }
 
 /// Packet type generator.
-pub struct PktMsgGen<'a, T> {
-    header_gen: &'a HeaderGen<'a, T>,
+pub struct PktGen<'a> {
+    header_gen: &'a HeaderGen<'a>,
 }
 
-impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
-    pub fn new(header_gen: &'a HeaderGen<'a, T>) -> Self {
+impl<'a> PktGen<'a> {
+    pub fn new(header_gen: &'a HeaderGen<'a>) -> Self {
         Self { header_gen }
     }
 
@@ -374,29 +374,31 @@ impl<'a, T: ProtoInfo> PktMsgGen<'a, T> {
         }
     }
 
-    fn item(&self) -> &'a T {
+    fn item(&self) -> &'a Packet {
         &self.header_gen.item
     }
 }
 
-pub struct GroupMessageGen<'a> {
-    pub group_message_name: String,
+pub struct PacketGroupGen<'a> {
+    pub group_name: String,
     pub cond_field: Field,
     pub cond_pos: BitPos,
-    pub msgs: Vec<&'a Message>,
+    pub pkts: Vec<&'a Packet>,
+    pub _gen_iter: bool,
 }
 
-impl<'a> GroupMessageGen<'a> {
-    pub fn new(defined_name: &str, msgs: &Vec<&'a Message>) -> Self {
-        let msg = msgs[0];
+impl<'a> PacketGroupGen<'a> {
+    pub fn new(defined_name: &str, pkts: &Vec<&'a Packet>, _gen_iter: bool) -> Self {
+        let pkt = pkts[0];
 
-        if let Some(cond) = msg.cond() {
-            let (field, pos) = msg.header().field(cond.field_name()).unwrap();
+        if let Some(cond) = pkt.cond() {
+            let (field, pos) = pkt.header().field(cond.field_name()).unwrap();
             Self {
-                group_message_name: defined_name.to_string() + "Group",
+                group_name: defined_name.to_string() + "Group",
                 cond_field: field.clone(),
                 cond_pos: pos,
-                msgs: msgs.clone(),
+                pkts: pkts.clone(),
+                _gen_iter,
             }
         } else {
             panic!()
@@ -404,12 +406,11 @@ impl<'a> GroupMessageGen<'a> {
     }
 
     pub fn code_gen(&self, mut output: &mut dyn Write) {
-        if self.msgs.len() > 1 {
-            self.code_gen_for_enum(&self.group_message_name, "T", output);
+        if self.pkts.len() > 1 {
+            self.code_gen_for_enum(&self.group_name, "T", output);
 
             {
-                let mut impl_block =
-                    impl_block("T:Buf", &self.group_message_name, "T", &mut output);
+                let mut impl_block = impl_block("T:Buf", &self.group_name, "T", &mut output);
 
                 self.code_gen_for_grouped_parse(
                     "group_parse",
@@ -420,9 +421,13 @@ impl<'a> GroupMessageGen<'a> {
                 );
             }
 
-            self.code_gen_for_multiple_msgs(output);
+            if self._gen_iter {
+                self.code_gen_for_multiple_pkts(output);
+            }
         } else {
-            self.code_gen_for_single_msg(output);
+            if self._gen_iter {
+                self.code_gen_for_single_pkt(output);
+            }
         }
     }
 
@@ -432,7 +437,7 @@ impl<'a> GroupMessageGen<'a> {
             "#[derive(Debug)]\npub enum {enum_name}<{buf_type}> {{\n"
         )
         .unwrap();
-        for msg in self.msgs.iter() {
+        for msg in self.pkts.iter() {
             let msg_name = msg.protocol_name().to_string();
             write!(
                 output,
@@ -458,20 +463,20 @@ impl<'a> GroupMessageGen<'a> {
         )
         .unwrap();
 
-        let on_msg = |msg: &Message, output: &mut dyn Write| {
+        let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
             // Write out the matched condition.
-            let mut compared_values = (*msg).cond().as_ref().unwrap().compared_values().iter();
+            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
             write!(output, "{}", compared_values.next().unwrap()).unwrap();
             compared_values.for_each(|value| write!(output, "| {value}").unwrap());
             write!(output, "=> {{\n").unwrap();
 
-            // Try to parse the buf into the corresponding message.
-            let msg_strut_name = msg.generated_struct_name();
+            // Try to parse the buf into the corresponding packet.
+            let pkt_strut_name = pkt.generated_struct_name();
             write!(
                 output,
-                "{msg_strut_name}::parse({buf_name}).map(|msg| {}::{}_(msg))\n",
-                &self.group_message_name,
-                msg.protocol_name()
+                "{pkt_strut_name}::parse({buf_name}).map(|pkt| {}::{}_(pkt))\n",
+                &self.group_name,
+                pkt.protocol_name()
             )
             .unwrap();
 
@@ -482,31 +487,31 @@ impl<'a> GroupMessageGen<'a> {
             output,
             buf_name,
             buf_access,
-            on_msg,
+            on_pkt,
             &format!("Err({buf_name})"),
         );
 
         write!(output, "}}\n").unwrap();
     }
 
-    fn code_gen_for_single_msg(&self, output: &mut dyn Write) {
-        // Get the msg used for generating the iterator
-        let msg = self.msgs.iter().next().unwrap();
-        let msg_struct_name = msg.generated_struct_name();
+    fn code_gen_for_single_pkt(&self, output: &mut dyn Write) {
+        // Get the pkt used for generating the iterator
+        let pkt = self.pkts.iter().next().unwrap();
+        let pkt_struct_name = pkt.generated_struct_name();
 
-        boilerplate_codegen(&msg_struct_name, output);
+        boilerplate_codegen(&pkt_struct_name, output);
 
         // Generate imutable iterator impl.
         write!(
             output,
-            "impl<'a> Iterator for {msg_struct_name}Iter<'a> {{
-type Item = {msg_struct_name}<Cursor<'a>>;
+            "impl<'a> Iterator for {pkt_struct_name}Iter<'a> {{
+type Item = {pkt_struct_name}<Cursor<'a>>;
 fn next(&mut self) -> Option<Self::Item> {{
-{msg_struct_name}::parse(self.buf).map(|msg|{{
+{pkt_struct_name}::parse(self.buf).map(|pkt|{{
 "
         )
         .unwrap();
-        iter_parse_for_msg(&msg, "msg", output);
+        iter_parse_for_pkt(&pkt, "pkt", output);
         write!(
             output,
             "result
@@ -518,15 +523,15 @@ fn next(&mut self) -> Option<Self::Item> {{
         // Gnerate mutable iterator impl.
         write!(
             output,
-            "impl<'a> Iterator for {msg_struct_name}IterMut<'a> {{
-type Item = {msg_struct_name}<CursorMut<'a>>;
+            "impl<'a> Iterator for {pkt_struct_name}IterMut<'a> {{
+type Item = {pkt_struct_name}<CursorMut<'a>>;
 fn next(&mut self) -> Option<Self::Item> {{
-match {msg_struct_name}::parse(&self.buf[..]) {{
-Ok(msg) => {{
+match {pkt_struct_name}::parse(&self.buf[..]) {{
+Ok(pkt) => {{
 "
         )
         .unwrap();
-        iter_mut_parse_for_msg(&msg, "msg", output);
+        iter_mut_parse_for_pkt(&pkt, "pkt", output);
         write!(
             output,
             "Some(result)
@@ -538,9 +543,9 @@ Err(_)=> None
         .unwrap();
     }
 
-    fn code_gen_for_multiple_msgs(&self, output: &mut dyn Write) {
-        // Get the msg used for generating the iterator
-        let group_struct_name = &self.group_message_name;
+    fn code_gen_for_multiple_pkts(&self, output: &mut dyn Write) {
+        // Get the pkt used for generating the iterator
+        let group_struct_name = &self.group_name;
 
         boilerplate_codegen(group_struct_name, output);
 
@@ -554,29 +559,29 @@ fn next(&mut self) -> Option<Self::Item> {{
         )
         .unwrap();
 
-        let on_msg = |msg: &Message, output: &mut dyn Write| {
-            let mut compared_values = (*msg).cond().as_ref().unwrap().compared_values().iter();
+        let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
+            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
             write!(output, "{}", compared_values.next().unwrap()).unwrap();
             compared_values.for_each(|value| write!(output, "| {value}").unwrap());
             write!(output, "=> {{\n").unwrap();
             write!(
                 output,
-                "{}::parse(self.buf).map(|_msg|{{\n",
-                msg.generated_struct_name()
+                "{}::parse(self.buf).map(|_pkt|{{\n",
+                pkt.generated_struct_name()
             )
             .unwrap();
-            iter_parse_for_msg(&msg, "_msg", output);
+            iter_parse_for_pkt(&pkt, "_pkt", output);
             write!(
                 output,
                 "{group_struct_name}::{}_(result)\n }} ).ok()",
-                msg.protocol_name()
+                pkt.protocol_name()
             )
             .unwrap();
             // The match arm ending brackets
             write!(output, "}}\n").unwrap();
         };
 
-        self.parse_buffer(output, "self.buf", "", on_msg, "None");
+        self.parse_buffer(output, "self.buf", "", on_pkt, "None");
 
         // the function and the impl closing brackets.
         write!(output, "}}\n}}\n").unwrap();
@@ -591,8 +596,8 @@ fn next(&mut self) -> Option<Self::Item> {{
         )
         .unwrap();
 
-        let on_msg = |msg: &Message, output: &mut dyn Write| {
-            let mut compared_values = (*msg).cond().as_ref().unwrap().compared_values().iter();
+        let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
+            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
             write!(output, "{}", compared_values.next().unwrap()).unwrap();
             compared_values.for_each(|value| write!(output, "| {value}").unwrap());
             write!(output, "=> {{\n").unwrap();
@@ -600,22 +605,22 @@ fn next(&mut self) -> Option<Self::Item> {{
             write!(
                 output,
                 "match {}::parse(&self.buf[..]) {{\n",
-                msg.generated_struct_name()
+                pkt.generated_struct_name()
             )
             .unwrap();
-            write!(output, "Ok(_msg) => {{\n").unwrap();
-            iter_mut_parse_for_msg(&msg, "_msg", output);
+            write!(output, "Ok(_pkt) => {{\n").unwrap();
+            iter_mut_parse_for_pkt(&pkt, "_pkt", output);
             write!(
                 output,
                 "Some({group_struct_name}::{}_(result))\n}}\n",
-                msg.protocol_name()
+                pkt.protocol_name()
             )
             .unwrap();
             write!(output, "Err(_) => None").unwrap();
             write!(output, "}}\n}}\n").unwrap();
         };
 
-        self.parse_buffer(output, "self.buf", "", on_msg, "None");
+        self.parse_buffer(output, "self.buf", "", on_pkt, "None");
 
         // the function and the impl closing brackets.
         write!(output, "}}\n}}\n").unwrap();
@@ -627,7 +632,7 @@ fn next(&mut self) -> Option<Self::Item> {{
         output: &mut dyn Write,
         buf_name: &str,
         buf_access: &str,
-        mut handle_msg: impl FnMut(&Message, &mut dyn Write),
+        mut handle_pkt: impl FnMut(&Packet, &mut dyn Write),
         parse_error: &str,
     ) {
         // First, make sure that we can access the cond field from the buffer
@@ -648,8 +653,8 @@ fn next(&mut self) -> Option<Self::Item> {{
 
         // For each message, perform the corresponding action defined by the closure.
         write!(output, "match cond_value {{\n").unwrap();
-        for msg in self.msgs.iter() {
-            handle_msg(msg, output);
+        for pkt in self.pkts.iter() {
+            handle_pkt(pkt, output);
         }
         write!(output, "_ => {parse_error}").unwrap();
 

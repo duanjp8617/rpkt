@@ -17,67 +17,17 @@ pub use length::*;
 mod cond;
 pub use cond::*;
 
-pub trait ProtoInfo {
-    fn protocol_name(&self) -> &str;
-    fn header(&self) -> &Header;
-    fn length(&self) -> &Length;
-    fn header_template(&self) -> &[u8];
-    fn generated_struct_name(&self) -> String;
-}
-
 /// The top level ast type for the packet definition.
 #[derive(Debug)]
 pub struct Packet {
     protocol_name: String,
     header: Header,
     length: Length,
+    cond: Option<Cond>,
+    _gen_iter: bool,
 }
 
 impl Packet {
-    pub fn new(protocol_name: &str, header: header::Header, length: length::Length) -> Self {
-        Self {
-            protocol_name: protocol_name.to_string(),
-            header,
-            length,
-        }
-    }
-}
-
-impl ProtoInfo for Packet {
-    fn protocol_name(&self) -> &str {
-        &self.protocol_name
-    }
-
-    fn header(&self) -> &Header {
-        &self.header
-    }
-
-    fn length(&self) -> &Length {
-        &self.length
-    }
-
-    fn header_template(&self) -> &[u8] {
-        self.header.header_template()
-    }
-
-    fn generated_struct_name(&self) -> String {
-        self.protocol_name().to_owned() + "Packet"
-    }
-}
-
-/// Top level ast type for message definition.
-///
-/// It is basically the same as `Packet`, except that it carries
-/// a conditional field.
-#[derive(Debug)]
-pub struct Message {
-    protocol_name: String,
-    header: Header,
-    length: Length,
-    cond: Option<Cond>,
-}
-
-impl Message {
     pub fn new(
         protocol_name: &str,
         header: header::Header,
@@ -89,53 +39,57 @@ impl Message {
             header,
             length,
             cond,
+            _gen_iter: false,
         }
+    }
+
+    pub fn protocol_name(&self) -> &str {
+        &self.protocol_name
+    }
+
+    pub fn header(&self) -> &Header {
+        &self.header
+    }
+
+    pub fn length(&self) -> &Length {
+        &self.length
     }
 
     pub fn cond(&self) -> &Option<Cond> {
         &self.cond
     }
-}
 
-impl ProtoInfo for Message {
-    fn protocol_name(&self) -> &str {
-        &self.protocol_name
-    }
-
-    fn header(&self) -> &Header {
-        &self.header
-    }
-
-    fn length(&self) -> &Length {
-        &self.length
-    }
-
-    fn header_template(&self) -> &[u8] {
+    pub fn header_template(&self) -> &[u8] {
         self.header.header_template()
     }
 
-    fn generated_struct_name(&self) -> String {
-        self.protocol_name().to_owned() + "Message"
+    pub fn generated_struct_name(&self) -> String {
+        self.protocol_name().to_owned() + "Packet"
     }
 }
 
 #[derive(Debug)]
-pub struct MessageGroupName {
+pub struct PacketGroup {
     name: String,
-    msg_names: Vec<String>,
+    pkts: Vec<String>,
+    _gen_iter: bool,
 }
 
-impl MessageGroupName {
-    pub fn new(name: String, msg_names: Vec<String>) -> Self {
-        Self { name, msg_names }
+impl PacketGroup {
+    pub fn new(name: String, pkts: Vec<String>) -> Self {
+        Self {
+            name,
+            pkts,
+            _gen_iter: true,
+        }
     }
 
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn msg_names(&self) -> &Vec<String> {
-        &self.msg_names
+    pub fn packets(&self) -> &Vec<String> {
+        &self.pkts
     }
 }
 
@@ -248,14 +202,13 @@ pub(crate) fn max_value(bit: u64) -> Option<u64> {
 /// The core items that are used for code generation.
 pub enum ParsedItem {
     Packet_(Packet),
-    Message_(Message),
-    MessageGroupName_(MessageGroupName),
+    PacketGroup_(PacketGroup),
 }
 
 /// The top-level ast node produced by the parser.
 pub struct TopLevel<'a> {
     items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
-    msg_groups: HashMap<&'a str, Vec<&'a Message>>,
+    pkt_groups: HashMap<&'a str, (Vec<&'a Packet>, bool)>,
 }
 
 impl<'a> TopLevel<'a> {
@@ -263,19 +216,18 @@ impl<'a> TopLevel<'a> {
         parsed_items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
     ) -> Result<Self, (Error, (usize, usize))> {
         let mut all_names = HashSet::new();
-        let mut all_msgs = HashMap::new();
-        let mut msg_groups = Vec::new();
+        let mut all_pkts = HashMap::new();
+        let mut pkt_groups = Vec::new();
 
         for ((parsed_item, span), _) in parsed_items.iter() {
             let name = match parsed_item {
-                ParsedItem::Packet_(p) => p.protocol_name(),
-                ParsedItem::Message_(m) => {
-                    all_msgs.insert(m.protocol_name(), m);
-                    m.protocol_name()
+                ParsedItem::Packet_(p) => {
+                    all_pkts.insert(p.protocol_name(), p);
+                    p.protocol_name()
                 }
-                ParsedItem::MessageGroupName_(mg) => {
-                    msg_groups.push((mg, span));
-                    mg.name()
+                ParsedItem::PacketGroup_(pg) => {
+                    pkt_groups.push((pg, span));
+                    pg.name()
                 }
             };
             if all_names.contains(name) {
@@ -291,14 +243,14 @@ impl<'a> TopLevel<'a> {
         }
 
         let mut resulting_map = HashMap::new();
-        for (mg, span) in msg_groups {
-            let msgs = Self::check_msg_group(mg, &all_msgs).map_err(|err| (err, *span))?;
-            resulting_map.insert(mg.name(), msgs);
+        for (pg, span) in pkt_groups {
+            let pkts = Self::check_pkt_group(pg, &all_pkts).map_err(|err| (err, *span))?;
+            resulting_map.insert(pg.name(), (pkts, pg._gen_iter));
         }
 
         Ok(Self {
             items: parsed_items,
-            msg_groups: resulting_map,
+            pkt_groups: resulting_map,
         })
     }
 
@@ -306,56 +258,55 @@ impl<'a> TopLevel<'a> {
         self.items.iter().map(|t| (&t.0 .0, &t.1))
     }
 
-    pub fn msg_group(&self, msg_group_name: &'a str) -> Option<&Vec<&'a Message>> {
-        self.msg_groups.get(msg_group_name)
+    pub fn pkt_group(&self, pkt_group_name: &'a str) -> Option<(&Vec<&'a Packet>, bool)> {
+        self.pkt_groups.get(pkt_group_name).map(|t| (&t.0, t.1))
     }
 
-    fn check_msg_group(
-        mg: &MessageGroupName,
-        msgs: &HashMap<&'a str, &'a Message>,
-    ) -> Result<Vec<&'a Message>, Error> {
-        let mut names_iter = mg.msg_names.iter();
+    fn check_pkt_group(
+        pg: &PacketGroup,
+        pkts: &HashMap<&'a str, &'a Packet>,
+    ) -> Result<Vec<&'a Packet>, Error> {
+        let mut names_iter = pg.pkts.iter();
 
-        let Some(first_msg_name) = names_iter.next() else {
+        let Some(first_pkt_name) = names_iter.next() else {
             panic!()
         };
-        let first_msg = msgs.get(&(*first_msg_name)[..]).ok_or(Error::top_level(
+        let first_pkt = pkts.get(&(*first_pkt_name)[..]).ok_or(Error::top_level(
             3,
-            format!("message {first_msg_name} is not defined"),
+            format!("packet {first_pkt_name} is not defined"),
         ))?;
-        let first_cond = first_msg.cond().as_ref().ok_or(Error::top_level(
+        let first_cond = first_pkt.cond().as_ref().ok_or(Error::top_level(
             4,
-            format!("cond of message {first_msg_name} is not defined"),
+            format!("cond of packet {first_pkt_name} is not defined"),
         ))?;
 
         let mut name_dedup = HashSet::new();
-        name_dedup.insert(&(*first_msg_name)[..]);
-        let (target_field, target_pos) = first_msg.header().field(first_cond.field_name()).unwrap();
-        let mut result_vec = vec![*first_msg];
+        name_dedup.insert(&(*first_pkt_name)[..]);
+        let (target_field, target_pos) = first_pkt.header().field(first_cond.field_name()).unwrap();
+        let mut result_vec = vec![*first_pkt];
         let mut compared_values_dedup: HashSet<u64, RandomState> =
             HashSet::from_iter(first_cond.compared_values().iter().map(|val| *val));
 
         for name in names_iter {
-            // 1. the names of the `mg` should not be duplicated.
+            // 1. the packet names contained in the packet group should not be duplicated.
             if name_dedup.contains(&(*name)[..]) {
-                return_err!(Error::top_level(2, format!("message {name} appears twice")))
+                return_err!(Error::top_level(2, format!("packet {name} appears twice")))
             }
             name_dedup.insert(&(*name)[..]);
 
-            // 2. Each message name contained in the message group should be defined.
-            let subsequent_msg = msgs.get(&(*name)[..]).ok_or(Error::top_level(
-                3,
-                format!("message {name} is not defined"),
-            ))?;
+            // 2. Each packet name must relate to a defined packet.
+            let subsequent_pkt = pkts
+                .get(&(*name)[..])
+                .ok_or(Error::top_level(3, format!("packet {name} is not defined")))?;
 
-            // 3. Each message should has a valid cond.
-            let subsequent_cond = subsequent_msg.cond().as_ref().ok_or(Error::top_level(
+            // 3. Each packet should has a valid cond.
+            let subsequent_cond = subsequent_pkt.cond().as_ref().ok_or(Error::top_level(
                 4,
-                format!("cond of message {name} is not defined"),
+                format!("cond of packet {name} is not defined"),
             ))?;
 
             // 4. the position, bit size, repr of the cond field should be the same
-            let (cond_field, cond_pos) = subsequent_msg
+            let (cond_field, cond_pos) = subsequent_pkt
                 .header()
                 .field(subsequent_cond.field_name())
                 .unwrap();
@@ -364,7 +315,7 @@ impl<'a> TopLevel<'a> {
                 || (cond_field.repr != target_field.repr)
             {
                 return_err!(
-                    Error::top_level(5, format!("the cond field of message {name} is not the same as that of message {first_msg_name}")))
+                    Error::top_level(5, format!("the cond field of packet {name} is not the same as that of packet {first_pkt_name}")))
             }
 
             // 5. the compared value should not be the same.
@@ -378,7 +329,21 @@ impl<'a> TopLevel<'a> {
                 compared_values_dedup.insert(*compared_value);
             }
 
-            result_vec.push(*subsequent_msg);
+            result_vec.push(*subsequent_pkt);
+        }
+
+        if pg._gen_iter {
+            // 6. make sure that all the packets do not have variable payload/packet length
+            for pkt in result_vec.iter() {
+                if !matches!(pkt.length().at(1), LengthField::None)
+                    || !matches!(pkt.length().at(2), LengthField::None)
+                {
+                    return_err!(Error::top_level(
+                        7,
+                        format!("can not generate iterator for packet group {} because packet {} has variable payload/packet length", &pg.name, &pkt.protocol_name)
+                    ))
+                }
+            }
         }
 
         Ok(result_vec)

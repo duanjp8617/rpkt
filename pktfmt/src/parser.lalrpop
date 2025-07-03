@@ -4,7 +4,7 @@ use lalrpop_util::ParseError;
 
 use crate::ast::{
     Field, BuiltinTypes, Arg, DefaultVal, Header, AlgOp, AlgExpr, parse_to_byte_val, 
-    LengthField, Length, Packet, Message, Cond, MessageGroupName, ParsedItem
+    LengthField, Length, Packet, Cond, PacketGroup, ParsedItem
 };
 use crate::utils::{Spanned, Error};
 use crate::token::Token;
@@ -295,31 +295,13 @@ pub Packet: Packet = {
     "packet" <name: "ident"> "{"
         <header: Header>
         <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
-        ","?
-    "}" =>? {
-        let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
-            (vec![LengthField::None, LengthField::None, LengthField::None], (0,0))
-        );
-        let length = Length::from_packet_length(length_fields, &header).map_err(|err| {            
-            let error = Error::Ast{err, span};
-            ParseError::User{ error }
-        })?;
-
-        Ok(Packet::new(name, header, length))
-    }
-}
-
-pub Message: Message = {
-    "message" <name: "ident"> "{"
-        <header: Header>
-        <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
         <cond_field_with_pos_opt: ("," <CondFieldList>)?>
         ","?
     "}" =>? {
         let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
             (vec![LengthField::None, LengthField::None, LengthField::None], (0,0))
         );
-        let length = Length::from_message_length(length_fields, &header).map_err(|err| {            
+        let length = Length::from_packet_length(length_fields, &header).map_err(|err| {            
             let error = Error::Ast{err, span};
             ParseError::User{ error }
         })?;
@@ -335,17 +317,17 @@ pub Message: Message = {
             }
         };
 
-        Ok(Message::new(name, header, length, cond_opt))
+        Ok(Packet::new(name, header, length, cond_opt))
     }
 }
 
-pub MessageGroupName: MessageGroupName = {
+pub PacketGroup: PacketGroup = {
     "message_group" <name: "ident"> "=" "["
         <first_name: "ident"> 
         <subsequent_names: ("," <"ident">)*>
         ","?
     "]" => {
-        MessageGroupName::new(name.to_string(),  vec![first_name.to_string()].into_iter().chain(subsequent_names.into_iter().map(|s| s.to_string())).collect())
+        PacketGroup::new(name.to_string(),  vec![first_name.to_string()].into_iter().chain(subsequent_names.into_iter().map(|s| s.to_string())).collect())
     }
 }
 
@@ -353,11 +335,8 @@ pub ParsedItem: (ParsedItem, (usize, usize)) = {
     <l: @L> <packet: Packet> <r: @R> => {
         (ParsedItem::Packet_(packet), (l,r))
     },
-    <l: @L> <message: Message> <r: @R> => {
-        (ParsedItem::Message_(message), (l,r))
-    },
-    <l: @L> <message_group_name: MessageGroupName> <r: @R> => {
-        (ParsedItem::MessageGroupName_(message_group_name), (l,r))
+    <l: @L> <message_group_name: PacketGroup> <r: @R> => {
+        (ParsedItem::PacketGroup_(message_group_name), (l,r))
     }
 }
 

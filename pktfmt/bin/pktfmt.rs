@@ -100,20 +100,13 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
                 let header = codegen::HeaderGen::new(p);
                 header.code_gen(&mut output_f);
                 writeln!(&mut output_f, "").unwrap();
-                let packet = codegen::PktMsgGen::new(&header);
+                let packet = codegen::PktGen::new(&header);
                 packet.code_gen(&mut output_f);
             }
-            ast::ParsedItem::Message_(m) => {
-                let header = codegen::HeaderGen::new(m);
-                header.code_gen(&mut output_f);
-                writeln!(&mut output_f, "").unwrap();
-                let message = codegen::PktMsgGen::new(&header);
-                message.code_gen(&mut output_f);
-            }
-            ast::ParsedItem::MessageGroupName_(mg) => {
+            ast::ParsedItem::PacketGroup_(mg) => {
                 let defined_name = mg.name();
-                let msgs = top_level.msg_group(defined_name).unwrap();
-                let message_group = codegen::GroupMessageGen::new(defined_name, msgs);
+                let (msgs, iter_gen) = top_level.pkt_group(defined_name).unwrap();
+                let message_group = codegen::PacketGroupGen::new(defined_name, msgs, iter_gen);
                 message_group.code_gen(&mut output_f);
             }
         }
