@@ -12,7 +12,7 @@ use super::{gre_header_len, gre_pptp_header_len};
 // The GRE protocol as defined in RFC1701
 packet Gre {
     header = [
-        checksum_present = Field {bit = 1, arg=bool},
+        checksum_present = Field {bit = 1},
         routing_present = Field {bit = 1, arg=bool},
         key_present = Field {bit = 1, arg=bool},
         sequence_present = Field {bit = 1, arg=bool},
