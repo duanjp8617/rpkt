@@ -64,7 +64,7 @@ impl Packet {
     }
 
     pub fn generated_struct_name(&self) -> String {
-        self.protocol_name().to_owned() + "Packet"
+        self.protocol_name().to_owned()
     }
 }
 

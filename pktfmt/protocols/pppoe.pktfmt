@@ -22,7 +22,7 @@ packet PPPoE {
 }
 
 %%
-impl<T: PktBuf> PPPoEPacket<T> {
+impl<T: PktBuf> PPPoE<T> {
     /// Get PPP session's payload type and payload buffer from a PPPoE packet.
     ///
     /// The returned packet buffer only contains the PPP session payload, the
@@ -41,7 +41,7 @@ impl<T: PktBuf> PPPoEPacket<T> {
     }
 }
 
-impl<T: PktBufMut> PPPoEPacket<T> {
+impl<T: PktBufMut> PPPoE<T> {
     /// Prepend the payload type to the start of the payload buffer.
     ///
     /// The returned packet buffer contains the actual PPPoE session payload,
@@ -58,7 +58,7 @@ impl<T: PktBufMut> PPPoEPacket<T> {
 }
 %%
 
-message PPPoETag {
+packet PPPoETag {
     header = [
         type_ = Field{bit = 16, arg=%%PPPoETagType%%, default=0},
         len = Field{bit = 16, default=4, gen = false}

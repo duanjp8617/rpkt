@@ -12,10 +12,10 @@ pub const PPPOE_HEADER_LEN: usize = 6;
 pub const PPPOE_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PPPoEPacket<T> {
+pub struct PPPoE<T> {
     buf: T,
 }
-impl<T: Buf> PPPoEPacket<T> {
+impl<T: Buf> PPPoE<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -65,7 +65,7 @@ impl<T: Buf> PPPoEPacket<T> {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> PPPoEPacket<T> {
+impl<T: PktBuf> PPPoE<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!(6 + self.payload_len() as usize <= self.buf.remaining());
@@ -78,7 +78,7 @@ impl<T: PktBuf> PPPoEPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> PPPoEPacket<T> {
+impl<T: PktBufMut> PPPoE<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
         assert!(buf.chunk_headroom() >= 6);
@@ -113,7 +113,7 @@ impl<T: PktBufMut> PPPoEPacket<T> {
         (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> PPPoEPacket<Cursor<'a>> {
+impl<'a> PPPoE<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -132,7 +132,7 @@ impl<'a> PPPoEPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[6..(6 + payload_len)])
     }
 }
-impl<'a> PPPoEPacket<CursorMut<'a>> {
+impl<'a> PPPoE<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -152,7 +152,7 @@ impl<'a> PPPoEPacket<CursorMut<'a>> {
     }
 }
 
-impl<T: PktBuf> PPPoEPacket<T> {
+impl<T: PktBuf> PPPoE<T> {
     /// Get PPP session's payload type and payload buffer from a PPPoE packet.
     ///
     /// The returned packet buffer only contains the PPP session payload, the
@@ -171,7 +171,7 @@ impl<T: PktBuf> PPPoEPacket<T> {
     }
 }
 
-impl<T: PktBufMut> PPPoEPacket<T> {
+impl<T: PktBufMut> PPPoE<T> {
     /// Prepend the payload type to the start of the payload buffer.
     ///
     /// The returned packet buffer contains the actual PPPoE session payload,
@@ -193,10 +193,10 @@ pub const PPPOETAG_HEADER_LEN: usize = 4;
 pub const PPPOETAG_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x04];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PPPoETagMessage<T> {
+pub struct PPPoETag<T> {
     buf: T,
 }
-impl<T: Buf> PPPoETagMessage<T> {
+impl<T: Buf> PPPoETag<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -243,7 +243,7 @@ impl<T: Buf> PPPoETagMessage<T> {
         (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())) as u32 + 4
     }
 }
-impl<T: PktBuf> PPPoETagMessage<T> {
+impl<T: PktBuf> PPPoETag<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -252,7 +252,7 @@ impl<T: PktBuf> PPPoETagMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> PPPoETagMessage<T> {
+impl<T: PktBufMut> PPPoETag<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u32) -> Self {
         assert!((header_len >= 4) && (header_len as usize <= buf.chunk_headroom()));
@@ -277,7 +277,7 @@ impl<T: PktBufMut> PPPoETagMessage<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
     }
 }
-impl<'a> PPPoETagMessage<Cursor<'a>> {
+impl<'a> PPPoETag<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -298,7 +298,7 @@ impl<'a> PPPoETagMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<'a> PPPoETagMessage<CursorMut<'a>> {
+impl<'a> PPPoETag<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -321,12 +321,12 @@ impl<'a> PPPoETagMessage<CursorMut<'a>> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct PPPoETagMessageIter<'a> {
+pub struct PPPoETagIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> PPPoETagMessageIter<'a> {
-    pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
-        Self { buf: message_slice }
+impl<'a> PPPoETagIter<'a> {
+    pub fn from_slice(slice: &'a [u8]) -> Self {
+        Self { buf: slice }
     }
 
     pub fn buf(&self) -> &'a [u8] {
@@ -334,43 +334,41 @@ impl<'a> PPPoETagMessageIter<'a> {
     }
 }
 #[derive(Debug)]
-pub struct PPPoETagMessageIterMut<'a> {
+pub struct PPPoETagIterMut<'a> {
     buf: &'a mut [u8],
 }
-impl<'a> PPPoETagMessageIterMut<'a> {
-    pub fn from_message_slice_mut(message_slice_mut: &'a mut [u8]) -> Self {
-        Self {
-            buf: message_slice_mut,
-        }
+impl<'a> PPPoETagIterMut<'a> {
+    pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
+        Self { buf: slice_mut }
     }
 
     pub fn buf(&self) -> &[u8] {
         &self.buf[..]
     }
 }
-impl<'a> Iterator for PPPoETagMessageIter<'a> {
-    type Item = PPPoETagMessage<Cursor<'a>>;
+impl<'a> Iterator for PPPoETagIter<'a> {
+    type Item = PPPoETag<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
-        PPPoETagMessage::parse(self.buf)
-            .map(|msg| {
-                let result = PPPoETagMessage {
-                    buf: Cursor::new(&self.buf[..msg.header_len() as usize]),
+        PPPoETag::parse(self.buf)
+            .map(|pkt| {
+                let result = PPPoETag {
+                    buf: Cursor::new(&self.buf[..pkt.header_len() as usize]),
                 };
-                self.buf = &self.buf[msg.header_len() as usize..];
+                self.buf = &self.buf[pkt.header_len() as usize..];
                 result
             })
             .ok()
     }
 }
-impl<'a> Iterator for PPPoETagMessageIterMut<'a> {
-    type Item = PPPoETagMessage<CursorMut<'a>>;
+impl<'a> Iterator for PPPoETagIterMut<'a> {
+    type Item = PPPoETag<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
-        match PPPoETagMessage::parse(&self.buf[..]) {
-            Ok(msg) => {
-                let header_len = msg.header_len() as usize;
+        match PPPoETag::parse(&self.buf[..]) {
+            Ok(pkt) => {
+                let header_len = pkt.header_len() as usize;
                 let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                 self.buf = snd;
-                let result = PPPoETagMessage {
+                let result = PPPoETag {
                     buf: CursorMut::new(fst),
                 };
                 Some(result)
