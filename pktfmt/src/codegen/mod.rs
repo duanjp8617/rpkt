@@ -379,16 +379,16 @@ impl<'a> PktGen<'a> {
     }
 }
 
-pub struct PacketGroupGen<'a> {
+pub struct PacketGroupGen<'a, 'b> {
     pub group_name: String,
     pub cond_field: Field,
     pub cond_pos: BitPos,
-    pub pkts: Vec<&'a Packet>,
+    pub pkts: &'b Vec<&'a Packet>,
     pub _gen_iter: bool,
 }
 
-impl<'a> PacketGroupGen<'a> {
-    pub fn new(defined_name: &str, pkts: &Vec<&'a Packet>, _gen_iter: bool) -> Self {
+impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
+    pub fn new(defined_name: &str, pkts: &'b Vec<&'a Packet>, _gen_iter: bool) -> Self {
         let pkt = pkts[0];
 
         if let Some(cond) = pkt.cond() {
@@ -397,7 +397,7 @@ impl<'a> PacketGroupGen<'a> {
                 group_name: defined_name.to_string() + "Group",
                 cond_field: field.clone(),
                 cond_pos: pos,
-                pkts: pkts.clone(),
+                pkts: pkts,
                 _gen_iter,
             }
         } else {

@@ -166,7 +166,7 @@ impl Field {
     // Infer default value from bit, repr and arg
     fn infer_default_val(bit: u64, repr: &BuiltinTypes, arg: &Arg) -> DefaultVal {
         match repr {
-            // Arg is is over-written with Bool, default to true
+            // Arg is is over-written with Bool, default to 0 (false)
             BuiltinTypes::U8 if arg == &Arg::BuiltinTypes(BuiltinTypes::Bool) => DefaultVal::Num(0),
             // Arg is ByteSlice, default to Bytes.
             // The length of the bytes can be calculated as bit / 8
@@ -190,7 +190,7 @@ impl Field {
         match repr {
             BuiltinTypes::U8 if arg == &Arg::BuiltinTypes(BuiltinTypes::Bool) => {
                 match &defined_default {
-                    // Ok: Arg is is over-written with Bool, default could be bool
+                    // Ok: Arg is is over-written with Bool, default should be 0/1
                     DefaultVal::Num(n) if *n <= 1 => Ok(defined_default),
                     _ => {
                         // field error 4
