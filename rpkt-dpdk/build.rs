@@ -120,34 +120,47 @@ fn build_dpdk_ffi() {
 
 fn main() {
     // Only support recent LTS versions.
-    let supported_version = &["21.11.9", "22.11.7", "23.11.3", "24.11.1"];
-    let supported_version = Vec::from_iter(supported_version.map(|vs| Version::from(vs).unwrap()));
+    let raw_supported_versions = [
+        ("21.11.00", "22.00.00"),
+        ("22.11.00", "23.00.00"),
+        ("23.11.00", "24.00.00"),
+        ("24.11.00", "25.00.00"),
+    ];
+
+    let supported_versions: Vec<(Version, Version)> = raw_supported_versions
+        .iter()
+        .map(|(start, end)| {
+            (
+                Version::from(start).expect("Invalid version format"),
+                Version::from(end).expect("Invalid version format"),
+            )
+        })
+        .collect();
 
     // Check DPDK version.
     let output = Command::new("pkg-config")
         .args(&["--modversion", "libdpdk"])
         .output()
         .expect("Cannot find pkg-config. Please install pkg-config.");
+
     if output.status.success() {
         let s = String::from_utf8(output.stdout).unwrap();
         let version_str = s.trim();
-        let version = Version::from(version_str).unwrap();
-        if supported_version
-            .iter()
-            .find(|allowed_version| **allowed_version == version)
-            .is_none()
-        {
+        let version = Version::from(version_str).expect("Invalid DPDK version format");
+
+        let matched = supported_versions.iter().find(|(start, end)| {
+            &version >= start && &version < end
+        });
+
+        if matched.is_none() {
             eprintln!(
-                "pkg-config finds DPDK library with version {version_str} which is not matched."
+                "pkg-config finds DPDK library with version {version_str} which is not supported."
             );
-            eprintln!(
-                "rpkt only supports DPDK version {}, {}, {} and {}.",
-                supported_version[0],
-                supported_version[1],
-                supported_version[2],
-                supported_version[3]
-            );
-            panic!();
+            eprintln!("rpkt only supports the following DPDK version ranges:");
+            for (start, end) in &supported_versions {
+                eprintln!("  >= {} and < {}", start, end);
+            }
+            panic!("Unsupported DPDK version.");
         }
 
         // Found a installed dpdk library.
