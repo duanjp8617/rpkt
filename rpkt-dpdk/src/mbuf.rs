@@ -155,6 +155,16 @@ impl Mbuf {
     pub unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
         self.ptr.as_ptr()
     }
+
+    #[inline]
+    pub const unsafe fn as_mut_raw<'a>(&mut self) -> &'a mut ffi::rte_mbuf {
+        self.ptr.as_mut()
+    }
+
+    #[inline]
+    pub const unsafe fn as_ref_raw<'a>(&self) -> &'a ffi::rte_mbuf {
+        self.ptr.as_ret()
+    }
 }
 
 impl Drop for Mbuf {
