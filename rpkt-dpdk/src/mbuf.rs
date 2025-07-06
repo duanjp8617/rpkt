@@ -163,7 +163,7 @@ impl Mbuf {
 
     #[inline]
     pub const unsafe fn as_ref_raw<'a>(&self) -> &'a ffi::rte_mbuf {
-        self.ptr.as_ret()
+        self.ptr.as_ref()
     }
 }
 
