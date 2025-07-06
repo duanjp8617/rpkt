@@ -150,6 +150,11 @@ impl Mbuf {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
+
+    #[inline]
+    pub unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
+        self.ptr.as_ptr()
+    }
 }
 
 impl Drop for Mbuf {
