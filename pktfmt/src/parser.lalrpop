@@ -346,13 +346,23 @@ pub Packet: Packet = {
     }
 }
 
-pub PacketGroup: PacketGroup = {
-    "group" <name: "ident"> "=" "["
+GroupMembers: Vec<String> = {
+    "members" "=" "["
         <first_name: "ident"> 
         <subsequent_names: ("," <"ident">)*>
         ","?
     "]" => {
-        PacketGroup::new(name.to_string(),  vec![first_name.to_string()].into_iter().chain(subsequent_names.into_iter().map(|s| s.to_string())).collect())
+        vec![first_name.to_string()].into_iter().chain(subsequent_names.into_iter().map(|s| s.to_string())).collect()
+    }
+}
+
+pub PacketGroup: PacketGroup = {
+    "group" <name: "ident"> "=" "{"
+        <group_members: GroupMembers>
+        <enable_iter_opt: ("," <EnableIter>)?>
+        ","?
+    "}" => {
+        PacketGroup::new(name.to_string(),  group_members, enable_iter_opt.map(|t|t.0).unwrap_or(false))
     }
 }
 

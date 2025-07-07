@@ -35,21 +35,21 @@ packet Tcp {
     ]
 }
 
-message Eol {
+packet EolOption {
     header = [
         type_ = Field {bit = 8, default = @0},
     ],
     cond = (type_ == 0),
 }
 
-message Nop {
+packet NopOption {
     header = [
         type_ = Field {bit = 8, default = @1},
     ],
     cond = (type_ == 1),
 }
 
-message Mss {
+packet MssOption {
     header = [
         type_ = Field {bit = 8, default = @2},
         len = Field {
@@ -65,7 +65,7 @@ message Mss {
     cond = (type_ == 2),
 }
 
-message Wsopt {
+packet WsoptOption {
     header = [
         type_ = Field {bit = 8, default = @3},
         len = Field {
@@ -81,7 +81,7 @@ message Wsopt {
     cond = (type_ == 3),
 }
 
-message Sackperm {
+packet SackpermOption {
     header = [
         type_ = Field {bit = 8, default = @4},
         len = Field {
@@ -96,7 +96,7 @@ message Sackperm {
     cond = (type_ == 4),
 }
 
-message Sack {
+packet SackOption {
     header = [
         type_ = Field {bit = 8, default = @5},
         len = Field {
@@ -111,7 +111,7 @@ message Sack {
     cond = (type_ == 5),
 }
 
-message Ts {
+packet TsOption {
     header = [
         type_ = Field {bit = 8, default = @8},
         len = Field {
@@ -128,7 +128,7 @@ message Ts {
     cond = (type_ == 8),
 }
 
-message Fo {
+packet FoOption {
     header = [
         type_ = Field {bit = 8, default = @34},
         len = Field {
@@ -144,13 +144,16 @@ message Fo {
     cond = (type_ == 34),
 }
 
-message_group TcpOpt = [
-    Eol, 
-    Nop,
-    Mss,
-    Wsopt,
-    Sackperm,
-    Sack,
-    Ts,
-    Fo
-]
+group TcpOptions = {
+    members = [
+        EolOption, 
+        NopOption,
+        MssOption,
+        WsoptOption,
+        SackpermOption,
+        SackOption,
+        TsOption,
+        FoOption
+    ],
+    enable_iter = true
+}

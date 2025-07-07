@@ -77,15 +77,15 @@ impl Packet {
 pub struct PacketGroup {
     name: String,
     pkts: Vec<String>,
-    _gen_iter: bool,
+    gen_iter: bool,
 }
 
 impl PacketGroup {
-    pub fn new(name: String, pkts: Vec<String>) -> Self {
+    pub fn new(name: String, pkts: Vec<String>, gen_iter: bool) -> Self {
         Self {
             name,
             pkts,
-            _gen_iter: true,
+            gen_iter,
         }
     }
 
@@ -153,7 +153,7 @@ impl<'a> TopLevel<'a> {
         let mut resulting_map = HashMap::new();
         for (pg, span) in pkt_groups {
             let pkts = Self::check_pkt_group(pg, &all_pkts).map_err(|err| (err, *span))?;
-            resulting_map.insert(pg.name(), (pkts, pg._gen_iter));
+            resulting_map.insert(pg.name(), (pkts, pg.gen_iter));
         }
 
         Ok(Self {
@@ -177,6 +177,13 @@ impl<'a> TopLevel<'a> {
         pg: &PacketGroup,
         pkts: &HashMap<&'a str, &'a Packet>,
     ) -> Result<Vec<&'a Packet>, Error> {
+        if pg.packets().len() < 2 {
+            return_err!(Error::top_level(
+                10,
+                format!("group definition requires at least 2 member packets")
+            ))
+        }
+
         let mut names_iter = pg.pkts.iter();
 
         // Find out the cond field that the first packet uses.
@@ -246,18 +253,12 @@ impl<'a> TopLevel<'a> {
             result_vec.push(*subsequent_pkt);
         }
 
-        if pg._gen_iter {
+        if pg.gen_iter {
             // 6. Make sure that all the packets do not have variable payload/packet length
-            for pkt in result_vec.iter() {
-                if !matches!(pkt.length().at(1), LengthField::None)
-                    || !matches!(pkt.length().at(2), LengthField::None)
-                {
-                    return_err!(Error::top_level(
-                        7,
-                        format!("can not generate iterator for packet group {} because packet {} has variable payload/packet length", &pg.name, &pkt.protocol_name)
-                    ))
-                }
-            }
+            let _ = result_vec
+                .iter()
+                .map(|pkt| check_iter_gen(&pkt.protocol_name(), pkt.length(), true))
+                .collect::<Result<Vec<()>, Error>>()?;
         }
 
         Ok(result_vec)
