@@ -200,19 +200,18 @@ impl PortConf {
             rx_offloads.enable_rss_hash();
         }
 
-        // Check whether the rss hash key size is 40, currently we only provide a 40-byte
-        // rss hask key.
-        // This is not compatible with Intel NIC.
-        // if port_info.hash_key_size() != Self::HASH_KEY_SIZE {
-        //     return Error::service_err("invalid rss hash key size").to_err();
-        // }
+        let rss_hash_key = match port_info.hash_key_size() {
+            40 => DEFAULT_RSS_KEY_40B.to_vec(),
+            52 => DEFAULT_RSS_KEY_52B.to_vec(),
+            _ => return Error::service_err("invalid rss hash key size").to_err()
+        };
 
         Ok(Self {
             mtu: u32::from(Self::RTE_ETHER_MTU),
             tx_offloads,
             rx_offloads,
             rss_hf: port_info.flow_type_rss_offloads(),
-            rss_hash_key: DEFAULT_RSS_KEY_40B.to_vec(),
+            rss_hash_key: rss_hash_key,
             enable_promiscuous: true,
         })
     }
