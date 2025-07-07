@@ -38,7 +38,7 @@ pub enum Token<'input> {
     // top-level keywords
     Packet,
     Message,
-    MessageGroup,
+    Group,
 
     // header definition keywords
     Header,
@@ -75,6 +75,10 @@ pub enum Token<'input> {
     Not,
     And,
     Or,
+
+    // group sub-fields
+    EnableIter,
+    Members,
 
     // Identifiers
     Ident(&'input str),
@@ -128,7 +132,7 @@ impl<'input> std::fmt::Display for Token<'input> {
 const KEYWORDS: &[(&str, Token)] = &[
     ("packet", Token::Packet),
     ("message", Token::Message),
-    ("message_group", Token::MessageGroup),
+    ("group", Token::Group),
     ("header", Token::Header),
     ("Field", Token::Field),
     ("bit", Token::Bit),
@@ -141,6 +145,8 @@ const KEYWORDS: &[(&str, Token)] = &[
     ("payload_len", Token::PayloadLen),
     ("packet_len", Token::PacketLen),
     ("cond", Token::Cond),
+    ("enable_iter", Token::EnableIter),
+    ("members", Token::Members)
 ];
 
 const BUILTIN_TYPES: &[&str] = &["u8", "u16", "u32", "u64", "bool"];

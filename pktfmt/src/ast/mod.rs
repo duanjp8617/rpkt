@@ -24,7 +24,7 @@ pub struct Packet {
     header: Header,
     length: Length,
     cond: Option<Cond>,
-    _gen_iter: bool,
+    enable_iter: bool,
 }
 
 impl Packet {
@@ -33,13 +33,14 @@ impl Packet {
         header: header::Header,
         length: length::Length,
         cond: Option<Cond>,
+        enable_iter: bool,
     ) -> Self {
         Self {
             protocol_name: protocol_name.to_string(),
             header,
             length,
             cond,
-            _gen_iter: false,
+            enable_iter,
         }
     }
 
@@ -65,6 +66,10 @@ impl Packet {
 
     pub fn generated_struct_name(&self) -> String {
         self.protocol_name().to_owned()
+    }
+
+    pub fn enable_iter(&self) -> bool {
+        self.enable_iter
     }
 }
 
@@ -256,6 +261,20 @@ impl<'a> TopLevel<'a> {
         }
 
         Ok(result_vec)
+    }
+}
+
+// Check whether we can generate iterator implementation from a packet definition.
+pub fn check_iter_gen(pkt_name: &str, length: &Length, enable_iter: bool) -> Result<(), Error> {
+    if !enable_iter
+        || (matches!(length.at(1), LengthField::None) && matches!(length.at(2), LengthField::None))
+    {
+        Ok(())
+    } else {
+        return_err!(Error::top_level(
+                        8,
+                        format!("can not generate iterator because packet {pkt_name} has variable payload/packet length")
+                    ))
     }
 }
 

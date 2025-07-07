@@ -372,10 +372,65 @@ impl<'a> PktGen<'a> {
                 impl_block.get_writer(),
             );
         }
+
+        {
+            if self.item().enable_iter() {
+                self.iter_gen(output);
+            }
+        }
     }
 
     fn item(&self) -> &'a Packet {
         &self.header_gen.item
+    }
+
+    fn iter_gen(&self, output: &mut dyn Write) {
+        // Get the pkt used for generating the iterator
+        let pkt = self.item();
+        let pkt_struct_name = pkt.generated_struct_name();
+
+        boilerplate_codegen(&pkt_struct_name, output);
+
+        // Generate imutable iterator impl.
+        write!(
+            output,
+            "impl<'a> Iterator for {pkt_struct_name}Iter<'a> {{
+type Item = {pkt_struct_name}<Cursor<'a>>;
+fn next(&mut self) -> Option<Self::Item> {{
+{pkt_struct_name}::parse(self.buf).map(|pkt|{{
+"
+        )
+        .unwrap();
+        iter_parse_for_pkt(&pkt, "pkt", output);
+        write!(
+            output,
+            "result
+        }}).ok()}}}}
+        ",
+        )
+        .unwrap();
+
+        // Gnerate mutable iterator impl.
+        write!(
+            output,
+            "impl<'a> Iterator for {pkt_struct_name}IterMut<'a> {{
+type Item = {pkt_struct_name}<CursorMut<'a>>;
+fn next(&mut self) -> Option<Self::Item> {{
+match {pkt_struct_name}::parse(&self.buf[..]) {{
+Ok(pkt) => {{
+"
+        )
+        .unwrap();
+        iter_mut_parse_for_pkt(&pkt, "pkt", output);
+        write!(
+            output,
+            "Some(result)
+}}
+Err(_)=> None
+}}}}}}
+",
+        )
+        .unwrap();
     }
 }
 

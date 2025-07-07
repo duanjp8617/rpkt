@@ -319,7 +319,6 @@ impl<'a> PPPoETag<CursorMut<'a>> {
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
-
 #[derive(Debug, Clone, Copy)]
 pub struct PPPoETagIter<'a> {
     buf: &'a [u8],

@@ -4,7 +4,7 @@ use lalrpop_util::ParseError;
 
 use crate::ast::{
     Field, BuiltinTypes, Arg, DefaultVal, Header, AlgOp, AlgExpr, parse_to_byte_val, 
-    LengthField, Length, Packet, Cond, PacketGroup, ParsedItem
+    LengthField, Length, Packet, Cond, PacketGroup, ParsedItem, check_iter_gen
 };
 use crate::utils::{Spanned, Error};
 use crate::token::Token;
@@ -19,7 +19,7 @@ extern {
         // top-level 
         "packet" => Token::Packet,
         "message" => Token::Message,
-        "message_group" => Token::MessageGroup,
+        "group" => Token::Group,
         
         // header
         "header" => Token::Header,
@@ -54,6 +54,10 @@ extern {
         "!" => Token::Not,
         "&&" => Token::And,
         "||" => Token::Or,
+
+        // group sub-fields
+        "members" => Token::Members,
+        "enable_iter" => Token::EnableIter,
 
         // identifiers
         "ident" => Token::Ident(<&'input str>),
@@ -291,11 +295,17 @@ CondFieldList: (Vec<(String, u64)>, (usize, usize)) = {
       (cond_list, (l, r))
 }
 
+EnableIter: (bool, (usize, usize)) = {
+    <l: @L> "enable_iter" "=" <b: Bool> <r: @R> => 
+      (b, (l, r))
+}
+
 pub Packet: Packet = {
     "packet" <name: "ident"> "{"
         <header: Header>
         <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
         <cond_field_with_pos_opt: ("," <CondFieldList>)?>
+        <enable_iter_opt: ("," <EnableIter>)?>
         ","?
     "}" =>? {
         let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
@@ -317,12 +327,27 @@ pub Packet: Packet = {
             }
         };
 
-        Ok(Packet::new(name, header, length, cond_opt))
+        let enable_iter = match enable_iter_opt {
+            Some((enable_iter, span)) => {
+                let _ = check_iter_gen(name, &length, enable_iter).map_err(|err| {
+                    let error = Error::Ast{err, span};
+                    ParseError::User{ error }
+                })?;
+                enable_iter
+            }
+            None => {
+                // enable_iter is false by default
+                false
+            }
+        };
+
+        let pkt = Packet::new(name, header, length, cond_opt, enable_iter);
+        Ok(pkt)
     }
 }
 
 pub PacketGroup: PacketGroup = {
-    "message_group" <name: "ident"> "=" "["
+    "group" <name: "ident"> "=" "["
         <first_name: "ident"> 
         <subsequent_names: ("," <"ident">)*>
         ","?
