@@ -849,13 +849,12 @@ impl<T: PktBuf> MstpConfBpdu<T> {
 }
 impl<T: PktBufMut> MstpConfBpdu<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 102], header_len: u32) -> Self {
-        assert!((header_len >= 102) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 102]) -> Self {
+        let header_len = MstpConfBpdu::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 102) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..102]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {

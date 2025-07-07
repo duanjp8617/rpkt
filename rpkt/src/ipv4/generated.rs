@@ -136,15 +136,15 @@ impl<T: PktBuf> Ipv4<T> {
 }
 impl<T: PktBufMut> Ipv4<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20], header_len: u8) -> Self {
-        assert!((header_len >= 20) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20]) -> Self {
+        let header_len = Ipv4::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 20) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         let packet_len = buf.remaining();
         assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
         container.set_packet_len(packet_len as u16);
-        container.set_header_len(header_len);
         container
     }
     #[inline]
@@ -565,13 +565,12 @@ impl<T: PktBuf> TimestampOption<T> {
 }
 impl<T: PktBufMut> TimestampOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
-        assert!((header_len >= 4) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = TimestampOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
@@ -714,13 +713,12 @@ impl<T: PktBuf> RecordRouteOption<T> {
 }
 impl<T: PktBufMut> RecordRouteOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3], header_len: u8) -> Self {
-        assert!((header_len >= 3) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
+        let header_len = RecordRouteOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 3) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
@@ -848,13 +846,12 @@ impl<T: PktBuf> RouteAlertOption<T> {
 }
 impl<T: PktBufMut> RouteAlertOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
-        assert!((header_len == 4) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = RouteAlertOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {

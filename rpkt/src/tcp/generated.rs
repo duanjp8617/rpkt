@@ -132,13 +132,12 @@ impl<T: PktBuf> Tcp<T> {
 }
 impl<T: PktBufMut> Tcp<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20], header_len: u8) -> Self {
-        assert!((header_len >= 20) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20]) -> Self {
+        let header_len = Tcp::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 20) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
@@ -517,13 +516,12 @@ impl<T: PktBuf> MssOption<T> {
 }
 impl<T: PktBufMut> MssOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
-        assert!((header_len == 4) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = MssOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -643,13 +641,12 @@ impl<T: PktBuf> WsoptOption<T> {
 }
 impl<T: PktBufMut> WsoptOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3], header_len: u8) -> Self {
-        assert!((header_len == 3) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
+        let header_len = WsoptOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 3) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -765,13 +762,12 @@ impl<T: PktBuf> SackpermOption<T> {
 }
 impl<T: PktBufMut> SackpermOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2], header_len: u8) -> Self {
-        assert!((header_len == 2) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = SackpermOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -888,13 +884,12 @@ impl<T: PktBuf> SackOption<T> {
 }
 impl<T: PktBufMut> SackOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2], header_len: u8) -> Self {
-        assert!((header_len >= 2) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = SackOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
@@ -1023,13 +1018,12 @@ impl<T: PktBuf> TsOption<T> {
 }
 impl<T: PktBufMut> TsOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 10], header_len: u8) -> Self {
-        assert!((header_len == 10) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 10]) -> Self {
+        let header_len = TsOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 10) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..10]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -1156,13 +1150,12 @@ impl<T: PktBuf> FoOption<T> {
 }
 impl<T: PktBufMut> FoOption<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 18], header_len: u8) -> Self {
-        assert!((header_len == 18) && (header_len as usize <= buf.chunk_headroom()));
-        buf.move_back(header_len as usize);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 18]) -> Self {
+        let header_len = FoOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 18) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..18]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_header_len(header_len);
-        container
+        Self { buf }
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {

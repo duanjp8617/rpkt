@@ -102,6 +102,14 @@ impl<T: PktBuf> Gre<T> {
 }
 impl<T: PktBufMut> Gre<T> {
     #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = Gre::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[4..header_len]
@@ -267,17 +275,6 @@ impl<T: Buf> Gre<T> {
 }
 
 impl<T: PktBufMut> Gre<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header = Gre::parse_unchecked(header.as_slice());
-        let header_len = header.header_len();
-        assert!(header_len <= buf.chunk_headroom());
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..4]).copy_from_slice(header.buf);
-        let container = Self { buf };
-        container
-    }
-
     /// Set the checksum value.
     ///
     /// # Panics
@@ -450,6 +447,18 @@ impl<T: PktBuf> GreForPPTP<T> {
 }
 impl<T: PktBufMut> GreForPPTP<T> {
     #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
+        let header_len = GreForPPTP::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 8) && (header_len <= buf.chunk_headroom()));
+        let payload_len = buf.remaining();
+        assert!(payload_len <= 65535);
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
+        let mut container = Self { buf };
+        container.set_payload_len(payload_len as u16);
+        container
+    }
+    #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
         &mut self.buf.chunk_mut()[8..header_len]
@@ -603,23 +612,6 @@ impl<T: Buf> GreForPPTP<T> {
 }
 
 impl<T: PktBufMut> GreForPPTP<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
-        let header = GreForPPTP::parse_unchecked(header.as_slice());
-        let header_len = header.header_len();
-        assert!(header_len <= buf.chunk_headroom());
-
-        let payload_len = buf.remaining();
-        assert!(payload_len <= 65535);
-
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..8]).copy_from_slice(header.buf);
-        let mut container = Self { buf };
-        container.set_payload_len(payload_len as u16);
-
-        container
-    }
-
     /// Set the sequence value.
     ///
     /// # Panics
