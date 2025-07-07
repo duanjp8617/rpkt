@@ -95,6 +95,12 @@ impl<'a> Llc<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[3..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> Llc<CursorMut<'a>> {
     #[inline]
@@ -109,5 +115,11 @@ impl<'a> Llc<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[3..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }

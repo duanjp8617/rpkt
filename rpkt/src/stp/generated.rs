@@ -103,6 +103,12 @@ impl<'a> StpTcnBpdu<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[4..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> StpTcnBpdu<CursorMut<'a>> {
     #[inline]
@@ -117,6 +123,12 @@ impl<'a> StpTcnBpdu<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[4..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -280,6 +292,12 @@ impl<'a> StpConfBpdu<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[35..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 35]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> StpConfBpdu<CursorMut<'a>> {
     #[inline]
@@ -294,6 +312,12 @@ impl<'a> StpConfBpdu<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[35..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 35]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -576,6 +600,12 @@ impl<'a> RstpConfBpdu<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[36..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 36]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> RstpConfBpdu<CursorMut<'a>> {
     #[inline]
@@ -590,6 +620,12 @@ impl<'a> RstpConfBpdu<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[36..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 36]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -974,6 +1010,12 @@ impl<'a> MstpConfBpdu<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 102]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> MstpConfBpdu<CursorMut<'a>> {
     #[inline]
@@ -994,6 +1036,12 @@ impl<'a> MstpConfBpdu<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 102]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -1323,6 +1371,12 @@ impl<'a> MstiConf<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[16..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 16]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> MstiConf<CursorMut<'a>> {
     #[inline]
@@ -1337,6 +1391,12 @@ impl<'a> MstiConf<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[16..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 16]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 

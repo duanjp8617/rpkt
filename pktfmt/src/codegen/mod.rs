@@ -168,12 +168,8 @@ impl<'a> PktGen<'a> {
         let build = Build::new(self.item().header(), self.item().length().as_slice());
 
         {
-            let mut impl_block = impl_block(
-                "T:Buf",
-                &self.item().protocol_name(),
-                "T",
-                &mut output,
-            );
+            let mut impl_block =
+                impl_block("T:Buf", &self.item().protocol_name(), "T", &mut output);
 
             // Basic container-buffer conversion.
             Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
@@ -231,12 +227,8 @@ impl<'a> PktGen<'a> {
         }
 
         {
-            let mut impl_block = impl_block(
-                "T:PktBuf",
-                &self.item().protocol_name(),
-                "T",
-                &mut output,
-            );
+            let mut impl_block =
+                impl_block("T:PktBuf", &self.item().protocol_name(), "T", &mut output);
 
             // Packet payload.
             payload.code_gen_for_pktbuf("payload", "buf", "T", impl_block.get_writer());
@@ -339,6 +331,19 @@ impl<'a> PktGen<'a> {
                 f,
                 impl_block.get_writer(),
             );
+
+            // Generate the from_header_array method
+            write!(
+                impl_block.get_writer(),
+                "#[inline]
+pub fn from_header_array(header_array: &'a [u8; {}]) -> Self {{
+    Self {{
+        buf: Cursor::new(header_array.as_slice()),
+    }}
+}}",
+                self.item().header().header_len_in_bytes()
+            )
+            .unwrap();
         }
 
         {
@@ -372,6 +377,19 @@ impl<'a> PktGen<'a> {
                 f,
                 impl_block.get_writer(),
             );
+
+            // Generate the from_header_array_mut method
+            write!(
+                impl_block.get_writer(),
+                "#[inline]
+pub fn from_header_array_mut(header_array: &'a mut [u8; {}]) -> Self {{
+    Self {{
+        buf: CursorMut::new(header_array.as_mut_slice()),
+    }}
+}}",
+                self.item().header().header_len_in_bytes()
+            )
+            .unwrap();
         }
 
         {

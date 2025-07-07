@@ -123,6 +123,12 @@ impl<'a> Udp<Cursor<'a>> {
         let packet_len = self.packet_len() as usize;
         Cursor::new(&self.buf.chunk()[8..packet_len])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> Udp<CursorMut<'a>> {
     #[inline]
@@ -143,5 +149,11 @@ impl<'a> Udp<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let packet_len = self.packet_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[8..packet_len])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }

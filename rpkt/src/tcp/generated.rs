@@ -243,6 +243,12 @@ impl<'a> Tcp<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 20]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> Tcp<CursorMut<'a>> {
     #[inline]
@@ -263,6 +269,12 @@ impl<'a> Tcp<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 20]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -342,6 +354,12 @@ impl<'a> EolOption<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[1..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
@@ -356,6 +374,12 @@ impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -435,6 +459,12 @@ impl<'a> NopOption<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[1..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
@@ -449,6 +479,12 @@ impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -556,6 +592,12 @@ impl<'a> MssOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> MssOption<CursorMut<'a>> {
     #[inline]
@@ -574,6 +616,12 @@ impl<'a> MssOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -681,6 +729,12 @@ impl<'a> WsoptOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> WsoptOption<CursorMut<'a>> {
     #[inline]
@@ -699,6 +753,12 @@ impl<'a> WsoptOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -798,6 +858,12 @@ impl<'a> SackpermOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> SackpermOption<CursorMut<'a>> {
     #[inline]
@@ -816,6 +882,12 @@ impl<'a> SackpermOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -926,6 +998,12 @@ impl<'a> SackOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> SackOption<CursorMut<'a>> {
     #[inline]
@@ -946,6 +1024,12 @@ impl<'a> SackOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -1062,6 +1146,12 @@ impl<'a> TsOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 10]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> TsOption<CursorMut<'a>> {
     #[inline]
@@ -1080,6 +1170,12 @@ impl<'a> TsOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 10]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -1190,6 +1286,12 @@ impl<'a> FoOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 18]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> FoOption<CursorMut<'a>> {
     #[inline]
@@ -1208,6 +1310,12 @@ impl<'a> FoOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 18]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 

@@ -244,6 +244,12 @@ impl<'a> Ipv4<Cursor<'a>> {
         let packet_len = self.packet_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..packet_len])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 20]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> Ipv4<CursorMut<'a>> {
     #[inline]
@@ -266,6 +272,12 @@ impl<'a> Ipv4<CursorMut<'a>> {
         let header_len = self.header_len() as usize;
         let packet_len = self.packet_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..packet_len])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 20]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -378,6 +390,12 @@ impl<'a> EolOption<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[1..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
@@ -392,6 +410,12 @@ impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -471,6 +495,12 @@ impl<'a> NopOption<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         Cursor::new(&self.buf.chunk()[1..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
@@ -485,6 +515,12 @@ impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -621,6 +657,12 @@ impl<'a> TimestampOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> TimestampOption<CursorMut<'a>> {
     #[inline]
@@ -641,6 +683,12 @@ impl<'a> TimestampOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -759,6 +807,12 @@ impl<'a> RecordRouteOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> RecordRouteOption<CursorMut<'a>> {
     #[inline]
@@ -779,6 +833,12 @@ impl<'a> RecordRouteOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -886,6 +946,12 @@ impl<'a> RouteAlertOption<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> RouteAlertOption<CursorMut<'a>> {
     #[inline]
@@ -904,6 +970,12 @@ impl<'a> RouteAlertOption<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 

@@ -131,6 +131,12 @@ impl<'a> PPPoE<Cursor<'a>> {
         let payload_len = self.payload_len() as usize;
         Cursor::new(&self.buf.chunk()[6..(6 + payload_len)])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> PPPoE<CursorMut<'a>> {
     #[inline]
@@ -149,6 +155,12 @@ impl<'a> PPPoE<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let payload_len = self.payload_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[6..(6 + payload_len)])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
@@ -296,6 +308,12 @@ impl<'a> PPPoETag<Cursor<'a>> {
         let header_len = self.header_len() as usize;
         Cursor::new(&self.buf.chunk()[header_len..])
     }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
 }
 impl<'a> PPPoETag<CursorMut<'a>> {
     #[inline]
@@ -316,6 +334,12 @@ impl<'a> PPPoETag<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
     }
 }
 
