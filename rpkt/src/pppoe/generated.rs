@@ -319,6 +319,7 @@ impl<'a> PPPoETag<CursorMut<'a>> {
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
 }
+
 #[derive(Debug, Clone, Copy)]
 pub struct PPPoETagIter<'a> {
     buf: &'a [u8],
@@ -330,19 +331,6 @@ impl<'a> PPPoETagIter<'a> {
 
     pub fn buf(&self) -> &'a [u8] {
         self.buf
-    }
-}
-#[derive(Debug)]
-pub struct PPPoETagIterMut<'a> {
-    buf: &'a mut [u8],
-}
-impl<'a> PPPoETagIterMut<'a> {
-    pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
-        Self { buf: slice_mut }
-    }
-
-    pub fn buf(&self) -> &[u8] {
-        &self.buf[..]
     }
 }
 impl<'a> Iterator for PPPoETagIter<'a> {
@@ -357,6 +345,20 @@ impl<'a> Iterator for PPPoETagIter<'a> {
                 result
             })
             .ok()
+    }
+}
+
+#[derive(Debug)]
+pub struct PPPoETagIterMut<'a> {
+    buf: &'a mut [u8],
+}
+impl<'a> PPPoETagIterMut<'a> {
+    pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
+        Self { buf: slice_mut }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
     }
 }
 impl<'a> Iterator for PPPoETagIterMut<'a> {

@@ -2,8 +2,8 @@ use std::io::Write;
 
 use crate::ast::{LengthField, Packet};
 
-// Generate the struct definition/constructor, etc..
-pub fn boilerplate_codegen(struct_name: &str, output: &mut dyn Write) {
+// Generate the struct definition for imutable iterator.
+pub fn iter_def_gen(struct_name: &str, output: &mut dyn Write) {
     write!(
         output,
         "#[derive(Debug, Clone, Copy)]
@@ -19,7 +19,16 @@ impl<'a> {struct_name}Iter<'a> {{
         self.buf
     }}
 }}
-#[derive(Debug)]
+"
+    )
+    .unwrap();
+}
+
+// Generate the struct definition for imutable iterator.
+pub fn iter_mut_def_gen(struct_name: &str, output: &mut dyn Write) {
+    write!(
+        output,
+        "#[derive(Debug)]
 pub struct {struct_name}IterMut<'a> {{
     buf: &'a mut [u8],
 }}

@@ -375,7 +375,11 @@ impl<'a> PktGen<'a> {
 
         {
             if self.item().enable_iter() {
+                write!(output, "\n").unwrap();
                 self.iter_gen(output);
+                
+                write!(output, "\n").unwrap();
+                self.iter_mut_gen(output);
             }
         }
     }
@@ -389,7 +393,7 @@ impl<'a> PktGen<'a> {
         let pkt = self.item();
         let pkt_struct_name = pkt.generated_struct_name();
 
-        boilerplate_codegen(&pkt_struct_name, output);
+        iter_def_gen(&pkt_struct_name, output);
 
         // Generate imutable iterator impl.
         write!(
@@ -409,6 +413,14 @@ fn next(&mut self) -> Option<Self::Item> {{
         ",
         )
         .unwrap();
+    }
+
+    fn iter_mut_gen(&self, output: &mut dyn Write) {
+        // Get the pkt used for generating the iterator
+        let pkt = self.item();
+        let pkt_struct_name = pkt.generated_struct_name();
+
+        iter_mut_def_gen(&pkt_struct_name, output);
 
         // Gnerate mutable iterator impl.
         write!(
@@ -439,11 +451,11 @@ pub struct PacketGroupGen<'a, 'b> {
     pub cond_field: Field,
     pub cond_pos: BitPos,
     pub pkts: &'b Vec<&'a Packet>,
-    pub _gen_iter: bool,
+    pub gen_iter: bool,
 }
 
 impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
-    pub fn new(defined_name: &str, pkts: &'b Vec<&'a Packet>, _gen_iter: bool) -> Self {
+    pub fn new(defined_name: &str, pkts: &'b Vec<&'a Packet>, gen_iter: bool) -> Self {
         let pkt = pkts[0];
 
         if let Some(cond) = pkt.cond() {
@@ -453,7 +465,7 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
                 cond_field: field.clone(),
                 cond_pos: pos,
                 pkts: pkts,
-                _gen_iter,
+                gen_iter,
             }
         } else {
             panic!()
@@ -461,28 +473,26 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
     }
 
     pub fn code_gen(&self, mut output: &mut dyn Write) {
-        if self.pkts.len() > 1 {
-            self.code_gen_for_enum(&self.group_name, "T", output);
+        self.code_gen_for_enum(&self.group_name, "T", output);
 
-            {
-                let mut impl_block = impl_block("T:Buf", &self.group_name, "T", &mut output);
+        {
+            let mut impl_block = impl_block("T:Buf", &self.group_name, "T", &mut output);
 
-                self.code_gen_for_grouped_parse(
-                    "group_parse",
-                    "buf",
-                    "T",
-                    ".chunk()",
-                    impl_block.get_writer(),
-                );
-            }
+            self.code_gen_for_grouped_parse(
+                "group_parse",
+                "buf",
+                "T",
+                ".chunk()",
+                impl_block.get_writer(),
+            );
+        }
 
-            if self._gen_iter {
-                self.code_gen_for_multiple_pkts(output);
-            }
-        } else {
-            if self._gen_iter {
-                self.code_gen_for_single_pkt(output);
-            }
+        if self.gen_iter {
+            write!(output, "\n").unwrap();
+            self.iter_gen(output);
+
+            write!(output, "\n").unwrap();
+            self.iter_mut_gen(output);
         }
     }
 
@@ -549,60 +559,11 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
         write!(output, "}}\n").unwrap();
     }
 
-    fn code_gen_for_single_pkt(&self, output: &mut dyn Write) {
-        // Get the pkt used for generating the iterator
-        let pkt = self.pkts.iter().next().unwrap();
-        let pkt_struct_name = pkt.generated_struct_name();
-
-        boilerplate_codegen(&pkt_struct_name, output);
-
-        // Generate imutable iterator impl.
-        write!(
-            output,
-            "impl<'a> Iterator for {pkt_struct_name}Iter<'a> {{
-type Item = {pkt_struct_name}<Cursor<'a>>;
-fn next(&mut self) -> Option<Self::Item> {{
-{pkt_struct_name}::parse(self.buf).map(|pkt|{{
-"
-        )
-        .unwrap();
-        iter_parse_for_pkt(&pkt, "pkt", output);
-        write!(
-            output,
-            "result
-        }}).ok()}}}}
-        ",
-        )
-        .unwrap();
-
-        // Gnerate mutable iterator impl.
-        write!(
-            output,
-            "impl<'a> Iterator for {pkt_struct_name}IterMut<'a> {{
-type Item = {pkt_struct_name}<CursorMut<'a>>;
-fn next(&mut self) -> Option<Self::Item> {{
-match {pkt_struct_name}::parse(&self.buf[..]) {{
-Ok(pkt) => {{
-"
-        )
-        .unwrap();
-        iter_mut_parse_for_pkt(&pkt, "pkt", output);
-        write!(
-            output,
-            "Some(result)
-}}
-Err(_)=> None
-}}}}}}
-",
-        )
-        .unwrap();
-    }
-
-    fn code_gen_for_multiple_pkts(&self, output: &mut dyn Write) {
+    fn iter_gen(&self, output: &mut dyn Write) {
         // Get the pkt used for generating the iterator
         let group_struct_name = &self.group_name;
 
-        boilerplate_codegen(group_struct_name, output);
+        iter_def_gen(group_struct_name, output);
 
         // Generate imutable iterator impl.
         write!(
@@ -640,6 +601,13 @@ fn next(&mut self) -> Option<Self::Item> {{
 
         // the function and the impl closing brackets.
         write!(output, "}}\n}}\n").unwrap();
+    }
+
+    fn iter_mut_gen(&self, output: &mut dyn Write) {
+        // Get the pkt used for generating the iterator
+        let group_struct_name = &self.group_name;
+
+        iter_mut_def_gen(group_struct_name, output);
 
         // Generate mutable iterator impl.
         write!(
