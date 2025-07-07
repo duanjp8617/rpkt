@@ -16,36 +16,36 @@ fn llc_parsing_test() {
         let pkt = Cursor::new(&packet[..]);
         assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
         assert_eq!(store_ether_frame(pkt.chunk()), false);
-        let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+        let ethdot3_pkt = EtherFrameDot3::parse(pkt).unwrap();
 
         assert_eq!(ethdot3_pkt.payload_len(), 38);
 
-        let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+        let llc_pkt = Llc::parse(ethdot3_pkt.payload()).unwrap();
         assert_eq!(llc_pkt.buf().chunk().len(), 38);
         assert_eq!(llc_pkt.dsap(), BPDU_CONST);
         assert_eq!(llc_pkt.ssap(), BPDU_CONST);
         assert_eq!(llc_pkt.control(), 0x03);
 
         let payload = llc_pkt.payload();
-        let res = StpMessageGroup::group_parse(payload.chunk()).unwrap();
-        assert_eq!(matches!(res, StpMessageGroup::StpConf(_)), true);
+        let res = StpGroup::group_parse(payload.chunk()).unwrap();
+        assert_eq!(matches!(res, StpGroup::StpConf(_)), true);
     }
 
     {
         let pkt = file_to_packet("llc_vlan.dat");
         let pkt = Cursor::new(&pkt[..]);
 
-        let eth_pkt = EtherPacket::parse(pkt).unwrap();
+        let eth_pkt = EtherFrame::parse(pkt).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
 
         let eth_payload = eth_pkt.payload();
         assert_eq!(vlan_tag_for_dot3_frame(eth_payload.chunk()), true);
         assert_eq!(vlan_tag_for_ether_frame(eth_payload.chunk()), false);
 
-        let vlan_dot3 = VlanDot3Packet::parse(eth_payload).unwrap();
+        let vlan_dot3 = VlanDot3::parse(eth_payload).unwrap();
         assert_eq!(vlan_dot3.payload_len(), 357);
 
-        let llc_pkt = LlcPacket::parse(vlan_dot3.payload()).unwrap();
+        let llc_pkt = Llc::parse(vlan_dot3.payload()).unwrap();
         assert_eq!(llc_pkt.ssap(), 0xaa);
         assert_eq!(llc_pkt.dsap(), 0xaa);
         assert_eq!(llc_pkt.control(), 0x03);
@@ -57,11 +57,10 @@ fn llc_creation_test() {
     let mut buf: [u8; 64] = [0; 64];
 
     let mut pkt_buf =
-        CursorMut::new(&mut buf[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]);
-    pkt_buf.advance(ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN);
+        CursorMut::new(&mut buf[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]);
+    pkt_buf.advance(ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN);
 
-    let mut stp_conf_msg =
-        StpConfBpduMessage::prepend_header(pkt_buf, &STPCONFBPDU_HEADER_TEMPLATE);
+    let mut stp_conf_msg = StpConfBpdu::prepend_header(pkt_buf, &STPCONFBPDU_HEADER_TEMPLATE);
     stp_conf_msg.set_root_priority(32768);
     stp_conf_msg.set_root_sys_id_ext(100);
     stp_conf_msg.set_root_mac_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00]));
@@ -75,14 +74,15 @@ fn llc_creation_test() {
     stp_conf_msg.set_hello_time(2);
     stp_conf_msg.set_forward_delay(15);
 
-    let llc_pkt = LlcPacket::prepend_header(stp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
-    let mut eth_pkt = EthDot3Packet::prepend_header(llc_pkt.release(), &ETHDOT3_HEADER_TEMPLATE);
+    let llc_pkt = Llc::prepend_header(stp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
+    let mut eth_pkt =
+        EtherFrameDot3::prepend_header(llc_pkt.release(), &ETHERFRAMEDOT3_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x85, 0x04]));
 
     let target = file_to_packet("StpConf.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHER_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]
+        &target[..ETHERFRAMEDOT3_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]
     );
 }

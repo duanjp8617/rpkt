@@ -13,7 +13,7 @@ fn eth_and_arp_packet_parsing() {
     let packet = file_to_packet("ArpResponsePacket.dat");
 
     let pkt_buf = Cursor::new(&packet[..]);
-    let eth_pkt = EtherPacket::parse(pkt_buf).unwrap();
+    let eth_pkt = EtherFrame::parse(pkt_buf).unwrap();
 
     assert_eq!(
         eth_pkt.src_addr(),
@@ -25,7 +25,7 @@ fn eth_and_arp_packet_parsing() {
     );
     assert_eq!(eth_pkt.ethertype(), EtherType::ARP);
 
-    let arp_pkt = ArpPacket::parse(eth_pkt.payload()).unwrap();
+    let arp_pkt = Arp::parse(eth_pkt.payload()).unwrap();
     assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
     assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
     assert_eq!(arp_pkt.hardware_addr_len(), 6);
@@ -42,12 +42,12 @@ fn eth_and_arp_packet_parsing() {
 fn arp_packet_creation() {
     {
         let packet = file_to_packet("ArpRequestPacket.dat");
-        let mut target = [0; ETHER_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHER_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN);
 
-        let mut arp_pkt = ArpPacket::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
+        let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
         assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
         assert_eq!(arp_pkt.hardware_addr_len(), 6);
@@ -59,7 +59,8 @@ fn arp_packet_creation() {
         arp_pkt.set_sender_ipv4_addr(Ipv4Addr::new(10, 0, 0, 1));
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(10, 0, 0, 138));
 
-        let mut eth_pkt = EtherPacket::prepend_header(arp_pkt.release(), &ETHER_HEADER_TEMPLATE);
+        let mut eth_pkt =
+            EtherFrame::prepend_header(arp_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
         eth_pkt.set_ethertype(EtherType::ARP);
@@ -71,12 +72,12 @@ fn arp_packet_creation() {
 
     {
         let packet = file_to_packet("ArpResponsePacket.dat");
-        let mut target = [0; ETHER_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHER_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN);
 
-        let mut arp_pkt = ArpPacket::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
+        let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
         assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
         assert_eq!(arp_pkt.hardware_addr_len(), 6);
@@ -89,7 +90,8 @@ fn arp_packet_creation() {
         arp_pkt.set_sender_ipv4_addr(Ipv4Addr::new(10, 0, 0, 138));
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(10, 0, 0, 1));
 
-        let mut eth_pkt = EtherPacket::prepend_header(arp_pkt.release(), &ETHER_HEADER_TEMPLATE);
+        let mut eth_pkt =
+            EtherFrame::prepend_header(arp_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
         eth_pkt.set_ethertype(EtherType::ARP);
@@ -107,7 +109,7 @@ fn eth_dot3_layer_parsing_test() {
     let pkt = Cursor::new(&packet[..]);
     assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
     assert_eq!(store_ether_frame(pkt.chunk()), false);
-    let ethdot3_pkt = EthDot3Packet::parse(pkt).unwrap();
+    let ethdot3_pkt = EtherFrameDot3::parse(pkt).unwrap();
     assert_eq!(
         ethdot3_pkt.src_addr(),
         EtherAddr::parse_from("00:13:f7:11:5e:db").unwrap()
@@ -118,7 +120,7 @@ fn eth_dot3_layer_parsing_test() {
     );
     assert_eq!(ethdot3_pkt.payload_len(), 38);
 
-    let llc_pkt = LlcPacket::parse(ethdot3_pkt.payload()).unwrap();
+    let llc_pkt = Llc::parse(ethdot3_pkt.payload()).unwrap();
     assert_eq!(llc_pkt.dsap(), BPDU_CONST);
     assert_eq!(llc_pkt.ssap(), BPDU_CONST);
     assert_eq!(llc_pkt.control(), 0x03);

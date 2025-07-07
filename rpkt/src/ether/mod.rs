@@ -125,8 +125,7 @@ impl fmt::Display for EtherAddr {
 }
 
 mod generated;
-
-pub use generated::{Ethernet, ETHERNET_HEADER_LEN, ETHERNET_HEADER_TEMPLATE};
+pub use generated::*;
 
 /// Check if the byte slice stores valid Ethernet II frame.
 pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
@@ -144,8 +143,6 @@ pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
         false
     }
 }
-
-pub use generated::{EthernetDot3, ETHERNETDOT3_HEADER_LEN, ETHERNETDOT3_HEADER_TEMPLATE};
 
 /// Check if the byte slice stores valid IEEE 802.3 frame.
 pub fn store_ieee_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {
@@ -179,7 +176,7 @@ mod tests {
 
     #[test]
     fn packet_parse() {
-        let pres = Ethernet::parse(Cursor::new(&FRAME_BYTES[..]));
+        let pres = EtherFrame::parse(Cursor::new(&FRAME_BYTES[..]));
         assert_eq!(pres.is_ok(), true);
         let ethpkt = pres.unwrap();
         assert_eq!(
@@ -193,19 +190,18 @@ mod tests {
         assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
 
         let next = ethpkt.payload();
-        assert_eq!(next.chunk(), &FRAME_BYTES[ETHERNET_HEADER_LEN..]);
+        assert_eq!(next.chunk(), &FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);
     }
 
     #[test]
     fn packet_build() {
         let mut bytes = [0xff; 64];
         use core::convert::TryInto;
-        (&mut bytes[ETHERNET_HEADER_LEN..]).put(&FRAME_BYTES[ETHERNET_HEADER_LEN..]);
-
+        (&mut bytes[ETHERFRAME_HEADER_LEN..]).put(&FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);                        
         let mut buf = CursorMut::new(&mut bytes[..]);
-        buf.advance(ETHERNET_HEADER_LEN);
+        buf.advance(ETHERFRAME_HEADER_LEN);
         let slice: &[u8] = &[0; 14][..];
-        let mut ethpkt = Ethernet::prepend_header(buf, slice.try_into().unwrap());
+        let mut ethpkt = EtherFrame::prepend_header(buf, slice.try_into().unwrap());
         ethpkt.set_dst_addr(EtherAddr([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));
         ethpkt.set_src_addr(EtherAddr([0x11, 0x12, 0x13, 0x14, 0x15, 0x16]));
         ethpkt.set_ethertype(EtherType::IPV4);

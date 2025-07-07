@@ -7,7 +7,7 @@ use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 %%
 
-packet Ethernet {
+packet EtherFrame {
     header = [
         dst_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
         src_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
@@ -15,7 +15,7 @@ packet Ethernet {
     ]
 }
 
-packet EthernetDot3 {
+packet EtherFrameDot3 {
     header = [
         dst_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },
         src_addr = Field {bit = 48, repr = &[u8], arg = %%EtherAddr%% },

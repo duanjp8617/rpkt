@@ -5,18 +5,18 @@ use crate::ether::{EtherAddr, EtherType};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
-/// A constant that defines the fixed byte length of the Ethernet protocol header.
-pub const ETHERNET_HEADER_LEN: usize = 14;
-/// A fixed Ethernet header.
-pub const ETHERNET_HEADER_TEMPLATE: [u8; 14] = [
+/// A constant that defines the fixed byte length of the EtherFrame protocol header.
+pub const ETHERFRAME_HEADER_LEN: usize = 14;
+/// A fixed EtherFrame header.
+pub const ETHERFRAME_HEADER_TEMPLATE: [u8; 14] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00,
 ];
 
 #[derive(Debug, Clone, Copy)]
-pub struct Ethernet<T> {
+pub struct EtherFrame<T> {
     buf: T,
 }
-impl<T: Buf> Ethernet<T> {
+impl<T: Buf> EtherFrame<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -57,7 +57,7 @@ impl<T: Buf> Ethernet<T> {
         ))
     }
 }
-impl<T: PktBuf> Ethernet<T> {
+impl<T: PktBuf> EtherFrame<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -65,7 +65,7 @@ impl<T: PktBuf> Ethernet<T> {
         buf
     }
 }
-impl<T: PktBufMut> Ethernet<T> {
+impl<T: PktBufMut> EtherFrame<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 14]) -> Self {
         assert!(buf.chunk_headroom() >= 14);
@@ -86,7 +86,7 @@ impl<T: PktBufMut> Ethernet<T> {
         (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
-impl<'a> Ethernet<Cursor<'a>> {
+impl<'a> EtherFrame<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -101,7 +101,7 @@ impl<'a> Ethernet<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[14..])
     }
 }
-impl<'a> Ethernet<CursorMut<'a>> {
+impl<'a> EtherFrame<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -117,18 +117,18 @@ impl<'a> Ethernet<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the EthernetDot3 protocol header.
-pub const ETHERNETDOT3_HEADER_LEN: usize = 14;
-/// A fixed EthernetDot3 header.
-pub const ETHERNETDOT3_HEADER_TEMPLATE: [u8; 14] = [
+/// A constant that defines the fixed byte length of the EtherFrameDot3 protocol header.
+pub const ETHERFRAMEDOT3_HEADER_LEN: usize = 14;
+/// A fixed EtherFrameDot3 header.
+pub const ETHERFRAMEDOT3_HEADER_TEMPLATE: [u8; 14] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e,
 ];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EthernetDot3<T> {
+pub struct EtherFrameDot3<T> {
     buf: T,
 }
-impl<T: Buf> EthernetDot3<T> {
+impl<T: Buf> EtherFrameDot3<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -170,7 +170,7 @@ impl<T: Buf> EthernetDot3<T> {
         (u16::from_be_bytes((&self.buf.chunk()[12..14]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> EthernetDot3<T> {
+impl<T: PktBuf> EtherFrameDot3<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!(14 + self.payload_len() as usize <= self.buf.remaining());
@@ -183,7 +183,7 @@ impl<T: PktBuf> EthernetDot3<T> {
         buf
     }
 }
-impl<T: PktBufMut> EthernetDot3<T> {
+impl<T: PktBufMut> EtherFrameDot3<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 14]) -> Self {
         assert!(buf.chunk_headroom() >= 14);
@@ -208,7 +208,7 @@ impl<T: PktBufMut> EthernetDot3<T> {
         (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> EthernetDot3<Cursor<'a>> {
+impl<'a> EtherFrameDot3<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -227,7 +227,7 @@ impl<'a> EthernetDot3<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[14..(14 + payload_len)])
     }
 }
-impl<'a> EthernetDot3<CursorMut<'a>> {
+impl<'a> EtherFrameDot3<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

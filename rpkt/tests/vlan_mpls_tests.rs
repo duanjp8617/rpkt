@@ -16,22 +16,22 @@ fn vlan_parse_and_creation() {
     let packet = file_to_packet("ArpRequestWithVlan.dat");
 
     {
-        let eth_pkt = EtherPacket::parse(Cursor::new(&packet[..])).unwrap();
+        let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = VlanPacket::parse(eth_pkt.payload()).unwrap();
+        let vlan_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.priority(), 5);
         assert_eq!(vlan_pkt.dei_flag(), true);
         assert_eq!(vlan_pkt.vlan_id(), 666);
         assert_eq!(vlan_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = VlanPacket::parse(vlan_pkt.payload()).unwrap();
+        let vlan_pkt = Vlan::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.priority(), 2);
         assert_eq!(vlan_pkt.dei_flag(), false);
         assert_eq!(vlan_pkt.vlan_id(), 200);
         assert_eq!(vlan_pkt.ethertype(), EtherType::ARP);
 
-        let arp_pkt = ArpPacket::parse(vlan_pkt.payload()).unwrap();
+        let arp_pkt = Arp::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
         assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
         assert_eq!(arp_pkt.hardware_addr_len(), 6);
@@ -50,12 +50,12 @@ fn vlan_parse_and_creation() {
     }
 
     {
-        let mut target = [0; ETHER_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHERFRAME_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHER_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHERFRAME_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN);
 
-        let mut arp_pkt = ArpPacket::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
+        let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
         assert_eq!(arp_pkt.protocol_type(), EtherType::IPV4);
         assert_eq!(arp_pkt.hardware_addr_len(), 6);
@@ -67,19 +67,20 @@ fn vlan_parse_and_creation() {
         arp_pkt.set_target_ether_addr(EtherAddr::parse_from("00:00:00:00:00:00").unwrap());
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(192, 168, 2, 254));
 
-        let mut vlan_pkt = VlanPacket::prepend_header(arp_pkt.release(), &VLAN_HEADER_TEMPLATE);
+        let mut vlan_pkt = Vlan::prepend_header(arp_pkt.release(), &VLAN_HEADER_TEMPLATE);
         vlan_pkt.set_priority(2);
         assert_eq!(vlan_pkt.dei_flag(), false);
         vlan_pkt.set_vlan_id(200);
         vlan_pkt.set_ethertype(EtherType::ARP);
 
-        let mut vlan_pkt = VlanPacket::prepend_header(vlan_pkt.release(), &VLAN_HEADER_TEMPLATE);
+        let mut vlan_pkt = Vlan::prepend_header(vlan_pkt.release(), &VLAN_HEADER_TEMPLATE);
         vlan_pkt.set_priority(5);
         vlan_pkt.set_dei_flag(true);
         vlan_pkt.set_vlan_id(666);
         vlan_pkt.set_ethertype(EtherType::VLAN);
 
-        let mut eth_pkt = EtherPacket::prepend_header(vlan_pkt.release(), &ETHER_HEADER_TEMPLATE);
+        let mut eth_pkt =
+            EtherFrame::prepend_header(vlan_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
         eth_pkt.set_ethertype(EtherType::VLAN);
@@ -94,20 +95,20 @@ fn vlan_parse_and_creation() {
 fn qinq802_1adparse() {
     let packet = file_to_packet("QinQ_802.1_AD.dat");
 
-    let eth_pkt = EtherPacket::parse(Cursor::new(&packet[..])).unwrap();
+    let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
     assert_eq!(eth_pkt.ethertype(), EtherType::QINQ);
 
-    let qinq_pkt = VlanPacket::parse(eth_pkt.payload()).unwrap();
+    let qinq_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
     assert_eq!(qinq_pkt.vlan_id(), 30);
     assert_eq!(qinq_pkt.ethertype(), EtherType::VLAN);
 
-    let vlan_pkt = VlanPacket::parse(qinq_pkt.payload()).unwrap();
+    let vlan_pkt = Vlan::parse(qinq_pkt.payload()).unwrap();
     assert_eq!(vlan_pkt.priority(), 0);
     assert_eq!(vlan_pkt.dei_flag(), false);
     assert_eq!(vlan_pkt.vlan_id(), 100);
     assert_eq!(vlan_pkt.ethertype(), EtherType::IPV4);
 
-    let ipv4_pkt = Ipv4Packet::parse(vlan_pkt.payload()).unwrap();
+    let ipv4_pkt = Ipv4::parse(vlan_pkt.payload()).unwrap();
     assert_eq!(ipv4_pkt.version(), 4);
     assert_eq!(ipv4_pkt.header_len(), 20);
     assert_eq!(ipv4_pkt.dscp(), 0x00);
@@ -131,16 +132,16 @@ fn mpls_layer_test() {
     {
         let packet = file_to_packet("MplsPackets1.dat");
 
-        let eth_pkt = EtherPacket::parse(Cursor::new(&packet[..])).unwrap();
+        let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = VlanPacket::parse(eth_pkt.payload()).unwrap();
+        let vlan_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = VlanPacket::parse(vlan_pkt.payload()).unwrap();
+        let vlan_pkt = Vlan::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.ethertype(), EtherType::MPLS);
 
-        let mpls_pkt = MplsPacket::parse(vlan_pkt.payload()).unwrap();
+        let mpls_pkt = Mpls::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(mpls_pkt.label(), 16000);
         assert_eq!(mpls_pkt.experimental_bits(), 0);
         assert_eq!(mpls_pkt.bottom_of_stack(), true);
@@ -152,15 +153,15 @@ fn mpls_layer_test() {
 
     {
         let packet = file_to_packet("MplsPackets2.dat");
-        let eth_pkt = EtherPacket::parse(Cursor::new(&packet[..])).unwrap();
+        let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
 
-        let mpls_pkt = MplsPacket::parse(eth_pkt.payload()).unwrap();
+        let mpls_pkt = Mpls::parse(eth_pkt.payload()).unwrap();
         assert_eq!(mpls_pkt.label(), 18);
         assert_eq!(mpls_pkt.experimental_bits(), 0);
         assert_eq!(mpls_pkt.bottom_of_stack(), false);
         assert_eq!(mpls_pkt.ttl(), 254);
 
-        let mpls_pkt = MplsPacket::parse(mpls_pkt.payload()).unwrap();
+        let mpls_pkt = Mpls::parse(mpls_pkt.payload()).unwrap();
         assert_eq!(mpls_pkt.label(), 16);
         assert_eq!(mpls_pkt.experimental_bits(), 0);
         assert_eq!(mpls_pkt.bottom_of_stack(), true);
@@ -173,15 +174,15 @@ fn mpls_layer_test() {
 
     {
         let packet = file_to_packet("MplsPackets3.dat");
-        let eth_pkt = EtherPacket::parse(Cursor::new(&packet[..])).unwrap();
+        let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
 
-        let mpls_pkt = MplsPacket::parse(eth_pkt.payload()).unwrap();
+        let mpls_pkt = Mpls::parse(eth_pkt.payload()).unwrap();
         assert_eq!(mpls_pkt.label(), 670543);
         assert_eq!(mpls_pkt.experimental_bits(), 6);
         assert_eq!(mpls_pkt.bottom_of_stack(), false);
         assert_eq!(mpls_pkt.ttl(), 5);
 
-        let mpls_pkt = MplsPacket::parse(mpls_pkt.payload()).unwrap();
+        let mpls_pkt = Mpls::parse(mpls_pkt.payload()).unwrap();
         assert_eq!(mpls_pkt.label(), 16);
         assert_eq!(mpls_pkt.experimental_bits(), 0);
         assert_eq!(mpls_pkt.bottom_of_stack(), true);
@@ -200,13 +201,13 @@ fn mpls_layer_test() {
         let mut pkt = CursorMut::new(&mut buf[..]);
         pkt.advance(22);
 
-        let mut mpls_pkt = MplsPacket::prepend_header(pkt, &MPLS_HEADER_TEMPLATE);
+        let mut mpls_pkt = Mpls::prepend_header(pkt, &MPLS_HEADER_TEMPLATE);
         mpls_pkt.set_bottom_of_stack(true);
         mpls_pkt.set_experimental_bits(0);
         mpls_pkt.set_label(16);
         mpls_pkt.set_ttl(255);
 
-        let mut mpls_pkt = MplsPacket::prepend_header(mpls_pkt.release(), &MPLS_HEADER_TEMPLATE);
+        let mut mpls_pkt = Mpls::prepend_header(mpls_pkt.release(), &MPLS_HEADER_TEMPLATE);
         mpls_pkt.set_bottom_of_stack(false);
         mpls_pkt.set_experimental_bits(6);
         mpls_pkt.set_label(670543);
@@ -222,17 +223,17 @@ fn vxlan_parsing_and_creation_test() {
         let buf = file_to_packet("Vxlan1.dat");
         let pkt = Cursor::new(&buf[..]);
 
-        let eth_pkt = EtherPacket::parse(pkt).unwrap();
+        let eth_pkt = EtherFrame::parse(pkt).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
-        let ip_pkt = Ipv4Packet::parse(eth_pkt.payload()).unwrap();
+        let ip_pkt = Ipv4::parse(eth_pkt.payload()).unwrap();
         assert_eq!(ip_pkt.protocol(), IpProtocol::UDP);
 
-        let udp_pkt = UdpPacket::parse(ip_pkt.payload()).unwrap();
+        let udp_pkt = Udp::parse(ip_pkt.payload()).unwrap();
         assert_eq!(udp_pkt.dst_port(), 4789);
         assert_eq!(udp_pkt.src_port(), 45149);
 
-        let vxlan_pkt = VxlanPacket::parse(udp_pkt.payload()).unwrap();
+        let vxlan_pkt = Vxlan::parse(udp_pkt.payload()).unwrap();
         assert_eq!(vxlan_pkt.gbp_extention(), true);
         assert_eq!(vxlan_pkt.vni_present(), true);
         assert_eq!(vxlan_pkt.dont_learn(), true);
@@ -245,21 +246,21 @@ fn vxlan_parsing_and_creation_test() {
         assert_eq!(vxlan_pkt.group_id(), 100);
         assert_eq!(vxlan_pkt.vni(), 3000001);
 
-        let eth_pkt = EtherPacket::parse(vxlan_pkt.payload()).unwrap();
+        let eth_pkt = EtherFrame::parse(vxlan_pkt.payload()).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
     }
 
     {
         let packet = file_to_packet("Vxlan2.dat");
         let total_header_len =
-            ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN + VXLAN_HEADER_LEN;
+            ETHERFRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN + VXLAN_HEADER_LEN;
         let mut buf = [0; 148];
         buf[total_header_len..].copy_from_slice(&packet[total_header_len..]);
 
         let mut pkt = CursorMut::new(&mut buf);
         pkt.advance(total_header_len);
 
-        let mut vxlan_pkt = VxlanPacket::prepend_header(pkt, &VXLAN_HEADER_TEMPLATE);
+        let mut vxlan_pkt = Vxlan::prepend_header(pkt, &VXLAN_HEADER_TEMPLATE);
         assert_eq!(vxlan_pkt.gbp_extention(), false);
         assert_eq!(vxlan_pkt.vni_present(), false);
         assert_eq!(vxlan_pkt.dont_learn(), false);
@@ -274,13 +275,13 @@ fn vxlan_parsing_and_creation_test() {
         vxlan_pkt.set_group_id(32639);
         vxlan_pkt.set_vni(300);
 
-        let mut udp_pkt = UdpPacket::prepend_header(vxlan_pkt.release(), &UDP_HEADER_TEMPLATE);
+        let mut udp_pkt = Udp::prepend_header(vxlan_pkt.release(), &UDP_HEADER_TEMPLATE);
         udp_pkt.set_src_port(45149);
         udp_pkt.set_dst_port(4789);
         assert_eq!(udp_pkt.packet_len(), 114);
         udp_pkt.set_checksum(0xad94);
 
-        let mut ip_pkt = Ipv4Packet::prepend_header(
+        let mut ip_pkt = Ipv4::prepend_header(
             udp_pkt.release(),
             &IPV4_HEADER_TEMPLATE,
             IPV4_HEADER_TEMPLATE.len() as u8,
@@ -300,7 +301,7 @@ fn vxlan_parsing_and_creation_test() {
         ip_pkt.set_src_addr(Ipv4Addr::new(192, 168, 203, 1));
         ip_pkt.set_dst_addr(Ipv4Addr::new(192, 168, 202, 1));
 
-        let mut eth_pkt = EtherPacket::prepend_header(ip_pkt.release(), &ETHER_HEADER_TEMPLATE);
+        let mut eth_pkt = EtherFrame::prepend_header(ip_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
         eth_pkt.set_dst_addr(EtherAddr([0x00, 0x16, 0x3e, 0x08, 0x71, 0xcf]));
         eth_pkt.set_src_addr(EtherAddr([0x36, 0xdc, 0x85, 0x1e, 0xb3, 0x40]));
         eth_pkt.set_ethertype(EtherType::IPV4);
