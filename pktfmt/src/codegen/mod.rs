@@ -258,6 +258,7 @@ impl<'a> PktGen<'a> {
                 "T",
                 "header",
                 &format!("&'a [u8; {}]", self.item().header().header_len_in_bytes()),
+                &self.item().protocol_name(),
                 impl_block.get_writer(),
             );
 
