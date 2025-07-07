@@ -66,21 +66,21 @@ impl<T: PktBufMut> Ipv4Packet<T> {
 */
 %%
 
-message Eol {
+packet EolOption {
     header = [
         type_ = Field {bit = 8, default = @0},
     ],
     cond = (type_ == 0),
 }
 
-message Nop {
+packet NopOption {
     header = [
         type_ = Field {bit = 8, default = @1},
     ],
     cond = (type_ == 1),
 }
 
-message Timestamp {
+packet TimestampOption {
     header = [
         type_ = Field {bit = 8, default = @68},
         len = Field {
@@ -98,7 +98,7 @@ message Timestamp {
     cond = (type_ == 68)
 }
 
-message RecordRoute {
+packet RecordRouteOption {
     header = [
         type_ = Field {bit = 8, default = @7},
         len = Field {
@@ -114,7 +114,7 @@ message RecordRoute {
     cond = (type_ == 7),
 }
 
-message RouteAlert {
+packet RouteAlertOption {
     header = [
         type_ = Field {bit = 8, default = @148},
         len = Field {
@@ -130,10 +130,13 @@ message RouteAlert {
     cond = (type_ == 148),
 }
 
-message_group Ipv4Opt = [
-    Eol,
-    Nop,
-    Timestamp,
-    RecordRoute,
-    RouteAlert
-]
+group Ipv4Options = {
+    members = [
+        EolOption,
+        NopOption,
+        TimestampOption,
+        RecordRouteOption,
+        RouteAlertOption
+    ],
+    enable_iter = true,
+}

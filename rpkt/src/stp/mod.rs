@@ -2,28 +2,28 @@ use crate::ether::EtherAddr;
 
 mod generated;
 
-pub use generated::{StpTcnBpduMessage, STPTCNBPDU_HEADER_LEN, STPTCNBPDU_HEADER_TEMPLATE};
+pub use generated::{StpTcnBpdu, STPTCNBPDU_HEADER_LEN, STPTCNBPDU_HEADER_TEMPLATE};
 
-pub use generated::{StpConfBpduMessage, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
+pub use generated::{StpConfBpdu, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{RstpConfBpduMessage, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
+pub use generated::{RstpConfBpdu, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{MstpConfBpduMessage, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
+pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
 
-pub use generated::{MstiConfMessage, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
+pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
 
-pub use generated::StpMessageGroup;
+pub use generated::StpGroup;
 
 enum_sim! {
     /// An enum-like type for representing Stp version.
     pub struct StpVersion (u8) {
-        /// The underlying buffer contains `StpConfBpduMessage`.
+        /// The underlying buffer contains `StpConfBpdu`.
         STP = 0x00,
 
-        /// The underlying buffer contains `StpTcnBpduMessage`.
+        /// The underlying buffer contains `StpTcnBpdu`.
         RSTP = 0x2,
 
-        /// The underlying buffer contains `RstpConfBpduMessage` or `MstpConfBpduMessage`.
+        /// The underlying buffer contains `RstpConfBpdu` or `MstpConfBpdu`.
         MSTP =  0x3,
     }
 }
@@ -31,13 +31,13 @@ enum_sim! {
 enum_sim! {
     /// An enum-like type for representing Stp types.
     pub struct StpType (u8) {
-        /// The underlying buffer contains `StpConfBpduMessage`.
+        /// The underlying buffer contains `StpConfBpdu`.
         STP_CONF = 0x00,
 
-        /// The underlying buffer contains `StpTcnBpduMessage`.
+        /// The underlying buffer contains `StpTcnBpdu`.
         STP_TCN = 0x80,
 
-        /// The underlying buffer contains `RstpConfBpduMessage` or `MstpConfBpduMessage`.
+        /// The underlying buffer contains `RstpConfBpdu` or `MstpConfBpdu`.
         RSTP_OR_MSTP =  0x02,
     }
 }

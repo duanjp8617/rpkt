@@ -9,7 +9,7 @@ use crate::ether::EtherAddr;
 use super::{StpType, StpVersion};
 %%
 
-message StpTcnBpdu {
+packet StpTcnBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
@@ -17,7 +17,7 @@ message StpTcnBpdu {
     ]
 }
 
-message StpConfBpdu {
+packet StpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
@@ -39,8 +39,8 @@ message StpConfBpdu {
 }
 
 %%
-impl<T: Buf> StpConfBpduMessage<T> {
-    /// Get the root id priority from the `StpConfBpduMessage`.
+impl<T: Buf> StpConfBpdu<T> {
+    /// Get the root id priority from the `StpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -54,7 +54,7 @@ impl<T: Buf> StpConfBpduMessage<T> {
         u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
-    /// Get the bridge id priority from the `StpConfBpduMessage`.
+    /// Get the bridge id priority from the `StpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -88,8 +88,8 @@ impl<T: Buf> StpConfBpduMessage<T> {
         u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: PktBufMut> StpConfBpduMessage<T> {
-    /// Set the root priority for the `StpConfBpduMessage`.
+impl<T: PktBufMut> StpConfBpdu<T> {
+    /// Set the root priority for the `StpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -109,7 +109,7 @@ impl<T: PktBufMut> StpConfBpduMessage<T> {
         (&mut self.buf.chunk_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
     }
 
-    /// Set the bridge priority for the `StpConfBpduMessage`.
+    /// Set the bridge priority for the `StpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -151,7 +151,7 @@ impl<T: PktBufMut> StpConfBpduMessage<T> {
 }
 %%
 
-message RstpConfBpdu {
+packet RstpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x2},
@@ -174,8 +174,8 @@ message RstpConfBpdu {
 }
 
 %%
-impl<T: Buf> RstpConfBpduMessage<T> {
-    /// Get the root id priority from the `RstpConfBpduMessage`.
+impl<T: Buf> RstpConfBpdu<T> {
+    /// Get the root id priority from the `RstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -189,7 +189,7 @@ impl<T: Buf> RstpConfBpduMessage<T> {
         u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
-    /// Get the bridge id priority from the `RstpConfBpduMessage`.
+    /// Get the bridge id priority from the `RstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -223,8 +223,8 @@ impl<T: Buf> RstpConfBpduMessage<T> {
         u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: PktBufMut> RstpConfBpduMessage<T> {
-    /// Set the root priority for the `RstpConfBpduMessage`.
+impl<T: PktBufMut> RstpConfBpdu<T> {
+    /// Set the root priority for the `RstpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -286,7 +286,7 @@ impl<T: PktBufMut> RstpConfBpduMessage<T> {
 }
 %%
 
-message MstpConfBpdu {
+packet MstpConfBpdu {
     header = [
         proto_id = Field {bit = 16, default=@0x00},
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x3},
@@ -322,14 +322,14 @@ message MstpConfBpdu {
 }
 
 %%
-impl<T: Buf> MstpConfBpduMessage<T> {
+impl<T: Buf> MstpConfBpdu<T> {
     /// Get the **version3_len** field value.
     #[inline]
     pub fn version3_len(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[36..38]).try_into().unwrap())
     }
 
-    /// Get the root id priority from the `MstpConfBpduMessage`.
+    /// Get the root id priority from the `MstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -343,7 +343,7 @@ impl<T: Buf> MstpConfBpduMessage<T> {
         u64::from_be_bytes((&self.buf.chunk()[5..13]).try_into().unwrap())
     }
 
-    /// Get the bridge id priority from the `MstpConfBpduMessage`.
+    /// Get the bridge id priority from the `MstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -357,7 +357,7 @@ impl<T: Buf> MstpConfBpduMessage<T> {
         u64::from_be_bytes((&self.buf.chunk()[17..25]).try_into().unwrap())
     }
 
-    /// Get the cist bridge id priority from the `MstpConfBpduMessage`.
+    /// Get the cist bridge id priority from the `MstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -372,9 +372,9 @@ impl<T: Buf> MstpConfBpduMessage<T> {
     }
 
     /// Get the number of the `MstiConfMessage` contained in the
-    /// `MstpConfBpduMessage`.
+    /// `MstpConfBpdu`.
     ///
-    /// This method returns `None` if the `MstpConfBpduMessage` has an invalid
+    /// This method returns `None` if the `MstpConfBpdu` has an invalid
     /// format.
     #[inline]
     pub fn num_of_msti_msg(&self) -> Option<usize> {
@@ -385,16 +385,16 @@ impl<T: Buf> MstpConfBpduMessage<T> {
         }
     }
 
-    /// Get the `index`-th `MstiConfMessage` from the `MstpConfBpduMessage`.
+    /// Get the `index`-th `MstiConf` from the `MstpConfBpdu`.
     ///
     /// # Panics
     ///
-    /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
-    /// `MstiConfMessage`.
+    /// This method panics if `MstpConfBpdu` does not have the `index`-th
+    /// `MstiConf`.
     #[inline]
-    pub fn msti_conf_message(&self, index: usize) -> MstiConfMessage<Cursor<'_>> {
+    pub fn msti_conf(&self, index: usize) -> MstiConf<Cursor<'_>> {
         let offset = 16 * index;
-        MstiConfMessage::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
+        MstiConf::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
     }
 
     #[inline]
@@ -417,8 +417,8 @@ impl<T: Buf> MstpConfBpduMessage<T> {
         u16::from_le_bytes((&self.buf.chunk()[33..35]).try_into().unwrap())
     }
 }
-impl<T: PktBufMut> MstpConfBpduMessage<T> {
-    /// Set the root priority for the `MstpConfBpduMessage`.
+impl<T: PktBufMut> MstpConfBpdu<T> {
+    /// Set the root priority for the `MstpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -438,7 +438,7 @@ impl<T: PktBufMut> MstpConfBpduMessage<T> {
         (&mut self.buf.chunk_mut()[5..13]).copy_from_slice(&value.to_be_bytes());
     }
 
-    /// Set the bridge priority for the `MstpConfBpduMessage`.
+    /// Set the bridge priority for the `MstpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -458,7 +458,7 @@ impl<T: PktBufMut> MstpConfBpduMessage<T> {
         (&mut self.buf.chunk_mut()[17..25]).copy_from_slice(&value.to_be_bytes());
     }
 
-    /// Set the cist bridge id priority for the `MstpConfBpduMessage`.
+    /// Set the cist bridge id priority for the `MstpConfBpdu`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -478,24 +478,24 @@ impl<T: PktBufMut> MstpConfBpduMessage<T> {
         (&mut self.buf.chunk_mut()[93..101]).copy_from_slice(&value.to_be_bytes());
     }
 
-    /// Set the number of the `MstiConfMessage` contained in the
-    /// `MstpConfBpduMessage`.
+    /// Set the number of the `MstiConf` contained in the
+    /// `MstpConfBpdu`.
     #[inline]
     pub fn set_num_of_msti_msg(&mut self, num: u32) {
         self.set_header_len(102 + num * 16);
     }
 
-    /// Get the `index`-th mutable `MstiConfMessage` from the
-    /// `MstpConfBpduMessage`.
+    /// Get the `index`-th mutable `MstiConf` from the
+    /// `MstpConfBpdu`.
     ///
     /// # Panics
     ///
-    /// This method panics if `MstpConfBpduMessage` does not have the `index`-th
-    /// `MstiConfMessage`.
+    /// This method panics if `MstpConfBpdu` does not have the `index`-th
+    /// `MstiConf`.
     #[inline]
-    pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConfMessage<CursorMut<'_>> {
+    pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConf<CursorMut<'_>> {
         let offset = 16 * index;
-        MstiConfMessage::parse_unchecked(CursorMut::new(&mut self.buf.chunk_mut()[102 + offset..118 + offset]))
+        MstiConf::parse_unchecked(CursorMut::new(&mut self.buf.chunk_mut()[102 + offset..118 + offset]))
     }
 
     #[inline]
@@ -520,7 +520,7 @@ impl<T: PktBufMut> MstpConfBpduMessage<T> {
 }
 %%
 
-message MstiConf {
+packet MstiConf {
     header = [
         flags = Field {bit = 8},
         regional_root_priority = Field {bit = 4, gen = false},
@@ -534,8 +534,8 @@ message MstiConf {
 }
 
 %%
-impl<T: Buf> MstiConfMessage<T> {
-    /// Get the regional root id priority from the `MstiConfMessage`.
+impl<T: Buf> MstiConf<T> {
+    /// Get the regional root id priority from the `MstiConf`.
     ///
     /// Note: the result is a a multiple of 4096.
     #[inline]
@@ -550,8 +550,8 @@ impl<T: Buf> MstiConfMessage<T> {
     }
 }
 
-impl<T: PktBufMut> MstiConfMessage<T> {
-    /// Set the regional root id priority for the `MstiConfMessage`.
+impl<T: PktBufMut> MstiConf<T> {
+    /// Set the regional root id priority for the `MstiConf`.
     ///
     /// Note: the input `value` must be a multiple of 4096.
     ///
@@ -574,13 +574,13 @@ impl<T: PktBufMut> MstiConfMessage<T> {
 
 
 #[derive(Debug)]
-pub enum StpMessageGroup<T> {
-    StpTcn(StpTcnBpduMessage<T>),
-    StpConf(StpConfBpduMessage<T>),
-    RstpConf(RstpConfBpduMessage<T>),
-    MstpConf(MstpConfBpduMessage<T>),
+pub enum StpGroup<T> {
+    StpTcn(StpTcnBpdu<T>),
+    StpConf(StpConfBpdu<T>),
+    RstpConf(RstpConfBpdu<T>),
+    MstpConf(MstpConfBpdu<T>),
 }
-impl<T: Buf> StpMessageGroup<T> {
+impl<T: Buf> StpGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 3 {
             return Err(buf);
@@ -588,10 +588,10 @@ impl<T: Buf> StpMessageGroup<T> {
         let v = buf.chunk()[2];
         let t = buf.chunk()[3];
         match (t, v) {
-            (0, 0) => StpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpConf(msg)),
-            (2, 2) => RstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::RstpConf(msg)),
-            (2, 3) => MstpConfBpduMessage::parse(buf).map(|msg| StpMessageGroup::MstpConf(msg)),
-            (0x80, 0) => StpTcnBpduMessage::parse(buf).map(|msg| StpMessageGroup::StpTcn(msg)),
+            (0, 0) => StpConfBpdu::parse(buf).map(|msg| StpGroup::StpConf(msg)),
+            (2, 2) => RstpConfBpdu::parse(buf).map(|msg| StpGroup::RstpConf(msg)),
+            (2, 3) => MstpConfBpdu::parse(buf).map(|msg| StpGroup::MstpConf(msg)),
+            (0x80, 0) => StpTcnBpdu::parse(buf).map(|msg| StpGroup::StpTcn(msg)),
             _ => Err(buf),
         }
     }

@@ -11,10 +11,10 @@ pub const VXLAN_HEADER_LEN: usize = 8;
 pub const VXLAN_HEADER_TEMPLATE: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct VxlanPacket<T> {
+pub struct Vxlan<T> {
     buf: T,
 }
-impl<T: Buf> VxlanPacket<T> {
+impl<T: Buf> Vxlan<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -85,7 +85,7 @@ impl<T: Buf> VxlanPacket<T> {
         self.buf.chunk()[7]
     }
 }
-impl<T: PktBuf> VxlanPacket<T> {
+impl<T: PktBuf> Vxlan<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -93,7 +93,7 @@ impl<T: PktBuf> VxlanPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> VxlanPacket<T> {
+impl<T: PktBufMut> Vxlan<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
         assert!(buf.chunk_headroom() >= 8);
@@ -158,7 +158,7 @@ impl<T: PktBufMut> VxlanPacket<T> {
         self.buf.chunk_mut()[7] = value;
     }
 }
-impl<'a> VxlanPacket<Cursor<'a>> {
+impl<'a> Vxlan<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -173,7 +173,7 @@ impl<'a> VxlanPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[8..])
     }
 }
-impl<'a> VxlanPacket<CursorMut<'a>> {
+impl<'a> Vxlan<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

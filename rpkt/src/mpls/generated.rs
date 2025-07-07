@@ -11,10 +11,10 @@ pub const MPLS_HEADER_LEN: usize = 4;
 pub const MPLS_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct MplsPacket<T> {
+pub struct Mpls<T> {
     buf: T,
 }
-impl<T: Buf> MplsPacket<T> {
+impl<T: Buf> Mpls<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -57,7 +57,7 @@ impl<T: Buf> MplsPacket<T> {
         self.buf.chunk()[3]
     }
 }
-impl<T: PktBuf> MplsPacket<T> {
+impl<T: PktBuf> Mpls<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -65,7 +65,7 @@ impl<T: PktBuf> MplsPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> MplsPacket<T> {
+impl<T: PktBufMut> Mpls<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -94,7 +94,7 @@ impl<T: PktBufMut> MplsPacket<T> {
         self.buf.chunk_mut()[3] = value;
     }
 }
-impl<'a> MplsPacket<Cursor<'a>> {
+impl<'a> Mpls<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -109,7 +109,7 @@ impl<'a> MplsPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[4..])
     }
 }
-impl<'a> MplsPacket<CursorMut<'a>> {
+impl<'a> Mpls<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

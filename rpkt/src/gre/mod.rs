@@ -1,7 +1,3 @@
-use crate::cursors::*;
-use crate::ether::EtherType;
-use crate::traits::*;
-
 mod generated;
 pub use generated::*;
 

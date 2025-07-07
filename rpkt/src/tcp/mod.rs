@@ -1,25 +1,27 @@
 //! Tcp protocol.
 
 mod generated;
-pub use generated::{TcpPacket, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
+pub use generated::{Tcp, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 
 /// Tcp options.
 pub mod options {
-    pub use super::generated::{EolMessage, EOL_HEADER_LEN, EOL_HEADER_TEMPLATE};
+    pub use super::generated::{EolOption, EOLOPTION_HEADER_LEN, EOLOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{NopMessage, NOP_HEADER_LEN, NOP_HEADER_TEMPLATE};
+    pub use super::generated::{NopOption, NOPOPTION_HEADER_LEN, NOPOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{MssMessage, MSS_HEADER_LEN, MSS_HEADER_TEMPLATE};
+    pub use super::generated::{MssOption, MSSOPTION_HEADER_LEN, MSSOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{WsoptMessage, WSOPT_HEADER_LEN, WSOPT_HEADER_TEMPLATE};
+    pub use super::generated::{WsoptOption, WSOPTOPTION_HEADER_LEN, WSOPTOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{SackpermMessage, SACKPERM_HEADER_LEN, SACKPERM_HEADER_TEMPLATE};
+    pub use super::generated::{
+        SackpermOption, SACKPERMOPTION_HEADER_LEN, SACKPERMOPTION_HEADER_TEMPLATE,
+    };
 
-    pub use super::generated::{SackMessage, SACK_HEADER_LEN, SACK_HEADER_TEMPLATE};
+    pub use super::generated::{SackOption, SACKOPTION_HEADER_LEN, SACKOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{TsMessage, TS_HEADER_LEN, TS_HEADER_TEMPLATE};
+    pub use super::generated::{TsOption, TSOPTION_HEADER_LEN, TSOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{FoMessage, FO_HEADER_LEN, FO_HEADER_TEMPLATE};
+    pub use super::generated::{FoOption, FOOPTION_HEADER_LEN, FOOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{TcpOptGroup, TcpOptGroupIter, TcpOptGroupIterMut};
+    pub use super::generated::{TcpOptionsGroup, TcpOptionsGroupIter, TcpOptionsGroupIterMut};
 }

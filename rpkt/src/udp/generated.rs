@@ -10,10 +10,10 @@ pub const UDP_HEADER_LEN: usize = 8;
 pub const UDP_HEADER_TEMPLATE: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct UdpPacket<T> {
+pub struct Udp<T> {
     buf: T,
 }
-impl<T: Buf> UdpPacket<T> {
+impl<T: Buf> Udp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -61,7 +61,7 @@ impl<T: Buf> UdpPacket<T> {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> UdpPacket<T> {
+impl<T: PktBuf> Udp<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!((self.packet_len() as usize) <= self.buf.remaining());
@@ -74,7 +74,7 @@ impl<T: PktBuf> UdpPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> UdpPacket<T> {
+impl<T: PktBufMut> Udp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
         assert!(buf.chunk_headroom() >= 8);
@@ -103,7 +103,7 @@ impl<T: PktBufMut> UdpPacket<T> {
         (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> UdpPacket<Cursor<'a>> {
+impl<'a> Udp<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -124,7 +124,7 @@ impl<'a> UdpPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[8..packet_len])
     }
 }
-impl<'a> UdpPacket<CursorMut<'a>> {
+impl<'a> Udp<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

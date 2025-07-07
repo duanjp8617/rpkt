@@ -16,10 +16,10 @@ pub const ARP_HEADER_TEMPLATE: [u8; 28] = [
 ];
 
 #[derive(Debug, Clone, Copy)]
-pub struct ArpPacket<T> {
+pub struct Arp<T> {
     buf: T,
 }
-impl<T: Buf> ArpPacket<T> {
+impl<T: Buf> Arp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -92,7 +92,7 @@ impl<T: Buf> ArpPacket<T> {
         ))
     }
 }
-impl<T: PktBuf> ArpPacket<T> {
+impl<T: PktBuf> Arp<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -100,7 +100,7 @@ impl<T: PktBuf> ArpPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> ArpPacket<T> {
+impl<T: PktBufMut> Arp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 28]) -> Self {
         assert!(buf.chunk_headroom() >= 28);
@@ -151,7 +151,7 @@ impl<T: PktBufMut> ArpPacket<T> {
         (&mut self.buf.chunk_mut()[24..28]).copy_from_slice(&u32::from(value).to_be_bytes());
     }
 }
-impl<'a> ArpPacket<Cursor<'a>> {
+impl<'a> Arp<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -166,7 +166,7 @@ impl<'a> ArpPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[28..])
     }
 }
-impl<'a> ArpPacket<CursorMut<'a>> {
+impl<'a> Arp<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

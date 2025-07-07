@@ -28,7 +28,7 @@ packet Gre {
 }
 
 %%
-impl<T: Buf> GrePacket<T> {
+impl<T: Buf> Gre<T> {
     /// Return the variable header length of Gre protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -100,10 +100,10 @@ impl<T: Buf> GrePacket<T> {
     }
 }
 
-impl<T: PktBufMut> GrePacket<T> {
+impl<T: PktBufMut> Gre<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header = GrePacket::parse_unchecked(header.as_slice());
+        let header = Gre::parse_unchecked(header.as_slice());
         let header_len = header.header_len();
         assert!(header_len <= buf.chunk_headroom());
         buf.move_back(header_len);
@@ -193,7 +193,7 @@ packet GreForPPTP {
 }
 
 %%
-impl<T: Buf> GreForPPTPPacket<T> {
+impl<T: Buf> GreForPPTP<T> {
     /// Return the variable header length of Gre for PPTP protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -233,10 +233,10 @@ impl<T: Buf> GreForPPTPPacket<T> {
     }
 }
 
-impl<T: PktBufMut> GreForPPTPPacket<T> {
+impl<T: PktBufMut> GreForPPTP<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
-        let header = GreForPPTPPacket::parse_unchecked(header.as_slice());
+        let header = GreForPPTP::parse_unchecked(header.as_slice());
         let header_len = header.header_len();
         assert!(header_len <= buf.chunk_headroom());
 

@@ -1,6 +1,6 @@
 mod generated;
 
-pub use generated::{VlanPacket, VLAN_HEADER_LEN, VLAN_HEADER_TEMPLATE};
+pub use generated::{Vlan, VLAN_HEADER_LEN, VLAN_HEADER_TEMPLATE};
 
 /// Check if the vlan tag is added to a Ethernet II frame.
 pub fn vlan_tag_for_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
@@ -19,7 +19,7 @@ pub fn vlan_tag_for_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
     }
 }
 
-pub use generated::{VlanDot3Packet, VLANDOT3_HEADER_LEN, VLANDOT3_HEADER_TEMPLATE};
+pub use generated::{VlanDot3, VLANDOT3_HEADER_LEN, VLANDOT3_HEADER_TEMPLATE};
 
 /// Check if the vlan tag is added to a IEEE 802.3 frame.
 pub fn vlan_tag_for_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {

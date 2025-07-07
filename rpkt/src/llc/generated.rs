@@ -10,10 +10,10 @@ pub const LLC_HEADER_LEN: usize = 3;
 pub const LLC_HEADER_TEMPLATE: [u8; 3] = [0x42, 0x42, 0x03];
 
 #[derive(Debug, Clone, Copy)]
-pub struct LlcPacket<T> {
+pub struct Llc<T> {
     buf: T,
 }
-impl<T: Buf> LlcPacket<T> {
+impl<T: Buf> Llc<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -52,7 +52,7 @@ impl<T: Buf> LlcPacket<T> {
         self.buf.chunk()[2]
     }
 }
-impl<T: PktBuf> LlcPacket<T> {
+impl<T: PktBuf> Llc<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -60,7 +60,7 @@ impl<T: PktBuf> LlcPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> LlcPacket<T> {
+impl<T: PktBufMut> Llc<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
         assert!(buf.chunk_headroom() >= 3);
@@ -81,7 +81,7 @@ impl<T: PktBufMut> LlcPacket<T> {
         self.buf.chunk_mut()[2] = value;
     }
 }
-impl<'a> LlcPacket<Cursor<'a>> {
+impl<'a> Llc<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -96,7 +96,7 @@ impl<'a> LlcPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[3..])
     }
 }
-impl<'a> LlcPacket<CursorMut<'a>> {
+impl<'a> Llc<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();

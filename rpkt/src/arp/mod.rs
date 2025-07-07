@@ -19,4 +19,4 @@ enum_sim! {
 }
 
 mod generated;
-pub use generated::{ArpPacket, ARP_HEADER_LEN, ARP_HEADER_TEMPLATE};
+pub use generated::{Arp, ARP_HEADER_LEN, ARP_HEADER_TEMPLATE};

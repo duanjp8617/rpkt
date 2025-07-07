@@ -14,10 +14,10 @@ pub const IPV4_HEADER_TEMPLATE: [u8; 20] = [
 ];
 
 #[derive(Debug, Clone, Copy)]
-pub struct Ipv4Packet<T> {
+pub struct Ipv4<T> {
     buf: T,
 }
-impl<T: Buf> Ipv4Packet<T> {
+impl<T: Buf> Ipv4<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -120,7 +120,7 @@ impl<T: Buf> Ipv4Packet<T> {
         (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> Ipv4Packet<T> {
+impl<T: PktBuf> Ipv4<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!((self.packet_len() as usize) <= self.buf.remaining());
@@ -134,7 +134,7 @@ impl<T: PktBuf> Ipv4Packet<T> {
         buf
     }
 }
-impl<T: PktBufMut> Ipv4Packet<T> {
+impl<T: PktBufMut> Ipv4<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20], header_len: u8) -> Self {
         assert!((header_len >= 20) && (header_len as usize <= buf.chunk_headroom()));
@@ -222,7 +222,7 @@ impl<T: PktBufMut> Ipv4Packet<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> Ipv4Packet<Cursor<'a>> {
+impl<'a> Ipv4<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -245,7 +245,7 @@ impl<'a> Ipv4Packet<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..packet_len])
     }
 }
-impl<'a> Ipv4Packet<CursorMut<'a>> {
+impl<'a> Ipv4<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -302,16 +302,16 @@ impl<T: PktBufMut> Ipv4Packet<T> {
 }
 */
 
-/// A constant that defines the fixed byte length of the Eol protocol header.
-pub const EOL_HEADER_LEN: usize = 1;
-/// A fixed Eol header.
-pub const EOL_HEADER_TEMPLATE: [u8; 1] = [0x00];
+/// A constant that defines the fixed byte length of the EolOption protocol header.
+pub const EOLOPTION_HEADER_LEN: usize = 1;
+/// A fixed EolOption header.
+pub const EOLOPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EolMessage<T> {
+pub struct EolOption<T> {
     buf: T,
 }
-impl<T: Buf> EolMessage<T> {
+impl<T: Buf> EolOption<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -342,7 +342,7 @@ impl<T: Buf> EolMessage<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> EolMessage<T> {
+impl<T: PktBuf> EolOption<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -350,7 +350,7 @@ impl<T: PktBuf> EolMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> EolMessage<T> {
+impl<T: PktBufMut> EolOption<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -364,7 +364,7 @@ impl<T: PktBufMut> EolMessage<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> EolMessage<Cursor<'a>> {
+impl<'a> EolOption<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -379,7 +379,7 @@ impl<'a> EolMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[1..])
     }
 }
-impl<'a> EolMessage<CursorMut<'a>> {
+impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -395,16 +395,16 @@ impl<'a> EolMessage<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the Nop protocol header.
-pub const NOP_HEADER_LEN: usize = 1;
-/// A fixed Nop header.
-pub const NOP_HEADER_TEMPLATE: [u8; 1] = [0x01];
+/// A constant that defines the fixed byte length of the NopOption protocol header.
+pub const NOPOPTION_HEADER_LEN: usize = 1;
+/// A fixed NopOption header.
+pub const NOPOPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NopMessage<T> {
+pub struct NopOption<T> {
     buf: T,
 }
-impl<T: Buf> NopMessage<T> {
+impl<T: Buf> NopOption<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -435,7 +435,7 @@ impl<T: Buf> NopMessage<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> NopMessage<T> {
+impl<T: PktBuf> NopOption<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -443,7 +443,7 @@ impl<T: PktBuf> NopMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> NopMessage<T> {
+impl<T: PktBufMut> NopOption<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -457,7 +457,7 @@ impl<T: PktBufMut> NopMessage<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> NopMessage<Cursor<'a>> {
+impl<'a> NopOption<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -472,7 +472,7 @@ impl<'a> NopMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[1..])
     }
 }
-impl<'a> NopMessage<CursorMut<'a>> {
+impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -488,16 +488,16 @@ impl<'a> NopMessage<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the Timestamp protocol header.
-pub const TIMESTAMP_HEADER_LEN: usize = 4;
-/// A fixed Timestamp header.
-pub const TIMESTAMP_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
+/// A constant that defines the fixed byte length of the TimestampOption protocol header.
+pub const TIMESTAMPOPTION_HEADER_LEN: usize = 4;
+/// A fixed TimestampOption header.
+pub const TIMESTAMPOPTION_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct TimestampMessage<T> {
+pub struct TimestampOption<T> {
     buf: T,
 }
-impl<T: Buf> TimestampMessage<T> {
+impl<T: Buf> TimestampOption<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -554,7 +554,7 @@ impl<T: Buf> TimestampMessage<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> TimestampMessage<T> {
+impl<T: PktBuf> TimestampOption<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -563,7 +563,7 @@ impl<T: PktBuf> TimestampMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> TimestampMessage<T> {
+impl<T: PktBufMut> TimestampOption<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
         assert!((header_len >= 4) && (header_len as usize <= buf.chunk_headroom()));
@@ -602,7 +602,7 @@ impl<T: PktBufMut> TimestampMessage<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> TimestampMessage<Cursor<'a>> {
+impl<'a> TimestampOption<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -623,7 +623,7 @@ impl<'a> TimestampMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<'a> TimestampMessage<CursorMut<'a>> {
+impl<'a> TimestampOption<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -645,16 +645,16 @@ impl<'a> TimestampMessage<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the RecordRoute protocol header.
-pub const RECORDROUTE_HEADER_LEN: usize = 3;
-/// A fixed RecordRoute header.
-pub const RECORDROUTE_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
+/// A constant that defines the fixed byte length of the RecordRouteOption protocol header.
+pub const RECORDROUTEOPTION_HEADER_LEN: usize = 3;
+/// A fixed RecordRouteOption header.
+pub const RECORDROUTEOPTION_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
 
 #[derive(Debug, Clone, Copy)]
-pub struct RecordRouteMessage<T> {
+pub struct RecordRouteOption<T> {
     buf: T,
 }
-impl<T: Buf> RecordRouteMessage<T> {
+impl<T: Buf> RecordRouteOption<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -703,7 +703,7 @@ impl<T: Buf> RecordRouteMessage<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> RecordRouteMessage<T> {
+impl<T: PktBuf> RecordRouteOption<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -712,7 +712,7 @@ impl<T: PktBuf> RecordRouteMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> RecordRouteMessage<T> {
+impl<T: PktBufMut> RecordRouteOption<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3], header_len: u8) -> Self {
         assert!((header_len >= 3) && (header_len as usize <= buf.chunk_headroom()));
@@ -741,7 +741,7 @@ impl<T: PktBufMut> RecordRouteMessage<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> RecordRouteMessage<Cursor<'a>> {
+impl<'a> RecordRouteOption<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -762,7 +762,7 @@ impl<'a> RecordRouteMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<'a> RecordRouteMessage<CursorMut<'a>> {
+impl<'a> RecordRouteOption<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -784,16 +784,16 @@ impl<'a> RecordRouteMessage<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the RouteAlert protocol header.
-pub const ROUTEALERT_HEADER_LEN: usize = 4;
-/// A fixed RouteAlert header.
-pub const ROUTEALERT_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the RouteAlertOption protocol header.
+pub const ROUTEALERTOPTION_HEADER_LEN: usize = 4;
+/// A fixed RouteAlertOption header.
+pub const ROUTEALERTOPTION_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct RouteAlertMessage<T> {
+pub struct RouteAlertOption<T> {
     buf: T,
 }
-impl<T: Buf> RouteAlertMessage<T> {
+impl<T: Buf> RouteAlertOption<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -837,7 +837,7 @@ impl<T: Buf> RouteAlertMessage<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> RouteAlertMessage<T> {
+impl<T: PktBuf> RouteAlertOption<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -846,7 +846,7 @@ impl<T: PktBuf> RouteAlertMessage<T> {
         buf
     }
 }
-impl<T: PktBufMut> RouteAlertMessage<T> {
+impl<T: PktBufMut> RouteAlertOption<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4], header_len: u8) -> Self {
         assert!((header_len == 4) && (header_len as usize <= buf.chunk_headroom()));
@@ -871,7 +871,7 @@ impl<T: PktBufMut> RouteAlertMessage<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> RouteAlertMessage<Cursor<'a>> {
+impl<'a> RouteAlertOption<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -890,7 +890,7 @@ impl<'a> RouteAlertMessage<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<'a> RouteAlertMessage<CursorMut<'a>> {
+impl<'a> RouteAlertOption<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -911,180 +911,180 @@ impl<'a> RouteAlertMessage<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum Ipv4OptGroup<T> {
-    Eol_(EolMessage<T>),
-    Nop_(NopMessage<T>),
-    Timestamp_(TimestampMessage<T>),
-    RecordRoute_(RecordRouteMessage<T>),
-    RouteAlert_(RouteAlertMessage<T>),
+pub enum Ipv4OptionsGroup<T> {
+    EolOption_(EolOption<T>),
+    NopOption_(NopOption<T>),
+    TimestampOption_(TimestampOption<T>),
+    RecordRouteOption_(RecordRouteOption<T>),
+    RouteAlertOption_(RouteAlertOption<T>),
 }
-impl<T: Buf> Ipv4OptGroup<T> {
+impl<T: Buf> Ipv4OptionsGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value = buf.chunk()[0];
         match cond_value {
-            0 => EolMessage::parse(buf).map(|msg| Ipv4OptGroup::Eol_(msg)),
-            1 => NopMessage::parse(buf).map(|msg| Ipv4OptGroup::Nop_(msg)),
-            68 => TimestampMessage::parse(buf).map(|msg| Ipv4OptGroup::Timestamp_(msg)),
-            7 => RecordRouteMessage::parse(buf).map(|msg| Ipv4OptGroup::RecordRoute_(msg)),
-            148 => RouteAlertMessage::parse(buf).map(|msg| Ipv4OptGroup::RouteAlert_(msg)),
+            0 => EolOption::parse(buf).map(|pkt| Ipv4OptionsGroup::EolOption_(pkt)),
+            1 => NopOption::parse(buf).map(|pkt| Ipv4OptionsGroup::NopOption_(pkt)),
+            68 => TimestampOption::parse(buf).map(|pkt| Ipv4OptionsGroup::TimestampOption_(pkt)),
+            7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4OptionsGroup::RecordRouteOption_(pkt)),
+            148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4OptionsGroup::RouteAlertOption_(pkt)),
             _ => Err(buf),
         }
     }
 }
+
 #[derive(Debug, Clone, Copy)]
-pub struct Ipv4OptGroupIter<'a> {
+pub struct Ipv4OptionsGroupIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> Ipv4OptGroupIter<'a> {
-    pub fn from_message_slice(message_slice: &'a [u8]) -> Self {
-        Self { buf: message_slice }
+impl<'a> Ipv4OptionsGroupIter<'a> {
+    pub fn from_slice(slice: &'a [u8]) -> Self {
+        Self { buf: slice }
     }
 
     pub fn buf(&self) -> &'a [u8] {
         self.buf
     }
 }
-#[derive(Debug)]
-pub struct Ipv4OptGroupIterMut<'a> {
-    buf: &'a mut [u8],
-}
-impl<'a> Ipv4OptGroupIterMut<'a> {
-    pub fn from_message_slice_mut(message_slice_mut: &'a mut [u8]) -> Self {
-        Self {
-            buf: message_slice_mut,
-        }
-    }
-
-    pub fn buf(&self) -> &[u8] {
-        &self.buf[..]
-    }
-}
-impl<'a> Iterator for Ipv4OptGroupIter<'a> {
-    type Item = Ipv4OptGroup<Cursor<'a>>;
+impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
+    type Item = Ipv4OptionsGroup<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
         }
         let cond_value = self.buf[0];
         match cond_value {
-            0 => EolMessage::parse(self.buf)
-                .map(|_msg| {
-                    let result = EolMessage {
+            0 => EolOption::parse(self.buf)
+                .map(|_pkt| {
+                    let result = EolOption {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4OptGroup::Eol_(result)
+                    Ipv4OptionsGroup::EolOption_(result)
                 })
                 .ok(),
-            1 => NopMessage::parse(self.buf)
-                .map(|_msg| {
-                    let result = NopMessage {
+            1 => NopOption::parse(self.buf)
+                .map(|_pkt| {
+                    let result = NopOption {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4OptGroup::Nop_(result)
+                    Ipv4OptionsGroup::NopOption_(result)
                 })
                 .ok(),
-            68 => TimestampMessage::parse(self.buf)
-                .map(|_msg| {
-                    let result = TimestampMessage {
-                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+            68 => TimestampOption::parse(self.buf)
+                .map(|_pkt| {
+                    let result = TimestampOption {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
-                    self.buf = &self.buf[_msg.header_len() as usize..];
-                    Ipv4OptGroup::Timestamp_(result)
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv4OptionsGroup::TimestampOption_(result)
                 })
                 .ok(),
-            7 => RecordRouteMessage::parse(self.buf)
-                .map(|_msg| {
-                    let result = RecordRouteMessage {
-                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+            7 => RecordRouteOption::parse(self.buf)
+                .map(|_pkt| {
+                    let result = RecordRouteOption {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
-                    self.buf = &self.buf[_msg.header_len() as usize..];
-                    Ipv4OptGroup::RecordRoute_(result)
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv4OptionsGroup::RecordRouteOption_(result)
                 })
                 .ok(),
-            148 => RouteAlertMessage::parse(self.buf)
-                .map(|_msg| {
-                    let result = RouteAlertMessage {
-                        buf: Cursor::new(&self.buf[.._msg.header_len() as usize]),
+            148 => RouteAlertOption::parse(self.buf)
+                .map(|_pkt| {
+                    let result = RouteAlertOption {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
-                    self.buf = &self.buf[_msg.header_len() as usize..];
-                    Ipv4OptGroup::RouteAlert_(result)
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv4OptionsGroup::RouteAlertOption_(result)
                 })
                 .ok(),
             _ => None,
         }
     }
 }
-impl<'a> Iterator for Ipv4OptGroupIterMut<'a> {
-    type Item = Ipv4OptGroup<CursorMut<'a>>;
+
+#[derive(Debug)]
+pub struct Ipv4OptionsGroupIterMut<'a> {
+    buf: &'a mut [u8],
+}
+impl<'a> Ipv4OptionsGroupIterMut<'a> {
+    pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
+        Self { buf: slice_mut }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
+    }
+}
+impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
+    type Item = Ipv4OptionsGroup<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
         }
         let cond_value = self.buf[0];
         match cond_value {
-            0 => match EolMessage::parse(&self.buf[..]) {
-                Ok(_msg) => {
+            0 => match EolOption::parse(&self.buf[..]) {
+                Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = EolMessage {
+                    let result = EolOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptGroup::Eol_(result))
+                    Some(Ipv4OptionsGroup::EolOption_(result))
                 }
                 Err(_) => None,
             },
-            1 => match NopMessage::parse(&self.buf[..]) {
-                Ok(_msg) => {
+            1 => match NopOption::parse(&self.buf[..]) {
+                Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = NopMessage {
+                    let result = NopOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptGroup::Nop_(result))
+                    Some(Ipv4OptionsGroup::NopOption_(result))
                 }
                 Err(_) => None,
             },
-            68 => match TimestampMessage::parse(&self.buf[..]) {
-                Ok(_msg) => {
-                    let header_len = _msg.header_len() as usize;
+            68 => match TimestampOption::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = TimestampMessage {
+                    let result = TimestampOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptGroup::Timestamp_(result))
+                    Some(Ipv4OptionsGroup::TimestampOption_(result))
                 }
                 Err(_) => None,
             },
-            7 => match RecordRouteMessage::parse(&self.buf[..]) {
-                Ok(_msg) => {
-                    let header_len = _msg.header_len() as usize;
+            7 => match RecordRouteOption::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = RecordRouteMessage {
+                    let result = RecordRouteOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptGroup::RecordRoute_(result))
+                    Some(Ipv4OptionsGroup::RecordRouteOption_(result))
                 }
                 Err(_) => None,
             },
-            148 => match RouteAlertMessage::parse(&self.buf[..]) {
-                Ok(_msg) => {
-                    let header_len = _msg.header_len() as usize;
+            148 => match RouteAlertOption::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = RouteAlertMessage {
+                    let result = RouteAlertOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptGroup::RouteAlert_(result))
+                    Some(Ipv4OptionsGroup::RouteAlertOption_(result))
                 }
                 Err(_) => None,
             },

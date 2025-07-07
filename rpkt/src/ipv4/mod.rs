@@ -38,25 +38,27 @@ enum_sim! {
 }
 
 mod generated;
-pub use generated::{Ipv4Packet, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
+pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 
 /// The Ipv4 options.
 pub mod options {
     // The Ipv4 Eol option
-    pub use super::generated::{EolMessage, EOL_HEADER_LEN, EOL_HEADER_TEMPLATE};
+    pub use super::generated::{EolOption, EOLOPTION_HEADER_LEN, EOLOPTION_HEADER_TEMPLATE};
 
     // The Ipv4 Nop option
-    pub use super::generated::{NopMessage, NOP_HEADER_LEN, NOP_HEADER_TEMPLATE};
-
-    pub use super::generated::{TimestampMessage, TIMESTAMP_HEADER_LEN, TIMESTAMP_HEADER_TEMPLATE};
+    pub use super::generated::{NopOption, NOPOPTION_HEADER_LEN, NOPOPTION_HEADER_TEMPLATE};
 
     pub use super::generated::{
-        RecordRouteMessage, RECORDROUTE_HEADER_LEN, RECORDROUTE_HEADER_TEMPLATE,
+        TimestampOption, TIMESTAMPOPTION_HEADER_LEN, TIMESTAMPOPTION_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
-        RouteAlertMessage, ROUTEALERT_HEADER_LEN, ROUTEALERT_HEADER_TEMPLATE,
+        RecordRouteOption, RECORDROUTEOPTION_HEADER_LEN, RECORDROUTEOPTION_HEADER_TEMPLATE,
     };
 
-    pub use super::generated::{Ipv4OptGroup, Ipv4OptGroupIter, Ipv4OptGroupIterMut};
+    pub use super::generated::{
+        RouteAlertOption, ROUTEALERTOPTION_HEADER_LEN, ROUTEALERTOPTION_HEADER_TEMPLATE,
+    };
+
+    pub use super::generated::{Ipv4OptionsGroup, Ipv4OptionsGroupIter, Ipv4OptionsGroupIterMut};
 }

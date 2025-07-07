@@ -13,10 +13,10 @@ pub const GRE_HEADER_LEN: usize = 4;
 pub const GRE_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct GrePacket<T> {
+pub struct Gre<T> {
     buf: T,
 }
-impl<T: Buf> GrePacket<T> {
+impl<T: Buf> Gre<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -91,7 +91,7 @@ impl<T: Buf> GrePacket<T> {
         ))
     }
 }
-impl<T: PktBuf> GrePacket<T> {
+impl<T: PktBuf> Gre<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -100,7 +100,7 @@ impl<T: PktBuf> GrePacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> GrePacket<T> {
+impl<T: PktBufMut> Gre<T> {
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
@@ -151,7 +151,7 @@ impl<T: PktBufMut> GrePacket<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
-impl<'a> GrePacket<Cursor<'a>> {
+impl<'a> Gre<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -172,7 +172,7 @@ impl<'a> GrePacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
 }
-impl<'a> GrePacket<CursorMut<'a>> {
+impl<'a> Gre<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -194,7 +194,7 @@ impl<'a> GrePacket<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> GrePacket<T> {
+impl<T: Buf> Gre<T> {
     /// Return the variable header length of Gre protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -266,10 +266,10 @@ impl<T: Buf> GrePacket<T> {
     }
 }
 
-impl<T: PktBufMut> GrePacket<T> {
+impl<T: PktBufMut> Gre<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header = GrePacket::parse_unchecked(header.as_slice());
+        let header = Gre::parse_unchecked(header.as_slice());
         let header_len = header.header_len();
         assert!(header_len <= buf.chunk_headroom());
         buf.move_back(header_len);
@@ -341,10 +341,10 @@ pub const GREFORPPTP_HEADER_LEN: usize = 8;
 pub const GREFORPPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct GreForPPTPPacket<T> {
+pub struct GreForPPTP<T> {
     buf: T,
 }
-impl<T: Buf> GreForPPTPPacket<T> {
+impl<T: Buf> GreForPPTP<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -433,7 +433,7 @@ impl<T: Buf> GreForPPTPPacket<T> {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> GreForPPTPPacket<T> {
+impl<T: PktBuf> GreForPPTP<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!((self.header_len() as usize) + self.payload_len() as usize <= self.buf.remaining());
@@ -448,7 +448,7 @@ impl<T: PktBuf> GreForPPTPPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> GreForPPTPPacket<T> {
+impl<T: PktBufMut> GreForPPTP<T> {
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
         let header_len = (self.header_len() as usize);
@@ -515,7 +515,7 @@ impl<T: PktBufMut> GreForPPTPPacket<T> {
         (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> GreForPPTPPacket<Cursor<'a>> {
+impl<'a> GreForPPTP<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -538,7 +538,7 @@ impl<'a> GreForPPTPPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..(header_len + payload_len)])
     }
 }
-impl<'a> GreForPPTPPacket<CursorMut<'a>> {
+impl<'a> GreForPPTP<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -562,7 +562,7 @@ impl<'a> GreForPPTPPacket<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> GreForPPTPPacket<T> {
+impl<T: Buf> GreForPPTP<T> {
     /// Return the variable header length of Gre for PPTP protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -602,10 +602,10 @@ impl<T: Buf> GreForPPTPPacket<T> {
     }
 }
 
-impl<T: PktBufMut> GreForPPTPPacket<T> {
+impl<T: PktBufMut> GreForPPTP<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
-        let header = GreForPPTPPacket::parse_unchecked(header.as_slice());
+        let header = GreForPPTP::parse_unchecked(header.as_slice());
         let header_len = header.header_len();
         assert!(header_len <= buf.chunk_headroom());
 
@@ -651,10 +651,10 @@ pub const PPTP_HEADER_LEN: usize = 4;
 pub const PPTP_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PPTPPacket<T> {
+pub struct PPTP<T> {
     buf: T,
 }
-impl<T: Buf> PPTPPacket<T> {
+impl<T: Buf> PPTP<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -693,7 +693,7 @@ impl<T: Buf> PPTPPacket<T> {
         u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
 }
-impl<T: PktBuf> PPTPPacket<T> {
+impl<T: PktBuf> PPTP<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -701,7 +701,7 @@ impl<T: PktBuf> PPTPPacket<T> {
         buf
     }
 }
-impl<T: PktBufMut> PPTPPacket<T> {
+impl<T: PktBufMut> PPTP<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -722,7 +722,7 @@ impl<T: PktBufMut> PPTPPacket<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
 }
-impl<'a> PPTPPacket<Cursor<'a>> {
+impl<'a> PPTP<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -737,7 +737,7 @@ impl<'a> PPTPPacket<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[4..])
     }
 }
-impl<'a> PPTPPacket<CursorMut<'a>> {
+impl<'a> PPTP<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
