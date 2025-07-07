@@ -64,10 +64,6 @@ impl Packet {
         self.header.header_template()
     }
 
-    pub fn generated_struct_name(&self) -> String {
-        self.protocol_name().to_owned()
-    }
-
     pub fn enable_iter(&self) -> bool {
         self.enable_iter
     }

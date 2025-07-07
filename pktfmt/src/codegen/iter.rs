@@ -57,7 +57,7 @@ pub fn iter_parse_for_pkt(pkt: &Packet, pkt_var: &str, output: &mut dyn Write) {
         "let result = {} {{
 buf: Cursor::new(&self.buf[..{header_len_var}])
 }};\n",
-        pkt.generated_struct_name()
+        pkt.protocol_name()
     )
     .unwrap();
     write!(output, "self.buf=&self.buf[{header_len_var}..];\n").unwrap();
@@ -83,7 +83,7 @@ pub fn iter_mut_parse_for_pkt(pkt: &Packet, pkt_var: &str, output: &mut dyn Writ
         "let result = {} {{
 buf: CursorMut::new(fst)
 }};\n",
-        pkt.generated_struct_name()
+        pkt.protocol_name()
     )
     .unwrap();
 }

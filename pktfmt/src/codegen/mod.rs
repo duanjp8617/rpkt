@@ -156,7 +156,7 @@ impl<'a> PktGen<'a> {
     pub fn code_gen(&self, mut output: &mut dyn Write) {
         // Defines the header struct.
         let packet_struct_gen = Container {
-            container_struct_name: &self.item().generated_struct_name(),
+            container_struct_name: &self.item().protocol_name(),
             derives: &["Debug", "Clone", "Copy"],
         };
         packet_struct_gen.code_gen(output);
@@ -170,7 +170,7 @@ impl<'a> PktGen<'a> {
         {
             let mut impl_block = impl_block(
                 "T:Buf",
-                &self.item().generated_struct_name(),
+                &self.item().protocol_name(),
                 "T",
                 &mut output,
             );
@@ -233,7 +233,7 @@ impl<'a> PktGen<'a> {
         {
             let mut impl_block = impl_block(
                 "T:PktBuf",
-                &self.item().generated_struct_name(),
+                &self.item().protocol_name(),
                 "T",
                 &mut output,
             );
@@ -245,7 +245,7 @@ impl<'a> PktGen<'a> {
         {
             let mut impl_block = impl_block(
                 "T:PktBufMut",
-                &self.item().generated_struct_name(),
+                &self.item().protocol_name(),
                 "T",
                 &mut output,
             );
@@ -311,7 +311,7 @@ impl<'a> PktGen<'a> {
         {
             let mut impl_block = impl_block(
                 "'a",
-                &self.item().generated_struct_name(),
+                &self.item().protocol_name(),
                 "Cursor<'a>",
                 &mut output,
             );
@@ -344,7 +344,7 @@ impl<'a> PktGen<'a> {
         {
             let mut impl_block = impl_block(
                 "'a",
-                &self.item().generated_struct_name(),
+                &self.item().protocol_name(),
                 "CursorMut<'a>",
                 &mut output,
             );
@@ -392,7 +392,7 @@ impl<'a> PktGen<'a> {
     fn iter_gen(&self, output: &mut dyn Write) {
         // Get the pkt used for generating the iterator
         let pkt = self.item();
-        let pkt_struct_name = pkt.generated_struct_name();
+        let pkt_struct_name = pkt.protocol_name();
 
         iter_def_gen(&pkt_struct_name, output);
 
@@ -419,7 +419,7 @@ fn next(&mut self) -> Option<Self::Item> {{
     fn iter_mut_gen(&self, output: &mut dyn Write) {
         // Get the pkt used for generating the iterator
         let pkt = self.item();
-        let pkt_struct_name = pkt.generated_struct_name();
+        let pkt_struct_name = pkt.protocol_name();
 
         iter_mut_def_gen(&pkt_struct_name, output);
 
@@ -508,7 +508,7 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
             write!(
                 output,
                 "{msg_name}_({}<{buf_type}>),\n",
-                msg.generated_struct_name()
+                msg.protocol_name()
             )
             .unwrap();
         }
@@ -537,7 +537,7 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
             write!(output, "=> {{\n").unwrap();
 
             // Try to parse the buf into the corresponding packet.
-            let pkt_strut_name = pkt.generated_struct_name();
+            let pkt_strut_name = pkt.protocol_name();
             write!(
                 output,
                 "{pkt_strut_name}::parse({buf_name}).map(|pkt| {}::{}_(pkt))\n",
@@ -584,7 +584,7 @@ fn next(&mut self) -> Option<Self::Item> {{
             write!(
                 output,
                 "{}::parse(self.buf).map(|_pkt|{{\n",
-                pkt.generated_struct_name()
+                pkt.protocol_name()
             )
             .unwrap();
             iter_parse_for_pkt(&pkt, "_pkt", output);
@@ -629,7 +629,7 @@ fn next(&mut self) -> Option<Self::Item> {{
             write!(
                 output,
                 "match {}::parse(&self.buf[..]) {{\n",
-                pkt.generated_struct_name()
+                pkt.protocol_name()
             )
             .unwrap();
             write!(output, "Ok(_pkt) => {{\n").unwrap();
