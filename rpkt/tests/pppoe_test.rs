@@ -1,10 +1,7 @@
 mod common;
 use common::*;
 
-use rpkt::arp::*;
 use rpkt::ether::*;
-use rpkt::ipv4::*;
-use rpkt::llc::*;
 use rpkt::pppoe::*;
 use rpkt::Buf;
 use rpkt::PktBufMut;
