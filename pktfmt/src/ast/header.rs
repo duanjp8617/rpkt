@@ -316,7 +316,7 @@ impl Header {
 /// ```
 /// Note: two BitPos can form a range, indicating the starting position and
 /// ending position of the header field. This range is includsive by default.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Debug)]
 pub struct BitPos {
     byte_pos: u64,
     bit_pos: u8,

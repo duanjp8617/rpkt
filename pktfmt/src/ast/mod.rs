@@ -17,6 +17,8 @@ pub use length::*;
 mod cond;
 pub use cond::*;
 
+mod new_cond;
+
 /// The top level ast type for the packet definition.
 #[derive(Debug)]
 pub struct Packet {
@@ -173,6 +175,25 @@ impl<'a> TopLevel<'a> {
         pg: &PacketGroup,
         pkts: &HashMap<&'a str, &'a Packet>,
     ) -> Result<Vec<&'a Packet>, Error> {
+        // 1. Find out the packet with the maximum number of defined cond fields, during this process
+        // if the packet has no cond definition, report error.
+        // 2. For each cond field, create a hashmap, the key is the start position of the field,
+        // the length is the field bit.
+        // 3. In 1, also find out the index of the corresponding packet, split the pg.pkts by the index,
+        // and chain the two parts into an iterator.
+        // 4. iterate the remaining packets.
+        // 5. For each packet, iterate through the fields. Try to search the field start pos from the hashmap
+        // created in step 2, and compare the bit length with the result. Keep a counter, if we find a hit, increase
+        // the counter. Make sure that the counter value equals the size of the hash map defined in step 2. If not,
+        // report an error.
+        // 6. Still, in step 5, for each cond field, make sure that we can find out its position from the hash map defined
+        // in step 2.
+        // Still perform the following checks:
+        // * the packet names contained in the packet group should not be duplicated, therefore we need the name_dedup
+        // * Each packet name must relate to a defined packet.
+        // * Each packet should has a valid cond.
+        // *
+
         if pg.packets().len() < 2 {
             return_err!(Error::top_level(
                 10,
