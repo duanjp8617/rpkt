@@ -1219,7 +1219,7 @@ impl<'a> FoOption<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum TcpOptionsGroup<T> {
+pub enum TcpOptions<T> {
     EolOption_(EolOption<T>),
     NopOption_(NopOption<T>),
     MssOption_(MssOption<T>),
@@ -1229,31 +1229,31 @@ pub enum TcpOptionsGroup<T> {
     TsOption_(TsOption<T>),
     FoOption_(FoOption<T>),
 }
-impl<T: Buf> TcpOptionsGroup<T> {
+impl<T: Buf> TcpOptions<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value = buf.chunk()[0];
         match cond_value {
-            0 => EolOption::parse(buf).map(|pkt| TcpOptionsGroup::EolOption_(pkt)),
-            1 => NopOption::parse(buf).map(|pkt| TcpOptionsGroup::NopOption_(pkt)),
-            2 => MssOption::parse(buf).map(|pkt| TcpOptionsGroup::MssOption_(pkt)),
-            3 => WsoptOption::parse(buf).map(|pkt| TcpOptionsGroup::WsoptOption_(pkt)),
-            4 => SackpermOption::parse(buf).map(|pkt| TcpOptionsGroup::SackpermOption_(pkt)),
-            5 => SackOption::parse(buf).map(|pkt| TcpOptionsGroup::SackOption_(pkt)),
-            8 => TsOption::parse(buf).map(|pkt| TcpOptionsGroup::TsOption_(pkt)),
-            34 => FoOption::parse(buf).map(|pkt| TcpOptionsGroup::FoOption_(pkt)),
+            0 => EolOption::parse(buf).map(|pkt| TcpOptions::EolOption_(pkt)),
+            1 => NopOption::parse(buf).map(|pkt| TcpOptions::NopOption_(pkt)),
+            2 => MssOption::parse(buf).map(|pkt| TcpOptions::MssOption_(pkt)),
+            3 => WsoptOption::parse(buf).map(|pkt| TcpOptions::WsoptOption_(pkt)),
+            4 => SackpermOption::parse(buf).map(|pkt| TcpOptions::SackpermOption_(pkt)),
+            5 => SackOption::parse(buf).map(|pkt| TcpOptions::SackOption_(pkt)),
+            8 => TsOption::parse(buf).map(|pkt| TcpOptions::TsOption_(pkt)),
+            34 => FoOption::parse(buf).map(|pkt| TcpOptions::FoOption_(pkt)),
             _ => Err(buf),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TcpOptionsGroupIter<'a> {
+pub struct TcpOptionsIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> TcpOptionsGroupIter<'a> {
+impl<'a> TcpOptionsIter<'a> {
     pub fn from_slice(slice: &'a [u8]) -> Self {
         Self { buf: slice }
     }
@@ -1262,8 +1262,8 @@ impl<'a> TcpOptionsGroupIter<'a> {
         self.buf
     }
 }
-impl<'a> Iterator for TcpOptionsGroupIter<'a> {
-    type Item = TcpOptionsGroup<Cursor<'a>>;
+impl<'a> Iterator for TcpOptionsIter<'a> {
+    type Item = TcpOptions<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1276,7 +1276,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    TcpOptionsGroup::EolOption_(result)
+                    TcpOptions::EolOption_(result)
                 })
                 .ok(),
             1 => NopOption::parse(self.buf)
@@ -1285,7 +1285,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    TcpOptionsGroup::NopOption_(result)
+                    TcpOptions::NopOption_(result)
                 })
                 .ok(),
             2 => MssOption::parse(self.buf)
@@ -1294,7 +1294,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::MssOption_(result)
+                    TcpOptions::MssOption_(result)
                 })
                 .ok(),
             3 => WsoptOption::parse(self.buf)
@@ -1303,7 +1303,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::WsoptOption_(result)
+                    TcpOptions::WsoptOption_(result)
                 })
                 .ok(),
             4 => SackpermOption::parse(self.buf)
@@ -1312,7 +1312,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::SackpermOption_(result)
+                    TcpOptions::SackpermOption_(result)
                 })
                 .ok(),
             5 => SackOption::parse(self.buf)
@@ -1321,7 +1321,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::SackOption_(result)
+                    TcpOptions::SackOption_(result)
                 })
                 .ok(),
             8 => TsOption::parse(self.buf)
@@ -1330,7 +1330,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::TsOption_(result)
+                    TcpOptions::TsOption_(result)
                 })
                 .ok(),
             34 => FoOption::parse(self.buf)
@@ -1339,7 +1339,7 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptionsGroup::FoOption_(result)
+                    TcpOptions::FoOption_(result)
                 })
                 .ok(),
             _ => None,
@@ -1348,10 +1348,10 @@ impl<'a> Iterator for TcpOptionsGroupIter<'a> {
 }
 
 #[derive(Debug)]
-pub struct TcpOptionsGroupIterMut<'a> {
+pub struct TcpOptionsIterMut<'a> {
     buf: &'a mut [u8],
 }
-impl<'a> TcpOptionsGroupIterMut<'a> {
+impl<'a> TcpOptionsIterMut<'a> {
     pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
         Self { buf: slice_mut }
     }
@@ -1360,8 +1360,8 @@ impl<'a> TcpOptionsGroupIterMut<'a> {
         &self.buf[..]
     }
 }
-impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
-    type Item = TcpOptionsGroup<CursorMut<'a>>;
+impl<'a> Iterator for TcpOptionsIterMut<'a> {
+    type Item = TcpOptions<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1375,7 +1375,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = EolOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::EolOption_(result))
+                    Some(TcpOptions::EolOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1386,7 +1386,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = NopOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::NopOption_(result))
+                    Some(TcpOptions::NopOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1399,7 +1399,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = MssOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::MssOption_(result))
+                    Some(TcpOptions::MssOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1412,7 +1412,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = WsoptOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::WsoptOption_(result))
+                    Some(TcpOptions::WsoptOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1425,7 +1425,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = SackpermOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::SackpermOption_(result))
+                    Some(TcpOptions::SackpermOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1438,7 +1438,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = SackOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::SackOption_(result))
+                    Some(TcpOptions::SackOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1451,7 +1451,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = TsOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::TsOption_(result))
+                    Some(TcpOptions::TsOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1464,7 +1464,7 @@ impl<'a> Iterator for TcpOptionsGroupIterMut<'a> {
                     let result = FoOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptionsGroup::FoOption_(result))
+                    Some(TcpOptions::FoOption_(result))
                 }
                 Err(_) => None,
             },

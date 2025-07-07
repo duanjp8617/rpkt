@@ -911,35 +911,35 @@ impl<'a> RouteAlertOption<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum Ipv4OptionsGroup<T> {
+pub enum Ipv4Options<T> {
     EolOption_(EolOption<T>),
     NopOption_(NopOption<T>),
     TimestampOption_(TimestampOption<T>),
     RecordRouteOption_(RecordRouteOption<T>),
     RouteAlertOption_(RouteAlertOption<T>),
 }
-impl<T: Buf> Ipv4OptionsGroup<T> {
+impl<T: Buf> Ipv4Options<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value = buf.chunk()[0];
         match cond_value {
-            0 => EolOption::parse(buf).map(|pkt| Ipv4OptionsGroup::EolOption_(pkt)),
-            1 => NopOption::parse(buf).map(|pkt| Ipv4OptionsGroup::NopOption_(pkt)),
-            68 => TimestampOption::parse(buf).map(|pkt| Ipv4OptionsGroup::TimestampOption_(pkt)),
-            7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4OptionsGroup::RecordRouteOption_(pkt)),
-            148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4OptionsGroup::RouteAlertOption_(pkt)),
+            0 => EolOption::parse(buf).map(|pkt| Ipv4Options::EolOption_(pkt)),
+            1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
+            68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
+            7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
+            148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4Options::RouteAlertOption_(pkt)),
             _ => Err(buf),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Ipv4OptionsGroupIter<'a> {
+pub struct Ipv4OptionsIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> Ipv4OptionsGroupIter<'a> {
+impl<'a> Ipv4OptionsIter<'a> {
     pub fn from_slice(slice: &'a [u8]) -> Self {
         Self { buf: slice }
     }
@@ -948,8 +948,8 @@ impl<'a> Ipv4OptionsGroupIter<'a> {
         self.buf
     }
 }
-impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
-    type Item = Ipv4OptionsGroup<Cursor<'a>>;
+impl<'a> Iterator for Ipv4OptionsIter<'a> {
+    type Item = Ipv4Options<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -962,7 +962,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4OptionsGroup::EolOption_(result)
+                    Ipv4Options::EolOption_(result)
                 })
                 .ok(),
             1 => NopOption::parse(self.buf)
@@ -971,7 +971,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4OptionsGroup::NopOption_(result)
+                    Ipv4Options::NopOption_(result)
                 })
                 .ok(),
             68 => TimestampOption::parse(self.buf)
@@ -980,7 +980,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4OptionsGroup::TimestampOption_(result)
+                    Ipv4Options::TimestampOption_(result)
                 })
                 .ok(),
             7 => RecordRouteOption::parse(self.buf)
@@ -989,7 +989,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4OptionsGroup::RecordRouteOption_(result)
+                    Ipv4Options::RecordRouteOption_(result)
                 })
                 .ok(),
             148 => RouteAlertOption::parse(self.buf)
@@ -998,7 +998,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4OptionsGroup::RouteAlertOption_(result)
+                    Ipv4Options::RouteAlertOption_(result)
                 })
                 .ok(),
             _ => None,
@@ -1007,10 +1007,10 @@ impl<'a> Iterator for Ipv4OptionsGroupIter<'a> {
 }
 
 #[derive(Debug)]
-pub struct Ipv4OptionsGroupIterMut<'a> {
+pub struct Ipv4OptionsIterMut<'a> {
     buf: &'a mut [u8],
 }
-impl<'a> Ipv4OptionsGroupIterMut<'a> {
+impl<'a> Ipv4OptionsIterMut<'a> {
     pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
         Self { buf: slice_mut }
     }
@@ -1019,8 +1019,8 @@ impl<'a> Ipv4OptionsGroupIterMut<'a> {
         &self.buf[..]
     }
 }
-impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
-    type Item = Ipv4OptionsGroup<CursorMut<'a>>;
+impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
+    type Item = Ipv4Options<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1034,7 +1034,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
                     let result = EolOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptionsGroup::EolOption_(result))
+                    Some(Ipv4Options::EolOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1045,7 +1045,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
                     let result = NopOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptionsGroup::NopOption_(result))
+                    Some(Ipv4Options::NopOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1058,7 +1058,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
                     let result = TimestampOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptionsGroup::TimestampOption_(result))
+                    Some(Ipv4Options::TimestampOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1071,7 +1071,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
                     let result = RecordRouteOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptionsGroup::RecordRouteOption_(result))
+                    Some(Ipv4Options::RecordRouteOption_(result))
                 }
                 Err(_) => None,
             },
@@ -1084,7 +1084,7 @@ impl<'a> Iterator for Ipv4OptionsGroupIterMut<'a> {
                     let result = RouteAlertOption {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4OptionsGroup::RouteAlertOption_(result))
+                    Some(Ipv4Options::RouteAlertOption_(result))
                 }
                 Err(_) => None,
             },

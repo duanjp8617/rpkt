@@ -377,7 +377,7 @@ impl<'a> PktGen<'a> {
             if self.item().enable_iter() {
                 write!(output, "\n").unwrap();
                 self.iter_gen(output);
-                
+
                 write!(output, "\n").unwrap();
                 self.iter_mut_gen(output);
             }
@@ -461,7 +461,7 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
         if let Some(cond) = pkt.cond() {
             let (field, pos) = pkt.header().field(cond.field_name()).unwrap();
             Self {
-                group_name: defined_name.to_string() + "Group",
+                group_name: defined_name.to_string(),
                 cond_field: field.clone(),
                 cond_pos: pos,
                 pkts: pkts,

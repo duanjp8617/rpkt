@@ -23,5 +23,5 @@ pub mod options {
 
     pub use super::generated::{FoOption, FOOPTION_HEADER_LEN, FOOPTION_HEADER_TEMPLATE};
 
-    pub use super::generated::{TcpOptionsGroup, TcpOptionsGroupIter, TcpOptionsGroupIterMut};
+    pub use super::generated::{TcpOptions, TcpOptionsIter, TcpOptionsIterMut};
 }
