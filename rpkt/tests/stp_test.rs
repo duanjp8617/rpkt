@@ -413,9 +413,8 @@ fn multiple_stp_creation_tests() {
     );
 
     let mut mstp_conf_bpdu_header = MSTPCONFBPDU_HEADER_TEMPLATE.clone();
-    let mut header_mutator =
-        MstpConfBpdu::parse_unchecked(CursorMut::new(mstp_conf_bpdu_header.as_mut_slice()));
-    header_mutator.set_header_len((MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN) as u32);
+    MstpConfBpdu::from_header_array_mut(&mut mstp_conf_bpdu_header)
+        .set_header_len((MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN) as u32);
     let mut msg = MstpConfBpdu::prepend_header(pkt_buf, &mstp_conf_bpdu_header);
     assert_eq!(
         msg.buf().chunk().len(),
