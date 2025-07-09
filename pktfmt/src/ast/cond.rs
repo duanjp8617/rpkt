@@ -1,102 +1,238 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
+use std::fmt;
+use std::ops::{Bound, RangeBounds};
 
-use super::{max_value, BuiltinTypes, Error, Header};
+use super::{max_value, BitPos, BuiltinTypes, Error, Field, Header};
 
-/// The ast type that are constructed when parsing `cond` of the `message` type.
-///
-/// `conds` represents a series of equal conditions that combined through the
-/// logical or operator.
+#[derive(Copy, Clone, Debug)]
+pub struct CondBounds {
+    pub start: Bound<u64>,
+    pub end: Bound<u64>,
+}
+
+impl CondBounds {
+    pub fn from_range<B: RangeBounds<u64>>(b: B) -> Self {
+        Self {
+            start: b.start_bound().map(|v| *v),
+            end: b.end_bound().map(|v| *v),
+        }
+    }
+
+    // The `intersect` and `is_empty` are currently unstable,
+    // we just copy the code from the stdlib here.
+    pub fn is_empty(&self) -> bool {
+        use std::ops::Bound::*;
+        !match (self.start, self.end) {
+            (Unbounded, Excluded(n)) => n > 0,
+            (Included(n), Unbounded) => n < u64::MAX,
+            (Unbounded, _) | (_, Unbounded) => true,
+            (Included(start), Excluded(end))
+            | (Excluded(start), Included(end))
+            | (Excluded(start), Excluded(end)) => start < end,
+            (Included(start), Included(end)) => start <= end,
+        }
+    }
+
+    // The `intersect` and `is_empty` are currently unstable,
+    // we just copy the code from the stdlib here.
+    pub fn intersect(&self, other: &Self) -> Self {
+        use std::ops::Bound::*;
+
+        let (self_start, self_end) = (self.start, self.end);
+        let (other_start, other_end) = (other.start, other.end);
+
+        let start = match (self_start, other_start) {
+            (Included(a), Included(b)) => Included(Ord::max(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::max(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i > e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+        let end = match (self_end, other_end) {
+            (Included(a), Included(b)) => Included(Ord::min(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::min(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i < e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+
+        Self { start, end }
+    }
+
+    // Since the contained bound is non-empty, we can
+    // always derive a valid max_value
+    fn max_value(&self) -> u64 {
+        debug_assert!(!self.is_empty());
+        match self.end {
+            Bound::Unbounded => u64::MAX,
+            Bound::Included(n) => n,
+            Bound::Excluded(n) => n - 1,
+        }
+    }
+}
+
+impl fmt::Display for CondBounds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self.start, self.end) {
+            (Bound::Included(n), Bound::Included(m)) if n == m => write!(f, "{n}"),
+            (Bound::Included(n), Bound::Excluded(m)) if n + 1 == m => write!(f, "{n}"),
+            _ => {
+                match self.start {
+                    Bound::Unbounded => write!(f, "..")?,
+                    Bound::Included(n) => write!(f, "{n}..")?,
+                    Bound::Excluded(_) => {
+                        // Make sure that the start bound is not excluded.
+                        panic!()
+                    }
+                }
+                match self.end {
+                    Bound::Unbounded => Ok(()),
+                    Bound::Included(n) => write!(f, "={n}"),
+                    Bound::Excluded(n) => write!(f, "{n}"),
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Cond {
-    field_name: String,
-    compared_values: Vec<u64>,
+    cond_map: HashMap<BitPos, (String, Vec<CondBounds>)>,
 }
 
 impl Cond {
-    pub fn field_name(&self) -> &str {
-        &self.field_name
+    /// Retrive a map that maps the starting bit position of the cond field, to
+    /// the field name and the cond field ranges.
+    ///
+    /// This reverse map helps analysis and generation of group parser code.
+    pub fn cond_map(&self) -> &HashMap<BitPos, (String, Vec<CondBounds>)> {
+        &self.cond_map
     }
 
-    pub fn compared_values(&self) -> &Vec<u64> {
-        &self.compared_values
-    }
-
-    pub fn from_cond_list(conds: Vec<(String, u64)>, header: &Header) -> Result<Self, Error> {
+    pub fn from_cond_list(
+        conds: Vec<(String, Vec<CondBounds>)>,
+        header: &Header,
+    ) -> Result<Self, Error> {
         // Make sure the following hold:
-        // 1. cond contains a valid field name
-        // 2. `repr` is u8/u16/u32/u64
-        // 3. the compared value in the cond does not exceeds the bit limit of the
-        //    field.
-        // 4. the field's `gen` is true, meaning that it is not a length-related field.
-        let cond_checker = |cond: &(String, u64)| -> Result<(), Error> {
-            let (field_name, compared_value) = (&cond.0, &cond.1);
-            let (field, _) = header.field(field_name).ok_or(Error::cond(
-                1,
-                format!("invalid field name in cond expression: {field_name}"),
-            ))?;
+        let cond_checker =
+            |field_name: &String, bounds: &Vec<CondBounds>| -> Result<(&Field, BitPos), Error> {
+                // 1. cond contains a valid field name
+                let (field, bitpos) = header.field(field_name).ok_or(Error::cond(
+                    1,
+                    format!("invalid field name in cond expression: {field_name}"),
+                ))?;
 
-            if field.repr == BuiltinTypes::ByteSlice {
-                return_err!(Error::cond(
-                    2,
-                    "field repr can not be a byte slice".to_string()
-                ));
+                // 2. `repr` is u8/u16/u32/u64
+                if field.repr == BuiltinTypes::ByteSlice {
+                    return_err!(Error::cond(
+                        2,
+                        format!("repr of field {field_name} is a byte slice")
+                    ));
+                }
+
+                // 3. the field's `gen` is true, meaning that it is not a length-related field.
+                if !field.gen {
+                    return_err!(Error::cond(3, "field gen must be true".to_string()));
+                }
+
+                for i in 0..bounds.len() {
+                    // 4. the defined range is not empty
+                    if bounds[i].is_empty() {
+                        return_err!(Error::cond(
+                            4,
+                            format!("field {field_name} has empty range")
+                        ));
+                    }
+
+                    // 5. the range specified by the cond does not exceeds the bit limit of the
+                    //    field.
+                    if bounds[i].max_value() > max_value(field.bit).unwrap() {
+                        return_err!(Error::cond(
+                            5,
+                            format!(
+                            "the max range value exceeds the allowed value of field {field_name}",
+                        )
+                        ));
+                    }
+
+                    // 6. the defined ranges overlap.
+                    for prev_bound in (&bounds[..i]).iter() {
+                        if !prev_bound.intersect(&bounds[i]).is_empty() {
+                            return_err!(Error::cond(
+                                6,
+                                format!("field {field_name} has intersected ranges")
+                            ));
+                        }
+                    }
+                }
+
+                Ok((field, bitpos))
+            };
+
+        let mut cond_map: HashMap<BitPos, (String, Vec<CondBounds>)> = HashMap::new();
+        for (field_name, bounds) in conds.into_iter() {
+            // Make sure the the defined condition branch is valid.
+            let (_, bitpos) = cond_checker(&field_name, &bounds)?;
+
+            match cond_map.insert(bitpos, (field_name.clone(), bounds)) {
+                None => {}
+                Some(_) => return_err!(Error::cond(
+                    7,
+                    format!("duplicated cond field {field_name}")
+                )),
             }
-
-            if *compared_value > max_value(field.bit).unwrap() {
-                return_err!(Error::cond(
-                    3,
-                    format!("compared value {compared_value} is too large")
-                ));
-            }
-
-            if !field.gen {
-                return_err!(Error::cond(4, "field gen must be true".to_string()));
-            }
-
-            Ok(())
-        };
-
-        let mut conds_iter = conds.iter();
-
-        // The parser ensures that conds list is non-empty.
-        let first_cond = conds_iter.next().unwrap();
-        // make sure that the first condition passes the check
-        cond_checker(first_cond)?;
-
-        let field_name = first_cond.0.clone();
-        let mut compared_values = HashSet::new();
-        compared_values.insert(first_cond.1);
-
-        for cond in conds_iter {
-            // Make sure that subsequent cond's field name
-            // is the same as the first cond,
-            if cond.0 != first_cond.0 {
-                return_err!(Error::cond(
-                    5,
-                    format!(
-                        "field name {} does not match that in the first condition",
-                        cond.0
-                    ),
-                ))
-            }
-
-            // and that subsequent cond's compared value is unique,
-            if compared_values.get(&cond.1).is_some() {
-                return_err!(Error::cond(
-                    6,
-                    format!("the compared value {} has appeared", cond.1),
-                ))
-            }
-
-            // and that the subsequent cond passes the check.
-            cond_checker(cond)?;
-
-            compared_values.insert(cond.1);
         }
 
-        Ok(Self {
-            field_name,
-            compared_values: Vec::from_iter(compared_values.into_iter()),
-        })
+        if cond_map.len() > 8 {
+            return_err!(Error::cond(8, format!("too many distinctive cond fields")));
+        }
+
+        Ok(Self { cond_map })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn bounds_empty() {
+        assert_eq!(CondBounds::from_range(0..=0).is_empty(), false);
+        assert_eq!(CondBounds::from_range(..0).is_empty(), true);
+        assert_eq!(CondBounds::from_range(u64::MAX..).is_empty(), true);
+        assert_eq!(CondBounds::from_range(3..3).is_empty(), true);
+        assert_eq!(CondBounds::from_range(3..=3).is_empty(), false);
+        assert_eq!(CondBounds::from_range(5..=3).is_empty(), true);
+    }
+
+    #[test]
+    fn intersect_test() {
+        let b = CondBounds::from_range(3..=3).intersect(&CondBounds::from_range(4..=4));
+        println!("{:?}, {:?}", b.start, b.end);
+        println!("{}", b.is_empty());
+    }
+
+    #[test]
+    fn print_bounds() {
+        let mut buf: Vec<u8> = vec![];
+        write!(&mut buf, "{}", CondBounds::from_range(3..=3)).unwrap();
+        assert_eq!(String::from_utf8(buf).unwrap(), "3");
     }
 }

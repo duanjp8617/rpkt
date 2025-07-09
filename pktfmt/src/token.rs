@@ -49,7 +49,6 @@ pub enum Token<'input> {
     Arg,
     Default,
     Gen,
-    NetEndian,
 
     // length definition keywords
     Length,
@@ -75,6 +74,8 @@ pub enum Token<'input> {
     Not,
     And,
     Or,
+    // ..(dot dot)
+    DotDot,
 
     // group sub-fields
     EnableIter,
@@ -146,7 +147,7 @@ const KEYWORDS: &[(&str, Token)] = &[
     ("packet_len", Token::PacketLen),
     ("cond", Token::Cond),
     ("enable_iter", Token::EnableIter),
-    ("members", Token::Members)
+    ("members", Token::Members),
 ];
 
 const BUILTIN_TYPES: &[&str] = &["u8", "u16", "u32", "u64", "bool"];
@@ -400,6 +401,15 @@ impl<'input> Tokenizer<'input> {
                     Some((next_idx, '|')) => {
                         self.consume_and_peek();
                         return Some(Ok((idx, Token::Or, next_idx + 1)));
+                    }
+                    _ => {
+                        return Some(error(ErrorCode::InvalidToken, idx));
+                    }
+                },
+                Some((idx, '.')) => match self.consume_and_peek() {
+                    Some((next_idx, '.')) => {
+                        self.consume_and_peek();
+                        return Some(Ok((idx, Token::DotDot, next_idx + 1)));
                     }
                     _ => {
                         return Some(error(ErrorCode::InvalidToken, idx));
@@ -873,7 +883,7 @@ mod test {
                 ("           ~~          ", Token::Ident("xg")),
                 ("              ~~~~~~   ", Token::HexNum("0xab1c")),
                 ("                     ~ ", Token::Num("0")),
-                ("                      ~", Token::Ident("x"))
+                ("                      ~", Token::Ident("x")),
             ],
         );
     }

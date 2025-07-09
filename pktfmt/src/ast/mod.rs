@@ -13,8 +13,8 @@ pub use header::*;
 mod length;
 pub use length::*;
 
-mod new_cond;
-pub use new_cond::*;
+mod cond;
+pub use cond::*;
 
 /// The top level ast type for the packet definition.
 #[derive(Debug)]

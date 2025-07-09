@@ -105,8 +105,9 @@ fn driver(file_text: &file_text::FileText, output_file: &PathBuf) -> Result<(), 
             }
             ast::ParsedItem::PacketGroup_(mg) => {
                 let defined_name = mg.name();
-                let (msgs, iter_gen) = top_level.pkt_group(defined_name).unwrap();
-                let message_group = codegen::PacketGroupGen::new(defined_name, msgs, iter_gen);
+                let (msgs, cond_fields, iter_gen) = top_level.pkt_group(defined_name).unwrap();
+                let message_group =
+                    codegen::PacketGroupGen::new(defined_name, msgs, cond_fields, iter_gen);
                 message_group.code_gen(&mut output_f);
             }
         }

@@ -4,7 +4,7 @@ use lalrpop_util::ParseError;
 
 use crate::ast::{
     Field, BuiltinTypes, Arg, DefaultVal, Header, AlgOp, AlgExpr, parse_to_byte_val, 
-    LengthField, Length, Packet, Cond, PacketGroup, ParsedItem, check_iter_gen
+    LengthField, Length, Packet, Cond, PacketGroup, ParsedItem, check_iter_gen, CondBounds
 };
 use crate::utils::{Spanned, Error};
 use crate::token::Token;
@@ -54,6 +54,7 @@ extern {
         "!" => Token::Not,
         "&&" => Token::And,
         "||" => Token::Or,
+        ".." => Token::DotDot,
 
         // group sub-fields
         "members" => Token::Members,
@@ -278,20 +279,76 @@ LengthFieldList: (Vec<LengthField>, (usize, usize)) = {
       (list, (l, r))
 }
 
-CondTuple: (String, u64) = {
-    <cond_name: "ident"> "==" <num: "num"> => {
-        (cond_name.to_string(), u64::from_str(num).unwrap())
+RangeFull: CondBounds = {
+    ".." => {
+        CondBounds::from_range(..)
     }
 }
 
-CondList: Vec<(String, u64)> = {
-    "(" <head: CondTuple> ")"  <tail: ("||" "(" <CondTuple> ")" )*> => {
+RangeToExclusive: CondBounds = {
+    ".." <num: "num"> => {
+        let num = u64::from_str(num).unwrap();
+        CondBounds::from_range(..num)
+    }
+}
+
+RangeToInclusive: CondBounds = {
+    ".." "=" <num: "num"> => {
+        let num = u64::from_str(num).unwrap();
+        CondBounds::from_range(..=num)
+    }
+}
+
+RangeFrom: CondBounds = {
+    <num: "num"> ".." => {
+        let num = u64::from_str(num).unwrap();
+        CondBounds::from_range(num..)
+    }
+}
+
+RangeExclusive: CondBounds = {
+    <start: "num"> ".." <end: "num"> => {
+        let start = u64::from_str(start).unwrap();
+        let end = u64::from_str(end).unwrap();
+        CondBounds::from_range(start..end)
+    }
+}
+
+RangeInclusive: CondBounds = {
+    <start: "num"> ".." "=" <end: "num"> => {
+        let start = u64::from_str(start).unwrap();
+        let end = u64::from_str(end).unwrap();
+        CondBounds::from_range(start..=end)
+    }
+}
+
+RangeAndInt: CondBounds = {
+    <r: RangeFull> => r,
+    <r: RangeToExclusive> => r,
+    <r: RangeToInclusive> => r,
+    <r: RangeFrom> => r,
+    <r: RangeExclusive> => r,
+    <r: RangeInclusive> => r,
+    <num: "num"> => {
+        let num = u64::from_str(num).unwrap();
+        CondBounds::from_range(num..=num)
+    }
+}
+
+CondField: (String, Vec<CondBounds>) = {
+    <field_name: "ident"> "==" <first_range: RangeAndInt> <subsequent_ranges: ("||" <RangeAndInt> )*> => {        
+        (field_name.to_string(), vec![first_range].into_iter().chain(subsequent_ranges).collect())
+    }
+}
+
+AllCondField: Vec<(String,  Vec<CondBounds>)> = {
+    "(" <head: CondField> ")"  <tail: ("&&" "(" <CondField> ")" )*> => {
         vec![head].into_iter().chain(tail).collect()
     }
 }
 
-CondFieldList: (Vec<(String, u64)>, (usize, usize)) = {
-    <l: @L> "cond" "=" <cond_list: CondList> <r: @R> => 
+CondFieldList: (Vec<(String,  Vec<CondBounds>)>, (usize, usize)) = {
+    <l: @L> "cond" "=" <cond_list: AllCondField> <r: @R> => 
       (cond_list, (l, r))
 }
 
