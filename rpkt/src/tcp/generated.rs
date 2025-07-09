@@ -1335,8 +1335,8 @@ impl<T: Buf> TcpOptions<T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
-        let cond_value = buf.chunk()[0];
-        match cond_value {
+        let cond_value0 = buf.chunk()[0];
+        match cond_value0 {
             0 => EolOption::parse(buf).map(|pkt| TcpOptions::EolOption_(pkt)),
             1 => NopOption::parse(buf).map(|pkt| TcpOptions::NopOption_(pkt)),
             2 => MssOption::parse(buf).map(|pkt| TcpOptions::MssOption_(pkt)),
@@ -1369,8 +1369,8 @@ impl<'a> Iterator for TcpOptionsIter<'a> {
         if self.buf.len() < 1 {
             return None;
         }
-        let cond_value = self.buf[0];
-        match cond_value {
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
             0 => EolOption::parse(self.buf)
                 .map(|_pkt| {
                     let result = EolOption {
@@ -1467,8 +1467,8 @@ impl<'a> Iterator for TcpOptionsIterMut<'a> {
         if self.buf.len() < 1 {
             return None;
         }
-        let cond_value = self.buf[0];
-        match cond_value {
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
             0 => match EolOption::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);

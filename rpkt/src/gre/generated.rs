@@ -780,3 +780,32 @@ impl<'a> PPTP<CursorMut<'a>> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum GreGroup<T> {
+    GreForPPTP_(GreForPPTP<T>),
+    Gre_(Gre<T>),
+}
+impl<T: Buf> GreGroup<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.chunk().len() < 4 {
+            return Err(buf);
+        }
+        let cond_value0 = buf.chunk()[0] >> 7;
+        let cond_value1 = (buf.chunk()[0] >> 6) & 0x1;
+        let cond_value2 = (buf.chunk()[0] >> 5) & 0x1;
+        let cond_value3 = buf.chunk()[1] & 0x7;
+        let cond_value4 = u16::from_be_bytes((&buf.chunk()[2..4]).try_into().unwrap());
+        match (
+            cond_value0,
+            cond_value1,
+            cond_value2,
+            cond_value3,
+            cond_value4,
+        ) {
+            (0, 0, 1, 1, 8820) => GreForPPTP::parse(buf).map(|pkt| GreGroup::GreForPPTP_(pkt)),
+            (_, _, _, 0, _) => Gre::parse(buf).map(|pkt| GreGroup::Gre_(pkt)),
+            _ => Err(buf),
+        }
+    }
+}

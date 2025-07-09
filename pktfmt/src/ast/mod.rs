@@ -241,7 +241,7 @@ impl<'a> TopLevel<'a> {
         }
 
         // Finally, sort the book_keeper by the start position of the fields.
-        all_cond_fields.sort_by(|a, b| (b.0).cmp(&a.0));
+        all_cond_fields.sort_by(|a, b| (a.0).cmp(&b.0));
 
         // Second pass: make further comparisons, ensure that the all the cond fields appear in all
         // of the packets contained in the group.
@@ -293,7 +293,7 @@ impl<'a> TopLevel<'a> {
         // Sort the packet list by the bit map value.
         // This will make packets having more cond fields to appear
         // at the start of the list.
-        sorted_packets.sort_by(|a, b| a.1.cmp(&b.1));
+        sorted_packets.sort_by(|a, b| b.1.cmp(&a.1));
 
         Ok((
             sorted_packets.into_iter().map(|(pkt, _)| pkt).collect(),
