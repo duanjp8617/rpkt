@@ -286,38 +286,31 @@ RangeFull: CondBounds = {
 }
 
 RangeToExclusive: CondBounds = {
-    ".." <num: "num"> => {
-        let num = u64::from_str(num).unwrap();
+    ".." <num: Num> => {        
         CondBounds::from_range(..num)
     }
 }
 
 RangeToInclusive: CondBounds = {
-    ".." "=" <num: "num"> => {
-        let num = u64::from_str(num).unwrap();
+    ".." "=" <num: Num> => {
         CondBounds::from_range(..=num)
     }
 }
 
 RangeFrom: CondBounds = {
-    <num: "num"> ".." => {
-        let num = u64::from_str(num).unwrap();
+    <num: Num> ".." => {        
         CondBounds::from_range(num..)
     }
 }
 
 RangeExclusive: CondBounds = {
-    <start: "num"> ".." <end: "num"> => {
-        let start = u64::from_str(start).unwrap();
-        let end = u64::from_str(end).unwrap();
+    <start: Num> ".." <end: Num> => {        
         CondBounds::from_range(start..end)
     }
 }
 
 RangeInclusive: CondBounds = {
-    <start: "num"> ".." "=" <end: "num"> => {
-        let start = u64::from_str(start).unwrap();
-        let end = u64::from_str(end).unwrap();
+    <start: Num> ".." "=" <end: Num> => {        
         CondBounds::from_range(start..=end)
     }
 }
@@ -329,8 +322,7 @@ RangeAndInt: CondBounds = {
     <r: RangeFrom> => r,
     <r: RangeExclusive> => r,
     <r: RangeInclusive> => r,
-    <num: "num"> => {
-        let num = u64::from_str(num).unwrap();
+    <num: Num> => {        
         CondBounds::from_range(num..=num)
     }
 }

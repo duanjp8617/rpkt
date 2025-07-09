@@ -13,7 +13,8 @@ packet Vlan {
         dei_flag = Field {bit = 1, arg=bool},
         vlan_id = Field {bit = 12, default=1},
         ethertype = Field {bit = 16, arg = %%EtherType%%, default = 0x0800},
-    ]
+    ],
+    cond = (ethertype == 0x0600..)
 }
 
 packet VlanDot3 {
@@ -21,9 +22,17 @@ packet VlanDot3 {
         priority = Field {bit = 3},
         dei_flag = Field {bit = 1, arg=bool},
         vlan_id = Field {bit = 12, default=1},
-        payload_len_ = Field {bit = 16, default = 4, gen = false},
+        ethertype = Field {bit = 16, default = 4, gen = false},
     ],
     length = [
-        payload_len = payload_len_
+        payload_len = ethertype
+    ],
+    cond = (ethertype == ..=0x05DC)
+}
+
+group VlanFrameParser = {
+    members = [
+        Vlan,
+        VlanDot3
     ]
 }

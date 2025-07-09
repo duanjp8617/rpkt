@@ -270,3 +270,22 @@ impl<'a> EtherFrameDot3<CursorMut<'a>> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum EtherFrameParser<T> {
+    EtherFrame_(EtherFrame<T>),
+    EtherFrameDot3_(EtherFrameDot3<T>),
+}
+impl<T: Buf> EtherFrameParser<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.chunk().len() < 14 {
+            return Err(buf);
+        }
+        let cond_value0 = u16::from_be_bytes((&buf.chunk()[12..14]).try_into().unwrap());
+        match cond_value0 {
+            1536..=65535 => EtherFrame::parse(buf).map(|pkt| EtherFrameParser::EtherFrame_(pkt)),
+            ..=1500 => EtherFrameDot3::parse(buf).map(|pkt| EtherFrameParser::EtherFrameDot3_(pkt)),
+            _ => Err(buf),
+        }
+    }
+}

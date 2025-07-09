@@ -290,3 +290,22 @@ impl<'a> VlanDot3<CursorMut<'a>> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum VlanFrameParser<T> {
+    Vlan_(Vlan<T>),
+    VlanDot3_(VlanDot3<T>),
+}
+impl<T: Buf> VlanFrameParser<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.chunk().len() < 4 {
+            return Err(buf);
+        }
+        let cond_value0 = u16::from_be_bytes((&buf.chunk()[2..4]).try_into().unwrap());
+        match cond_value0 {
+            1536..=65535 => Vlan::parse(buf).map(|pkt| VlanFrameParser::Vlan_(pkt)),
+            ..=1500 => VlanDot3::parse(buf).map(|pkt| VlanFrameParser::VlanDot3_(pkt)),
+            _ => Err(buf),
+        }
+    }
+}

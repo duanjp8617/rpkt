@@ -11,6 +11,22 @@ pub struct CondBounds {
 }
 
 impl CondBounds {
+    fn update_end(&mut self, max_end: u64) {
+        match self.end {
+            Bound::Unbounded => self.end = Bound::Included(max_end),
+            Bound::Included(original_max_end) => {
+                if original_max_end > max_end {
+                    self.end = Bound::Included(max_end)
+                }
+            }
+            Bound::Excluded(original_max_end) => {
+                if max_end < u64::MAX && original_max_end > max_end + 1 {
+                    self.end = Bound::Included(max_end)
+                }
+            }
+        }
+    }
+
     pub fn from_range<B: RangeBounds<u64>>(b: B) -> Self {
         Self {
             start: b.start_bound().map(|v| *v),
@@ -130,65 +146,53 @@ impl Cond {
         header: &Header,
     ) -> Result<Self, Error> {
         // Make sure the following hold:
-        let cond_checker =
-            |field_name: &String, bounds: &Vec<CondBounds>| -> Result<(&Field, BitPos), Error> {
-                // 1. cond contains a valid field name
-                let (field, bitpos) = header.field(field_name).ok_or(Error::cond(
-                    1,
-                    format!("invalid field name in cond expression: {field_name}"),
-                ))?;
+        let cond_checker = |field_name: &String,
+                            bounds: &mut Vec<CondBounds>|
+         -> Result<(&Field, BitPos), Error> {
+            // 1. cond contains a valid field name
+            let (field, bitpos) = header.field(field_name).ok_or(Error::cond(
+                1,
+                format!("invalid field name in cond expression: {field_name}"),
+            ))?;
 
-                // 2. `repr` is u8/u16/u32/u64
-                if field.repr == BuiltinTypes::ByteSlice {
+            // 2. `repr` is u8/u16/u32/u64
+            if field.repr == BuiltinTypes::ByteSlice {
+                return_err!(Error::cond(
+                    2,
+                    format!("repr of field {field_name} is a byte slice")
+                ));
+            }
+
+            for i in 0..bounds.len() {
+                let original_bound = bounds[i];
+                bounds[i].update_end(max_value(field.bit).unwrap());
+
+                // 4. the defined range should be non-empty after the update
+                if bounds[i].is_empty() {
                     return_err!(Error::cond(
-                        2,
-                        format!("repr of field {field_name} is a byte slice")
+                        4,
+                        format!("range {} is invalid for field {field_name}", original_bound)
                     ));
                 }
 
-                // 3. the field's `gen` is true, meaning that it is not a length-related field.
-                if !field.gen {
-                    return_err!(Error::cond(3, "field gen must be true".to_string()));
-                }
-
-                for i in 0..bounds.len() {
-                    // 4. the defined range is not empty
-                    if bounds[i].is_empty() {
+                // 6. the defined ranges overlap.
+                for prev_bound in (&bounds[..i]).iter() {
+                    if !prev_bound.intersect(&bounds[i]).is_empty() {
                         return_err!(Error::cond(
-                            4,
-                            format!("field {field_name} has empty range")
+                            6,
+                            format!("field {field_name} has intersected ranges")
                         ));
                     }
-
-                    // 5. the range specified by the cond does not exceeds the bit limit of the
-                    //    field.
-                    if bounds[i].max_value() > max_value(field.bit).unwrap() {
-                        return_err!(Error::cond(
-                            5,
-                            format!(
-                            "the max range value exceeds the allowed value of field {field_name}",
-                        )
-                        ));
-                    }
-
-                    // 6. the defined ranges overlap.
-                    for prev_bound in (&bounds[..i]).iter() {
-                        if !prev_bound.intersect(&bounds[i]).is_empty() {
-                            return_err!(Error::cond(
-                                6,
-                                format!("field {field_name} has intersected ranges")
-                            ));
-                        }
-                    }
                 }
+            }
 
-                Ok((field, bitpos))
-            };
+            Ok((field, bitpos))
+        };
 
         let mut cond_map: HashMap<BitPos, (String, Vec<CondBounds>)> = HashMap::new();
-        for (field_name, bounds) in conds.into_iter() {
+        for (field_name, mut bounds) in conds.into_iter() {
             // Make sure the the defined condition branch is valid.
-            let (_, bitpos) = cond_checker(&field_name, &bounds)?;
+            let (_, bitpos) = cond_checker(&field_name, &mut bounds)?;
 
             match cond_map.insert(bitpos, (field_name.clone(), bounds)) {
                 None => {}
