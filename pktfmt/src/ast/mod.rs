@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::hash::RandomState;
 
 mod number;
 pub use number::*;
@@ -14,10 +13,8 @@ pub use header::*;
 mod length;
 pub use length::*;
 
-mod cond;
-pub use cond::*;
-
 mod new_cond;
+pub use new_cond::*;
 
 /// The top level ast type for the packet definition.
 #[derive(Debug)]
@@ -107,7 +104,7 @@ pub struct TopLevel<'a> {
     // a list of parsed items that preserves the defined order
     items: &'a [((ParsedItem, (usize, usize)), Option<String>)],
     // map packet group name to (packet reference list, whether to generate iterator)
-    pkt_groups: HashMap<&'a str, (Vec<&'a Packet>, bool)>,
+    pkt_groups: HashMap<&'a str, (Vec<&'a Packet>, Vec<(BitPos, &'a Field)>, bool)>,
 }
 
 impl<'a> TopLevel<'a> {
@@ -150,8 +147,9 @@ impl<'a> TopLevel<'a> {
         // construct the `pkt_groups` by checking the correctness of each packet group.
         let mut resulting_map = HashMap::new();
         for (pg, span) in pkt_groups {
-            let pkts = Self::check_pkt_group(pg, &all_pkts).map_err(|err| (err, *span))?;
-            resulting_map.insert(pg.name(), (pkts, pg.gen_iter));
+            let (pkts, cond_fields) =
+                Self::check_pkt_group(pg, &all_pkts).map_err(|err| (err, *span))?;
+            resulting_map.insert(pg.name(), (pkts, cond_fields, pg.gen_iter));
         }
 
         Ok(Self {
@@ -167,33 +165,16 @@ impl<'a> TopLevel<'a> {
     pub fn pkt_group<'b: 'a>(
         &'b self,
         pkt_group_name: &'a str,
-    ) -> Option<(&'b Vec<&'a Packet>, bool)> {
-        self.pkt_groups.get(pkt_group_name).map(|t| (&t.0, t.1))
+    ) -> Option<(&'b Vec<&'a Packet>, &'b Vec<(BitPos, &'a Field)>, bool)> {
+        self.pkt_groups
+            .get(pkt_group_name)
+            .map(|t| (&t.0, &t.1, t.2))
     }
 
     fn check_pkt_group(
         pg: &PacketGroup,
         pkts: &HashMap<&'a str, &'a Packet>,
-    ) -> Result<Vec<&'a Packet>, Error> {
-        // 1. Find out the packet with the maximum number of defined cond fields, during this process
-        // if the packet has no cond definition, report error.
-        // 2. For each cond field, create a hashmap, the key is the start position of the field,
-        // the length is the field bit.
-        // 3. In 1, also find out the index of the corresponding packet, split the pg.pkts by the index,
-        // and chain the two parts into an iterator.
-        // 4. iterate the remaining packets.
-        // 5. For each packet, iterate through the fields. Try to search the field start pos from the hashmap
-        // created in step 2, and compare the bit length with the result. Keep a counter, if we find a hit, increase
-        // the counter. Make sure that the counter value equals the size of the hash map defined in step 2. If not,
-        // report an error.
-        // 6. Still, in step 5, for each cond field, make sure that we can find out its position from the hash map defined
-        // in step 2.
-        // Still perform the following checks:
-        // * the packet names contained in the packet group should not be duplicated, therefore we need the name_dedup
-        // * Each packet name must relate to a defined packet.
-        // * Each packet should has a valid cond.
-        // *
-
+    ) -> Result<(Vec<&'a Packet>, Vec<(BitPos, &'a Field)>), Error> {
         if pg.packets().len() < 2 {
             return_err!(Error::top_level(
                 10,
@@ -201,84 +182,123 @@ impl<'a> TopLevel<'a> {
             ))
         }
 
-        let mut names_iter = pg.pkts.iter();
+        // Prepare the return values.
+        let mut sorted_packets: Vec<(&Packet, u64)> = vec![];
+        let mut all_cond_fields: Vec<(BitPos, &Field)> = vec![];
 
-        // Find out the cond field that the first packet uses.
-        // Store the information for comprison with subsequent pkts.
-        let Some(first_pkt_name) = names_iter.next() else {
-            panic!()
-        };
-        let first_pkt = pkts.get(&(*first_pkt_name)[..]).ok_or(Error::top_level(
-            3,
-            format!("packet {first_pkt_name} is not defined"),
-        ))?;
-        let first_cond = first_pkt.cond().as_ref().ok_or(Error::top_level(
-            4,
-            format!("cond of packet {first_pkt_name} is not defined"),
-        ))?;
-        let (target_field, target_pos) = first_pkt.header().field(first_cond.field_name()).unwrap();
-        let mut result_vec = vec![*first_pkt];
-        let mut compared_values_dedup: HashSet<u64, RandomState> =
-            HashSet::from_iter(first_cond.compared_values().iter().map(|val| *val));
-
-        // Dedupliucate the packet names for the subsequent packets.
-        let mut name_dedup = HashSet::new();
-        name_dedup.insert(&(*first_pkt_name)[..]);
-
-        for name in names_iter {
-            // 1. the packet names contained in the packet group should not be duplicated.
-            if name_dedup.contains(&(*name)[..]) {
-                return_err!(Error::top_level(2, format!("packet {name} appears twice")))
-            }
-            name_dedup.insert(&(*name)[..]);
-
-            // 2. Each packet name must relate to a defined packet.
-            let subsequent_pkt = pkts
-                .get(&(*name)[..])
-                .ok_or(Error::top_level(3, format!("packet {name} is not defined")))?;
-
-            // 3. Each packet should has a valid cond.
-            let subsequent_cond = subsequent_pkt.cond().as_ref().ok_or(Error::top_level(
-                4,
-                format!("cond of packet {name} is not defined"),
+        // First pass: perform basic checks, collect all the cond field.
+        for pkt_name in pg.pkts.iter() {
+            let packet = pkts.get(&pkt_name[..]).ok_or(Error::top_level(
+                11,
+                format!("packet {pkt_name} is not defined"),
             ))?;
 
-            // 4. the position, bit size, repr of the cond field should be the same
-            let (cond_field, cond_pos) = subsequent_pkt
-                .header()
-                .field(subsequent_cond.field_name())
-                .unwrap();
-            if (cond_field.bit != target_field.bit)
-                || (cond_pos != target_pos)
-                || (cond_field.repr != target_field.repr)
-            {
-                return_err!(
-                    Error::top_level(5, format!("the cond field of packet {name} is not the same as that of packet {first_pkt_name}")))
-            }
+            // Check whether we can generate iterator for this packet group.
+            check_iter_gen(&packet.protocol_name, &packet.length, pg.gen_iter)?;
 
-            // 5. the compared value should not be the same.
-            for compared_value in subsequent_cond.compared_values() {
-                if compared_values_dedup.contains(compared_value) {
-                    return_err!(Error::top_level(
-                        6,
-                        format!("cond value {compared_value} appears twice")
-                    ))
-                }
-                compared_values_dedup.insert(*compared_value);
-            }
-
-            result_vec.push(*subsequent_pkt);
-        }
-
-        if pg.gen_iter {
-            // 6. Make sure that all the packets do not have variable payload/packet length
-            let _ = result_vec
+            // Filter out duplicated packet names
+            if sorted_packets
                 .iter()
-                .map(|pkt| check_iter_gen(&pkt.protocol_name(), pkt.length(), true))
-                .collect::<Result<Vec<()>, Error>>()?;
+                .find(|(previous_pkt, _)| &previous_pkt.protocol_name == pkt_name)
+                .is_some()
+            {
+                return_err!(Error::top_level(
+                    12,
+                    format!("packet {pkt_name} appears twice")
+                ));
+            }
+
+            // Make sure that each packet defines cond
+            let cond = packet.cond().as_ref().ok_or(Error::top_level(
+                13,
+                format!("packet {pkt_name} does not define cond"),
+            ))?;
+
+            // Collect the cond field.
+            for (bitpos, (field_name, _)) in cond.cond_map().iter() {
+                let curr_cond_field = packet.header.field(field_name).unwrap().0;
+
+                match all_cond_fields
+                    .iter()
+                    .find(|(existing_pos, _)| *existing_pos == *bitpos)
+                {
+                    Some((_, exisitng_field)) => {
+                        if curr_cond_field.bit != exisitng_field.bit {
+                            return_err!(Error::top_level(
+                                12,
+                                format!("invalid cond field {field_name} in packet {pkt_name}")
+                            ));
+                        }
+                    }
+                    None => {
+                        all_cond_fields.push((*bitpos, curr_cond_field));
+                    }
+                }
+            }
+
+            // Save this packet ref in the list.
+            sorted_packets.push((packet, 0));
         }
 
-        Ok(result_vec)
+        // Finally, sort the book_keeper by the start position of the fields.
+        all_cond_fields.sort_by(|a, b| (b.0).cmp(&a.0));
+
+        // Second pass: make further comparisons, ensure that the all the cond fields appear in all
+        // of the packets contained in the group.
+        for (packet, bit_map) in sorted_packets.iter_mut() {
+            for (idx, (cond_bit_pos, cond_field)) in all_cond_fields.iter().enumerate() {
+                match packet
+                    .cond()
+                    .as_ref()
+                    .unwrap()
+                    .cond_map()
+                    .get(&cond_bit_pos)
+                {
+                    Some(_) => {
+                        // Find out the cond field in the packet, calculate the bit map.
+                        let shift = all_cond_fields.len() - 1 - idx;
+                        *bit_map |= 1 << shift;
+                    }
+                    None => {
+                        // This packet has no such cond field.
+                        // We make sure that the packet has a field that locate right
+                        // at the target cond field.
+                        let Some((_, header_field, _)) = packet
+                            .header
+                            .field_iter()
+                            .find(|(_, _, header_bitpos)| *cond_bit_pos == *header_bitpos)
+                        else {
+                            return_err!(Error::top_level(
+                                12,
+                                format!(
+                                    "packet {} lacks a field that points to existing cond field",
+                                    &packet.protocol_name
+                                )
+                            ));
+                        };
+                        if header_field.bit != cond_field.bit {
+                            return_err!(Error::top_level(
+                                12,
+                                format!(
+                                    "packet {} lacks a field that shares the same bit length as existing cond field",
+                                    &packet.protocol_name
+                                )
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort the packet list by the bit map value.
+        // This will make packets having more cond fields to appear
+        // at the start of the list.
+        sorted_packets.sort_by(|a, b| a.1.cmp(&b.1));
+
+        Ok((
+            sorted_packets.into_iter().map(|(pkt, _)| pkt).collect(),
+            all_cond_fields,
+        ))
     }
 }
 
