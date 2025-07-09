@@ -467,27 +467,23 @@ Err(_)=> None
 
 pub struct PacketGroupGen<'a, 'b> {
     pub group_name: String,
-    pub cond_field: Field,
-    pub cond_pos: BitPos,
     pub pkts: &'b Vec<&'a Packet>,
+    pub cond_fields: &'b Vec<(BitPos, &'a Field)>,
     pub gen_iter: bool,
 }
 
 impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
-    pub fn new(defined_name: &str, pkts: &'b Vec<&'a Packet>, gen_iter: bool) -> Self {
-        let pkt = pkts[0];
-
-        if let Some(cond) = pkt.cond() {
-            let (field, pos) = pkt.header().field(cond.field_name()).unwrap();
-            Self {
-                group_name: defined_name.to_string(),
-                cond_field: field.clone(),
-                cond_pos: pos,
-                pkts: pkts,
-                gen_iter,
-            }
-        } else {
-            panic!()
+    pub fn new(
+        group_name: &str,
+        pkts: &'b Vec<&'a Packet>,
+        cond_fields: &'b Vec<(BitPos, &'a Field)>,
+        gen_iter: bool,
+    ) -> Self {
+        Self {
+            group_name: group_name.to_string(),
+            pkts,
+            cond_fields,
+            gen_iter,
         }
     }
 
@@ -533,6 +529,36 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
         write!(output, "}}\n").unwrap();
     }
 
+    fn code_gen_for_match_arm(&self, pkt: &Packet, output: &mut dyn Write) {
+        // Write out the matched condition.
+        if self.cond_fields.len() > 1 {
+            // We will match against a tuple, so we start with a bracket
+            write!(output, "(").unwrap();
+        }
+        for (idx, (bitpos, _)) in self.cond_fields.iter().enumerate() {
+            if idx > 0 {
+                // Write the comma that seperate the tuple elements.
+                write!(output, ",").unwrap();
+            }
+            match pkt.cond().as_ref().unwrap().cond_map().get(bitpos) {
+                Some((_, ranges)) => {
+                    // Write the ranges of this cond field
+                    let mut ranges_iter = ranges.iter();
+                    write!(output, "{}", ranges_iter.next().unwrap()).unwrap();
+                    ranges_iter.for_each(|value| write!(output, "| {value}").unwrap());
+                }
+                None => {
+                    // The cond field is not used for this packet, write a placeholder.
+                    write!(output, "_").unwrap()
+                }
+            }
+        }
+        if self.cond_fields.len() > 1 {
+            // Write a closing bracket for the tuple
+            write!(output, ")").unwrap();
+        }
+    }
+
     fn code_gen_for_grouped_parse(
         &self,
         method_name: &str,
@@ -548,10 +574,8 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
         .unwrap();
 
         let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
-            // Write out the matched condition.
-            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
-            write!(output, "{}", compared_values.next().unwrap()).unwrap();
-            compared_values.for_each(|value| write!(output, "| {value}").unwrap());
+            self.code_gen_for_match_arm(pkt, output);
+
             write!(output, "=> {{\n").unwrap();
 
             // Try to parse the buf into the corresponding packet.
@@ -595,9 +619,8 @@ fn next(&mut self) -> Option<Self::Item> {{
         .unwrap();
 
         let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
-            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
-            write!(output, "{}", compared_values.next().unwrap()).unwrap();
-            compared_values.for_each(|value| write!(output, "| {value}").unwrap());
+            self.code_gen_for_match_arm(pkt, output);
+
             write!(output, "=> {{\n").unwrap();
             write!(
                 output,
@@ -639,9 +662,8 @@ fn next(&mut self) -> Option<Self::Item> {{
         .unwrap();
 
         let on_pkt = |pkt: &Packet, output: &mut dyn Write| {
-            let mut compared_values = (*pkt).cond().as_ref().unwrap().compared_values().iter();
-            write!(output, "{}", compared_values.next().unwrap()).unwrap();
-            compared_values.for_each(|value| write!(output, "| {value}").unwrap());
+            self.code_gen_for_match_arm(pkt, output);
+
             write!(output, "=> {{\n").unwrap();
 
             write!(
@@ -677,8 +699,10 @@ fn next(&mut self) -> Option<Self::Item> {{
         mut handle_pkt: impl FnMut(&Packet, &mut dyn Write),
         parse_error: &str,
     ) {
+        let (last_bitpos, last_field) = self.cond_fields.last().unwrap();
+
         // First, make sure that we can access the cond field from the buffer
-        let buf_min_len = self.cond_pos.next_pos(self.cond_field.bit).byte_pos() + 1;
+        let buf_min_len = last_bitpos.next_pos(last_field.bit).byte_pos() + 1;
         write!(
             output,
             "if {buf_name}{buf_access}.len() < {buf_min_len} {{\n"
@@ -688,13 +712,22 @@ fn next(&mut self) -> Option<Self::Item> {{
         write!(output, "}}\n").unwrap();
 
         // Read the cond field.
-        let cond_field_access = FieldGetMethod::new(&self.cond_field, self.cond_pos);
-        write!(output, "let cond_value = ").unwrap();
-        cond_field_access.read_repr(&format!("{buf_name}{buf_access}"), output);
-        write!(output, ";\n").unwrap();
+        let mut cond_values = vec![];
+        for (idx, (cond_bitpos, cond_field)) in self.cond_fields.iter().enumerate() {
+            let cond_field_access = FieldGetMethod::new(cond_field, *cond_bitpos);
+            write!(output, "let cond_value{idx} = ").unwrap();
+            cond_field_access.read_repr(&format!("{buf_name}{buf_access}"), output);
+            write!(output, ";\n").unwrap();
+            cond_values.push(format!("cond_value{idx}"));
+        }
 
         // For each message, perform the corresponding action defined by the closure.
-        write!(output, "match cond_value {{\n").unwrap();
+        if cond_values.len() > 1 {
+            write!(output, "match ({}) {{\n", cond_values.join(",")).unwrap();
+        } else {
+            write!(output, "match {} {{\n", cond_values[0]).unwrap();
+        }
+
         for pkt in self.pkts.iter() {
             handle_pkt(pkt, output);
         }

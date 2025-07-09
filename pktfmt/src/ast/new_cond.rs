@@ -113,11 +113,15 @@ impl fmt::Display for CondBounds {
 
 #[derive(Debug)]
 pub struct Cond {
-    cond_map: HashMap<BitPos, (u64, Vec<CondBounds>)>,
+    cond_map: HashMap<BitPos, (String, Vec<CondBounds>)>,
 }
 
 impl Cond {
-    pub fn cond_map(&self) -> &HashMap<BitPos, (u64, Vec<CondBounds>)> {
+    /// Retrive a map that maps the starting bit position of the cond field, to
+    /// the field name and the cond field ranges.
+    ///
+    /// This reverse map helps analysis and generation of group parser code.
+    pub fn cond_map(&self) -> &HashMap<BitPos, (String, Vec<CondBounds>)> {
         &self.cond_map
     }
 
@@ -181,12 +185,12 @@ impl Cond {
                 Ok((field, bitpos))
             };
 
-        let mut cond_map: HashMap<BitPos, (u64, Vec<CondBounds>)> = HashMap::new();
+        let mut cond_map: HashMap<BitPos, (String, Vec<CondBounds>)> = HashMap::new();
         for (field_name, bounds) in conds.into_iter() {
             // Make sure the the defined condition branch is valid.
-            let (field, bitpos) = cond_checker(&field_name, &bounds)?;
+            let (_, bitpos) = cond_checker(&field_name, &bounds)?;
 
-            match cond_map.insert(bitpos, (field.bit, bounds)) {
+            match cond_map.insert(bitpos, (field_name.clone(), bounds)) {
                 None => {}
                 Some(_) => return_err!(Error::cond(
                     7,
