@@ -1,21 +1,197 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
+#![allow(unreachable_patterns)]
 
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
 use super::{PPPoECode, PPPoETagType};
 
-/// A constant that defines the fixed byte length of the PPPoE protocol header.
-pub const PPPOE_HEADER_LEN: usize = 6;
-/// A fixed PPPoE header.
-pub const PPPOE_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the PPPoESession protocol header.
+pub const PPPOESESSION_HEADER_LEN: usize = 8;
+/// A fixed PPPoESession header.
+pub const PPPOESESSION_HEADER_TEMPLATE: [u8; 8] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PPPoE<T> {
+pub struct PPPoESession<T> {
     buf: T,
 }
-impl<T: Buf> PPPoE<T> {
+impl<T: Buf> PPPoESession<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.packet_len() as usize) < 8)
+            || ((container.packet_len() as usize) > container.buf.remaining())
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..8]
+    }
+    #[inline]
+    pub fn version(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn code(&self) -> PPPoECode {
+        PPPoECode::from(self.buf.chunk()[1])
+    }
+    #[inline]
+    pub fn session_id(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn data_type(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn packet_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())) as u32 + 6
+    }
+}
+impl<T: PktBuf> PPPoESession<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        assert!((self.packet_len() as usize) <= self.buf.remaining());
+        let trim_size = self.buf.remaining() - self.packet_len() as usize;
+        let mut buf = self.buf;
+        if trim_size > 0 {
+            buf.trim_off(trim_size);
+        }
+        buf.advance(8);
+        buf
+    }
+}
+impl<T: PktBufMut> PPPoESession<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
+        assert!(buf.chunk_headroom() >= 8);
+        buf.move_back(8);
+        let packet_len = buf.remaining();
+        assert!(packet_len <= 65541);
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
+        let mut container = Self { buf };
+        container.set_packet_len(packet_len as u32);
+        container
+    }
+    #[inline]
+    pub fn set_version(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_code(&mut self, value: PPPoECode) {
+        let value = u8::from(value);
+        assert!(value == 0);
+        self.buf.chunk_mut()[1] = value;
+    }
+    #[inline]
+    pub fn set_session_id(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_data_type(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_packet_len(&mut self, value: u32) {
+        assert!((value <= 65541) && (value >= 6));
+        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&((value - 6) as u16).to_be_bytes());
+    }
+}
+impl<'a> PPPoESession<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.packet_len() as usize) < 8)
+            || ((container.packet_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let packet_len = self.packet_len() as usize;
+        Cursor::new(&self.buf.chunk()[8..packet_len])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> PPPoESession<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.packet_len() as usize) < 8)
+            || ((container.packet_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let packet_len = self.packet_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[8..packet_len])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the PPPoEDiscovery protocol header.
+pub const PPPOEDISCOVERY_HEADER_LEN: usize = 6;
+/// A fixed PPPoEDiscovery header.
+pub const PPPOEDISCOVERY_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct PPPoEDiscovery<T> {
+    buf: T,
+}
+impl<T: Buf> PPPoEDiscovery<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -35,7 +211,9 @@ impl<T: Buf> PPPoE<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 6 > container.buf.remaining() {
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > chunk_len)
+        {
             return Err(container.buf);
         }
         Ok(container)
@@ -43,6 +221,11 @@ impl<T: Buf> PPPoE<T> {
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..6]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[6..header_len]
     }
     #[inline]
     pub fn version(&self) -> u8 {
@@ -61,34 +244,32 @@ impl<T: Buf> PPPoE<T> {
         u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
     #[inline]
-    pub fn payload_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())) as u32 + 6
     }
 }
-impl<T: PktBuf> PPPoE<T> {
+impl<T: PktBuf> PPPoEDiscovery<T> {
     #[inline]
     pub fn payload(self) -> T {
-        assert!(6 + self.payload_len() as usize <= self.buf.remaining());
-        let trim_size = self.buf.remaining() - (6 + self.payload_len() as usize);
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        if trim_size > 0 {
-            buf.trim_off(trim_size);
-        }
-        buf.advance(6);
+        buf.advance(header_len);
         buf
     }
 }
-impl<T: PktBufMut> PPPoE<T> {
+impl<T: PktBufMut> PPPoEDiscovery<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
-        assert!(buf.chunk_headroom() >= 6);
-        let payload_len = buf.remaining();
-        assert!(payload_len <= 65535);
-        buf.move_back(6);
+        let header_len = PPPoEDiscovery::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 6) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
-        let mut container = Self { buf };
-        container.set_payload_len(payload_len as u16);
-        container
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[6..header_len]
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
@@ -109,11 +290,12 @@ impl<T: PktBufMut> PPPoE<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_payload_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65541) && (value >= 6));
+        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&((value - 6) as u16).to_be_bytes());
     }
 }
-impl<'a> PPPoE<Cursor<'a>> {
+impl<'a> PPPoEDiscovery<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -121,15 +303,17 @@ impl<'a> PPPoE<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 6 > remaining_len {
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let payload_len = self.payload_len() as usize;
-        Cursor::new(&self.buf.chunk()[6..(6 + payload_len)])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -138,7 +322,7 @@ impl<'a> PPPoE<Cursor<'a>> {
         }
     }
 }
-impl<'a> PPPoE<CursorMut<'a>> {
+impl<'a> PPPoEDiscovery<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -146,15 +330,17 @@ impl<'a> PPPoE<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 6 > remaining_len {
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
             return Err(container.buf);
         }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let payload_len = self.payload_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[6..(6 + payload_len)])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
@@ -164,38 +350,22 @@ impl<'a> PPPoE<CursorMut<'a>> {
     }
 }
 
-impl<T: PktBuf> PPPoE<T> {
-    /// Get PPP session's payload type and payload buffer from a PPPoE packet.
-    ///
-    /// The returned packet buffer only contains the PPP session payload, the
-    /// payload type is removed from the buffer.
-    ///
-    /// # Panics
-    /// This function panics if the `code` field is not 0 and the chunk length
-    /// of the underlying packet buffer is smaller than 8.    
-    pub fn session_payload(self) -> (u16, T) {
-        assert!(self.code() == PPPoECode::SESSION && self.buf.chunk().len() >= 8);
-
-        let data_type = u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap());
-        let mut payload = self.payload();
-        payload.advance(2);
-        (data_type, payload)
-    }
+#[derive(Debug)]
+pub enum PPPoE<T> {
+    PPPoESession_(PPPoESession<T>),
+    PPPoEDiscovery_(PPPoEDiscovery<T>),
 }
-
-impl<T: PktBufMut> PPPoE<T> {
-    /// Prepend the payload type to the start of the payload buffer.
-    ///
-    /// The returned packet buffer contains the actual PPPoE session payload,
-    /// which can be used to construct the final PPPoE packet.
-    ///
-    /// # Panics
-    /// This function panics if `buf.chunk_headroom() < 2`.
-    pub fn prepend_session_payload_type(mut buf: T, payload_type: u16) -> T {
-        assert!(buf.chunk_headroom() >= 2);
-        buf.move_back(2);
-        (&mut buf.chunk_mut()[..2]).copy_from_slice(&payload_type.to_be_bytes());
-        buf
+impl<T: Buf> PPPoE<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.chunk().len() < 2 {
+            return Err(buf);
+        }
+        let cond_value0 = buf.chunk()[1];
+        match cond_value0 {
+            0 => PPPoESession::parse(buf).map(|pkt| PPPoE::PPPoESession_(pkt)),
+            1..=255 => PPPoEDiscovery::parse(buf).map(|pkt| PPPoE::PPPoEDiscovery_(pkt)),
+            _ => Err(buf),
+        }
     }
 }
 
