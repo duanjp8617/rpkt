@@ -12,7 +12,7 @@ pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_T
 
 pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
 
-pub use generated::StpGroup;
+pub use generated::StpMessageGroup;
 
 enum_sim! {
     /// An enum-like type for representing Stp version.

@@ -14,7 +14,8 @@ packet StpTcnBpdu {
         proto_id = Field {bit = 16, default=@0x00},
         version = Field {bit = 8, arg = %%StpVersion%%, default=@0x0},
         type_ = Field {bit = 8, arg = %%StpType%%, default=@0x80},
-    ]
+    ],
+    cond = (version==0) && (type_==0x80)
 }
 
 packet StpConfBpdu {
@@ -35,7 +36,8 @@ packet StpConfBpdu {
         max_age = Field {bit = 16, gen=false},
         hello_time = Field {bit = 16, gen=false},
         forward_delay = Field {bit = 16, gen=false}
-    ]
+    ],
+    cond = (version==0) && (type_==0)
 }
 
 %%
@@ -170,7 +172,8 @@ packet RstpConfBpdu {
         hello_time = Field {bit = 16, gen=false},
         forward_delay = Field {bit = 16, gen=false},
         version1_len = Field {bit=8}
-    ]
+    ],
+    cond = (version==2) && (type_==2)
 }
 
 %%
@@ -318,7 +321,8 @@ packet MstpConfBpdu {
     ],
     length = [
         header_len = version3_len + 38,
-    ]
+    ],
+    cond = (version==3) && (type_==2)
 }
 
 %%
@@ -571,29 +575,13 @@ impl<T: PktBufMut> MstiConf<T> {
         (&mut self.buf.chunk_mut()[1..9]).copy_from_slice(&value.to_be_bytes());
     }
 }
-
-
-#[derive(Debug)]
-pub enum StpGroup<T> {
-    StpTcn(StpTcnBpdu<T>),
-    StpConf(StpConfBpdu<T>),
-    RstpConf(RstpConfBpdu<T>),
-    MstpConf(MstpConfBpdu<T>),
-}
-impl<T: Buf> StpGroup<T> {
-    pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 3 {
-            return Err(buf);
-        }
-        let v = buf.chunk()[2];
-        let t = buf.chunk()[3];
-        match (t, v) {
-            (0, 0) => StpConfBpdu::parse(buf).map(|msg| StpGroup::StpConf(msg)),
-            (2, 2) => RstpConfBpdu::parse(buf).map(|msg| StpGroup::RstpConf(msg)),
-            (2, 3) => MstpConfBpdu::parse(buf).map(|msg| StpGroup::MstpConf(msg)),
-            (0x80, 0) => StpTcnBpdu::parse(buf).map(|msg| StpGroup::StpTcn(msg)),
-            _ => Err(buf),
-        }
-    }
-}
 %%
+
+group StpMessageGroup = {
+    members = [
+        StpTcnBpdu,
+        StpConfBpdu,
+        RstpConfBpdu,
+        MstpConfBpdu,
+    ]
+}
