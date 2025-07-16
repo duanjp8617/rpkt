@@ -351,19 +351,19 @@ impl<'a> PPPoEDiscovery<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum PPPoE<T> {
+pub enum PPPoEGroup<T> {
     PPPoESession_(PPPoESession<T>),
     PPPoEDiscovery_(PPPoEDiscovery<T>),
 }
-impl<T: Buf> PPPoE<T> {
+impl<T: Buf> PPPoEGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 2 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[1];
         match cond_value0 {
-            0 => PPPoESession::parse(buf).map(|pkt| PPPoE::PPPoESession_(pkt)),
-            1..=255 => PPPoEDiscovery::parse(buf).map(|pkt| PPPoE::PPPoEDiscovery_(pkt)),
+            0 => PPPoESession::parse(buf).map(|pkt| PPPoEGroup::PPPoESession_(pkt)),
+            1..=255 => PPPoEDiscovery::parse(buf).map(|pkt| PPPoEGroup::PPPoEDiscovery_(pkt)),
             _ => Err(buf),
         }
     }

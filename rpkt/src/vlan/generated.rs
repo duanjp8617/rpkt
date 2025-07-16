@@ -5,16 +5,16 @@ use crate::ether::EtherType;
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
-/// A constant that defines the fixed byte length of the Vlan protocol header.
-pub const VLAN_HEADER_LEN: usize = 4;
-/// A fixed Vlan header.
-pub const VLAN_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x08, 0x00];
+/// A constant that defines the fixed byte length of the VlanFrame protocol header.
+pub const VLANFRAME_HEADER_LEN: usize = 4;
+/// A fixed VlanFrame header.
+pub const VLANFRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x08, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct Vlan<T> {
+pub struct VlanFrame<T> {
     buf: T,
 }
-impl<T: Buf> Vlan<T> {
+impl<T: Buf> VlanFrame<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -59,7 +59,7 @@ impl<T: Buf> Vlan<T> {
         ))
     }
 }
-impl<T: PktBuf> Vlan<T> {
+impl<T: PktBuf> VlanFrame<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -67,7 +67,7 @@ impl<T: PktBuf> Vlan<T> {
         buf
     }
 }
-impl<T: PktBufMut> Vlan<T> {
+impl<T: PktBufMut> VlanFrame<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -96,7 +96,7 @@ impl<T: PktBufMut> Vlan<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
-impl<'a> Vlan<Cursor<'a>> {
+impl<'a> VlanFrame<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -117,7 +117,7 @@ impl<'a> Vlan<Cursor<'a>> {
         }
     }
 }
-impl<'a> Vlan<CursorMut<'a>> {
+impl<'a> VlanFrame<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -139,16 +139,16 @@ impl<'a> Vlan<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the VlanDot3 protocol header.
-pub const VLANDOT3_HEADER_LEN: usize = 4;
-/// A fixed VlanDot3 header.
-pub const VLANDOT3_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];
+/// A constant that defines the fixed byte length of the VlanDot3Frame protocol header.
+pub const VLANDOT3FRAME_HEADER_LEN: usize = 4;
+/// A fixed VlanDot3Frame header.
+pub const VLANDOT3FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];
 
 #[derive(Debug, Clone, Copy)]
-pub struct VlanDot3<T> {
+pub struct VlanDot3Frame<T> {
     buf: T,
 }
-impl<T: Buf> VlanDot3<T> {
+impl<T: Buf> VlanDot3Frame<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -194,7 +194,7 @@ impl<T: Buf> VlanDot3<T> {
         (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> VlanDot3<T> {
+impl<T: PktBuf> VlanDot3Frame<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!(4 + self.payload_len() as usize <= self.buf.remaining());
@@ -207,7 +207,7 @@ impl<T: PktBuf> VlanDot3<T> {
         buf
     }
 }
-impl<T: PktBufMut> VlanDot3<T> {
+impl<T: PktBufMut> VlanDot3Frame<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -240,7 +240,7 @@ impl<T: PktBufMut> VlanDot3<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> VlanDot3<Cursor<'a>> {
+impl<'a> VlanDot3Frame<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -265,7 +265,7 @@ impl<'a> VlanDot3<Cursor<'a>> {
         }
     }
 }
-impl<'a> VlanDot3<CursorMut<'a>> {
+impl<'a> VlanDot3Frame<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -292,19 +292,19 @@ impl<'a> VlanDot3<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum VlanFrameParser<T> {
-    Vlan_(Vlan<T>),
-    VlanDot3_(VlanDot3<T>),
+pub enum VlanGroup<T> {
+    VlanFrame_(VlanFrame<T>),
+    VlanDot3Frame_(VlanDot3Frame<T>),
 }
-impl<T: Buf> VlanFrameParser<T> {
+impl<T: Buf> VlanGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 4 {
             return Err(buf);
         }
         let cond_value0 = u16::from_be_bytes((&buf.chunk()[2..4]).try_into().unwrap());
         match cond_value0 {
-            1536..=65535 => Vlan::parse(buf).map(|pkt| VlanFrameParser::Vlan_(pkt)),
-            ..=1500 => VlanDot3::parse(buf).map(|pkt| VlanFrameParser::VlanDot3_(pkt)),
+            1536..=65535 => VlanFrame::parse(buf).map(|pkt| VlanGroup::VlanFrame_(pkt)),
+            ..=1500 => VlanDot3Frame::parse(buf).map(|pkt| VlanGroup::VlanDot3Frame_(pkt)),
             _ => Err(buf),
         }
     }

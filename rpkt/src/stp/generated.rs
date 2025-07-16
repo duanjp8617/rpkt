@@ -1439,13 +1439,13 @@ impl<T: PktBufMut> MstiConf<T> {
 }
 
 #[derive(Debug)]
-pub enum StpMessageGroup<T> {
+pub enum StpGroup<T> {
     StpTcnBpdu_(StpTcnBpdu<T>),
     StpConfBpdu_(StpConfBpdu<T>),
     RstpConfBpdu_(RstpConfBpdu<T>),
     MstpConfBpdu_(MstpConfBpdu<T>),
 }
-impl<T: Buf> StpMessageGroup<T> {
+impl<T: Buf> StpGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 4 {
             return Err(buf);
@@ -1453,10 +1453,10 @@ impl<T: Buf> StpMessageGroup<T> {
         let cond_value0 = buf.chunk()[2];
         let cond_value1 = buf.chunk()[3];
         match (cond_value0, cond_value1) {
-            (0, 128) => StpTcnBpdu::parse(buf).map(|pkt| StpMessageGroup::StpTcnBpdu_(pkt)),
-            (0, 0) => StpConfBpdu::parse(buf).map(|pkt| StpMessageGroup::StpConfBpdu_(pkt)),
-            (2, 2) => RstpConfBpdu::parse(buf).map(|pkt| StpMessageGroup::RstpConfBpdu_(pkt)),
-            (3, 2) => MstpConfBpdu::parse(buf).map(|pkt| StpMessageGroup::MstpConfBpdu_(pkt)),
+            (0, 128) => StpTcnBpdu::parse(buf).map(|pkt| StpGroup::StpTcnBpdu_(pkt)),
+            (0, 0) => StpConfBpdu::parse(buf).map(|pkt| StpGroup::StpConfBpdu_(pkt)),
+            (2, 2) => RstpConfBpdu::parse(buf).map(|pkt| StpGroup::RstpConfBpdu_(pkt)),
+            (3, 2) => MstpConfBpdu::parse(buf).map(|pkt| StpGroup::MstpConfBpdu_(pkt)),
             _ => Err(buf),
         }
     }

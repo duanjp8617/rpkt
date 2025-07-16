@@ -129,18 +129,18 @@ impl<'a> EtherFrame<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the EtherFrameDot3 protocol header.
-pub const ETHERFRAMEDOT3_HEADER_LEN: usize = 14;
-/// A fixed EtherFrameDot3 header.
-pub const ETHERFRAMEDOT3_HEADER_TEMPLATE: [u8; 14] = [
+/// A constant that defines the fixed byte length of the EtherDot3Frame protocol header.
+pub const ETHERDOT3FRAME_HEADER_LEN: usize = 14;
+/// A fixed EtherDot3Frame header.
+pub const ETHERDOT3FRAME_HEADER_TEMPLATE: [u8; 14] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e,
 ];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EtherFrameDot3<T> {
+pub struct EtherDot3Frame<T> {
     buf: T,
 }
-impl<T: Buf> EtherFrameDot3<T> {
+impl<T: Buf> EtherDot3Frame<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -182,7 +182,7 @@ impl<T: Buf> EtherFrameDot3<T> {
         (u16::from_be_bytes((&self.buf.chunk()[12..14]).try_into().unwrap()))
     }
 }
-impl<T: PktBuf> EtherFrameDot3<T> {
+impl<T: PktBuf> EtherDot3Frame<T> {
     #[inline]
     pub fn payload(self) -> T {
         assert!(14 + self.payload_len() as usize <= self.buf.remaining());
@@ -195,7 +195,7 @@ impl<T: PktBuf> EtherFrameDot3<T> {
         buf
     }
 }
-impl<T: PktBufMut> EtherFrameDot3<T> {
+impl<T: PktBufMut> EtherDot3Frame<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 14]) -> Self {
         assert!(buf.chunk_headroom() >= 14);
@@ -220,7 +220,7 @@ impl<T: PktBufMut> EtherFrameDot3<T> {
         (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&(value).to_be_bytes());
     }
 }
-impl<'a> EtherFrameDot3<Cursor<'a>> {
+impl<'a> EtherDot3Frame<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -245,7 +245,7 @@ impl<'a> EtherFrameDot3<Cursor<'a>> {
         }
     }
 }
-impl<'a> EtherFrameDot3<CursorMut<'a>> {
+impl<'a> EtherDot3Frame<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -272,19 +272,19 @@ impl<'a> EtherFrameDot3<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum EtherFrameParser<T> {
+pub enum EtherGroup<T> {
     EtherFrame_(EtherFrame<T>),
-    EtherFrameDot3_(EtherFrameDot3<T>),
+    EtherDot3Frame_(EtherDot3Frame<T>),
 }
-impl<T: Buf> EtherFrameParser<T> {
+impl<T: Buf> EtherGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 14 {
             return Err(buf);
         }
         let cond_value0 = u16::from_be_bytes((&buf.chunk()[12..14]).try_into().unwrap());
         match cond_value0 {
-            1536..=65535 => EtherFrame::parse(buf).map(|pkt| EtherFrameParser::EtherFrame_(pkt)),
-            ..=1500 => EtherFrameDot3::parse(buf).map(|pkt| EtherFrameParser::EtherFrameDot3_(pkt)),
+            1536..=65535 => EtherFrame::parse(buf).map(|pkt| EtherGroup::EtherFrame_(pkt)),
+            ..=1500 => EtherDot3Frame::parse(buf).map(|pkt| EtherGroup::EtherDot3Frame_(pkt)),
             _ => Err(buf),
         }
     }
