@@ -577,7 +577,7 @@ impl<T: PktBufMut> MstiConf<T> {
 }
 %%
 
-group StpMessageGroup = {
+group StpGroup = {
     members = [
         StpTcnBpdu,
         StpConfBpdu,

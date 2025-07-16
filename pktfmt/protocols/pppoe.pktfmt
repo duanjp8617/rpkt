@@ -39,7 +39,7 @@ packet PPPoEDiscovery {
 }
 
 
-group PPPoE = {
+group PPPoEGroup = {
     members = [
         PPPoESession,
         PPPoEDiscovery

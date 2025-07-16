@@ -7,7 +7,7 @@ use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 %%
 
-packet Vlan {
+packet VlanFrame {
     header = [
         priority = Field {bit = 3},
         dei_flag = Field {bit = 1, arg=bool},
@@ -17,7 +17,7 @@ packet Vlan {
     cond = (ethertype == 0x0600..)
 }
 
-packet VlanDot3 {
+packet VlanDot3Frame {
     header = [
         priority = Field {bit = 3},
         dei_flag = Field {bit = 1, arg=bool},
@@ -30,9 +30,9 @@ packet VlanDot3 {
     cond = (ethertype == ..=0x05DC)
 }
 
-group VlanFrameParser = {
+group VlanGroup = {
     members = [
-        Vlan,
-        VlanDot3
+        VlanFrame,
+        VlanDot3Frame
     ]
 }
