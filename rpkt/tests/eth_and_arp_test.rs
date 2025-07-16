@@ -1,4 +1,6 @@
 mod common;
+use core::panic;
+
 use common::*;
 
 use rpkt::arp::*;
@@ -13,7 +15,13 @@ fn eth_and_arp_packet_parsing() {
     let packet = file_to_packet("ArpResponsePacket.dat");
 
     let pkt_buf = Cursor::new(&packet[..]);
-    let eth_pkt = EtherFrame::parse(pkt_buf).unwrap();
+    let eth_pkt = match EtherGroup::group_parse(pkt_buf).unwrap() {
+        EtherGroup::EtherFrame_(pkt) => pkt,
+        _ => {
+            assert!(false);
+            panic!()
+        }
+    };
 
     assert_eq!(
         eth_pkt.src_addr(),
@@ -107,9 +115,14 @@ fn eth_dot3_layer_parsing_test() {
     let packet = file_to_packet("EthDot3.dat");
 
     let pkt = Cursor::new(&packet[..]);
-    assert_eq!(store_ieee_dot3_frame(pkt.chunk()), true);
-    assert_eq!(store_ether_frame(pkt.chunk()), false);
-    let ethdot3_pkt = EtherFrameDot3::parse(pkt).unwrap();
+
+    let ethdot3_pkt = match EtherGroup::group_parse(pkt).unwrap() {
+        EtherGroup::EtherDot3Frame_(pkt) => pkt,
+        _ => {
+            assert!(false);
+            panic!()
+        }
+    };
     assert_eq!(
         ethdot3_pkt.src_addr(),
         EtherAddr::parse_from("00:13:f7:11:5e:db").unwrap()

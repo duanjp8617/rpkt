@@ -15,16 +15,19 @@ fn pppoe_session_layer_parsing_test() {
     let ethpkt = EtherFrame::parse(pbuf).unwrap();
     assert_eq!(ethpkt.ethertype(), EtherType::PPPOE_SESSION);
 
-    let pppoe_pkt = PPPoE::parse(ethpkt.payload()).unwrap();
+    let pppoe_pkt = match PPPoEGroup::group_parse(ethpkt.payload()).unwrap() {
+        PPPoEGroup::PPPoESession_(pkt) => pkt,
+        _ => panic!(),
+    };
     assert_eq!(pppoe_pkt.code(), PPPoECode::SESSION);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     assert_eq!(pppoe_pkt.session_id(), 0x0011);
-    assert_eq!(pppoe_pkt.payload_len(), 20);
+    assert_eq!(pppoe_pkt.packet_len(), 26);
+    assert_eq!(pppoe_pkt.data_type(), 0xc021);
 
-    let (pppoe_type, buf) = pppoe_pkt.session_payload();
-    assert_eq!(pppoe_type, 0xc021);
-    assert_eq!(buf.chunk(), &packet[buf.cursor()..(buf.cursor() + 20 - 2)]);
+    let buf = pppoe_pkt.payload();
+    assert_eq!(buf.chunk(), &packet[buf.cursor()..(buf.cursor() + 18)]);
 }
 
 #[test]
@@ -33,17 +36,15 @@ fn pppoe_session_layer_creation_test() {
     let mut buf = [0; 2048];
     let mut pbuf = CursorMut::new(&mut buf[..packet.len()]);
 
-    pbuf.advance(ETHERFRAME_HEADER_LEN + PPPOE_HEADER_LEN + 2);
+    pbuf.advance(ETHERFRAME_HEADER_LEN + PPPOESESSION_HEADER_LEN);
     pbuf.chunk_mut()
-        .copy_from_slice(&packet[ETHERFRAME_HEADER_LEN + PPPOE_HEADER_LEN + 2..]);
+        .copy_from_slice(&packet[ETHERFRAME_HEADER_LEN + PPPOESESSION_HEADER_LEN..]);
 
-    let pbuf = PPPoE::prepend_session_payload_type(pbuf, 0x0057);
-
-    let mut pppoe_pkt = PPPoE::prepend_header(pbuf, &PPPOE_HEADER_TEMPLATE);
-    assert_eq!(pppoe_pkt.payload_len(), 146);
+    let mut pppoe_pkt = PPPoESession::prepend_header(pbuf, &PPPOESESSION_HEADER_TEMPLATE);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     assert_eq!(pppoe_pkt.code(), PPPoECode::SESSION);
+    pppoe_pkt.set_data_type(0x0057);
     pppoe_pkt.set_session_id(0x0011);
 
     let mut eth_pkt = EtherFrame::prepend_header(pppoe_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
@@ -62,19 +63,22 @@ fn pppoe_discovery_layer_parsing_test1() {
     let eth_pkt = EtherFrame::parse(pbuf).unwrap();
     assert_eq!(eth_pkt.ethertype(), EtherType::PPPOE_DISCOVERY);
 
-    let pppoe_pkt = PPPoE::parse(eth_pkt.payload()).unwrap();
-    assert_eq!(pppoe_pkt.payload_len(), 40);
+    let pppoe_pkt = match PPPoEGroup::group_parse(eth_pkt.payload()).unwrap() {
+        PPPoEGroup::PPPoEDiscovery_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(pppoe_pkt.packet_len(), 46);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     assert_eq!(pppoe_pkt.code(), PPPoECode::PADS);
     assert_eq!(pppoe_pkt.session_id(), 0x0011);
 
-    let payload = pppoe_pkt.payload();
+    let buf = pppoe_pkt.payload();
 
     // We use two way to iterate the pppoe tags.
     // First, we just keep parsing the remainig payload until we found
     // all the pppoe tags.
-    let tag_msg = PPPoETag::parse(payload).unwrap();
+    let tag_msg = PPPoETag::parse(buf).unwrap();
     assert_eq!(tag_msg.type_(), PPPoETagType::SVC_NAME);
     assert_eq!(tag_msg.header_len(), 4);
     assert_eq!(tag_msg.var_header_slice().len(), 0);
@@ -117,8 +121,11 @@ fn pppoe_discovery_layer_parsing_test2() {
     let eth_pkt = EtherFrame::parse(pbuf).unwrap();
     assert_eq!(eth_pkt.ethertype(), EtherType::PPPOE_DISCOVERY);
 
-    let pppoe_pkt = PPPoE::parse(eth_pkt.payload()).unwrap();
-    assert_eq!(pppoe_pkt.payload_len(), 40);
+    let pppoe_pkt = match PPPoEGroup::group_parse(eth_pkt.payload()).unwrap() {
+        PPPoEGroup::PPPoEDiscovery_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(pppoe_pkt.packet_len(), 46);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     assert_eq!(pppoe_pkt.code(), PPPoECode::PADS);
@@ -174,8 +181,11 @@ fn pppoe_discovery_layer_parsing_test3() {
     let eth_pkt = EtherFrame::parse(pbuf).unwrap();
     assert_eq!(eth_pkt.ethertype(), EtherType::PPPOE_DISCOVERY);
 
-    let pppoe_pkt = PPPoE::parse(eth_pkt.payload()).unwrap();
-    assert_eq!(pppoe_pkt.payload_len(), 40);
+    let pppoe_pkt = match PPPoEGroup::group_parse(eth_pkt.payload()).unwrap() {
+        PPPoEGroup::PPPoEDiscovery_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(pppoe_pkt.packet_len(), 46);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     assert_eq!(pppoe_pkt.code(), PPPoECode::PADS);
@@ -256,7 +266,8 @@ fn pppoe_discovery_layer_creation_test() {
     let mut tag1 = PPPoETag::prepend_header(tag2.release(), &pppoe_tag_header);
     tag1.set_type_(PPPoETagType::SVC_NAME);
 
-    let mut pppoe_pkt = PPPoE::prepend_header(tag1.release(), &PPPOE_HEADER_TEMPLATE);
+    let mut pppoe_pkt =
+        PPPoEDiscovery::prepend_header(tag1.release(), &PPPOEDISCOVERY_HEADER_TEMPLATE);
     assert_eq!(pppoe_pkt.version(), 1);
     assert_eq!(pppoe_pkt.type_(), 1);
     pppoe_pkt.set_code(PPPoECode::PADS);

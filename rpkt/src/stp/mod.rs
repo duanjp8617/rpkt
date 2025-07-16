@@ -1,6 +1,6 @@
 mod generated;
 
-pub use generated::StpMessageGroup;
+pub use generated::StpGroup;
 pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
 pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
 pub use generated::{RstpConfBpdu, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};

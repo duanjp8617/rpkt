@@ -1,5 +1,5 @@
 mod generated;
-pub use generated::PPPoE;
+pub use generated::PPPoEGroup;
 pub use generated::{PPPoEDiscovery, PPPOEDISCOVERY_HEADER_LEN, PPPOEDISCOVERY_HEADER_TEMPLATE};
 pub use generated::{PPPoESession, PPPOESESSION_HEADER_LEN, PPPOESESSION_HEADER_TEMPLATE};
 pub use generated::{

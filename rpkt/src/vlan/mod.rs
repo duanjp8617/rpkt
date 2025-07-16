@@ -1,5 +1,5 @@
 mod generated;
 
-pub use generated::VlanFrameParser;
-pub use generated::{Vlan, VLAN_HEADER_LEN, VLAN_HEADER_TEMPLATE};
-pub use generated::{VlanDot3, VLANDOT3_HEADER_LEN, VLANDOT3_HEADER_TEMPLATE};
+pub use generated::VlanGroup;
+pub use generated::{VlanDot3Frame, VLANDOT3FRAME_HEADER_LEN, VLANDOT3FRAME_HEADER_TEMPLATE};
+pub use generated::{VlanFrame, VLANFRAME_HEADER_LEN, VLANFRAME_HEADER_TEMPLATE};

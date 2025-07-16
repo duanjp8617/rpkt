@@ -28,12 +28,12 @@ packet PPPoEDiscovery {
     header = [
         version = Field{bit = 4, default=@1},
         type_ = Field{bit = 4, default=@1},
-        code = Field{bit = 8, arg=%%PPPoECode%%},
+        code = Field{bit = 8, arg=%%PPPoECode%%, default=0x65},
         session_id = Field{bit = 16},
         len = Field{bit = 16, gen=false},        
     ],
     length = [
-        header_len = 6 + len
+        packet_len = len + 6
     ],
     cond = (code == 1..)
 }

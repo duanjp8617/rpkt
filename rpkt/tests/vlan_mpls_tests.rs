@@ -19,13 +19,13 @@ fn vlan_parse_and_creation() {
         let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
+        let vlan_pkt = VlanFrame::parse(eth_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.priority(), 5);
         assert_eq!(vlan_pkt.dei_flag(), true);
         assert_eq!(vlan_pkt.vlan_id(), 666);
         assert_eq!(vlan_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = Vlan::parse(vlan_pkt.payload()).unwrap();
+        let vlan_pkt = VlanFrame::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.priority(), 2);
         assert_eq!(vlan_pkt.dei_flag(), false);
         assert_eq!(vlan_pkt.vlan_id(), 200);
@@ -50,10 +50,10 @@ fn vlan_parse_and_creation() {
     }
 
     {
-        let mut target = [0; ETHERFRAME_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHERFRAME_HEADER_LEN + 2 * VLANFRAME_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHERFRAME_HEADER_LEN + 2 * VLAN_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHERFRAME_HEADER_LEN + 2 * VLANFRAME_HEADER_LEN + ARP_HEADER_LEN);
 
         let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
@@ -67,13 +67,14 @@ fn vlan_parse_and_creation() {
         arp_pkt.set_target_ether_addr(EtherAddr::parse_from("00:00:00:00:00:00").unwrap());
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(192, 168, 2, 254));
 
-        let mut vlan_pkt = Vlan::prepend_header(arp_pkt.release(), &VLAN_HEADER_TEMPLATE);
+        let mut vlan_pkt = VlanFrame::prepend_header(arp_pkt.release(), &VLANFRAME_HEADER_TEMPLATE);
         vlan_pkt.set_priority(2);
         assert_eq!(vlan_pkt.dei_flag(), false);
         vlan_pkt.set_vlan_id(200);
         vlan_pkt.set_ethertype(EtherType::ARP);
 
-        let mut vlan_pkt = Vlan::prepend_header(vlan_pkt.release(), &VLAN_HEADER_TEMPLATE);
+        let mut vlan_pkt =
+            VlanFrame::prepend_header(vlan_pkt.release(), &VLANFRAME_HEADER_TEMPLATE);
         vlan_pkt.set_priority(5);
         vlan_pkt.set_dei_flag(true);
         vlan_pkt.set_vlan_id(666);
@@ -98,11 +99,11 @@ fn qinq802_1adparse() {
     let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
     assert_eq!(eth_pkt.ethertype(), EtherType::QINQ);
 
-    let qinq_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
+    let qinq_pkt = VlanFrame::parse(eth_pkt.payload()).unwrap();
     assert_eq!(qinq_pkt.vlan_id(), 30);
     assert_eq!(qinq_pkt.ethertype(), EtherType::VLAN);
 
-    let vlan_pkt = Vlan::parse(qinq_pkt.payload()).unwrap();
+    let vlan_pkt = VlanFrame::parse(qinq_pkt.payload()).unwrap();
     assert_eq!(vlan_pkt.priority(), 0);
     assert_eq!(vlan_pkt.dei_flag(), false);
     assert_eq!(vlan_pkt.vlan_id(), 100);
@@ -135,10 +136,10 @@ fn mpls_layer_test() {
         let eth_pkt = EtherFrame::parse(Cursor::new(&packet[..])).unwrap();
         assert_eq!(eth_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = Vlan::parse(eth_pkt.payload()).unwrap();
+        let vlan_pkt = VlanFrame::parse(eth_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.ethertype(), EtherType::VLAN);
 
-        let vlan_pkt = Vlan::parse(vlan_pkt.payload()).unwrap();
+        let vlan_pkt = VlanFrame::parse(vlan_pkt.payload()).unwrap();
         assert_eq!(vlan_pkt.ethertype(), EtherType::MPLS);
 
         let mpls_pkt = Mpls::parse(vlan_pkt.payload()).unwrap();

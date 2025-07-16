@@ -1,9 +1,9 @@
 //! Ethernet II frame.
 
 mod generated;
-pub use generated::EtherFrameParser;
+pub use generated::EtherGroup;
+pub use generated::{EtherDot3Frame, ETHERDOT3FRAME_HEADER_LEN, ETHERDOT3FRAME_HEADER_TEMPLATE};
 pub use generated::{EtherFrame, ETHERFRAME_HEADER_LEN, ETHERFRAME_HEADER_TEMPLATE};
-pub use generated::{EtherFrameDot3, ETHERFRAMEDOT3_HEADER_LEN, ETHERFRAMEDOT3_HEADER_TEMPLATE};
 
 use core::fmt;
 
@@ -126,39 +126,6 @@ impl fmt::Display for EtherAddr {
             "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
             bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]
         )
-    }
-}
-
-/// Check if the byte slice stores valid Ethernet II frame.
-pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
-    if buf.as_ref().len() >= 14 {
-        // Ethertypes: These are 16-bit identifiers appearing as the initial
-        // two octets after the MAC destination and source (or after a
-        // tag) which, when considered as an unsigned integer, are equal
-        // to or larger than 0x0600.
-        //
-        // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
-        // More: IEEE Std 802.3 Clause 3.2.6
-        let value = u16::from_be_bytes((&buf.as_ref()[12..14]).try_into().unwrap());
-        value >= 0x0600
-    } else {
-        false
-    }
-}
-
-/// Check if the byte slice stores valid IEEE 802.3 frame.
-pub fn store_ieee_dot3_frame<T: AsRef<[u8]>>(buf: T) -> bool {
-    if buf.as_ref().len() >= 14 {
-        // LSAPs: ... Such a length must, when considered as an
-        // unsigned integer, be less than 0x5DC or it could be mistaken as
-        // an Ethertype...
-        //
-        // From: https://tools.ietf.org/html/rfc5342#section-2.3.2.1
-        // More: IEEE Std 802.3 Clause 3.2.6
-        let value = u16::from_be_bytes((&buf.as_ref()[12..14]).try_into().unwrap());
-        value <= 0x05DC
-    } else {
-        false
     }
 }
 

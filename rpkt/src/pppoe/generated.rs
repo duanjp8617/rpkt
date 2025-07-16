@@ -185,7 +185,7 @@ impl<'a> PPPoESession<CursorMut<'a>> {
 /// A constant that defines the fixed byte length of the PPPoEDiscovery protocol header.
 pub const PPPOEDISCOVERY_HEADER_LEN: usize = 6;
 /// A fixed PPPoEDiscovery header.
-pub const PPPOEDISCOVERY_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x00, 0x00, 0x00, 0x00, 0x00];
+pub const PPPOEDISCOVERY_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x65, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct PPPoEDiscovery<T> {
@@ -211,8 +211,8 @@ impl<T: Buf> PPPoEDiscovery<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > chunk_len)
+        if ((container.packet_len() as usize) < 6)
+            || ((container.packet_len() as usize) > container.buf.remaining())
         {
             return Err(container.buf);
         }
@@ -221,11 +221,6 @@ impl<T: Buf> PPPoEDiscovery<T> {
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
         &self.buf.chunk()[0..6]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[6..header_len]
     }
     #[inline]
     pub fn version(&self) -> u8 {
@@ -244,32 +239,34 @@ impl<T: Buf> PPPoEDiscovery<T> {
         u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
     #[inline]
-    pub fn header_len(&self) -> u32 {
+    pub fn packet_len(&self) -> u32 {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())) as u32 + 6
     }
 }
 impl<T: PktBuf> PPPoEDiscovery<T> {
     #[inline]
     pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
+        assert!((self.packet_len() as usize) <= self.buf.remaining());
+        let trim_size = self.buf.remaining() - self.packet_len() as usize;
         let mut buf = self.buf;
-        buf.advance(header_len);
+        if trim_size > 0 {
+            buf.trim_off(trim_size);
+        }
+        buf.advance(6);
         buf
     }
 }
 impl<T: PktBufMut> PPPoEDiscovery<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
-        let header_len = PPPoEDiscovery::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 6) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
+        assert!(buf.chunk_headroom() >= 6);
+        buf.move_back(6);
+        let packet_len = buf.remaining();
+        assert!(packet_len <= 65541);
         (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[6..header_len]
+        let mut container = Self { buf };
+        container.set_packet_len(packet_len as u32);
+        container
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
@@ -290,7 +287,7 @@ impl<T: PktBufMut> PPPoEDiscovery<T> {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
+    pub fn set_packet_len(&mut self, value: u32) {
         assert!((value <= 65541) && (value >= 6));
         (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&((value - 6) as u16).to_be_bytes());
     }
@@ -303,8 +300,8 @@ impl<'a> PPPoEDiscovery<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > remaining_len)
+        if ((container.packet_len() as usize) < 6)
+            || ((container.packet_len() as usize) > remaining_len)
         {
             return Err(container.buf);
         }
@@ -312,8 +309,8 @@ impl<'a> PPPoEDiscovery<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        let packet_len = self.packet_len() as usize;
+        Cursor::new(&self.buf.chunk()[6..packet_len])
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -330,8 +327,8 @@ impl<'a> PPPoEDiscovery<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > remaining_len)
+        if ((container.packet_len() as usize) < 6)
+            || ((container.packet_len() as usize) > remaining_len)
         {
             return Err(container.buf);
         }
@@ -339,8 +336,8 @@ impl<'a> PPPoEDiscovery<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        let packet_len = self.packet_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[6..packet_len])
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
