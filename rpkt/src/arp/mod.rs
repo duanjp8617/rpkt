@@ -1,5 +1,8 @@
 //! Arp protocol.
 
+mod generated;
+pub use generated::{Arp, ARP_HEADER_LEN, ARP_HEADER_TEMPLATE};
+
 enum_sim! {
     /// Hardware type of the arp protocol.
     pub struct Hardware (u16) {
@@ -17,6 +20,3 @@ enum_sim! {
         REPLY = 2
     }
 }
-
-mod generated;
-pub use generated::{Arp, ARP_HEADER_LEN, ARP_HEADER_TEMPLATE};

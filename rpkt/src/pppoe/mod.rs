@@ -1,5 +1,10 @@
 mod generated;
-pub use generated::*;
+pub use generated::PPPoE;
+pub use generated::{PPPoEDiscovery, PPPOEDISCOVERY_HEADER_LEN, PPPOEDISCOVERY_HEADER_TEMPLATE};
+pub use generated::{PPPoESession, PPPOESESSION_HEADER_LEN, PPPOESESSION_HEADER_TEMPLATE};
+pub use generated::{
+    PPPoETag, PPPoETagIter, PPPoETagIterMut, PPPOETAG_HEADER_LEN, PPPOETAG_HEADER_TEMPLATE,
+};
 
 enum_sim! {
     /// An enum-like type for representing the PPPoE code.

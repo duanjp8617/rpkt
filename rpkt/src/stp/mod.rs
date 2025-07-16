@@ -1,18 +1,13 @@
-use crate::ether::EtherAddr;
-
 mod generated;
 
+pub use generated::StpMessageGroup;
+pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
+pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
+pub use generated::{RstpConfBpdu, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
+pub use generated::{StpConfBpdu, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
 pub use generated::{StpTcnBpdu, STPTCNBPDU_HEADER_LEN, STPTCNBPDU_HEADER_TEMPLATE};
 
-pub use generated::{StpConfBpdu, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
-
-pub use generated::{RstpConfBpdu, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
-
-pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
-
-pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
-
-pub use generated::StpMessageGroup;
+use crate::ether::EtherAddr;
 
 enum_sim! {
     /// An enum-like type for representing Stp version.

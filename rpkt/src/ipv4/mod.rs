@@ -1,5 +1,31 @@
 //! IPv4 protocol.
 
+mod generated;
+pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
+
+/// The Ipv4 options.
+pub mod options {
+    // The Ipv4 Eol option
+    pub use super::generated::{EolOption, EOLOPTION_HEADER_LEN, EOLOPTION_HEADER_TEMPLATE};
+
+    // The Ipv4 Nop option
+    pub use super::generated::{NopOption, NOPOPTION_HEADER_LEN, NOPOPTION_HEADER_TEMPLATE};
+
+    pub use super::generated::{
+        TimestampOption, TIMESTAMPOPTION_HEADER_LEN, TIMESTAMPOPTION_HEADER_TEMPLATE,
+    };
+
+    pub use super::generated::{
+        RecordRouteOption, RECORDROUTEOPTION_HEADER_LEN, RECORDROUTEOPTION_HEADER_TEMPLATE,
+    };
+
+    pub use super::generated::{
+        RouteAlertOption, ROUTEALERTOPTION_HEADER_LEN, ROUTEALERTOPTION_HEADER_TEMPLATE,
+    };
+
+    pub use super::generated::{Ipv4Options, Ipv4OptionsIter, Ipv4OptionsIterMut};
+}
+
 pub use core::net::Ipv4Addr;
 
 enum_sim! {
@@ -35,30 +61,4 @@ enum_sim! {
         /// IP packet payload is IPv6 OPTS.
         IPV6_OPTS = 60,
     }
-}
-
-mod generated;
-pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
-
-/// The Ipv4 options.
-pub mod options {
-    // The Ipv4 Eol option
-    pub use super::generated::{EolOption, EOLOPTION_HEADER_LEN, EOLOPTION_HEADER_TEMPLATE};
-
-    // The Ipv4 Nop option
-    pub use super::generated::{NopOption, NOPOPTION_HEADER_LEN, NOPOPTION_HEADER_TEMPLATE};
-
-    pub use super::generated::{
-        TimestampOption, TIMESTAMPOPTION_HEADER_LEN, TIMESTAMPOPTION_HEADER_TEMPLATE,
-    };
-
-    pub use super::generated::{
-        RecordRouteOption, RECORDROUTEOPTION_HEADER_LEN, RECORDROUTEOPTION_HEADER_TEMPLATE,
-    };
-
-    pub use super::generated::{
-        RouteAlertOption, ROUTEALERTOPTION_HEADER_LEN, ROUTEALERTOPTION_HEADER_TEMPLATE,
-    };
-
-    pub use super::generated::{Ipv4Options, Ipv4OptionsIter, Ipv4OptionsIterMut};
 }

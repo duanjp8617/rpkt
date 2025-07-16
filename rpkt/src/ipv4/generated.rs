@@ -992,8 +992,8 @@ impl<T: Buf> Ipv4Options<T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
-        let cond_value = buf.chunk()[0];
-        match cond_value {
+        let cond_value0 = buf.chunk()[0];
+        match cond_value0 {
             0 => EolOption::parse(buf).map(|pkt| Ipv4Options::EolOption_(pkt)),
             1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
             68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
@@ -1023,8 +1023,8 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
         if self.buf.len() < 1 {
             return None;
         }
-        let cond_value = self.buf[0];
-        match cond_value {
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
             0 => EolOption::parse(self.buf)
                 .map(|_pkt| {
                     let result = EolOption {
@@ -1094,8 +1094,8 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
         if self.buf.len() < 1 {
             return None;
         }
-        let cond_value = self.buf[0];
-        match cond_value {
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
             0 => match EolOption::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);

@@ -1,5 +1,7 @@
 mod generated;
-pub use generated::*;
+pub use generated::GreGroup;
+pub use generated::{Gre, GRE_HEADER_LEN, GRE_HEADER_TEMPLATE};
+pub use generated::{GreForPPTP, GREFORPPTP_HEADER_LEN, GREFORPPTP_HEADER_TEMPLATE};
 
 #[inline]
 fn gre_header_len(indicator_field: u16) -> usize {

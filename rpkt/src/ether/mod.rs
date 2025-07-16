@@ -1,5 +1,10 @@
 //! Ethernet II frame.
 
+mod generated;
+pub use generated::EtherFrameParser;
+pub use generated::{EtherFrame, ETHERFRAME_HEADER_LEN, ETHERFRAME_HEADER_TEMPLATE};
+pub use generated::{EtherFrameDot3, ETHERFRAMEDOT3_HEADER_LEN, ETHERFRAMEDOT3_HEADER_TEMPLATE};
+
 use core::fmt;
 
 enum_sim! {
@@ -124,9 +129,6 @@ impl fmt::Display for EtherAddr {
     }
 }
 
-mod generated;
-pub use generated::*;
-
 /// Check if the byte slice stores valid Ethernet II frame.
 pub fn store_ether_frame<T: AsRef<[u8]>>(buf: T) -> bool {
     if buf.as_ref().len() >= 14 {
@@ -197,7 +199,7 @@ mod tests {
     fn packet_build() {
         let mut bytes = [0xff; 64];
         use core::convert::TryInto;
-        (&mut bytes[ETHERFRAME_HEADER_LEN..]).put(&FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);                        
+        (&mut bytes[ETHERFRAME_HEADER_LEN..]).put(&FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);
         let mut buf = CursorMut::new(&mut bytes[..]);
         buf.advance(ETHERFRAME_HEADER_LEN);
         let slice: &[u8] = &[0; 14][..];
