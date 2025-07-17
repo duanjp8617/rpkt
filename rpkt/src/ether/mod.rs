@@ -25,7 +25,9 @@ enum_sim! {
         /// Ethernet frame payload contains PPPoE session packet.
         PPPOE_SESSION = 0x8864,
         /// Ethernet frame payload contains PPPoE discovery packet.
-        PPPOE_DISCOVERY = 0x8863
+        PPPOE_DISCOVERY = 0x8863,
+        /// PPP - Point-to-Point protocol.
+        PPP = 0x880b
     }
 }
 

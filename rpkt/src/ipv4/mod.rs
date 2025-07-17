@@ -60,5 +60,8 @@ enum_sim! {
 
         /// IP packet payload is IPv6 OPTS.
         IPV6_OPTS = 60,
+
+        /// Generic Routing Encapsulation
+        GRE = 47
     }
 }

@@ -172,7 +172,7 @@ packet GreForPPTP {
         ack_present = Field{bit = 1, arg=bool},
         flags = Field {bit = 4},
         version = Field {bit = 3, default=@1},
-        protocol_type = Field {bit = 16, arg = %%EtherType%%},
+        protocol_type = Field {bit = 16, arg = %%EtherType%%, default=@0x880b},
         key_payload_length = Field{bit = 16, gen = false},
         key_call_id = Field{bit = 16}
     ],
@@ -180,7 +180,7 @@ packet GreForPPTP {
         header_len=,
         payload_len = key_payload_length
     ],
-    cond = (checksum_present == 0) && (routing_present == 0) && (key_present == 1) && (version == 1) && (protocol_type == 0x2274)
+    cond = (checksum_present == 0) && (routing_present == 0) && (key_present == 1) && (version == 1) && (protocol_type == 0x880b)
 }
 
 %%
