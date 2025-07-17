@@ -47,6 +47,7 @@ impl EtherAddr {
     ///
     /// # Panics
     /// The function panics if `data` is not six octets long.
+    #[inline]
     pub fn from_bytes(data: &[u8]) -> EtherAddr {
         let mut bytes = [0; 6];
         bytes.copy_from_slice(data);
@@ -54,26 +55,31 @@ impl EtherAddr {
     }
 
     /// Return an Ethernet address as a sequence of octets, in big-endian.
+    #[inline]
     pub const fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
     /// Query whether the address is an unicast address.
+    #[inline]
     pub fn is_unicast(&self) -> bool {
         !(self.is_broadcast() || self.is_multicast())
     }
 
-    /// Query whether this address is the broadcast address.
+    /// Query whether this address is the broadcast address.    
+    #[inline]
     pub fn is_broadcast(&self) -> bool {
         *self == Self::BROADCAST
     }
 
     /// Query whether the 'multicast' bit in the OUI is set.
+    #[inline]
     pub const fn is_multicast(&self) -> bool {
         self.0[0] & 0x01 != 0
     }
 
     /// Query whether the 'locally administered' bit in the OUI is set.
+    #[inline]
     pub const fn is_local(&self) -> bool {
         self.0[0] & 0x02 != 0
     }
