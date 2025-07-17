@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Define a list of strings
-strings=("arp" "ether" "ipv4" "llc" "mpls" "stp" "tcp" "udp" "vlan" "vxlan" "pppoe" "gre")
+strings=("arp" "ether" "ipv4" "llc" "mpls" "stp" "tcp" "udp" "vlan" "vxlan" "pppoe" "gre" \
+         "ipv6")
 # strings=("stp")
 
 # Iterate over the list
