@@ -347,7 +347,7 @@ impl<T: PktBufMut> Gre<T> {
 /// A constant that defines the fixed byte length of the GreForPPTP protocol header.
 pub const GREFORPPTP_HEADER_LEN: usize = 8;
 /// A fixed GreForPPTP header.
-pub const GREFORPPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+pub const GREFORPPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x88, 0x0b, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct GreForPPTP<T> {
@@ -525,7 +525,9 @@ impl<T: PktBufMut> GreForPPTP<T> {
     }
     #[inline]
     pub fn set_protocol_type(&mut self, value: EtherType) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
+        let value = u16::from(value);
+        assert!(value == 34827);
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_key_call_id(&mut self, value: u16) {
@@ -803,7 +805,7 @@ impl<T: Buf> GreGroup<T> {
             cond_value3,
             cond_value4,
         ) {
-            (0, 0, 1, 1, 8820) => GreForPPTP::parse(buf).map(|pkt| GreGroup::GreForPPTP_(pkt)),
+            (0, 0, 1, 1, 34827) => GreForPPTP::parse(buf).map(|pkt| GreGroup::GreForPPTP_(pkt)),
             (_, _, _, 0, _) => Gre::parse(buf).map(|pkt| GreGroup::Gre_(pkt)),
             _ => Err(buf),
         }

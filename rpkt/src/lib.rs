@@ -19,16 +19,17 @@ pub mod checksum_utils;
 
 pub mod arp;
 pub mod ether;
+pub mod gre;
 pub mod ipv4;
+pub mod ipv6;
 pub mod llc;
 pub mod mpls;
+pub mod pppoe;
 pub mod stp;
 pub mod tcp;
 pub mod udp;
 pub mod vlan;
 pub mod vxlan;
-pub mod pppoe;
-pub mod gre;
 
 #[allow(unused)]
 mod endian;

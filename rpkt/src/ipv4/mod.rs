@@ -34,6 +34,9 @@ enum_sim! {
         /// IP packet payload is ICMP protocol.
         ICMP = 1,
 
+        /// IP in IP
+        IPIP = 4,
+
         /// IP packet payload is TCP protocol.
         TCP = 6,
 

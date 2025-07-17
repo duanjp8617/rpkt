@@ -27,7 +27,9 @@ enum_sim! {
         /// Ethernet frame payload contains PPPoE discovery packet.
         PPPOE_DISCOVERY = 0x8863,
         /// PPP - Point-to-Point protocol.
-        PPP = 0x880b
+        PPP = 0x880b,
+        /// Transparent Ethernet Bridging
+        TRANS_ETH_BRIDGE = 0x6558
     }
 }
 
