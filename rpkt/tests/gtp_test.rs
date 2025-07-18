@@ -18,5 +18,5 @@ use rpkt::{Cursor, CursorMut};
 
 #[test]
 fn p() {
-    to_hex_dump("gtp-u-2ext.dat");
+    to_hex_dump("gtpv2-with-teid.dat");
 }

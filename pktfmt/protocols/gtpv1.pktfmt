@@ -3,13 +3,25 @@
 #![allow(unused_parens)]
 
 use crate::cursors::*;
-use crate::ether::EtherType;
 use crate::traits::*;
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
+
+use super::GtpNextExtention;
 %%
 
+// Telecom protocols are too complex, we try to converge
+// to a point that we can provide necessary tools to handle 
+// most of the protocol details. For some super complex protocols,
+// the users of this library can further define their own tools to
+// handle these protocols.
+
+// Defined according to TS 129 281.
+// We just treat it as a protocol with variable header length.
+// The header_len is left undefined, so that we can customize 
+// our own header_len function.
 packet Gtpv1 {
     header = [
-        version = Field{bit = 3},
+        version = Field{bit = 3, default=@1},
         protocol_type = Field{bit = 1, default=@1},
         reserved =  Field{bit = 1},
         extention_header_present = Field{bit = 1, arg = bool},
@@ -26,12 +38,19 @@ packet Gtpv1 {
 
 %%
 impl<T: Buf> Gtpv1<T> {
+    /// A customized `header_len` function. 
+    /// The header length of Gtpv1 protocol is either 8 or 12 bytes, depending
+    /// on the values of the sequence_present, extention_header_present and npdu_present
+    /// flag bits. 
     #[inline]
     pub fn header_len(&self) -> usize {
-        if self.sequence_present() || self.extention_header_present() || self.npdu_present() {
-            12
-        } else {
+        let first_byte = self.buf.chunk()[0];
+        if first_byte & 0b00000111 == 0 {
+            // sequence_present, extention_header_present and npdu_present
+            // are all set to zero, the header length is 8
             8
+        } else {
+            12
         }
     }
 
@@ -63,9 +82,9 @@ impl<T: Buf> Gtpv1<T> {
     /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
     /// and `self.npdu_present()` are all false.
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
+    pub fn next_extention_header(&self) -> GtpNextExtention {
         assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
-        self.buf.chunk()[11]
+        self.buf.chunk()[11].into()
     }
 }
 
@@ -98,9 +117,197 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
     /// and `self.npdu_present()` are all false.
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
+    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
         assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
-        self.buf.chunk_mut()[11] = value;
+        self.buf.chunk_mut()[11] = value.into();
     }
 }
 %%
+
+// Defined according to TS 129 281.
+packet ExtUDPPort {
+    header = [
+        len = Field{bit = 8, default=@1},
+        udp_port = Field{bit = 16},
+        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+    ]
+}
+
+// Defined according to TS 129 281.
+packet ExtPDUNumber {
+    header = [
+        len = Field{bit = 8, default=@1},
+        udp_port = Field{bit = 16},
+        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+    ]
+}
+
+// Defined according to TS 129 281.
+packet ExtLongPDUNumber {
+    header = [
+        len = Field{bit = 8, default=@2},
+        spare1 = Field{bit = 6},
+        pdu_number =  Field{bit = 18},
+        spare2 = Field{bit = 8},
+        spare3 = Field{bit = 8},
+        spare4 = Field{bit = 8},
+        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+    ]
+}
+
+// Defined according to TS 129 281.
+packet ExtServiceClassIndicator {
+    header = [
+        len = Field{bit = 8, default=@1},
+        service_class_indicator = Field{bit = 8},
+        spare = Field{bit = 8},
+        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+    ]
+}
+
+// Defined according to TS 129 281.
+// The container type handles RAN, XW_RAN, NR_RAN and PDU_SESSION containers.
+packet ExtContainer {
+    header = [
+        len = Field{bit = 8, default = 4, gen = false},
+    ],
+    length = [
+        header_len = len*4
+    ]
+}
+
+%%
+impl<T: Buf> ExtContainer<T> {
+    /// Return a byte slice covering the content of the extention header.
+    #[inline]
+    pub fn extention_header_content(&self) -> &[u8] {
+        &self.buf.chunk()[1..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header_type(&self) -> GtpNextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> ExtContainer<T> {
+    /// Return a mutable byte slice of covering the content of the 
+    /// extention header.
+    #[inline]
+    pub fn extention_header_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[1..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header_type(&mut self, value: GtpNextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
+
+// Next, we define two helpers for handling the NR_RAN and PDU_SESSION frames.
+// Note that these two frames are super complex, so we only provide fixed-length
+// protocol headers. 
+// Users who are interested in processing the details of these frames should define
+// their own helpers to process the variable-length frame payload.
+
+// Defined according to TS 138 415
+packet PduSessionFrameDl {
+    header = [
+        pdu_type = Field{bit = 4, default=@0},
+        qmp = Field{bit = 1},
+        snp = Field{bit = 1},
+        msnp = Field{bit = 1},
+        spare = Field{bit = 1},
+        ppp = Field{bit = 1},
+        rqi = Field{bit = 1},
+        qos_flow_identifier = Field{bit = 6},
+    ],
+    cond = (pdu_type == 0)
+}
+
+// Defined according to TS 138 415
+packet PduSessionFrameUl {
+    header = [
+        pdu_type = Field{bit = 4, default=@1},
+        qmp = Field{bit = 1},
+        dl_delay_ind = Field{bit = 1},
+        ul_delay_ind = Field{bit = 1},
+        snp = Field{bit = 1},
+        n3_n9_delay_ind = Field{bit = 1},
+        new_ie_flag = Field{bit = 1},
+        qos_flow_identifier = Field{bit = 6},
+    ],
+    cond = (pdu_type == 1)
+}
+
+group PduSessionFrameGroup =  {
+   members = [
+        PduSessionFrameDl,
+        PduSessionFrameUl
+    ]
+}
+
+// Defined according to TS 138 425
+packet NrUpFrameDlUserData {
+    header = [
+        pdu_type = Field{bit = 4, default=@0},
+        spare1 = Field{bit = 1},
+        dl_discard_blocks = Field{bit = 1},
+        dl_flush = Field{bit = 1},
+        report_polling = Field{bit = 1},
+        spare2 = Field{bit = 3},
+        req_oos_report = Field{bit = 1},
+        report_deliverd = Field{bit = 1},
+        user_data_exist = Field{bit = 1},
+        assist_info_report_polling = Field{bit = 1},
+        retrans_on = Field{bit = 1},
+        nr_u_seq = Field{bit = 24},
+    ],
+    cond = (pdu_type == 0)
+}
+
+// Defined according to TS 138 425
+packet NrUpFrameDlDataDeliveryStatus {
+    header = [
+        pdu_type = Field{bit = 4, default=@1},
+        highest_trans_nr_pdcp_sn_ind = Field{bit = 1},
+        highest_deliverd_nr_pdcp_sn_ind = Field{bit = 1},
+        final_frame_ind = Field{bit = 1},
+        lost_packet_report = Field{bit = 1},
+        spare2 = Field{bit = 3},
+        delivered_nr_pdcp_sn_range_ind = Field{bit = 1},
+        data_rate_ind = Field{bit = 1},
+        retrans_nf_pdcp_sn_ind = Field{bit = 1},
+        delivered_retrans_nr_pdcp_sn_ind = Field{bit = 1},
+        cause_report = Field{bit = 1},
+        buf_size_for_data_radio_bearer = Field{bit = 24},
+    ],
+    cond = (pdu_type == 1)
+}
+
+// Defined according to TS 138 425
+packet NrUpFrameAssistInfoData {
+    header = [
+        pdu_type = Field{bit = 4, default=@2},
+        pdcp_dupl_ind = Field{bit = 1},        
+        assist_info_ind = Field{bit = 1},
+        ul_delay_ind = Field{bit = 1},
+        dl_delay_ind = Field{bit = 1},
+        spare = Field{bit = 7},
+        pdcp_duplication_activation_suggestion = Field{bit = 1},        
+    ],
+    cond = (pdu_type == 2)
+}
+
+group NrUpFrameGroup =  {
+   members = [
+        NrUpFrameDlUserData,
+        NrUpFrameDlDataDeliveryStatus,
+        NrUpFrameAssistInfoData
+    ]
+}

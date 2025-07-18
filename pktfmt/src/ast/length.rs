@@ -178,21 +178,6 @@ impl Length {
                             )
                         ))
                     }
-
-                    // we then make sure that the fixed header length can be derived from the length
-                    // expression. if fail, generate the following error:
-                    match expr.reverse_exec(header_len) {
-                        None => {
-                            return_err!(Error::length(
-                                11,
-                                format!(
-                                    "header length {} can not be derived from the {} expression",
-                                    header_len, LENGTH_FIELDS[index]
-                                )
-                            ))
-                        }
-                        _ => {}
-                    }
                 }
 
                 Ok(())

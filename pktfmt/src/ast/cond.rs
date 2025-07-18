@@ -90,17 +90,6 @@ impl CondBounds {
 
         Self { start, end }
     }
-
-    // Since the contained bound is non-empty, we can
-    // always derive a valid max_value
-    fn max_value(&self) -> u64 {
-        debug_assert!(!self.is_empty());
-        match self.end {
-            Bound::Unbounded => u64::MAX,
-            Bound::Included(n) => n,
-            Bound::Excluded(n) => n - 1,
-        }
-    }
 }
 
 impl fmt::Display for CondBounds {
