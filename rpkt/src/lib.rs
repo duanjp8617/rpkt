@@ -15,7 +15,8 @@ pub use traits::{Buf, PktBuf, PktBufMut};
 mod cursors;
 pub use cursors::{Cursor, CursorMut};
 
-pub mod checksum_utils;
+pub mod checksum;
+pub mod network_rw;
 
 pub mod arp;
 pub mod ether;

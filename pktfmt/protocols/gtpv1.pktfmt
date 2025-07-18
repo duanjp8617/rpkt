@@ -125,7 +125,7 @@ impl<T: PktBufMut> Gtpv1<T> {
 %%
 
 // Defined according to TS 129 281.
-packet ExtUDPPort {
+packet ExtUdpPort {
     header = [
         len = Field{bit = 8, default=@1},
         udp_port = Field{bit = 16},
@@ -134,7 +134,7 @@ packet ExtUDPPort {
 }
 
 // Defined according to TS 129 281.
-packet ExtPDUNumber {
+packet ExtPduNumber {
     header = [
         len = Field{bit = 8, default=@1},
         udp_port = Field{bit = 16},
@@ -143,7 +143,7 @@ packet ExtPDUNumber {
 }
 
 // Defined according to TS 129 281.
-packet ExtLongPDUNumber {
+packet ExtLongPduNumber {
     header = [
         len = Field{bit = 8, default=@2},
         spare1 = Field{bit = 6},

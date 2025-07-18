@@ -296,16 +296,16 @@ impl<T: PktBufMut> Gtpv1<T> {
     }
 }
 
-/// A constant that defines the fixed byte length of the ExtUDPPort protocol header.
+/// A constant that defines the fixed byte length of the ExtUdpPort protocol header.
 pub const EXTUDPPORT_HEADER_LEN: usize = 4;
-/// A fixed ExtUDPPort header.
+/// A fixed ExtUdpPort header.
 pub const EXTUDPPORT_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct ExtUDPPort<T> {
+pub struct ExtUdpPort<T> {
     buf: T,
 }
-impl<T: Buf> ExtUDPPort<T> {
+impl<T: Buf> ExtUdpPort<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -344,7 +344,7 @@ impl<T: Buf> ExtUDPPort<T> {
         GtpNextExtention::from(self.buf.chunk()[3])
     }
 }
-impl<T: PktBuf> ExtUDPPort<T> {
+impl<T: PktBuf> ExtUdpPort<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -352,7 +352,7 @@ impl<T: PktBuf> ExtUDPPort<T> {
         buf
     }
 }
-impl<T: PktBufMut> ExtUDPPort<T> {
+impl<T: PktBufMut> ExtUdpPort<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -374,7 +374,7 @@ impl<T: PktBufMut> ExtUDPPort<T> {
         self.buf.chunk_mut()[3] = u8::from(value);
     }
 }
-impl<'a> ExtUDPPort<Cursor<'a>> {
+impl<'a> ExtUdpPort<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -395,7 +395,7 @@ impl<'a> ExtUDPPort<Cursor<'a>> {
         }
     }
 }
-impl<'a> ExtUDPPort<CursorMut<'a>> {
+impl<'a> ExtUdpPort<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -417,16 +417,16 @@ impl<'a> ExtUDPPort<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the ExtPDUNumber protocol header.
+/// A constant that defines the fixed byte length of the ExtPduNumber protocol header.
 pub const EXTPDUNUMBER_HEADER_LEN: usize = 4;
-/// A fixed ExtPDUNumber header.
+/// A fixed ExtPduNumber header.
 pub const EXTPDUNUMBER_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct ExtPDUNumber<T> {
+pub struct ExtPduNumber<T> {
     buf: T,
 }
-impl<T: Buf> ExtPDUNumber<T> {
+impl<T: Buf> ExtPduNumber<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -465,7 +465,7 @@ impl<T: Buf> ExtPDUNumber<T> {
         GtpNextExtention::from(self.buf.chunk()[3])
     }
 }
-impl<T: PktBuf> ExtPDUNumber<T> {
+impl<T: PktBuf> ExtPduNumber<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -473,7 +473,7 @@ impl<T: PktBuf> ExtPDUNumber<T> {
         buf
     }
 }
-impl<T: PktBufMut> ExtPDUNumber<T> {
+impl<T: PktBufMut> ExtPduNumber<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
         assert!(buf.chunk_headroom() >= 4);
@@ -495,7 +495,7 @@ impl<T: PktBufMut> ExtPDUNumber<T> {
         self.buf.chunk_mut()[3] = u8::from(value);
     }
 }
-impl<'a> ExtPDUNumber<Cursor<'a>> {
+impl<'a> ExtPduNumber<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -516,7 +516,7 @@ impl<'a> ExtPDUNumber<Cursor<'a>> {
         }
     }
 }
-impl<'a> ExtPDUNumber<CursorMut<'a>> {
+impl<'a> ExtPduNumber<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -538,17 +538,17 @@ impl<'a> ExtPDUNumber<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the ExtLongPDUNumber protocol header.
+/// A constant that defines the fixed byte length of the ExtLongPduNumber protocol header.
 pub const EXTLONGPDUNUMBER_HEADER_LEN: usize = 8;
-/// A fixed ExtLongPDUNumber header.
+/// A fixed ExtLongPduNumber header.
 pub const EXTLONGPDUNUMBER_HEADER_TEMPLATE: [u8; 8] =
     [0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct ExtLongPDUNumber<T> {
+pub struct ExtLongPduNumber<T> {
     buf: T,
 }
-impl<T: Buf> ExtLongPDUNumber<T> {
+impl<T: Buf> ExtLongPduNumber<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -603,7 +603,7 @@ impl<T: Buf> ExtLongPDUNumber<T> {
         GtpNextExtention::from(self.buf.chunk()[7])
     }
 }
-impl<T: PktBuf> ExtLongPDUNumber<T> {
+impl<T: PktBuf> ExtLongPduNumber<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -611,7 +611,7 @@ impl<T: PktBuf> ExtLongPDUNumber<T> {
         buf
     }
 }
-impl<T: PktBufMut> ExtLongPDUNumber<T> {
+impl<T: PktBufMut> ExtLongPduNumber<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
         assert!(buf.chunk_headroom() >= 8);
@@ -652,7 +652,7 @@ impl<T: PktBufMut> ExtLongPDUNumber<T> {
         self.buf.chunk_mut()[7] = u8::from(value);
     }
 }
-impl<'a> ExtLongPDUNumber<Cursor<'a>> {
+impl<'a> ExtLongPduNumber<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -673,7 +673,7 @@ impl<'a> ExtLongPDUNumber<Cursor<'a>> {
         }
     }
 }
-impl<'a> ExtLongPDUNumber<CursorMut<'a>> {
+impl<'a> ExtLongPduNumber<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
