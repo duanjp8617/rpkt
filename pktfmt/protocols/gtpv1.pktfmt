@@ -311,3 +311,74 @@ group NrUpFrameGroup =  {
         NrUpFrameAssistInfoData
     ]
 }
+
+// The information elements for gtpv1, defined according to TS 129 281.
+
+packet RecoveryIE {
+    header = [
+        type_ = Field{bit = 8, default=@14},
+        restart_counter = Field{bit = 8},
+    ],
+    cond = (type_==14)
+}
+
+packet TunnelEndpointIdentDataIIE {
+    header = [
+        type_ = Field{bit = 8, default=@16},
+        endpoint_ident_data = Field{bit = 32},
+    ],
+    cond = (type_==16)
+}
+
+packet GtpuPeerAddrIE {
+    header = [
+        type_ = Field{bit = 8, default=@133},
+        len = Field{bit = 16, gen = false},        
+    ],
+    length = [
+        header_len = len+3
+    ],
+    cond = (type_==133)
+}
+
+// 8.5 Extention header type list 
+// The definition is not clear, we omit the implementation.
+
+packet PrivateExtentionIE {
+    header = [
+        type_ = Field{bit = 8, default=@255},
+        len = Field{bit = 16, default=5, gen = false},
+        extention_ident = Field{bit = 16},
+    ],
+    length = [
+        header_len = len+3
+    ],
+    cond = (type_==255)
+}
+
+// 8.7 Gtp-u tunnel status information.
+// The definition is not clear, we omit the implementation.
+
+packet RecoveryTimeStampIE {
+    header = [
+        type_ = Field{bit = 8, default=@231},
+        len = Field{bit = 16, default=7, gen = false},
+        recovery_time_stamp = Field{bit = 32},
+    ],
+    length = [
+        header_len = len+3
+    ],
+    cond = (type_==231)
+}
+
+group Gtpv1IEGroup = {
+    members = [
+        RecoveryIE,
+        TunnelEndpointIdentDataIIE,
+        GtpuPeerAddrIE,
+        PrivateExtentionIE,
+        RecoveryTimeStampIE,
+    ],
+    enable_iter=true
+}
+
