@@ -28,11 +28,12 @@ packet Gtpv1 {
         sequence_present = Field{bit = 1, arg = bool},
         npdu_present = Field{bit = 1, arg = bool},
         message_type = Field{bit = 8},
-        message_len = Field{bit = 16},
+        message_len = Field{bit = 16, gen=false},
         teid = Field{bit = 32},
     ],
     length = [
-        header_len=
+        header_len=,
+        packet_len = 8 + message_len
     ]
 }
 

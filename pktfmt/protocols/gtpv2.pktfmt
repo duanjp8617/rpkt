@@ -1,0 +1,114 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use crate::cursors::*;
+use crate::traits::*;
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
+
+use super::GtpNextExtention;
+%%
+
+// Defined according to TS 129 274.
+packet Gtpv2 {
+    header = [
+        version = Field{bit = 3, default=@2},
+        piggybacking_flag = Field{bit = 1, arg = bool},
+        teid_present = Field{bit = 1, arg = bool},
+        spare=Field{bit = 3},
+        message_type = Field{bit = 8},
+        message_len = Field{bit = 16},
+        teid = Field{bit = 32},
+    ],
+    length = [
+        header_len=
+    ]
+}
+
+%%
+impl<T: Buf> Gtpv1<T> {
+    /// A customized `header_len` function. 
+    /// The header length of Gtpv1 protocol is either 8 or 12 bytes, depending
+    /// on the values of the sequence_present, extention_header_present and npdu_present
+    /// flag bits. 
+    #[inline]
+    pub fn header_len(&self) -> usize {
+        let first_byte = self.buf.chunk()[0];
+        if first_byte & 0b00000111 == 0 {
+            // sequence_present, extention_header_present and npdu_present
+            // are all set to zero, the header length is 8
+            8
+        } else {
+            12
+        }
+    }
+
+    /// Return the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn sequence(&self) -> u16 {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        u16::from_be_bytes(self.buf.chunk()[8..10].try_into().unwrap())
+    }
+
+    /// Return the n-pdu value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn npdu(&self) -> u8 {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        self.buf.chunk()[10]
+    }
+
+    /// Return the next extention header.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn next_extention_header(&self) -> GtpNextExtention {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        self.buf.chunk()[11].into()
+    }
+}
+
+impl<T: PktBufMut> Gtpv1<T> {
+    /// Set the sequence value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn set_sequence(&mut self, value: u16) {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        self.buf.chunk_mut()[8..10].copy_from_slice(&value.to_be_bytes());
+    }
+
+    /// Set the npdu value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn set_npdu(&mut self, value: u8) {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        self.buf.chunk_mut()[10] = value;
+    }
+
+    /// Set the next extention header value.
+    ///
+    /// # Panics
+    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
+    /// and `self.npdu_present()` are all false.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
+        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        self.buf.chunk_mut()[11] = value.into();
+    }
+}
+%%

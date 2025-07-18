@@ -38,6 +38,8 @@ impl<T: Buf> Gtpv1<T> {
         let container = Self { buf };
         if ((container.header_len() as usize) < 8)
             || ((container.header_len() as usize) > chunk_len)
+            || ((container.packet_len() as usize) < (container.header_len() as usize))
+            || ((container.packet_len() as usize) > container.buf.remaining())
         {
             return Err(container.buf);
         }
@@ -81,19 +83,24 @@ impl<T: Buf> Gtpv1<T> {
         self.buf.chunk()[1]
     }
     #[inline]
-    pub fn message_len(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
-    }
-    #[inline]
     pub fn teid(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn packet_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())) as u32 + 8
     }
 }
 impl<T: PktBuf> Gtpv1<T> {
     #[inline]
     pub fn payload(self) -> T {
+        assert!((self.packet_len() as usize) <= self.buf.remaining());
+        let trim_size = self.buf.remaining() - self.packet_len() as usize;
         let header_len = self.header_len() as usize;
         let mut buf = self.buf;
+        if trim_size > 0 {
+            buf.trim_off(trim_size);
+        }
         buf.advance(header_len);
         buf
     }
@@ -104,8 +111,12 @@ impl<T: PktBufMut> Gtpv1<T> {
         let header_len = Gtpv1::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len >= 8) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
+        let packet_len = buf.remaining();
+        assert!(packet_len <= 65543);
         (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
+        let mut container = Self { buf };
+        container.set_packet_len(packet_len as u32);
+        container
     }
     #[inline]
     pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
@@ -147,12 +158,13 @@ impl<T: PktBufMut> Gtpv1<T> {
         self.buf.chunk_mut()[1] = value;
     }
     #[inline]
-    pub fn set_message_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
-    }
-    #[inline]
     pub fn set_teid(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_packet_len(&mut self, value: u32) {
+        assert!((value <= 65543) && (value >= 8));
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&((value - 8) as u16).to_be_bytes());
     }
 }
 impl<'a> Gtpv1<Cursor<'a>> {
@@ -164,7 +176,8 @@ impl<'a> Gtpv1<Cursor<'a>> {
         }
         let container = Self { buf };
         if ((container.header_len() as usize) < 8)
-            || ((container.header_len() as usize) > remaining_len)
+            || ((container.packet_len() as usize) < (container.header_len() as usize))
+            || ((container.packet_len() as usize) > remaining_len)
         {
             return Err(container.buf);
         }
@@ -173,7 +186,8 @@ impl<'a> Gtpv1<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        let packet_len = self.packet_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..packet_len])
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -191,7 +205,8 @@ impl<'a> Gtpv1<CursorMut<'a>> {
         }
         let container = Self { buf };
         if ((container.header_len() as usize) < 8)
-            || ((container.header_len() as usize) > remaining_len)
+            || ((container.packet_len() as usize) < (container.header_len() as usize))
+            || ((container.packet_len() as usize) > remaining_len)
         {
             return Err(container.buf);
         }
@@ -200,7 +215,8 @@ impl<'a> Gtpv1<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        let packet_len = self.packet_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..packet_len])
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
