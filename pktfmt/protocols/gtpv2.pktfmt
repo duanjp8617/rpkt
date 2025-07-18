@@ -38,10 +38,24 @@ impl<T: Buf> Gtpv2<T> {
         }
     }
 
+    /// Return the message priority present flag.
+    ///
+    /// # Panics
+    /// This function panics if:
+    /// 1. `self.teid_present()` is false.
+    /// 2. The packet buffer has invalid form.
+    #[inline]
+    pub fn message_priority_present(&self) -> bool {
+        assert!(self.teid_present());
+        (self.buf.chunk()[0] & (1 << 2)) != 0
+    }
+
     /// Return the teid value.
     ///
     /// # Panics
-    /// This function panics if `self.teid_present()` is false.
+    /// This function panics if:
+    /// 1. `self.teid_present()` is false.
+    /// 2. The packet buffer has invalid form.
     #[inline]
     pub fn teid(&self) -> u32 {
         assert!(self.teid_present());
@@ -49,6 +63,10 @@ impl<T: Buf> Gtpv2<T> {
     }
 
     /// Return the sequence number.
+    ///
+    /// # Panics:
+    /// This function panics if:
+    /// 1. The packet buffer has invalid form.
     #[inline]
     pub fn seq_number(&self) -> u32 {
         if self.teid_present() {
@@ -57,24 +75,73 @@ impl<T: Buf> Gtpv2<T> {
             read_uint_from_be_bytes(&self.buf.chunk()[4..7]) as u32
         }
     }
+
+    /// Return the message priority.
+    ///
+    /// # Panics
+    /// This function panics if:
+    /// 1. `self.teid_present()` and `self.message_priority_present()` are both false.
+    /// 2. The packet buffer has invalid form.
+    #[inline]
+    pub fn message_priority(&self) -> u8 {
+        assert!(self.teid_present() && self.message_priority_present());
+        (self.buf.chunk()[11] & 0xf0) >> 4
+    }
+
+    /// Return the last spare field.
+    ///
+    /// # Panics:
+    /// This function panics if:
+    /// 1. The packet buffer has invalid form.
+    #[inline]
+    pub fn spare_last(&self) -> u8 {
+        if self.teid_present() {
+            if self.message_priority_present() {
+                self.buf.chunk()[11] & 0x0f
+            } else {
+                self.buf.chunk()[11]
+            }
+        } else {
+            self.buf.chunk()[7]
+        }
+    }
 }
 
 impl<T: PktBufMut> Gtpv2<T> {
+    /// Set the message priority present flag.
+    ///
+    /// # Panics
+    /// This function panics if:
+    /// 1. `self.teid_present()` is false.
+    /// 2. The packet buffer has invalid form.
+    #[inline]
+    pub fn set_message_priority_present(&mut self, value: bool) {
+        assert!(self.teid_present());
+        if value {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | (1 << 2);
+        } else {
+            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & (!(1 << 2));
+        }
+    }
+
     /// Set the teid value.
     ///
     /// # Panics
-    /// This function panics if `self.teid_present()` is false.
+    /// This function panics if:
+    /// 1. `self.teid_present()` is false.
+    /// 2. The packet buffer has invalid form.
     #[inline]
     pub fn set_teid(&mut self, value: u32) {
         assert!(self.teid_present());
         self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 
-    /// Set the npdu value.
+    /// Set the sequence number.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if:
+    /// 1. `value` is no less than `(1 << 24)`.
+    /// 2. The packet buffer has invalid form.
     #[inline]
     pub fn set_seq_number(&mut self, value: u32) {
         assert!(value < (1 << 24));
@@ -84,5 +151,59 @@ impl<T: PktBufMut> Gtpv2<T> {
             write_uint_as_be_bytes(&mut self.buf.chunk_mut()[4..7], value as u64);
         }
     }
+
+    /// Set the message priority.
+    ///
+    /// # Panics
+    /// This function panics if:
+    /// 1. `self.teid_present()` and `self.message_priority_present()` are
+    /// both false, and that `value` is no less than `(1 << 4)`.
+    /// 2. The packet buffer has invalid form.
+    #[inline]
+    pub fn set_message_priority(&mut self, value: u8) {
+        assert!(self.teid_present() && self.message_priority_present() && value < 1 << 4);
+        self.buf.chunk_mut()[11] = (self.buf.chunk_mut()[11] & 0x0f) | (value << 4);
+    }
+
+    /// Set the message priority.
+    ///
+    /// # Panics
+    /// This function panics if:
+    /// 1. `self.message_priority_present()` is true, and
+    /// that `value` is no less than `(1 << 4)`.
+    /// 2. The packet buffer has invalid form.
+    #[inline]
+    pub fn set_spare_last(&mut self, value: u8) {
+        if self.teid_present() {
+            if self.message_priority_present() {
+                assert!(value < 1 << 4);
+                self.buf.chunk_mut()[11] = (self.buf.chunk_mut()[11] & 0xf0) | value;
+            } else {
+                self.buf.chunk_mut()[11] = value;
+            }
+        } else {
+            self.buf.chunk_mut()[7] = value;
+        }
+    }
 }
 %%
+
+// User location info 86
+
+// imsi 1
+
+// serving network 83
+
+// rat type 82
+
+// fully qualified tunnel endpoint identifier 87
+
+// aggregate maximum bit rate 72
+
+// mobile equipment identifty (MEI) 75
+
+// ue time zone 114
+
+// bearer context 93
+
+// recovery restart counter 3
