@@ -2,7 +2,7 @@
 
 # Define a list of strings
 strings=("arp" "ether" "ipv4" "llc" "mpls" "stp" "tcp" "udp" "vlan" "vxlan" "pppoe" "gre" \
-         "ipv6" "gtpv1")
+         "ipv6" "gtpv1" "gtpv2")
 # strings=("stp")
 
 # Iterate over the list

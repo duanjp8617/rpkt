@@ -21,6 +21,8 @@ pub mod network_rw;
 pub mod arp;
 pub mod ether;
 pub mod gre;
+pub mod gtpv1;
+pub mod gtpv2;
 pub mod ipv4;
 pub mod ipv6;
 pub mod llc;
@@ -31,7 +33,6 @@ pub mod tcp;
 pub mod udp;
 pub mod vlan;
 pub mod vxlan;
-pub mod gtpv1;
 
 #[allow(unused)]
 mod endian;
