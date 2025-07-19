@@ -189,21 +189,198 @@ impl<T: PktBufMut> Gtpv2<T> {
 %%
 
 // User location info 86
+packet UserLocationInfoIE {
+    header = [
+        type_ = Field{bit = 8, default=@86},
+        len = Field{bit = 16, default = 1, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        extended_macro_enodeb_id = Field{bit = 1, arg = bool},
+        macro_enodeb_id = Field{bit = 1, arg = bool},
+        lai = Field{bit = 1, arg = bool},
+        ecgi = Field{bit = 1, arg = bool},
+        tai = Field{bit = 1, arg = bool},
+        rai = Field{bit = 1, arg = bool},
+        sai = Field{bit = 1, arg = bool},
+        cgi = Field{bit = 1, arg = bool},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==86)
+}
 
 // imsi 1
+packet InternationalMobileSubscriberIdIE {
+    header = [
+        type_ = Field{bit = 8, default=@1},
+        len = Field{bit = 16, default = 0, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==1)
+}
 
 // serving network 83
+packet ServingNetworkIE {
+    header = [
+        type_ = Field{bit = 8, default=@83},
+        len = Field{bit = 16, default = 3, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        mcc_digit2 = Field{bit = 4},
+        mcc_digit1 = Field{bit = 4},
+        mnc_digit3 = Field{bit = 4},
+        mcc_digit3 = Field{bit = 4},
+        mnc_digit2 = Field{bit = 4},
+        mnc_digit1 = Field{bit = 4},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==83)
+}
 
 // rat type 82
+packet RatTypeIE {
+    header = [
+        type_ = Field{bit = 8, default=@82},
+        len = Field{bit = 16, default = 1, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        rat_type = Field{bit = 8},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==82)
+}
 
 // fully qualified tunnel endpoint identifier 87
+packet FullyQualifiedTeidIE {
+    header = [
+        type_ = Field{bit = 8, default=@87},
+        len = Field{bit = 16, default = 5, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        v4 = Field{bit = 1, arg = bool},
+        v6 = Field{bit = 1, arg = bool},
+        interface_type = Field{bit = 6},
+        teid_gre_key = Field{bit = 32},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==87)
+}
 
 // aggregate maximum bit rate 72
+packet AggregateMaxBitRateIE {
+    header = [
+        type_ = Field{bit = 8, default=@72},
+        len = Field{bit = 16, default = 8, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        apn_ambr_for_uplink = Field{bit = 32},
+        apn_ambr_for_downlink = Field{bit = 32},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==72)
+}
 
 // mobile equipment identifty (MEI) 75
+packet MobileEquipmentIdIE {
+    header = [
+        type_ = Field{bit = 8, default=@75},
+        len = Field{bit = 16, default = 0, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},        
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==75)
+}
 
 // ue time zone 114
+packet UeTimeZoneIE {
+    header = [
+        type_ = Field{bit = 8, default=@114},
+        len = Field{bit = 16, default = 2, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        time_zone = Field{bit = 8},
+        spare = Field{bit = 6},
+        daylight_saving_time = Field{bit = 2},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==114)
+}
 
 // bearer context 93
+packet BearerContextIE {
+    header = [
+        type_ = Field{bit = 8, default=@93},
+        len = Field{bit = 16, default = 0, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==93)
+}
+
+// 73
+packet EpsBearerIdIE {
+    header = [
+        type_ = Field{bit = 8, default=@73},
+        len = Field{bit = 16, default = 1, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+        spare = Field{bit = 4, default=@0},
+        eps_bearer_id = Field{bit = 4}
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==73)
+}
 
 // recovery restart counter 3
+packet RecoveryIE {
+    header = [
+        type_ = Field{bit = 8, default=@3},
+        len = Field{bit = 16, default = 0, gen = false},
+        cr_flag = Field{bit = 4},
+        instance = Field{bit = 4},
+    ],
+    length = [
+        header_len = len + 4
+    ],
+    cond = (type_==3)
+}
+
+group Gtpv2IEGroup = {
+    members = [
+        UserLocationInfoIE,
+        InternationalMobileSubscriberIdIE,
+        ServingNetworkIE,
+        RatTypeIE,
+        FullyQualifiedTeidIE,
+        AggregateMaxBitRateIE,
+        MobileEquipmentIdIE,
+        UeTimeZoneIE,
+        BearerContextIE,
+        EpsBearerIdIE,
+        RecoveryIE,
+    ],
+    enable_iter = true,
+}
