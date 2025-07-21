@@ -2,8 +2,10 @@
 
 mod generated;
 pub use generated::EtherGroup;
-pub use generated::{EtherDot3Frame, ETHERDOT3FRAME_HEADER_LEN, ETHERDOT3FRAME_HEADER_TEMPLATE};
-pub use generated::{EtherFrame, ETHERFRAME_HEADER_LEN, ETHERFRAME_HEADER_TEMPLATE};
+pub use generated::{
+    EtherDot3Frame, ETHER_DOT3_FRAME_HEADER_LEN, ETHER_DOT3_FRAME_HEADER_TEMPLATE,
+};
+pub use generated::{EtherFrame, ETHER_FRAME_HEADER_LEN, ETHER_FRAME_HEADER_TEMPLATE};
 
 use core::fmt;
 
@@ -169,16 +171,16 @@ mod tests {
         assert_eq!(ethpkt.ethertype(), EtherType::IPV4);
 
         let next = ethpkt.payload();
-        assert_eq!(next.chunk(), &FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);
+        assert_eq!(next.chunk(), &FRAME_BYTES[ETHER_FRAME_HEADER_LEN..]);
     }
 
     #[test]
     fn packet_build() {
         let mut bytes = [0xff; 64];
         use core::convert::TryInto;
-        (&mut bytes[ETHERFRAME_HEADER_LEN..]).put(&FRAME_BYTES[ETHERFRAME_HEADER_LEN..]);
+        (&mut bytes[ETHER_FRAME_HEADER_LEN..]).put(&FRAME_BYTES[ETHER_FRAME_HEADER_LEN..]);
         let mut buf = CursorMut::new(&mut bytes[..]);
-        buf.advance(ETHERFRAME_HEADER_LEN);
+        buf.advance(ETHER_FRAME_HEADER_LEN);
         let slice: &[u8] = &[0; 14][..];
         let mut ethpkt = EtherFrame::prepend_header(buf, slice.try_into().unwrap());
         ethpkt.set_dst_addr(EtherAddr([0x01, 0x02, 0x03, 0x04, 0x05, 0x06]));

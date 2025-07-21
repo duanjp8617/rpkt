@@ -1,14 +1,14 @@
 mod generated;
-pub use generated::PPPoEGroup;
-pub use generated::{PPPoEDiscovery, PPPOEDISCOVERY_HEADER_LEN, PPPOEDISCOVERY_HEADER_TEMPLATE};
-pub use generated::{PPPoESession, PPPOESESSION_HEADER_LEN, PPPOESESSION_HEADER_TEMPLATE};
+pub use generated::PppoeGroup;
+pub use generated::{PppoeDiscovery, PPPOE_DISCOVERY_HEADER_LEN, PPPOE_DISCOVERY_HEADER_TEMPLATE};
+pub use generated::{PppoeSession, PPPOE_SESSION_HEADER_LEN, PPPOE_SESSION_HEADER_TEMPLATE};
 pub use generated::{
-    PPPoETag, PPPoETagIter, PPPoETagIterMut, PPPOETAG_HEADER_LEN, PPPOETAG_HEADER_TEMPLATE,
+    PppoeTag, PppoeTagIter, PppoeTagIterMut, PPPOE_TAG_HEADER_LEN, PPPOE_TAG_HEADER_TEMPLATE,
 };
 
 enum_sim! {
     /// An enum-like type for representing the PPPoE code.
-    pub struct PPPoECode (u8) {
+    pub struct PppoeCode (u8) {
         /// PPPoE seession code.
         SESSION = 0x00,
         /// PPPoE discovery PADO
@@ -36,7 +36,7 @@ enum_sim! {
 
 enum_sim! {
     /// An enum-like type for representing the tag field of the PPPoE discovery packet.
-    pub struct PPPoETagType(u16) {
+    pub struct PppoeTagType(u16) {
         /// End-Of-List tag type
         EOL = 0x0000,
         /// Service-Name tag type

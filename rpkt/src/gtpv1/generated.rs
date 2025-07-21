@@ -307,9 +307,9 @@ impl<T: PktBufMut> Gtpv1<T> {
 }
 
 /// A constant that defines the fixed byte length of the ExtUdpPort protocol header.
-pub const EXTUDPPORT_HEADER_LEN: usize = 4;
+pub const EXT_UDP_PORT_HEADER_LEN: usize = 4;
 /// A fixed ExtUdpPort header.
-pub const EXTUDPPORT_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+pub const EXT_UDP_PORT_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExtUdpPort<T> {
@@ -428,9 +428,9 @@ impl<'a> ExtUdpPort<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the ExtPduNumber protocol header.
-pub const EXTPDUNUMBER_HEADER_LEN: usize = 4;
+pub const EXT_PDU_NUMBER_HEADER_LEN: usize = 4;
 /// A fixed ExtPduNumber header.
-pub const EXTPDUNUMBER_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+pub const EXT_PDU_NUMBER_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExtPduNumber<T> {
@@ -549,9 +549,9 @@ impl<'a> ExtPduNumber<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the ExtLongPduNumber protocol header.
-pub const EXTLONGPDUNUMBER_HEADER_LEN: usize = 8;
+pub const EXT_LONG_PDU_NUMBER_HEADER_LEN: usize = 8;
 /// A fixed ExtLongPduNumber header.
-pub const EXTLONGPDUNUMBER_HEADER_TEMPLATE: [u8; 8] =
+pub const EXT_LONG_PDU_NUMBER_HEADER_TEMPLATE: [u8; 8] =
     [0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
@@ -706,9 +706,9 @@ impl<'a> ExtLongPduNumber<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the ExtServiceClassIndicator protocol header.
-pub const EXTSERVICECLASSINDICATOR_HEADER_LEN: usize = 4;
+pub const EXT_SERVICE_CLASS_INDICATOR_HEADER_LEN: usize = 4;
 /// A fixed ExtServiceClassIndicator header.
-pub const EXTSERVICECLASSINDICATOR_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+pub const EXT_SERVICE_CLASS_INDICATOR_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExtServiceClassIndicator<T> {
@@ -835,9 +835,9 @@ impl<'a> ExtServiceClassIndicator<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the ExtContainer protocol header.
-pub const EXTCONTAINER_HEADER_LEN: usize = 1;
+pub const EXT_CONTAINER_HEADER_LEN: usize = 1;
 /// A fixed ExtContainer header.
-pub const EXTCONTAINER_HEADER_TEMPLATE: [u8; 1] = [0x04];
+pub const EXT_CONTAINER_HEADER_TEMPLATE: [u8; 1] = [0x04];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExtContainer<T> {
@@ -1000,9 +1000,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 }
 
 /// A constant that defines the fixed byte length of the PduSessionInfoDl protocol header.
-pub const PDUSESSIONINFODL_HEADER_LEN: usize = 2;
+pub const PDU_SESSION_INFO_DL_HEADER_LEN: usize = 2;
 /// A fixed PduSessionInfoDl header.
-pub const PDUSESSIONINFODL_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
+pub const PDU_SESSION_INFO_DL_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct PduSessionInfoDl<T> {
@@ -1168,9 +1168,9 @@ impl<'a> PduSessionInfoDl<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the PduSessionInfoUl protocol header.
-pub const PDUSESSIONINFOUL_HEADER_LEN: usize = 2;
+pub const PDU_SESSION_INFO_UL_HEADER_LEN: usize = 2;
 /// A fixed PduSessionInfoUl header.
-pub const PDUSESSIONINFOUL_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
+pub const PDU_SESSION_INFO_UL_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct PduSessionInfoUl<T> {
@@ -1359,9 +1359,9 @@ impl<T: Buf> PduSessionInfoGroup<T> {
 }
 
 /// A constant that defines the fixed byte length of the NrUpFrameDlUserData protocol header.
-pub const NRUPFRAMEDLUSERDATA_HEADER_LEN: usize = 5;
+pub const NR_UP_FRAME_DL_USER_DATA_HEADER_LEN: usize = 5;
 /// A fixed NrUpFrameDlUserData header.
-pub const NRUPFRAMEDLUSERDATA_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
+pub const NR_UP_FRAME_DL_USER_DATA_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct NrUpFrameDlUserData<T> {
@@ -1563,9 +1563,10 @@ impl<'a> NrUpFrameDlUserData<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the NrUpFrameDlDataDeliveryStatus protocol header.
-pub const NRUPFRAMEDLDATADELIVERYSTATUS_HEADER_LEN: usize = 5;
+pub const NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 5;
 /// A fixed NrUpFrameDlDataDeliveryStatus header.
-pub const NRUPFRAMEDLDATADELIVERYSTATUS_HEADER_TEMPLATE: [u8; 5] = [0x10, 0x00, 0x00, 0x00, 0x00];
+pub const NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 5] =
+    [0x10, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct NrUpFrameDlDataDeliveryStatus<T> {
@@ -1767,9 +1768,9 @@ impl<'a> NrUpFrameDlDataDeliveryStatus<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the NrUpFrameAssistInfoData protocol header.
-pub const NRUPFRAMEASSISTINFODATA_HEADER_LEN: usize = 2;
+pub const NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_LEN: usize = 2;
 /// A fixed NrUpFrameAssistInfoData header.
-pub const NRUPFRAMEASSISTINFODATA_HEADER_TEMPLATE: [u8; 2] = [0x20, 0x00];
+pub const NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_TEMPLATE: [u8; 2] = [0x20, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct NrUpFrameAssistInfoData<T> {
@@ -1951,9 +1952,9 @@ impl<T: Buf> NrUpFrameGroup<T> {
 }
 
 /// A constant that defines the fixed byte length of the RecoveryIE protocol header.
-pub const RECOVERYIE_HEADER_LEN: usize = 2;
+pub const RECOVERY_IE_HEADER_LEN: usize = 2;
 /// A fixed RecoveryIE header.
-pub const RECOVERYIE_HEADER_TEMPLATE: [u8; 2] = [0x0e, 0x00];
+pub const RECOVERY_IE_HEADER_TEMPLATE: [u8; 2] = [0x0e, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RecoveryIE<T> {
@@ -2063,16 +2064,16 @@ impl<'a> RecoveryIE<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the TunnelEndpointIdentDataIIE protocol header.
-pub const TUNNELENDPOINTIDENTDATAIIE_HEADER_LEN: usize = 5;
-/// A fixed TunnelEndpointIdentDataIIE header.
-pub const TUNNELENDPOINTIDENTDATAIIE_HEADER_TEMPLATE: [u8; 5] = [0x10, 0x00, 0x00, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the TunnelEndpointIdentData1IE protocol header.
+pub const TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_LEN: usize = 5;
+/// A fixed TunnelEndpointIdentData1IE header.
+pub const TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE: [u8; 5] = [0x10, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct TunnelEndpointIdentDataIIE<T> {
+pub struct TunnelEndpointIdentData1IE<T> {
     buf: T,
 }
-impl<T: Buf> TunnelEndpointIdentDataIIE<T> {
+impl<T: Buf> TunnelEndpointIdentData1IE<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -2107,7 +2108,7 @@ impl<T: Buf> TunnelEndpointIdentDataIIE<T> {
         u32::from_be_bytes((&self.buf.chunk()[1..5]).try_into().unwrap())
     }
 }
-impl<T: PktBuf> TunnelEndpointIdentDataIIE<T> {
+impl<T: PktBuf> TunnelEndpointIdentData1IE<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -2115,7 +2116,7 @@ impl<T: PktBuf> TunnelEndpointIdentDataIIE<T> {
         buf
     }
 }
-impl<T: PktBufMut> TunnelEndpointIdentDataIIE<T> {
+impl<T: PktBufMut> TunnelEndpointIdentData1IE<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
         assert!(buf.chunk_headroom() >= 5);
@@ -2133,7 +2134,7 @@ impl<T: PktBufMut> TunnelEndpointIdentDataIIE<T> {
         (&mut self.buf.chunk_mut()[1..5]).copy_from_slice(&value.to_be_bytes());
     }
 }
-impl<'a> TunnelEndpointIdentDataIIE<Cursor<'a>> {
+impl<'a> TunnelEndpointIdentData1IE<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -2154,7 +2155,7 @@ impl<'a> TunnelEndpointIdentDataIIE<Cursor<'a>> {
         }
     }
 }
-impl<'a> TunnelEndpointIdentDataIIE<CursorMut<'a>> {
+impl<'a> TunnelEndpointIdentData1IE<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -2177,9 +2178,9 @@ impl<'a> TunnelEndpointIdentDataIIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the GtpuPeerAddrIE protocol header.
-pub const GTPUPEERADDRIE_HEADER_LEN: usize = 3;
+pub const GTPU_PEER_ADDR_IE_HEADER_LEN: usize = 3;
 /// A fixed GtpuPeerAddrIE header.
-pub const GTPUPEERADDRIE_HEADER_TEMPLATE: [u8; 3] = [0x85, 0x00, 0x00];
+pub const GTPU_PEER_ADDR_IE_HEADER_TEMPLATE: [u8; 3] = [0x85, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct GtpuPeerAddrIE<T> {
@@ -2320,9 +2321,9 @@ impl<'a> GtpuPeerAddrIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the PrivateExtentionIE protocol header.
-pub const PRIVATEEXTENTIONIE_HEADER_LEN: usize = 5;
+pub const PRIVATE_EXTENTION_IE_HEADER_LEN: usize = 5;
 /// A fixed PrivateExtentionIE header.
-pub const PRIVATEEXTENTIONIE_HEADER_TEMPLATE: [u8; 5] = [0xff, 0x00, 0x05, 0x00, 0x00];
+pub const PRIVATE_EXTENTION_IE_HEADER_TEMPLATE: [u8; 5] = [0xff, 0x00, 0x05, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct PrivateExtentionIE<T> {
@@ -2471,9 +2472,10 @@ impl<'a> PrivateExtentionIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the RecoveryTimeStampIE protocol header.
-pub const RECOVERYTIMESTAMPIE_HEADER_LEN: usize = 7;
+pub const RECOVERY_TIME_STAMP_IE_HEADER_LEN: usize = 7;
 /// A fixed RecoveryTimeStampIE header.
-pub const RECOVERYTIMESTAMPIE_HEADER_TEMPLATE: [u8; 7] = [0xe7, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00];
+pub const RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE: [u8; 7] =
+    [0xe7, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RecoveryTimeStampIE<T> {
@@ -2624,7 +2626,7 @@ impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {
 #[derive(Debug)]
 pub enum Gtpv1IEGroup<T> {
     RecoveryIE_(RecoveryIE<T>),
-    TunnelEndpointIdentDataIIE_(TunnelEndpointIdentDataIIE<T>),
+    TunnelEndpointIdentData1IE_(TunnelEndpointIdentData1IE<T>),
     GtpuPeerAddrIE_(GtpuPeerAddrIE<T>),
     PrivateExtentionIE_(PrivateExtentionIE<T>),
     RecoveryTimeStampIE_(RecoveryTimeStampIE<T>),
@@ -2637,8 +2639,8 @@ impl<T: Buf> Gtpv1IEGroup<T> {
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
             14 => RecoveryIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryIE_(pkt)),
-            16 => TunnelEndpointIdentDataIIE::parse(buf)
-                .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentDataIIE_(pkt)),
+            16 => TunnelEndpointIdentData1IE::parse(buf)
+                .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentData1IE_(pkt)),
             133 => GtpuPeerAddrIE::parse(buf).map(|pkt| Gtpv1IEGroup::GtpuPeerAddrIE_(pkt)),
             255 => PrivateExtentionIE::parse(buf).map(|pkt| Gtpv1IEGroup::PrivateExtentionIE_(pkt)),
             231 => {
@@ -2679,13 +2681,13 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                     Gtpv1IEGroup::RecoveryIE_(result)
                 })
                 .ok(),
-            16 => TunnelEndpointIdentDataIIE::parse(self.buf)
+            16 => TunnelEndpointIdentData1IE::parse(self.buf)
                 .map(|_pkt| {
-                    let result = TunnelEndpointIdentDataIIE {
+                    let result = TunnelEndpointIdentData1IE {
                         buf: Cursor::new(&self.buf[..5]),
                     };
                     self.buf = &self.buf[5..];
-                    Gtpv1IEGroup::TunnelEndpointIdentDataIIE_(result)
+                    Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result)
                 })
                 .ok(),
             133 => GtpuPeerAddrIE::parse(self.buf)
@@ -2752,14 +2754,14 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            16 => match TunnelEndpointIdentDataIIE::parse(&self.buf[..]) {
+            16 => match TunnelEndpointIdentData1IE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
-                    let result = TunnelEndpointIdentDataIIE {
+                    let result = TunnelEndpointIdentData1IE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::TunnelEndpointIdentDataIIE_(result))
+                    Some(Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result))
                 }
                 Err(_) => None,
             },

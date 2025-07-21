@@ -1,11 +1,11 @@
 mod generated;
 
 pub use generated::StpGroup;
-pub use generated::{MstiConf, MSTICONF_HEADER_LEN, MSTICONF_HEADER_TEMPLATE};
-pub use generated::{MstpConfBpdu, MSTPCONFBPDU_HEADER_LEN, MSTPCONFBPDU_HEADER_TEMPLATE};
-pub use generated::{RstpConfBpdu, RSTPCONFBPDU_HEADER_LEN, RSTPCONFBPDU_HEADER_TEMPLATE};
-pub use generated::{StpConfBpdu, STPCONFBPDU_HEADER_LEN, STPCONFBPDU_HEADER_TEMPLATE};
-pub use generated::{StpTcnBpdu, STPTCNBPDU_HEADER_LEN, STPTCNBPDU_HEADER_TEMPLATE};
+pub use generated::{MstiConf, MSTI_CONF_HEADER_LEN, MSTI_CONF_HEADER_TEMPLATE};
+pub use generated::{MstpConfBpdu, MSTP_CONF_BPDU_HEADER_LEN, MSTP_CONF_BPDU_HEADER_TEMPLATE};
+pub use generated::{RstpConfBpdu, RSTP_CONF_BPDU_HEADER_LEN, RSTP_CONF_BPDU_HEADER_TEMPLATE};
+pub use generated::{StpConfBpdu, STP_CONF_BPDU_HEADER_LEN, STP_CONF_BPDU_HEADER_TEMPLATE};
+pub use generated::{StpTcnBpdu, STP_TCN_BPDU_HEADER_LEN, STP_TCN_BPDU_HEADER_TEMPLATE};
 
 use crate::ether::EtherAddr;
 

@@ -69,11 +69,12 @@ fn stp_configuration_parsing_tests() {
 fn stp_configuration_creation_tests() {
     let mut buf: [u8; 64] = [0; 64];
 
-    let mut pkt_buf =
-        CursorMut::new(&mut buf[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]);
-    pkt_buf.advance(ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN);
+    let mut pkt_buf = CursorMut::new(
+        &mut buf[..ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN],
+    );
+    pkt_buf.advance(ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN);
 
-    let mut stp_conf_msg = StpConfBpdu::prepend_header(pkt_buf, &STPCONFBPDU_HEADER_TEMPLATE);
+    let mut stp_conf_msg = StpConfBpdu::prepend_header(pkt_buf, &STP_CONF_BPDU_HEADER_TEMPLATE);
     stp_conf_msg.set_root_id(0x8064001c0e877800);
     stp_conf_msg.set_path_cost(4);
     stp_conf_msg.set_bridge_id(0x8064001c0e878500);
@@ -85,14 +86,14 @@ fn stp_configuration_creation_tests() {
 
     let llc_pkt = Llc::prepend_header(stp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt =
-        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHERDOT3FRAME_HEADER_TEMPLATE);
+        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHER_DOT3_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x85, 0x04]));
 
     let target = file_to_packet("StpConf.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]
+        &target[..ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN]
     );
 }
 
@@ -191,22 +192,23 @@ fn stp_topology_change_parsing_tests() {
 fn stp_topology_change_creation_tests() {
     let mut buf: [u8; 64] = [0; 64];
 
-    let mut pkt_buf =
-        CursorMut::new(&mut buf[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPTCNBPDU_HEADER_LEN]);
-    pkt_buf.advance(ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPTCNBPDU_HEADER_LEN);
+    let mut pkt_buf = CursorMut::new(
+        &mut buf[..ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_TCN_BPDU_HEADER_LEN],
+    );
+    pkt_buf.advance(ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_TCN_BPDU_HEADER_LEN);
 
-    let stptcnbdpu_msg = StpTcnBpdu::prepend_header(pkt_buf, &STPTCNBPDU_HEADER_TEMPLATE);
+    let stptcnbdpu_msg = StpTcnBpdu::prepend_header(pkt_buf, &STP_TCN_BPDU_HEADER_TEMPLATE);
 
     let llc_pkt = Llc::prepend_header(stptcnbdpu_msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt =
-        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHERDOT3FRAME_HEADER_TEMPLATE);
+        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHER_DOT3_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0xaa, 0xbb, 0xcc, 0x00, 0x02, 0x00]));
 
     let target = file_to_packet("StpTcn.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHERDOT3FRAME_HEADER_LEN + LLC_HEADER_LEN + STPTCNBPDU_HEADER_LEN]
+        &target[..ETHER_DOT3_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_TCN_BPDU_HEADER_LEN]
     );
 }
 
@@ -274,11 +276,11 @@ fn rapid_stp_creation_tests() {
     let mut buf: [u8; 256] = [0; 256];
 
     let mut pkt_buf = CursorMut::new(
-        &mut buf[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_LEN],
+        &mut buf[..ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + RSTP_CONF_BPDU_HEADER_LEN],
     );
-    pkt_buf.advance(ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_LEN);
+    pkt_buf.advance(ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + RSTP_CONF_BPDU_HEADER_LEN);
 
-    let mut rstp_conf_msg = RstpConfBpdu::prepend_header(pkt_buf, &RSTPCONFBPDU_HEADER_TEMPLATE);
+    let mut rstp_conf_msg = RstpConfBpdu::prepend_header(pkt_buf, &RSTP_CONF_BPDU_HEADER_TEMPLATE);
     rstp_conf_msg.set_flag(0x3d);
     rstp_conf_msg.set_root_id(0x6001000d65adf600);
     rstp_conf_msg.set_path_cost(0x0a);
@@ -292,14 +294,14 @@ fn rapid_stp_creation_tests() {
 
     let llc_pkt = Llc::prepend_header(rstp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt =
-        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHERDOT3FRAME_HEADER_TEMPLATE);
+        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHER_DOT3_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x01, 0x01, 0x00, 0x00, 0x01]));
 
     let target = file_to_packet("StpRapid.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHERDOT3FRAME_HEADER_LEN + LLC_HEADER_LEN + RSTPCONFBPDU_HEADER_LEN]
+        &target[..ETHER_DOT3_FRAME_HEADER_LEN + LLC_HEADER_LEN + RSTP_CONF_BPDU_HEADER_LEN]
     );
 }
 
@@ -360,7 +362,7 @@ fn multiple_stp_parsing_tests() {
 
                 assert_eq!(
                     msg.header_len() as usize,
-                    MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN
+                    MSTP_CONF_BPDU_HEADER_LEN + MSTI_CONF_HEADER_LEN
                 );
 
                 assert_eq!(msg.mst_config_format_selector(), 0x0);
@@ -409,22 +411,25 @@ fn multiple_stp_creation_tests() {
     let mut buf: [u8; 256] = [0; 256];
 
     let mut pkt_buf = CursorMut::new(
-        &mut buf[..ETHERDOT3FRAME_HEADER_LEN
+        &mut buf[..ETHER_DOT3_FRAME_HEADER_LEN
             + LLC_HEADER_LEN
-            + MSTPCONFBPDU_HEADER_LEN
-            + MSTICONF_HEADER_LEN],
+            + MSTP_CONF_BPDU_HEADER_LEN
+            + MSTI_CONF_HEADER_LEN],
     );
     pkt_buf.advance(
-        ETHERDOT3FRAME_HEADER_LEN + LLC_HEADER_LEN + MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN,
+        ETHER_DOT3_FRAME_HEADER_LEN
+            + LLC_HEADER_LEN
+            + MSTP_CONF_BPDU_HEADER_LEN
+            + MSTI_CONF_HEADER_LEN,
     );
 
-    let mut mstp_conf_bpdu_header = MSTPCONFBPDU_HEADER_TEMPLATE.clone();
+    let mut mstp_conf_bpdu_header = MSTP_CONF_BPDU_HEADER_TEMPLATE.clone();
     MstpConfBpdu::from_header_array_mut(&mut mstp_conf_bpdu_header)
-        .set_header_len((MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN) as u32);
+        .set_header_len((MSTP_CONF_BPDU_HEADER_LEN + MSTI_CONF_HEADER_LEN) as u32);
     let mut msg = MstpConfBpdu::prepend_header(pkt_buf, &mstp_conf_bpdu_header);
     assert_eq!(
         msg.buf().chunk().len(),
-        MSTPCONFBPDU_HEADER_LEN + MSTICONF_HEADER_LEN
+        MSTP_CONF_BPDU_HEADER_LEN + MSTI_CONF_HEADER_LEN
     );
 
     msg.set_flag(0x7c);
@@ -464,16 +469,16 @@ fn multiple_stp_creation_tests() {
 
     let llc_pkt = Llc::prepend_header(msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt =
-        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHERDOT3FRAME_HEADER_TEMPLATE);
+        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHER_DOT3_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x1a, 0xa1, 0x97, 0xd1, 0x85]));
 
     let target = file_to_packet("StpMultiple.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHERDOT3FRAME_HEADER_LEN
+        &target[..ETHER_DOT3_FRAME_HEADER_LEN
             + LLC_HEADER_LEN
-            + MSTPCONFBPDU_HEADER_LEN
-            + MSTICONF_HEADER_LEN]
+            + MSTP_CONF_BPDU_HEADER_LEN
+            + MSTI_CONF_HEADER_LEN]
     );
 }

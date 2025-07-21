@@ -6,29 +6,29 @@ pub use generated::{Gtpv1, GTPV1_HEADER_LEN, GTPV1_HEADER_TEMPLATE};
 pub mod extentions {
     //! Gtp extentions    
     pub use super::generated::{
-        ExtContainer, EXTCONTAINER_HEADER_LEN, EXTCONTAINER_HEADER_TEMPLATE,
+        ExtContainer, EXT_CONTAINER_HEADER_LEN, EXT_CONTAINER_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        ExtLongPduNumber, EXTLONGPDUNUMBER_HEADER_LEN, EXTLONGPDUNUMBER_HEADER_TEMPLATE,
+        ExtLongPduNumber, EXT_LONG_PDU_NUMBER_HEADER_LEN, EXT_LONG_PDU_NUMBER_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        ExtPduNumber, EXTPDUNUMBER_HEADER_LEN, EXTPDUNUMBER_HEADER_TEMPLATE,
+        ExtPduNumber, EXT_PDU_NUMBER_HEADER_LEN, EXT_PDU_NUMBER_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        ExtServiceClassIndicator, EXTSERVICECLASSINDICATOR_HEADER_LEN,
-        EXTSERVICECLASSINDICATOR_HEADER_TEMPLATE,
+        ExtServiceClassIndicator, EXT_SERVICE_CLASS_INDICATOR_HEADER_LEN,
+        EXT_SERVICE_CLASS_INDICATOR_HEADER_TEMPLATE,
     };
-    pub use super::generated::{ExtUdpPort, EXTUDPPORT_HEADER_LEN, EXTUDPPORT_HEADER_TEMPLATE};
+    pub use super::generated::{ExtUdpPort, EXT_UDP_PORT_HEADER_LEN, EXT_UDP_PORT_HEADER_TEMPLATE};
 }
 
 pub mod pdu_session {
     //! PDU session as defined in TS 138 415
     pub use super::generated::PduSessionInfoGroup;
     pub use super::generated::{
-        PduSessionInfoDl, PDUSESSIONINFODL_HEADER_LEN, PDUSESSIONINFODL_HEADER_TEMPLATE,
+        PduSessionInfoDl, PDU_SESSION_INFO_DL_HEADER_LEN, PDU_SESSION_INFO_DL_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        PduSessionInfoUl, PDUSESSIONINFOUL_HEADER_LEN, PDUSESSIONINFOUL_HEADER_TEMPLATE,
+        PduSessionInfoUl, PDU_SESSION_INFO_UL_HEADER_LEN, PDU_SESSION_INFO_UL_HEADER_TEMPLATE,
     };
 }
 
@@ -36,34 +36,36 @@ pub mod nr_user_plane {
     //! NR user plane as defined in TS 138 425
     pub use super::generated::NrUpFrameGroup;
     pub use super::generated::{
-        NrUpFrameAssistInfoData, NRUPFRAMEASSISTINFODATA_HEADER_LEN,
-        NRUPFRAMEASSISTINFODATA_HEADER_TEMPLATE,
+        NrUpFrameAssistInfoData, NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_LEN,
+        NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        NrUpFrameDlDataDeliveryStatus, NRUPFRAMEDLDATADELIVERYSTATUS_HEADER_LEN,
-        NRUPFRAMEDLDATADELIVERYSTATUS_HEADER_TEMPLATE,
+        NrUpFrameDlDataDeliveryStatus, NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_LEN,
+        NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        NrUpFrameDlUserData, NRUPFRAMEDLUSERDATA_HEADER_LEN, NRUPFRAMEDLUSERDATA_HEADER_TEMPLATE,
+        NrUpFrameDlUserData, NR_UP_FRAME_DL_USER_DATA_HEADER_LEN,
+        NR_UP_FRAME_DL_USER_DATA_HEADER_TEMPLATE,
     };
 }
 
 pub mod information_elements {
     //! gtp-c information elements
     pub use super::generated::{
-        GtpuPeerAddrIE, GTPUPEERADDRIE_HEADER_LEN, GTPUPEERADDRIE_HEADER_TEMPLATE,
+        GtpuPeerAddrIE, GTPU_PEER_ADDR_IE_HEADER_LEN, GTPU_PEER_ADDR_IE_HEADER_TEMPLATE,
     };
     pub use super::generated::{Gtpv1IEGroup, Gtpv1IEGroupIter, Gtpv1IEGroupIterMut};
     pub use super::generated::{
-        PrivateExtentionIE, PRIVATEEXTENTIONIE_HEADER_LEN, PRIVATEEXTENTIONIE_HEADER_TEMPLATE,
+        PrivateExtentionIE, PRIVATE_EXTENTION_IE_HEADER_LEN, PRIVATE_EXTENTION_IE_HEADER_TEMPLATE,
     };
-    pub use super::generated::{RecoveryIE, RECOVERYIE_HEADER_LEN, RECOVERYIE_HEADER_TEMPLATE};
+    pub use super::generated::{RecoveryIE, RECOVERY_IE_HEADER_LEN, RECOVERY_IE_HEADER_TEMPLATE};
     pub use super::generated::{
-        RecoveryTimeStampIE, RECOVERYTIMESTAMPIE_HEADER_LEN, RECOVERYTIMESTAMPIE_HEADER_TEMPLATE,
+        RecoveryTimeStampIE, RECOVERY_TIME_STAMP_IE_HEADER_LEN,
+        RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        TunnelEndpointIdentDataIIE, TUNNELENDPOINTIDENTDATAIIE_HEADER_LEN,
-        TUNNELENDPOINTIDENTDATAIIE_HEADER_TEMPLATE,
+        TunnelEndpointIdentData1IE, TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_LEN,
+        TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE,
     };
 }
 

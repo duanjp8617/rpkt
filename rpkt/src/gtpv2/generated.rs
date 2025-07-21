@@ -362,9 +362,9 @@ impl<T: PktBufMut> Gtpv2<T> {
 }
 
 /// A constant that defines the fixed byte length of the UserLocationInfoIE protocol header.
-pub const USERLOCATIONINFOIE_HEADER_LEN: usize = 5;
+pub const USER_LOCATION_INFO_IE_HEADER_LEN: usize = 5;
 /// A fixed UserLocationInfoIE header.
-pub const USERLOCATIONINFOIE_HEADER_TEMPLATE: [u8; 5] = [0x56, 0x00, 0x01, 0x00, 0x00];
+pub const USER_LOCATION_INFO_IE_HEADER_TEMPLATE: [u8; 5] = [0x56, 0x00, 0x01, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct UserLocationInfoIE<T> {
@@ -595,9 +595,9 @@ impl<'a> UserLocationInfoIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the InternationalMobileSubscriberIdIE protocol header.
-pub const INTERNATIONALMOBILESUBSCRIBERIDIE_HEADER_LEN: usize = 4;
+pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN: usize = 4;
 /// A fixed InternationalMobileSubscriberIdIE header.
-pub const INTERNATIONALMOBILESUBSCRIBERIDIE_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct InternationalMobileSubscriberIdIE<T> {
@@ -757,9 +757,9 @@ impl<'a> InternationalMobileSubscriberIdIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the ServingNetworkIE protocol header.
-pub const SERVINGNETWORKIE_HEADER_LEN: usize = 7;
+pub const SERVING_NETWORK_IE_HEADER_LEN: usize = 7;
 /// A fixed ServingNetworkIE header.
-pub const SERVINGNETWORKIE_HEADER_TEMPLATE: [u8; 7] = [0x53, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
+pub const SERVING_NETWORK_IE_HEADER_TEMPLATE: [u8; 7] = [0x53, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ServingNetworkIE<T> {
@@ -972,9 +972,9 @@ impl<'a> ServingNetworkIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the RatTypeIE protocol header.
-pub const RATTYPEIE_HEADER_LEN: usize = 5;
+pub const RAT_TYPE_IE_HEADER_LEN: usize = 5;
 /// A fixed RatTypeIE header.
-pub const RATTYPEIE_HEADER_TEMPLATE: [u8; 5] = [0x52, 0x00, 0x01, 0x00, 0x00];
+pub const RAT_TYPE_IE_HEADER_TEMPLATE: [u8; 5] = [0x52, 0x00, 0x01, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RatTypeIE<T> {
@@ -1141,9 +1141,9 @@ impl<'a> RatTypeIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the FullyQualifiedTeidIE protocol header.
-pub const FULLYQUALIFIEDTEIDIE_HEADER_LEN: usize = 9;
+pub const FULLY_QUALIFIED_TEID_IE_HEADER_LEN: usize = 9;
 /// A fixed FullyQualifiedTeidIE header.
-pub const FULLYQUALIFIEDTEIDIE_HEADER_TEMPLATE: [u8; 9] =
+pub const FULLY_QUALIFIED_TEID_IE_HEADER_TEMPLATE: [u8; 9] =
     [0x57, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
@@ -1338,9 +1338,9 @@ impl<'a> FullyQualifiedTeidIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the AggregateMaxBitRateIE protocol header.
-pub const AGGREGATEMAXBITRATEIE_HEADER_LEN: usize = 12;
+pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_LEN: usize = 12;
 /// A fixed AggregateMaxBitRateIE header.
-pub const AGGREGATEMAXBITRATEIE_HEADER_TEMPLATE: [u8; 12] = [
+pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_TEMPLATE: [u8; 12] = [
     0x48, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 
@@ -1517,9 +1517,9 @@ impl<'a> AggregateMaxBitRateIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the MobileEquipmentIdIE protocol header.
-pub const MOBILEEQUIPMENTIDIE_HEADER_LEN: usize = 4;
+pub const MOBILE_EQUIPMENT_ID_IE_HEADER_LEN: usize = 4;
 /// A fixed MobileEquipmentIdIE header.
-pub const MOBILEEQUIPMENTIDIE_HEADER_TEMPLATE: [u8; 4] = [0x4b, 0x00, 0x00, 0x00];
+pub const MOBILE_EQUIPMENT_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x4b, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct MobileEquipmentIdIE<T> {
@@ -1678,9 +1678,9 @@ impl<'a> MobileEquipmentIdIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the UeTimeZoneIE protocol header.
-pub const UETIMEZONEIE_HEADER_LEN: usize = 6;
+pub const UE_TIME_ZONE_IE_HEADER_LEN: usize = 6;
 /// A fixed UeTimeZoneIE header.
-pub const UETIMEZONEIE_HEADER_TEMPLATE: [u8; 6] = [0x72, 0x00, 0x02, 0x00, 0x00, 0x00];
+pub const UE_TIME_ZONE_IE_HEADER_TEMPLATE: [u8; 6] = [0x72, 0x00, 0x02, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct UeTimeZoneIE<T> {
@@ -1865,9 +1865,9 @@ impl<'a> UeTimeZoneIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the BearerContextIE protocol header.
-pub const BEARERCONTEXTIE_HEADER_LEN: usize = 4;
+pub const BEARER_CONTEXT_IE_HEADER_LEN: usize = 4;
 /// A fixed BearerContextIE header.
-pub const BEARERCONTEXTIE_HEADER_TEMPLATE: [u8; 4] = [0x5d, 0x00, 0x00, 0x00];
+pub const BEARER_CONTEXT_IE_HEADER_TEMPLATE: [u8; 4] = [0x5d, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct BearerContextIE<T> {
@@ -2026,9 +2026,9 @@ impl<'a> BearerContextIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the EpsBearerIdIE protocol header.
-pub const EPSBEARERIDIE_HEADER_LEN: usize = 5;
+pub const EPS_BEARER_ID_IE_HEADER_LEN: usize = 5;
 /// A fixed EpsBearerIdIE header.
-pub const EPSBEARERIDIE_HEADER_TEMPLATE: [u8; 5] = [0x49, 0x00, 0x01, 0x00, 0x00];
+pub const EPS_BEARER_ID_IE_HEADER_TEMPLATE: [u8; 5] = [0x49, 0x00, 0x01, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct EpsBearerIdIE<T> {
@@ -2205,9 +2205,9 @@ impl<'a> EpsBearerIdIE<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the RecoveryIE protocol header.
-pub const RECOVERYIE_HEADER_LEN: usize = 4;
+pub const RECOVERY_IE_HEADER_LEN: usize = 4;
 /// A fixed RecoveryIE header.
-pub const RECOVERYIE_HEADER_TEMPLATE: [u8; 4] = [0x03, 0x00, 0x00, 0x00];
+pub const RECOVERY_IE_HEADER_TEMPLATE: [u8; 4] = [0x03, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RecoveryIE<T> {

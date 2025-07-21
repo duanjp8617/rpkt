@@ -279,9 +279,9 @@ impl<'a> Tcp<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the EolOption protocol header.
-pub const EOLOPTION_HEADER_LEN: usize = 1;
+pub const EOL_OPTION_HEADER_LEN: usize = 1;
 /// A fixed EolOption header.
-pub const EOLOPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
+pub const EOL_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct EolOption<T> {
@@ -384,9 +384,9 @@ impl<'a> EolOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the NopOption protocol header.
-pub const NOPOPTION_HEADER_LEN: usize = 1;
+pub const NOP_OPTION_HEADER_LEN: usize = 1;
 /// A fixed NopOption header.
-pub const NOPOPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
+pub const NOP_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
 pub struct NopOption<T> {
@@ -489,9 +489,9 @@ impl<'a> NopOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the MssOption protocol header.
-pub const MSSOPTION_HEADER_LEN: usize = 4;
+pub const MSS_OPTION_HEADER_LEN: usize = 4;
 /// A fixed MssOption header.
-pub const MSSOPTION_HEADER_TEMPLATE: [u8; 4] = [0x02, 0x04, 0x00, 0x00];
+pub const MSS_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x02, 0x04, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct MssOption<T> {
@@ -626,9 +626,9 @@ impl<'a> MssOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the WsoptOption protocol header.
-pub const WSOPTOPTION_HEADER_LEN: usize = 3;
+pub const WSOPT_OPTION_HEADER_LEN: usize = 3;
 /// A fixed WsoptOption header.
-pub const WSOPTOPTION_HEADER_TEMPLATE: [u8; 3] = [0x03, 0x03, 0x00];
+pub const WSOPT_OPTION_HEADER_TEMPLATE: [u8; 3] = [0x03, 0x03, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct WsoptOption<T> {
@@ -763,9 +763,9 @@ impl<'a> WsoptOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the SackpermOption protocol header.
-pub const SACKPERMOPTION_HEADER_LEN: usize = 2;
+pub const SACKPERM_OPTION_HEADER_LEN: usize = 2;
 /// A fixed SackpermOption header.
-pub const SACKPERMOPTION_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x02];
+pub const SACKPERM_OPTION_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x02];
 
 #[derive(Debug, Clone, Copy)]
 pub struct SackpermOption<T> {
@@ -892,9 +892,9 @@ impl<'a> SackpermOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the SackOption protocol header.
-pub const SACKOPTION_HEADER_LEN: usize = 2;
+pub const SACK_OPTION_HEADER_LEN: usize = 2;
 /// A fixed SackOption header.
-pub const SACKOPTION_HEADER_TEMPLATE: [u8; 2] = [0x05, 0x0a];
+pub const SACK_OPTION_HEADER_TEMPLATE: [u8; 2] = [0x05, 0x0a];
 
 #[derive(Debug, Clone, Copy)]
 pub struct SackOption<T> {
@@ -1034,9 +1034,9 @@ impl<'a> SackOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the TsOption protocol header.
-pub const TSOPTION_HEADER_LEN: usize = 10;
+pub const TS_OPTION_HEADER_LEN: usize = 10;
 /// A fixed TsOption header.
-pub const TSOPTION_HEADER_TEMPLATE: [u8; 10] =
+pub const TS_OPTION_HEADER_TEMPLATE: [u8; 10] =
     [0x08, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
@@ -1180,9 +1180,9 @@ impl<'a> TsOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the FoOption protocol header.
-pub const FOOPTION_HEADER_LEN: usize = 18;
+pub const FO_OPTION_HEADER_LEN: usize = 18;
 /// A fixed FoOption header.
-pub const FOOPTION_HEADER_TEMPLATE: [u8; 18] = [
+pub const FO_OPTION_HEADER_TEMPLATE: [u8; 18] = [
     0x22, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00,
 ];

@@ -317,7 +317,7 @@ packet RecoveryIE {
     cond = (type_==14)
 }
 
-packet TunnelEndpointIdentDataIIE {
+packet TunnelEndpointIdentData1IE {
     header = [
         type_ = Field{bit = 8, default=@16},
         endpoint_ident_data = Field{bit = 32},
@@ -369,7 +369,7 @@ packet RecoveryTimeStampIE {
 group Gtpv1IEGroup = {
     members = [
         RecoveryIE,
-        TunnelEndpointIdentDataIIE,
+        TunnelEndpointIdentData1IE,
         GtpuPeerAddrIE,
         PrivateExtentionIE,
         RecoveryTimeStampIE,

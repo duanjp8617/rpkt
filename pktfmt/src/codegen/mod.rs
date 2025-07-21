@@ -99,14 +99,36 @@ impl<'a> HeaderGen<'a> {
         writeln!(output, "").unwrap();
     }
 
+    fn protocol_name_to_uppercase(s: &str) -> String {
+        let mut result = String::new();
+        let mut chars_iter = s.chars();
+
+        while let Some(c) = chars_iter.next() {
+            if c.is_lowercase() || c.is_digit(10) {
+                result.push_str(&c.to_uppercase().to_string());
+
+                match chars_iter.clone().next() {
+                    Some(c) if c.is_uppercase() => {
+                        result.push('_');
+                    }
+                    _ => {}
+                }
+            } else {
+                result.push(c);
+            }
+        }
+
+        result
+    }
+
     // Return the name of the header length const.
     fn header_len_const_name(&self) -> String {
-        self.item.protocol_name().to_uppercase() + "_HEADER_LEN"
+        Self::protocol_name_to_uppercase(self.item.protocol_name()) + "_HEADER_LEN"
     }
 
     // Return the name of the fixed header array.
     fn header_template_name(&self) -> String {
-        self.item.protocol_name().to_uppercase() + "_HEADER_TEMPLATE"
+        Self::protocol_name_to_uppercase(self.item.protocol_name()) + "_HEADER_TEMPLATE"
     }
 
     fn code_gen_for_header_len_const(&self, output: &mut dyn Write) {

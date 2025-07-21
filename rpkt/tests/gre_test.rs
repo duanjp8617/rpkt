@@ -223,7 +223,7 @@ fn create_grev1_3() {
     ppp.set_control(0x03);
     ppp.set_protocol(0x80fd);
 
-    let mut gre_header = GREFORPPTP_HEADER_TEMPLATE.clone();
+    let mut gre_header = GRE_FOR_PPTP_HEADER_TEMPLATE.clone();
     {
         let mut gre_header = GreForPPTP::from_header_array_mut(&mut gre_header);
         gre_header.set_key_present(true);
@@ -244,7 +244,7 @@ fn create_grev1_3() {
     ipv4.set_src_addr(Ipv4Addr::new(192, 168, 2, 65));
     ipv4.set_dst_addr(Ipv4Addr::new(192, 168, 2, 254));
 
-    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHERFRAME_HEADER_TEMPLATE);
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
     eth.set_dst_addr(EtherAddr([0x00, 0x0d, 0xed, 0x7b, 0x48, 0xf4]));
     eth.set_src_addr(EtherAddr([0x00, 0x90, 0x4b, 0x1f, 0xa4, 0xf7]));
     eth.set_ethertype(EtherType::IPV4);
@@ -258,8 +258,8 @@ fn create_grev0_4() {
     let packet = file_to_packet("GREv0_4.dat");
     let mut big_buf = [0; 96];
     let mut pbuf = CursorMut::new(&mut big_buf);
-    pbuf.advance(ETHERFRAME_HEADER_LEN + IPV4_HEADER_LEN + 8);
-    (pbuf.chunk_mut()).copy_from_slice(&packet[ETHERFRAME_HEADER_LEN + IPV4_HEADER_LEN + 8..]);
+    pbuf.advance(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + 8);
+    (pbuf.chunk_mut()).copy_from_slice(&packet[ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + 8..]);
 
     let mut gre_header = GRE_HEADER_TEMPLATE.clone();
     {
@@ -279,7 +279,7 @@ fn create_grev0_4() {
     ipv4.set_src_addr(Ipv4Addr::new(1, 2, 3, 4));
     ipv4.set_dst_addr(Ipv4Addr::new(4, 3, 2, 1));
 
-    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHERFRAME_HEADER_TEMPLATE);
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
     eth.set_dst_addr(EtherAddr([0x00, 0xae, 0xf3, 0x52, 0xaa, 0xd1]));
     eth.set_src_addr(EtherAddr([0x00, 0x02, 0x15, 0x37, 0xa2, 0x44]));
     eth.set_ethertype(EtherType::IPV4);

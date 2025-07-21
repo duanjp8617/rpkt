@@ -345,9 +345,9 @@ impl<T: PktBufMut> Gre<T> {
 }
 
 /// A constant that defines the fixed byte length of the GreForPPTP protocol header.
-pub const GREFORPPTP_HEADER_LEN: usize = 8;
+pub const GRE_FOR_PPTP_HEADER_LEN: usize = 8;
 /// A fixed GreForPPTP header.
-pub const GREFORPPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x88, 0x0b, 0x00, 0x00, 0x00, 0x00];
+pub const GRE_FOR_PPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x88, 0x0b, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct GreForPPTP<T> {

@@ -1,7 +1,7 @@
 mod generated;
 pub use generated::GreGroup;
 pub use generated::{Gre, GRE_HEADER_LEN, GRE_HEADER_TEMPLATE};
-pub use generated::{GreForPPTP, GREFORPPTP_HEADER_LEN, GREFORPPTP_HEADER_TEMPLATE};
+pub use generated::{GreForPPTP, GRE_FOR_PPTP_HEADER_LEN, GRE_FOR_PPTP_HEADER_TEMPLATE};
 pub use generated::{PPTP, PPTP_HEADER_LEN, PPTP_HEADER_TEMPLATE};
 
 #[inline]

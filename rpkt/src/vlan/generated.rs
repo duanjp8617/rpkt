@@ -6,9 +6,9 @@ use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
 /// A constant that defines the fixed byte length of the VlanFrame protocol header.
-pub const VLANFRAME_HEADER_LEN: usize = 4;
+pub const VLAN_FRAME_HEADER_LEN: usize = 4;
 /// A fixed VlanFrame header.
-pub const VLANFRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x08, 0x00];
+pub const VLAN_FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x08, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct VlanFrame<T> {
@@ -140,9 +140,9 @@ impl<'a> VlanFrame<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the VlanDot3Frame protocol header.
-pub const VLANDOT3FRAME_HEADER_LEN: usize = 4;
+pub const VLAN_DOT3_FRAME_HEADER_LEN: usize = 4;
 /// A fixed VlanDot3Frame header.
-pub const VLANDOT3FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];
+pub const VLAN_DOT3_FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];
 
 #[derive(Debug, Clone, Copy)]
 pub struct VlanDot3Frame<T> {

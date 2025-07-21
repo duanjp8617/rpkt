@@ -65,11 +65,12 @@ fn llc_parsing_test() {
 fn llc_creation_test() {
     let mut buf: [u8; 64] = [0; 64];
 
-    let mut pkt_buf =
-        CursorMut::new(&mut buf[..ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]);
-    pkt_buf.advance(ETHERFRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN);
+    let mut pkt_buf = CursorMut::new(
+        &mut buf[..ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN],
+    );
+    pkt_buf.advance(ETHER_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN);
 
-    let mut stp_conf_msg = StpConfBpdu::prepend_header(pkt_buf, &STPCONFBPDU_HEADER_TEMPLATE);
+    let mut stp_conf_msg = StpConfBpdu::prepend_header(pkt_buf, &STP_CONF_BPDU_HEADER_TEMPLATE);
     stp_conf_msg.set_root_priority(32768);
     stp_conf_msg.set_root_sys_id_ext(100);
     stp_conf_msg.set_root_mac_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x78, 0x00]));
@@ -85,13 +86,13 @@ fn llc_creation_test() {
 
     let llc_pkt = Llc::prepend_header(stp_conf_msg.release(), &LLC_HEADER_TEMPLATE);
     let mut eth_pkt =
-        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHERDOT3FRAME_HEADER_TEMPLATE);
+        EtherDot3Frame::prepend_header(llc_pkt.release(), &ETHER_DOT3_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_dst_addr(EtherAddr([0x01, 0x80, 0xc2, 0x00, 0x00, 0x00]));
     eth_pkt.set_src_addr(EtherAddr([0x00, 0x1c, 0x0e, 0x87, 0x85, 0x04]));
 
     let target = file_to_packet("StpConf.dat");
     assert_eq!(
         eth_pkt.release().chunk(),
-        &target[..ETHERDOT3FRAME_HEADER_LEN + LLC_HEADER_LEN + STPCONFBPDU_HEADER_LEN]
+        &target[..ETHER_DOT3_FRAME_HEADER_LEN + LLC_HEADER_LEN + STP_CONF_BPDU_HEADER_LEN]
     );
 }

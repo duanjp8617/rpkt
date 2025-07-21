@@ -6,9 +6,9 @@ use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
 /// A constant that defines the fixed byte length of the EtherFrame protocol header.
-pub const ETHERFRAME_HEADER_LEN: usize = 14;
+pub const ETHER_FRAME_HEADER_LEN: usize = 14;
 /// A fixed EtherFrame header.
-pub const ETHERFRAME_HEADER_TEMPLATE: [u8; 14] = [
+pub const ETHER_FRAME_HEADER_TEMPLATE: [u8; 14] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00,
 ];
 
@@ -130,9 +130,9 @@ impl<'a> EtherFrame<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the EtherDot3Frame protocol header.
-pub const ETHERDOT3FRAME_HEADER_LEN: usize = 14;
+pub const ETHER_DOT3_FRAME_HEADER_LEN: usize = 14;
 /// A fixed EtherDot3Frame header.
-pub const ETHERDOT3FRAME_HEADER_TEMPLATE: [u8; 14] = [
+pub const ETHER_DOT3_FRAME_HEADER_TEMPLATE: [u8; 14] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e,
 ];
 

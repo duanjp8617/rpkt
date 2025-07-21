@@ -8,9 +8,9 @@ use crate::traits::*;
 use super::{StpType, StpVersion};
 
 /// A constant that defines the fixed byte length of the StpTcnBpdu protocol header.
-pub const STPTCNBPDU_HEADER_LEN: usize = 4;
+pub const STP_TCN_BPDU_HEADER_LEN: usize = 4;
 /// A fixed StpTcnBpdu header.
-pub const STPTCNBPDU_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
+pub const STP_TCN_BPDU_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
 
 #[derive(Debug, Clone, Copy)]
 pub struct StpTcnBpdu<T> {
@@ -133,9 +133,9 @@ impl<'a> StpTcnBpdu<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the StpConfBpdu protocol header.
-pub const STPCONFBPDU_HEADER_LEN: usize = 35;
+pub const STP_CONF_BPDU_HEADER_LEN: usize = 35;
 /// A fixed StpConfBpdu header.
-pub const STPCONFBPDU_HEADER_TEMPLATE: [u8; 35] = [
+pub const STP_CONF_BPDU_HEADER_TEMPLATE: [u8; 35] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00,
@@ -433,9 +433,9 @@ impl<T: PktBufMut> StpConfBpdu<T> {
 }
 
 /// A constant that defines the fixed byte length of the RstpConfBpdu protocol header.
-pub const RSTPCONFBPDU_HEADER_LEN: usize = 36;
+pub const RSTP_CONF_BPDU_HEADER_LEN: usize = 36;
 /// A fixed RstpConfBpdu header.
-pub const RSTPCONFBPDU_HEADER_TEMPLATE: [u8; 36] = [
+pub const RSTP_CONF_BPDU_HEADER_TEMPLATE: [u8; 36] = [
     0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
@@ -741,9 +741,9 @@ impl<T: PktBufMut> RstpConfBpdu<T> {
 }
 
 /// A constant that defines the fixed byte length of the MstpConfBpdu protocol header.
-pub const MSTPCONFBPDU_HEADER_LEN: usize = 102;
+pub const MSTP_CONF_BPDU_HEADER_LEN: usize = 102;
 /// A fixed MstpConfBpdu header.
-pub const MSTPCONFBPDU_HEADER_TEMPLATE: [u8; 102] = [
+pub const MSTP_CONF_BPDU_HEADER_TEMPLATE: [u8; 102] = [
     0x00, 0x00, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1245,9 +1245,9 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
 }
 
 /// A constant that defines the fixed byte length of the MstiConf protocol header.
-pub const MSTICONF_HEADER_LEN: usize = 16;
+pub const MSTI_CONF_HEADER_LEN: usize = 16;
 /// A fixed MstiConf header.
-pub const MSTICONF_HEADER_TEMPLATE: [u8; 16] = [
+pub const MSTI_CONF_HEADER_TEMPLATE: [u8; 16] = [
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 ];
 

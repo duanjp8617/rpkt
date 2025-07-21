@@ -50,10 +50,10 @@ fn eth_and_arp_packet_parsing() {
 fn arp_packet_creation() {
     {
         let packet = file_to_packet("ArpRequestPacket.dat");
-        let mut target = [0; ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHER_FRAME_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHER_FRAME_HEADER_LEN + ARP_HEADER_LEN);
 
         let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
@@ -68,7 +68,7 @@ fn arp_packet_creation() {
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(10, 0, 0, 138));
 
         let mut eth_pkt =
-            EtherFrame::prepend_header(arp_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
+            EtherFrame::prepend_header(arp_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
         eth_pkt.set_ethertype(EtherType::ARP);
@@ -80,10 +80,10 @@ fn arp_packet_creation() {
 
     {
         let packet = file_to_packet("ArpResponsePacket.dat");
-        let mut target = [0; ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN];
+        let mut target = [0; ETHER_FRAME_HEADER_LEN + ARP_HEADER_LEN];
 
         let mut pkt = CursorMut::new(&mut target[..]);
-        pkt.advance(ETHERFRAME_HEADER_LEN + ARP_HEADER_LEN);
+        pkt.advance(ETHER_FRAME_HEADER_LEN + ARP_HEADER_LEN);
 
         let mut arp_pkt = Arp::prepend_header(pkt, &ARP_HEADER_TEMPLATE);
         assert_eq!(arp_pkt.hardware_type(), Hardware::ETHERNET);
@@ -99,7 +99,7 @@ fn arp_packet_creation() {
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(10, 0, 0, 1));
 
         let mut eth_pkt =
-            EtherFrame::prepend_header(arp_pkt.release(), &ETHERFRAME_HEADER_TEMPLATE);
+            EtherFrame::prepend_header(arp_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
         assert_eq!(eth_pkt.ethertype(), EtherType::IPV4);
 
         eth_pkt.set_ethertype(EtherType::ARP);

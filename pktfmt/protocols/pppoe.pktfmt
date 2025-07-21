@@ -6,14 +6,14 @@
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
-use super::{PPPoECode, PPPoETagType};
+use super::{PppoeCode, PppoeTagType};
 %%
 
-packet PPPoESession {
+packet PppoeSession {
     header = [
         version = Field{bit = 4, default=@1},
         type_ = Field{bit = 4, default=@1},
-        code = Field{bit = 8, arg=%%PPPoECode%%, default=@0},
+        code = Field{bit = 8, arg=%%PppoeCode%%, default=@0},
         session_id = Field{bit = 16},
         len = Field{bit = 16, gen=false},
         data_type = Field{bit = 16}
@@ -24,11 +24,11 @@ packet PPPoESession {
     cond = (code == 0)
 }
 
-packet PPPoEDiscovery {
+packet PppoeDiscovery {
     header = [
         version = Field{bit = 4, default=@1},
         type_ = Field{bit = 4, default=@1},
-        code = Field{bit = 8, arg=%%PPPoECode%%, default=0x65},
+        code = Field{bit = 8, arg=%%PppoeCode%%, default=0x65},
         session_id = Field{bit = 16},
         len = Field{bit = 16, gen=false},        
     ],
@@ -39,16 +39,16 @@ packet PPPoEDiscovery {
 }
 
 
-group PPPoEGroup = {
+group PppoeGroup = {
     members = [
-        PPPoESession,
-        PPPoEDiscovery
+        PppoeSession,
+        PppoeDiscovery
     ]
 }
 
-packet PPPoETag {
+packet PppoeTag {
     header = [
-        type_ = Field{bit = 16, arg=%%PPPoETagType%%, default=0},
+        type_ = Field{bit = 16, arg=%%PppoeTagType%%, default=0},
         len = Field{bit = 16, default=4, gen = false}
     ],
     length = [

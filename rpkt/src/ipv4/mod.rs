@@ -6,21 +6,21 @@ pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 /// The Ipv4 options.
 pub mod options {
     // The Ipv4 Eol option
-    pub use super::generated::{EolOption, EOLOPTION_HEADER_LEN, EOLOPTION_HEADER_TEMPLATE};
+    pub use super::generated::{EolOption, EOL_OPTION_HEADER_LEN, EOL_OPTION_HEADER_TEMPLATE};
 
     // The Ipv4 Nop option
-    pub use super::generated::{NopOption, NOPOPTION_HEADER_LEN, NOPOPTION_HEADER_TEMPLATE};
+    pub use super::generated::{NopOption, NOP_OPTION_HEADER_LEN, NOP_OPTION_HEADER_TEMPLATE};
 
     pub use super::generated::{
-        TimestampOption, TIMESTAMPOPTION_HEADER_LEN, TIMESTAMPOPTION_HEADER_TEMPLATE,
+        TimestampOption, TIMESTAMP_OPTION_HEADER_LEN, TIMESTAMP_OPTION_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
-        RecordRouteOption, RECORDROUTEOPTION_HEADER_LEN, RECORDROUTEOPTION_HEADER_TEMPLATE,
+        RecordRouteOption, RECORD_ROUTE_OPTION_HEADER_LEN, RECORD_ROUTE_OPTION_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
-        RouteAlertOption, ROUTEALERTOPTION_HEADER_LEN, ROUTEALERTOPTION_HEADER_TEMPLATE,
+        RouteAlertOption, ROUTE_ALERT_OPTION_HEADER_LEN, ROUTE_ALERT_OPTION_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{Ipv4Options, Ipv4OptionsIter, Ipv4OptionsIterMut};

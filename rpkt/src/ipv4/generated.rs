@@ -315,9 +315,9 @@ impl<T: PktBufMut> Ipv4Packet<T> {
 */
 
 /// A constant that defines the fixed byte length of the EolOption protocol header.
-pub const EOLOPTION_HEADER_LEN: usize = 1;
+pub const EOL_OPTION_HEADER_LEN: usize = 1;
 /// A fixed EolOption header.
-pub const EOLOPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
+pub const EOL_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct EolOption<T> {
@@ -420,9 +420,9 @@ impl<'a> EolOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the NopOption protocol header.
-pub const NOPOPTION_HEADER_LEN: usize = 1;
+pub const NOP_OPTION_HEADER_LEN: usize = 1;
 /// A fixed NopOption header.
-pub const NOPOPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
+pub const NOP_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
 pub struct NopOption<T> {
@@ -525,9 +525,9 @@ impl<'a> NopOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the TimestampOption protocol header.
-pub const TIMESTAMPOPTION_HEADER_LEN: usize = 4;
+pub const TIMESTAMP_OPTION_HEADER_LEN: usize = 4;
 /// A fixed TimestampOption header.
-pub const TIMESTAMPOPTION_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
+pub const TIMESTAMP_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct TimestampOption<T> {
@@ -693,9 +693,9 @@ impl<'a> TimestampOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the RecordRouteOption protocol header.
-pub const RECORDROUTEOPTION_HEADER_LEN: usize = 3;
+pub const RECORD_ROUTE_OPTION_HEADER_LEN: usize = 3;
 /// A fixed RecordRouteOption header.
-pub const RECORDROUTEOPTION_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
+pub const RECORD_ROUTE_OPTION_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RecordRouteOption<T> {
@@ -843,9 +843,9 @@ impl<'a> RecordRouteOption<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the RouteAlertOption protocol header.
-pub const ROUTEALERTOPTION_HEADER_LEN: usize = 4;
+pub const ROUTE_ALERT_OPTION_HEADER_LEN: usize = 4;
 /// A fixed RouteAlertOption header.
-pub const ROUTEALERTOPTION_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
+pub const ROUTE_ALERT_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RouteAlertOption<T> {
