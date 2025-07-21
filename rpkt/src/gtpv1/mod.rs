@@ -21,15 +21,18 @@ pub mod extentions {
     pub use super::generated::{ExtUdpPort, EXT_UDP_PORT_HEADER_LEN, EXT_UDP_PORT_HEADER_TEMPLATE};
 }
 
-pub mod pdu_session {
+pub mod pdu_session_up {
     //! PDU session as defined in TS 138 415
     pub use super::generated::PduSessionInfoGroup;
     pub use super::generated::{
-        PduSessionInfoDl, PDU_SESSION_INFO_DL_HEADER_LEN, PDU_SESSION_INFO_DL_HEADER_TEMPLATE,
+        DlPduSessionInfo, DL_PDU_SESSION_INFO_HEADER_LEN, DL_PDU_SESSION_INFO_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        PduSessionInfoUl, PDU_SESSION_INFO_UL_HEADER_LEN, PDU_SESSION_INFO_UL_HEADER_TEMPLATE,
+        UlPduSessionInfo, UL_PDU_SESSION_INFO_HEADER_LEN, UL_PDU_SESSION_INFO_HEADER_TEMPLATE,
     };
+
+    mod downlink;
+    mod uplink;
 }
 
 pub mod nr_user_plane {

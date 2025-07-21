@@ -999,16 +999,16 @@ impl<T: PktBufMut> ExtContainer<T> {
     }
 }
 
-/// A constant that defines the fixed byte length of the PduSessionInfoDl protocol header.
-pub const PDU_SESSION_INFO_DL_HEADER_LEN: usize = 2;
-/// A fixed PduSessionInfoDl header.
-pub const PDU_SESSION_INFO_DL_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
+/// A constant that defines the fixed byte length of the DlPduSessionInfo protocol header.
+pub const DL_PDU_SESSION_INFO_HEADER_LEN: usize = 2;
+/// A fixed DlPduSessionInfo header.
+pub const DL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PduSessionInfoDl<T> {
+pub struct DlPduSessionInfo<T> {
     buf: T,
 }
-impl<T: Buf> PduSessionInfoDl<T> {
+impl<T: Buf> DlPduSessionInfo<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1039,35 +1039,35 @@ impl<T: Buf> PduSessionInfoDl<T> {
         self.buf.chunk()[0] >> 4
     }
     #[inline]
-    pub fn qmp(&self) -> u8 {
-        (self.buf.chunk()[0] >> 3) & 0x1
+    pub fn qmp(&self) -> bool {
+        self.buf.chunk()[0] & 0x8 != 0
     }
     #[inline]
-    pub fn snp(&self) -> u8 {
-        (self.buf.chunk()[0] >> 2) & 0x1
+    pub fn snp(&self) -> bool {
+        self.buf.chunk()[0] & 0x4 != 0
     }
     #[inline]
-    pub fn msnp(&self) -> u8 {
-        (self.buf.chunk()[0] >> 1) & 0x1
+    pub fn msnp(&self) -> bool {
+        self.buf.chunk()[0] & 0x2 != 0
     }
     #[inline]
     pub fn spare(&self) -> u8 {
         self.buf.chunk()[0] & 0x1
     }
     #[inline]
-    pub fn ppp(&self) -> u8 {
-        self.buf.chunk()[1] >> 7
+    pub fn ppp(&self) -> bool {
+        self.buf.chunk()[1] & 0x80 != 0
     }
     #[inline]
-    pub fn rqi(&self) -> u8 {
-        (self.buf.chunk()[1] >> 6) & 0x1
+    pub fn rqi(&self) -> bool {
+        self.buf.chunk()[1] & 0x40 != 0
     }
     #[inline]
     pub fn qos_flow_identifier(&self) -> u8 {
         self.buf.chunk()[1] & 0x3f
     }
 }
-impl<T: PktBuf> PduSessionInfoDl<T> {
+impl<T: PktBuf> DlPduSessionInfo<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1075,7 +1075,7 @@ impl<T: PktBuf> PduSessionInfoDl<T> {
         buf
     }
 }
-impl<T: PktBufMut> PduSessionInfoDl<T> {
+impl<T: PktBufMut> DlPduSessionInfo<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
         assert!(buf.chunk_headroom() >= 2);
@@ -1089,18 +1089,18 @@ impl<T: PktBufMut> PduSessionInfoDl<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
     }
     #[inline]
-    pub fn set_qmp(&mut self, value: u8) {
-        assert!(value <= 0x1);
+    pub fn set_qmp(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
     }
     #[inline]
-    pub fn set_snp(&mut self, value: u8) {
-        assert!(value <= 0x1);
+    pub fn set_snp(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
     }
     #[inline]
-    pub fn set_msnp(&mut self, value: u8) {
-        assert!(value <= 0x1);
+    pub fn set_msnp(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
     }
     #[inline]
@@ -1109,13 +1109,13 @@ impl<T: PktBufMut> PduSessionInfoDl<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
     }
     #[inline]
-    pub fn set_ppp(&mut self, value: u8) {
-        assert!(value <= 0x1);
+    pub fn set_ppp(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x7f) | (value << 7);
     }
     #[inline]
-    pub fn set_rqi(&mut self, value: u8) {
-        assert!(value <= 0x1);
+    pub fn set_rqi(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xbf) | (value << 6);
     }
     #[inline]
@@ -1124,7 +1124,7 @@ impl<T: PktBufMut> PduSessionInfoDl<T> {
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
     }
 }
-impl<'a> PduSessionInfoDl<Cursor<'a>> {
+impl<'a> DlPduSessionInfo<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1145,7 +1145,7 @@ impl<'a> PduSessionInfoDl<Cursor<'a>> {
         }
     }
 }
-impl<'a> PduSessionInfoDl<CursorMut<'a>> {
+impl<'a> DlPduSessionInfo<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1167,16 +1167,16 @@ impl<'a> PduSessionInfoDl<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the PduSessionInfoUl protocol header.
-pub const PDU_SESSION_INFO_UL_HEADER_LEN: usize = 2;
-/// A fixed PduSessionInfoUl header.
-pub const PDU_SESSION_INFO_UL_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
+/// A constant that defines the fixed byte length of the UlPduSessionInfo protocol header.
+pub const UL_PDU_SESSION_INFO_HEADER_LEN: usize = 2;
+/// A fixed UlPduSessionInfo header.
+pub const UL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PduSessionInfoUl<T> {
+pub struct UlPduSessionInfo<T> {
     buf: T,
 }
-impl<T: Buf> PduSessionInfoUl<T> {
+impl<T: Buf> UlPduSessionInfo<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1235,7 +1235,7 @@ impl<T: Buf> PduSessionInfoUl<T> {
         self.buf.chunk()[1] & 0x3f
     }
 }
-impl<T: PktBuf> PduSessionInfoUl<T> {
+impl<T: PktBuf> UlPduSessionInfo<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1243,7 +1243,7 @@ impl<T: PktBuf> PduSessionInfoUl<T> {
         buf
     }
 }
-impl<T: PktBufMut> PduSessionInfoUl<T> {
+impl<T: PktBufMut> UlPduSessionInfo<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
         assert!(buf.chunk_headroom() >= 2);
@@ -1292,7 +1292,7 @@ impl<T: PktBufMut> PduSessionInfoUl<T> {
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
     }
 }
-impl<'a> PduSessionInfoUl<Cursor<'a>> {
+impl<'a> UlPduSessionInfo<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1313,7 +1313,7 @@ impl<'a> PduSessionInfoUl<Cursor<'a>> {
         }
     }
 }
-impl<'a> PduSessionInfoUl<CursorMut<'a>> {
+impl<'a> UlPduSessionInfo<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1337,8 +1337,8 @@ impl<'a> PduSessionInfoUl<CursorMut<'a>> {
 
 #[derive(Debug)]
 pub enum PduSessionInfoGroup<T> {
-    PduSessionInfoDl_(PduSessionInfoDl<T>),
-    PduSessionInfoUl_(PduSessionInfoUl<T>),
+    DlPduSessionInfo_(DlPduSessionInfo<T>),
+    UlPduSessionInfo_(UlPduSessionInfo<T>),
 }
 impl<T: Buf> PduSessionInfoGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
@@ -1348,10 +1348,10 @@ impl<T: Buf> PduSessionInfoGroup<T> {
         let cond_value0 = buf.chunk()[0] >> 4;
         match cond_value0 {
             0 => {
-                PduSessionInfoDl::parse(buf).map(|pkt| PduSessionInfoGroup::PduSessionInfoDl_(pkt))
+                DlPduSessionInfo::parse(buf).map(|pkt| PduSessionInfoGroup::DlPduSessionInfo_(pkt))
             }
             1 => {
-                PduSessionInfoUl::parse(buf).map(|pkt| PduSessionInfoGroup::PduSessionInfoUl_(pkt))
+                UlPduSessionInfo::parse(buf).map(|pkt| PduSessionInfoGroup::UlPduSessionInfo_(pkt))
             }
             _ => Err(buf),
         }
