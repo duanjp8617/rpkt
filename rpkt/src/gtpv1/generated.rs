@@ -246,33 +246,30 @@ impl<T: Buf> Gtpv1<T> {
     /// Return the sequence value.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn sequence(&self) -> u16 {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         u16::from_be_bytes(self.buf.chunk()[8..10].try_into().unwrap())
     }
 
     /// Return the n-pdu value.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn npdu(&self) -> u8 {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         self.buf.chunk()[10]
     }
 
     /// Return the next extention header.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn next_extention_header(&self) -> GtpNextExtention {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         self.buf.chunk()[11].into()
     }
 }
@@ -281,33 +278,30 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// Set the sequence value.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn set_sequence(&mut self, value: u16) {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         self.buf.chunk_mut()[8..10].copy_from_slice(&value.to_be_bytes());
     }
 
     /// Set the npdu value.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn set_npdu(&mut self, value: u8) {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         self.buf.chunk_mut()[10] = value;
     }
 
     /// Set the next extention header value.
     ///
     /// # Panics
-    /// This function panics if `self.sequence_present()`, `self.extention_header_present()`
-    /// and `self.npdu_present()` are all false.
+    /// This function panics if `self.header_len() != 8`.
     #[inline]
     pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
-        assert!(self.sequence_present() || self.extention_header_present() || self.npdu_present());
+        assert!(self.header_len() == 12);
         self.buf.chunk_mut()[11] = value.into();
     }
 }
