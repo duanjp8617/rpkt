@@ -23,12 +23,12 @@ pub mod extentions {
 
 pub mod pdu_session {
     //! PDU session as defined in TS 138 415
-    pub use super::generated::PduSessionFrameGroup;
+    pub use super::generated::PduSessionInfoGroup;
     pub use super::generated::{
-        PduSessionFrameDl, PDUSESSIONFRAMEDL_HEADER_LEN, PDUSESSIONFRAMEDL_HEADER_TEMPLATE,
+        PduSessionInfoDl, PDUSESSIONINFODL_HEADER_LEN, PDUSESSIONINFODL_HEADER_TEMPLATE,
     };
     pub use super::generated::{
-        PduSessionFrameUl, PDUSESSIONFRAMEUL_HEADER_LEN, PDUSESSIONFRAMEUL_HEADER_TEMPLATE,
+        PduSessionInfoUl, PDUSESSIONINFOUL_HEADER_LEN, PDUSESSIONINFOUL_HEADER_TEMPLATE,
     };
 }
 

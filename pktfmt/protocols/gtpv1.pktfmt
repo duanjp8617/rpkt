@@ -211,7 +211,7 @@ impl<T: PktBufMut> ExtContainer<T> {
 // their own helpers to process the variable-length frame payload.
 
 // Defined according to TS 138 415
-packet PduSessionFrameDl {
+packet PduSessionInfoDl {
     header = [
         pdu_type = Field{bit = 4, default=@0},
         qmp = Field{bit = 1},
@@ -226,7 +226,7 @@ packet PduSessionFrameDl {
 }
 
 // Defined according to TS 138 415
-packet PduSessionFrameUl {
+packet PduSessionInfoUl {
     header = [
         pdu_type = Field{bit = 4, default=@1},
         qmp = Field{bit = 1},
@@ -240,10 +240,10 @@ packet PduSessionFrameUl {
     cond = (pdu_type == 1)
 }
 
-group PduSessionFrameGroup =  {
+group PduSessionInfoGroup =  {
    members = [
-        PduSessionFrameDl,
-        PduSessionFrameUl
+        PduSessionInfoDl,
+        PduSessionInfoUl
     ]
 }
 

@@ -999,16 +999,16 @@ impl<T: PktBufMut> ExtContainer<T> {
     }
 }
 
-/// A constant that defines the fixed byte length of the PduSessionFrameDl protocol header.
-pub const PDUSESSIONFRAMEDL_HEADER_LEN: usize = 2;
-/// A fixed PduSessionFrameDl header.
-pub const PDUSESSIONFRAMEDL_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
+/// A constant that defines the fixed byte length of the PduSessionInfoDl protocol header.
+pub const PDUSESSIONINFODL_HEADER_LEN: usize = 2;
+/// A fixed PduSessionInfoDl header.
+pub const PDUSESSIONINFODL_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PduSessionFrameDl<T> {
+pub struct PduSessionInfoDl<T> {
     buf: T,
 }
-impl<T: Buf> PduSessionFrameDl<T> {
+impl<T: Buf> PduSessionInfoDl<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1067,7 +1067,7 @@ impl<T: Buf> PduSessionFrameDl<T> {
         self.buf.chunk()[1] & 0x3f
     }
 }
-impl<T: PktBuf> PduSessionFrameDl<T> {
+impl<T: PktBuf> PduSessionInfoDl<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1075,7 +1075,7 @@ impl<T: PktBuf> PduSessionFrameDl<T> {
         buf
     }
 }
-impl<T: PktBufMut> PduSessionFrameDl<T> {
+impl<T: PktBufMut> PduSessionInfoDl<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
         assert!(buf.chunk_headroom() >= 2);
@@ -1124,7 +1124,7 @@ impl<T: PktBufMut> PduSessionFrameDl<T> {
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
     }
 }
-impl<'a> PduSessionFrameDl<Cursor<'a>> {
+impl<'a> PduSessionInfoDl<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1145,7 +1145,7 @@ impl<'a> PduSessionFrameDl<Cursor<'a>> {
         }
     }
 }
-impl<'a> PduSessionFrameDl<CursorMut<'a>> {
+impl<'a> PduSessionInfoDl<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1167,16 +1167,16 @@ impl<'a> PduSessionFrameDl<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the PduSessionFrameUl protocol header.
-pub const PDUSESSIONFRAMEUL_HEADER_LEN: usize = 2;
-/// A fixed PduSessionFrameUl header.
-pub const PDUSESSIONFRAMEUL_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
+/// A constant that defines the fixed byte length of the PduSessionInfoUl protocol header.
+pub const PDUSESSIONINFOUL_HEADER_LEN: usize = 2;
+/// A fixed PduSessionInfoUl header.
+pub const PDUSESSIONINFOUL_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct PduSessionFrameUl<T> {
+pub struct PduSessionInfoUl<T> {
     buf: T,
 }
-impl<T: Buf> PduSessionFrameUl<T> {
+impl<T: Buf> PduSessionInfoUl<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1235,7 +1235,7 @@ impl<T: Buf> PduSessionFrameUl<T> {
         self.buf.chunk()[1] & 0x3f
     }
 }
-impl<T: PktBuf> PduSessionFrameUl<T> {
+impl<T: PktBuf> PduSessionInfoUl<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1243,7 +1243,7 @@ impl<T: PktBuf> PduSessionFrameUl<T> {
         buf
     }
 }
-impl<T: PktBufMut> PduSessionFrameUl<T> {
+impl<T: PktBufMut> PduSessionInfoUl<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
         assert!(buf.chunk_headroom() >= 2);
@@ -1292,7 +1292,7 @@ impl<T: PktBufMut> PduSessionFrameUl<T> {
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
     }
 }
-impl<'a> PduSessionFrameUl<Cursor<'a>> {
+impl<'a> PduSessionInfoUl<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1313,7 +1313,7 @@ impl<'a> PduSessionFrameUl<Cursor<'a>> {
         }
     }
 }
-impl<'a> PduSessionFrameUl<CursorMut<'a>> {
+impl<'a> PduSessionInfoUl<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1336,21 +1336,23 @@ impl<'a> PduSessionFrameUl<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum PduSessionFrameGroup<T> {
-    PduSessionFrameDl_(PduSessionFrameDl<T>),
-    PduSessionFrameUl_(PduSessionFrameUl<T>),
+pub enum PduSessionInfoGroup<T> {
+    PduSessionInfoDl_(PduSessionInfoDl<T>),
+    PduSessionInfoUl_(PduSessionInfoUl<T>),
 }
-impl<T: Buf> PduSessionFrameGroup<T> {
+impl<T: Buf> PduSessionInfoGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[0] >> 4;
         match cond_value0 {
-            0 => PduSessionFrameDl::parse(buf)
-                .map(|pkt| PduSessionFrameGroup::PduSessionFrameDl_(pkt)),
-            1 => PduSessionFrameUl::parse(buf)
-                .map(|pkt| PduSessionFrameGroup::PduSessionFrameUl_(pkt)),
+            0 => {
+                PduSessionInfoDl::parse(buf).map(|pkt| PduSessionInfoGroup::PduSessionInfoDl_(pkt))
+            }
+            1 => {
+                PduSessionInfoUl::parse(buf).map(|pkt| PduSessionInfoGroup::PduSessionInfoUl_(pkt))
+            }
             _ => Err(buf),
         }
     }
