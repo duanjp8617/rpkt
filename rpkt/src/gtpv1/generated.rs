@@ -837,7 +837,7 @@ impl<'a> ExtServiceClassIndicator<CursorMut<'a>> {
 /// A constant that defines the fixed byte length of the ExtContainer protocol header.
 pub const EXT_CONTAINER_HEADER_LEN: usize = 1;
 /// A fixed ExtContainer header.
-pub const EXT_CONTAINER_HEADER_TEMPLATE: [u8; 1] = [0x04];
+pub const EXT_CONTAINER_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
 pub struct ExtContainer<T> {
@@ -977,7 +977,7 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> Gtpv1NextExtention {
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         self.buf.chunk()[self.header_len() as usize - 1].into()
     }
 }
@@ -993,7 +993,7 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: Gtpv1NextExtention) {
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         let index = self.header_len() as usize - 1;
         self.buf.chunk_mut()[index] = value.into();
     }
@@ -1559,9 +1559,9 @@ impl<'a> DlUserData<CursorMut<'a>> {
 }
 
 /// A constant that defines the fixed byte length of the DlDataDeliveryStatus protocol header.
-pub const DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 5;
+pub const DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 6;
 /// A fixed DlDataDeliveryStatus header.
-pub const DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 5] = [0x10, 0x00, 0x00, 0x00, 0x00];
+pub const DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 6] = [0x10, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct DlDataDeliveryStatus<T> {
@@ -1583,7 +1583,7 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 5 {
+        if chunk_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
@@ -1591,7 +1591,7 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..5]
+        &self.buf.chunk()[0..6]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
@@ -1639,23 +1639,23 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
     }
     #[inline]
     pub fn buf_size_for_data_radio_bearer(&self) -> u32 {
-        (read_uint_from_be_bytes(&self.buf.chunk()[2..5])) as u32
+        u32::from_be_bytes((&self.buf.chunk()[2..6]).try_into().unwrap())
     }
 }
 impl<T: PktBuf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
-        buf.advance(5);
+        buf.advance(6);
         buf
     }
 }
 impl<T: PktBufMut> DlDataDeliveryStatus<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
-        assert!(buf.chunk_headroom() >= 5);
-        buf.move_back(5);
-        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        assert!(buf.chunk_headroom() >= 6);
+        buf.move_back(6);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
     }
     #[inline]
@@ -1715,15 +1715,14 @@ impl<T: PktBufMut> DlDataDeliveryStatus<T> {
     }
     #[inline]
     pub fn set_buf_size_for_data_radio_bearer(&mut self, value: u32) {
-        assert!(value <= 0xffffff);
-        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[2..5], (value as u64));
+        (&mut self.buf.chunk_mut()[2..6]).copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> DlDataDeliveryStatus<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
@@ -1731,10 +1730,10 @@ impl<'a> DlDataDeliveryStatus<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        Cursor::new(&self.buf.chunk()[6..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1744,7 +1743,7 @@ impl<'a> DlDataDeliveryStatus<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
@@ -1752,10 +1751,10 @@ impl<'a> DlDataDeliveryStatus<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        CursorMut::new(&mut self.buf.chunk_mut()[6..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }

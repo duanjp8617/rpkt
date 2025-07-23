@@ -164,7 +164,7 @@ packet ExtServiceClassIndicator {
 // The container type handles RAN, XW_RAN, NR_RAN and PDU_SESSION containers.
 packet ExtContainer {
     header = [
-        len = Field{bit = 8, default = 4, gen = false},
+        len = Field{bit = 8, default = 1, gen = false},
     ],
     length = [
         header_len = len*4
@@ -181,7 +181,7 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> Gtpv1NextExtention {
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         self.buf.chunk()[self.header_len() as usize - 1].into()
     }
 }
@@ -197,7 +197,7 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: Gtpv1NextExtention) {
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         let index = self.header_len() as usize - 1;
         self.buf.chunk_mut()[index] = value.into();
     }
@@ -280,7 +280,7 @@ packet DlDataDeliveryStatus {
         retrans_nf_pdcp_sn_ind = Field{bit = 1},
         delivered_retrans_nr_pdcp_sn_ind = Field{bit = 1},
         cause_report = Field{bit = 1},
-        buf_size_for_data_radio_bearer = Field{bit = 24},
+        buf_size_for_data_radio_bearer = Field{bit = 32},
     ],
     cond = (pdu_type == 1)
 }
