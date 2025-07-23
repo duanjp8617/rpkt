@@ -309,6 +309,13 @@ group NrUp =  {
 
 // The information elements for gtp-u/gtp-c, defined according to TS 29.281 and 29.060.
 
+packet CauseIE {
+     header = [
+        type_ = Field{bit = 8, default=@1},
+        cause_value = Field{bit = 8},
+    ],
+    cond = (type_==1)
+}
 
 
 packet RecoveryIE {
@@ -326,6 +333,15 @@ packet TunnelEndpointIdentData1IE {
     ],
     cond = (type_==16)
 }
+
+packet TunnelEndpointIdentControlPlaneIE {
+    header = [
+        type_ = Field{bit = 8, default=@17},
+        endpoint_ident_control_plane = Field{bit = 32},
+    ],
+    cond = (type_==17)
+}
+
 
 packet GtpuPeerAddrIE {
     header = [
@@ -390,8 +406,10 @@ packet RecoveryTimeStampIE {
 
 group Gtpv1IEGroup = {
     members = [
+        CauseIE,
         RecoveryIE,
         TunnelEndpointIdentData1IE,
+        TunnelEndpointIdentControlPlaneIE,
         ExtHeaderTypeListIE,
         GtpuPeerAddrIE,
         PrivateExtentionIE,

@@ -1943,6 +1943,119 @@ impl<T: Buf> NrUp<T> {
     }
 }
 
+/// A constant that defines the fixed byte length of the CauseIE protocol header.
+pub const CAUSE_IE_HEADER_LEN: usize = 2;
+/// A fixed CauseIE header.
+pub const CAUSE_IE_HEADER_TEMPLATE: [u8; 2] = [0x01, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct CauseIE<T> {
+    buf: T,
+}
+impl<T: Buf> CauseIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cause_value(&self) -> u8 {
+        self.buf.chunk()[1]
+    }
+}
+impl<T: PktBuf> CauseIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(2);
+        buf
+    }
+}
+impl<T: PktBufMut> CauseIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        assert!(buf.chunk_headroom() >= 2);
+        buf.move_back(2);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cause_value(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = value;
+    }
+}
+impl<'a> CauseIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[2..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> CauseIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[2..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the RecoveryIE protocol header.
 pub const RECOVERY_IE_HEADER_LEN: usize = 2;
 /// A fixed RecoveryIE header.
@@ -2148,6 +2261,120 @@ impl<'a> TunnelEndpointIdentData1IE<Cursor<'a>> {
     }
 }
 impl<'a> TunnelEndpointIdentData1IE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the TunnelEndpointIdentControlPlaneIE protocol header.
+pub const TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_LEN: usize = 5;
+/// A fixed TunnelEndpointIdentControlPlaneIE header.
+pub const TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE: [u8; 5] =
+    [0x11, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct TunnelEndpointIdentControlPlaneIE<T> {
+    buf: T,
+}
+impl<T: Buf> TunnelEndpointIdentControlPlaneIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..5]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn endpoint_ident_control_plane(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[1..5]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> TunnelEndpointIdentControlPlaneIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(5);
+        buf
+    }
+}
+impl<T: PktBufMut> TunnelEndpointIdentControlPlaneIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
+        assert!(buf.chunk_headroom() >= 5);
+        buf.move_back(5);
+        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 17);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_endpoint_ident_control_plane(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[1..5]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> TunnelEndpointIdentControlPlaneIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[5..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> TunnelEndpointIdentControlPlaneIE<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -2921,8 +3148,10 @@ impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {
 
 #[derive(Debug)]
 pub enum Gtpv1IEGroup<T> {
+    CauseIE_(CauseIE<T>),
     RecoveryIE_(RecoveryIE<T>),
     TunnelEndpointIdentData1IE_(TunnelEndpointIdentData1IE<T>),
+    TunnelEndpointIdentControlPlaneIE_(TunnelEndpointIdentControlPlaneIE<T>),
     ExtHeaderTypeListIE_(ExtHeaderTypeListIE<T>),
     GtpuPeerAddrIE_(GtpuPeerAddrIE<T>),
     PrivateExtentionIE_(PrivateExtentionIE<T>),
@@ -2936,9 +3165,12 @@ impl<T: Buf> Gtpv1IEGroup<T> {
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
+            1 => CauseIE::parse(buf).map(|pkt| Gtpv1IEGroup::CauseIE_(pkt)),
             14 => RecoveryIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryIE_(pkt)),
             16 => TunnelEndpointIdentData1IE::parse(buf)
                 .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentData1IE_(pkt)),
+            17 => TunnelEndpointIdentControlPlaneIE::parse(buf)
+                .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentControlPlaneIE_(pkt)),
             141 => {
                 ExtHeaderTypeListIE::parse(buf).map(|pkt| Gtpv1IEGroup::ExtHeaderTypeListIE_(pkt))
             }
@@ -2975,6 +3207,15 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
+            1 => CauseIE::parse(self.buf)
+                .map(|_pkt| {
+                    let result = CauseIE {
+                        buf: Cursor::new(&self.buf[..2]),
+                    };
+                    self.buf = &self.buf[2..];
+                    Gtpv1IEGroup::CauseIE_(result)
+                })
+                .ok(),
             14 => RecoveryIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = RecoveryIE {
@@ -2991,6 +3232,15 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                     };
                     self.buf = &self.buf[5..];
                     Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result)
+                })
+                .ok(),
+            17 => TunnelEndpointIdentControlPlaneIE::parse(self.buf)
+                .map(|_pkt| {
+                    let result = TunnelEndpointIdentControlPlaneIE {
+                        buf: Cursor::new(&self.buf[..5]),
+                    };
+                    self.buf = &self.buf[5..];
+                    Gtpv1IEGroup::TunnelEndpointIdentControlPlaneIE_(result)
                 })
                 .ok(),
             141 => ExtHeaderTypeListIE::parse(self.buf)
@@ -3064,6 +3314,17 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
+            1 => match CauseIE::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
+                    self.buf = snd;
+                    let result = CauseIE {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Gtpv1IEGroup::CauseIE_(result))
+                }
+                Err(_) => None,
+            },
             14 => match RecoveryIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
@@ -3083,6 +3344,17 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                         buf: CursorMut::new(fst),
                     };
                     Some(Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result))
+                }
+                Err(_) => None,
+            },
+            17 => match TunnelEndpointIdentControlPlaneIE::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
+                    self.buf = snd;
+                    let result = TunnelEndpointIdentControlPlaneIE {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Gtpv1IEGroup::TunnelEndpointIdentControlPlaneIE_(result))
                 }
                 Err(_) => None,
             },

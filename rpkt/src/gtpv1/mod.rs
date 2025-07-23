@@ -48,6 +48,7 @@ pub mod nr_up {
 
 pub mod gtpv1_information_elements {
     //! gtp-u/c information elements according to TS 29.281 and 29.060.
+    pub use super::generated::{CauseIE, CAUSE_IE_HEADER_LEN, CAUSE_IE_HEADER_TEMPLATE};
     pub use super::generated::{
         GtpuPeerAddrIE, GTPU_PEER_ADDR_IE_HEADER_LEN, GTPU_PEER_ADDR_IE_HEADER_TEMPLATE,
     };
@@ -59,6 +60,10 @@ pub mod gtpv1_information_elements {
     pub use super::generated::{
         RecoveryTimeStampIE, RECOVERY_TIME_STAMP_IE_HEADER_LEN,
         RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE,
+    };
+    pub use super::generated::{
+        TunnelEndpointIdentControlPlaneIE, TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_LEN,
+        TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE,
     };
     pub use super::generated::{
         TunnelEndpointIdentData1IE, TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_LEN,
@@ -88,7 +93,6 @@ enum_sim! {
     }
 }
 
-
 enum_sim! {
     /// Gtpv1 next extention type.
     pub struct Gtpv1NextExtention (u8) {
@@ -114,4 +118,3 @@ enum_sim! {
         PDU_NUMBER = 0xC0,
     }
 }
-
