@@ -5,12 +5,12 @@ use crate::cursors::*;
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::traits::*;
 
-use super::GtpuNextExtention;
+use super::{Gtpv1MsgType, Gtpv1NextExtention};
 
 /// A constant that defines the fixed byte length of the Gtpv1 protocol header.
 pub const GTPV1_HEADER_LEN: usize = 8;
 /// A fixed Gtpv1 header.
-pub const GTPV1_HEADER_TEMPLATE: [u8; 8] = [0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+pub const GTPV1_HEADER_TEMPLATE: [u8; 8] = [0x30, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct Gtpv1<T> {
@@ -79,8 +79,8 @@ impl<T: Buf> Gtpv1<T> {
         self.buf.chunk()[0] & 0x1 != 0
     }
     #[inline]
-    pub fn message_type(&self) -> u8 {
-        self.buf.chunk()[1]
+    pub fn message_type(&self) -> Gtpv1MsgType {
+        Gtpv1MsgType::from(self.buf.chunk()[1])
     }
     #[inline]
     pub fn teid(&self) -> u32 {
@@ -154,8 +154,8 @@ impl<T: PktBufMut> Gtpv1<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
     }
     #[inline]
-    pub fn set_message_type(&mut self, value: u8) {
-        self.buf.chunk_mut()[1] = value;
+    pub fn set_message_type(&mut self, value: Gtpv1MsgType) {
+        self.buf.chunk_mut()[1] = u8::from(value);
     }
     #[inline]
     pub fn set_teid(&mut self, value: u32) {
@@ -268,9 +268,9 @@ impl<T: Buf> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         assert!(self.header_len() == 12);
-        self.buf.chunk()[11]
+        self.buf.chunk()[11].into()
     }
 }
 
@@ -300,9 +300,9 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         assert!(self.header_len() == 12);
-        self.buf.chunk_mut()[11] = value;
+        self.buf.chunk_mut()[11] = value.into();
     }
 }
 
@@ -350,8 +350,8 @@ impl<T: Buf> ExtUdpPort<T> {
         u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
-        self.buf.chunk()[3]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        Gtpv1NextExtention::from(self.buf.chunk()[3])
     }
 }
 impl<T: PktBuf> ExtUdpPort<T> {
@@ -380,8 +380,8 @@ impl<T: PktBufMut> ExtUdpPort<T> {
         (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
-        self.buf.chunk_mut()[3] = value;
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        self.buf.chunk_mut()[3] = u8::from(value);
     }
 }
 impl<'a> ExtUdpPort<Cursor<'a>> {
@@ -609,8 +609,8 @@ impl<T: Buf> ExtLongPduNumber<T> {
         self.buf.chunk()[6]
     }
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
-        self.buf.chunk()[7]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        Gtpv1NextExtention::from(self.buf.chunk()[7])
     }
 }
 impl<T: PktBuf> ExtLongPduNumber<T> {
@@ -658,8 +658,8 @@ impl<T: PktBufMut> ExtLongPduNumber<T> {
         self.buf.chunk_mut()[6] = value;
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
-        self.buf.chunk_mut()[7] = value;
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        self.buf.chunk_mut()[7] = u8::from(value);
     }
 }
 impl<'a> ExtLongPduNumber<Cursor<'a>> {
@@ -753,8 +753,8 @@ impl<T: Buf> ExtServiceClassIndicator<T> {
         self.buf.chunk()[2]
     }
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
-        self.buf.chunk()[3]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        Gtpv1NextExtention::from(self.buf.chunk()[3])
     }
 }
 impl<T: PktBuf> ExtServiceClassIndicator<T> {
@@ -787,8 +787,8 @@ impl<T: PktBufMut> ExtServiceClassIndicator<T> {
         self.buf.chunk_mut()[2] = value;
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
-        self.buf.chunk_mut()[3] = value;
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        self.buf.chunk_mut()[3] = u8::from(value);
     }
 }
 impl<'a> ExtServiceClassIndicator<Cursor<'a>> {
@@ -977,8 +977,8 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> u8 {
-        self.buf.chunk()[self.header_len() as usize - 1]
+    pub fn next_extention_header_type(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
     }
 }
 
@@ -993,9 +993,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: u8) {
+    pub fn set_next_extention_header_type(&mut self, value: Gtpv1NextExtention) {
         let index = self.header_len() as usize - 1;
-        self.buf.chunk_mut()[index] = value;
+        self.buf.chunk_mut()[index] = value.into();
     }
 }
 
@@ -2920,7 +2920,7 @@ impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum GtpuIEGroup<T> {
+pub enum Gtpv1IEGroup<T> {
     RecoveryIE_(RecoveryIE<T>),
     TunnelEndpointIdentData1IE_(TunnelEndpointIdentData1IE<T>),
     ExtHeaderTypeListIE_(ExtHeaderTypeListIE<T>),
@@ -2929,36 +2929,36 @@ pub enum GtpuIEGroup<T> {
     RecoveryTimeStampIE_(RecoveryTimeStampIE<T>),
     GtpuTunnelStatusInfoIE_(GtpuTunnelStatusInfoIE<T>),
 }
-impl<T: Buf> GtpuIEGroup<T> {
+impl<T: Buf> Gtpv1IEGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
-            14 => RecoveryIE::parse(buf).map(|pkt| GtpuIEGroup::RecoveryIE_(pkt)),
+            14 => RecoveryIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryIE_(pkt)),
             16 => TunnelEndpointIdentData1IE::parse(buf)
-                .map(|pkt| GtpuIEGroup::TunnelEndpointIdentData1IE_(pkt)),
+                .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentData1IE_(pkt)),
             141 => {
-                ExtHeaderTypeListIE::parse(buf).map(|pkt| GtpuIEGroup::ExtHeaderTypeListIE_(pkt))
+                ExtHeaderTypeListIE::parse(buf).map(|pkt| Gtpv1IEGroup::ExtHeaderTypeListIE_(pkt))
             }
-            133 => GtpuPeerAddrIE::parse(buf).map(|pkt| GtpuIEGroup::GtpuPeerAddrIE_(pkt)),
-            255 => PrivateExtentionIE::parse(buf).map(|pkt| GtpuIEGroup::PrivateExtentionIE_(pkt)),
+            133 => GtpuPeerAddrIE::parse(buf).map(|pkt| Gtpv1IEGroup::GtpuPeerAddrIE_(pkt)),
+            255 => PrivateExtentionIE::parse(buf).map(|pkt| Gtpv1IEGroup::PrivateExtentionIE_(pkt)),
             231 => {
-                RecoveryTimeStampIE::parse(buf).map(|pkt| GtpuIEGroup::RecoveryTimeStampIE_(pkt))
+                RecoveryTimeStampIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryTimeStampIE_(pkt))
             }
             230 => GtpuTunnelStatusInfoIE::parse(buf)
-                .map(|pkt| GtpuIEGroup::GtpuTunnelStatusInfoIE_(pkt)),
+                .map(|pkt| Gtpv1IEGroup::GtpuTunnelStatusInfoIE_(pkt)),
             _ => Err(buf),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GtpuIEGroupIter<'a> {
+pub struct Gtpv1IEGroupIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> GtpuIEGroupIter<'a> {
+impl<'a> Gtpv1IEGroupIter<'a> {
     pub fn from_slice(slice: &'a [u8]) -> Self {
         Self { buf: slice }
     }
@@ -2967,8 +2967,8 @@ impl<'a> GtpuIEGroupIter<'a> {
         self.buf
     }
 }
-impl<'a> Iterator for GtpuIEGroupIter<'a> {
-    type Item = GtpuIEGroup<Cursor<'a>>;
+impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
+    type Item = Gtpv1IEGroup<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -2981,7 +2981,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..2]),
                     };
                     self.buf = &self.buf[2..];
-                    GtpuIEGroup::RecoveryIE_(result)
+                    Gtpv1IEGroup::RecoveryIE_(result)
                 })
                 .ok(),
             16 => TunnelEndpointIdentData1IE::parse(self.buf)
@@ -2990,7 +2990,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..5]),
                     };
                     self.buf = &self.buf[5..];
-                    GtpuIEGroup::TunnelEndpointIdentData1IE_(result)
+                    Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result)
                 })
                 .ok(),
             141 => ExtHeaderTypeListIE::parse(self.buf)
@@ -2999,7 +2999,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    GtpuIEGroup::ExtHeaderTypeListIE_(result)
+                    Gtpv1IEGroup::ExtHeaderTypeListIE_(result)
                 })
                 .ok(),
             133 => GtpuPeerAddrIE::parse(self.buf)
@@ -3008,7 +3008,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    GtpuIEGroup::GtpuPeerAddrIE_(result)
+                    Gtpv1IEGroup::GtpuPeerAddrIE_(result)
                 })
                 .ok(),
             255 => PrivateExtentionIE::parse(self.buf)
@@ -3017,7 +3017,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    GtpuIEGroup::PrivateExtentionIE_(result)
+                    Gtpv1IEGroup::PrivateExtentionIE_(result)
                 })
                 .ok(),
             231 => RecoveryTimeStampIE::parse(self.buf)
@@ -3026,7 +3026,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    GtpuIEGroup::RecoveryTimeStampIE_(result)
+                    Gtpv1IEGroup::RecoveryTimeStampIE_(result)
                 })
                 .ok(),
             230 => GtpuTunnelStatusInfoIE::parse(self.buf)
@@ -3035,7 +3035,7 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    GtpuIEGroup::GtpuTunnelStatusInfoIE_(result)
+                    Gtpv1IEGroup::GtpuTunnelStatusInfoIE_(result)
                 })
                 .ok(),
             _ => None,
@@ -3044,10 +3044,10 @@ impl<'a> Iterator for GtpuIEGroupIter<'a> {
 }
 
 #[derive(Debug)]
-pub struct GtpuIEGroupIterMut<'a> {
+pub struct Gtpv1IEGroupIterMut<'a> {
     buf: &'a mut [u8],
 }
-impl<'a> GtpuIEGroupIterMut<'a> {
+impl<'a> Gtpv1IEGroupIterMut<'a> {
     pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
         Self { buf: slice_mut }
     }
@@ -3056,8 +3056,8 @@ impl<'a> GtpuIEGroupIterMut<'a> {
         &self.buf[..]
     }
 }
-impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
-    type Item = GtpuIEGroup<CursorMut<'a>>;
+impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
+    type Item = Gtpv1IEGroup<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -3071,7 +3071,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = RecoveryIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::RecoveryIE_(result))
+                    Some(Gtpv1IEGroup::RecoveryIE_(result))
                 }
                 Err(_) => None,
             },
@@ -3082,7 +3082,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = TunnelEndpointIdentData1IE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::TunnelEndpointIdentData1IE_(result))
+                    Some(Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result))
                 }
                 Err(_) => None,
             },
@@ -3095,7 +3095,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = ExtHeaderTypeListIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::ExtHeaderTypeListIE_(result))
+                    Some(Gtpv1IEGroup::ExtHeaderTypeListIE_(result))
                 }
                 Err(_) => None,
             },
@@ -3108,7 +3108,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = GtpuPeerAddrIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::GtpuPeerAddrIE_(result))
+                    Some(Gtpv1IEGroup::GtpuPeerAddrIE_(result))
                 }
                 Err(_) => None,
             },
@@ -3121,7 +3121,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = PrivateExtentionIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::PrivateExtentionIE_(result))
+                    Some(Gtpv1IEGroup::PrivateExtentionIE_(result))
                 }
                 Err(_) => None,
             },
@@ -3134,7 +3134,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = RecoveryTimeStampIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::RecoveryTimeStampIE_(result))
+                    Some(Gtpv1IEGroup::RecoveryTimeStampIE_(result))
                 }
                 Err(_) => None,
             },
@@ -3147,7 +3147,7 @@ impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
                     let result = GtpuTunnelStatusInfoIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(GtpuIEGroup::GtpuTunnelStatusInfoIE_(result))
+                    Some(Gtpv1IEGroup::GtpuTunnelStatusInfoIE_(result))
                 }
                 Err(_) => None,
             },

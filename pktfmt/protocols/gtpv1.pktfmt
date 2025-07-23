@@ -6,7 +6,7 @@ use crate::cursors::*;
 use crate::traits::*;
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 
-use super::GtpuNextExtention;
+use super::{Gtpv1NextExtention, Gtpv1MsgType};
 %%
 
 // Telecom protocols are too complex, we try to converge
@@ -27,7 +27,7 @@ packet Gtpv1 {
         extention_header_present = Field{bit = 1, arg = bool},
         sequence_present = Field{bit = 1, arg = bool},
         npdu_present = Field{bit = 1, arg = bool},
-        message_type = Field{bit = 8},
+        message_type = Field{bit = 8, arg=%%Gtpv1MsgType%%, default=255},
         message_len = Field{bit = 16, gen=false},
         teid = Field{bit = 32},
     ],
@@ -80,9 +80,9 @@ impl<T: Buf> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         assert!(self.header_len() == 12);
-        self.buf.chunk()[11]
+        self.buf.chunk()[11].into()
     }
 }
 
@@ -112,9 +112,9 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         assert!(self.header_len() == 12);
-        self.buf.chunk_mut()[11] = value;
+        self.buf.chunk_mut()[11] = value.into();
     }
 }
 %%
@@ -124,7 +124,7 @@ packet ExtUdpPort {
     header = [
         len = Field{bit = 8, default=@1},
         udp_port = Field{bit = 16},
-        next_extention_header = Field{bit = 8}
+        next_extention_header = Field{bit = 8, arg = %%Gtpv1NextExtention%%}
     ]
 }
 
@@ -146,7 +146,7 @@ packet ExtLongPduNumber {
         spare2 = Field{bit = 8},
         spare3 = Field{bit = 8},
         spare4 = Field{bit = 8},
-        next_extention_header = Field{bit = 8}
+        next_extention_header = Field{bit = 8,arg = %%Gtpv1NextExtention%%}
     ]
 }
 
@@ -156,7 +156,7 @@ packet ExtServiceClassIndicator {
         len = Field{bit = 8, default=@1},
         service_class_indicator = Field{bit = 8},
         spare = Field{bit = 8},
-        next_extention_header = Field{bit = 8}
+        next_extention_header = Field{bit = 8,arg = %%Gtpv1NextExtention%%}
     ]
 }
 
@@ -181,8 +181,8 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> u8 {
-        self.buf.chunk()[self.header_len() as usize - 1]
+    pub fn next_extention_header_type(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
     }
 }
 
@@ -197,9 +197,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: u8) {
+    pub fn set_next_extention_header_type(&mut self, value: Gtpv1NextExtention) {
         let index = self.header_len() as usize - 1;
-        self.buf.chunk_mut()[index] = value;
+        self.buf.chunk_mut()[index] = value.into();
     }
 }
 %%
@@ -307,7 +307,9 @@ group NrUp =  {
     ]
 }
 
-// The information elements for gtp-u, defined according to TS 129 281.
+// The information elements for gtp-u/gtp-c, defined according to TS 29.281 and 29.060.
+
+
 
 packet RecoveryIE {
     header = [
@@ -386,7 +388,7 @@ packet RecoveryTimeStampIE {
     cond = (type_==231)
 }
 
-group GtpuIEGroup = {
+group Gtpv1IEGroup = {
     members = [
         RecoveryIE,
         TunnelEndpointIdentData1IE,
