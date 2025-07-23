@@ -6,19 +6,11 @@ use common::*;
 
 use rpkt::ether::*;
 use rpkt::gre::*;
-use rpkt::gtpv1::gtpv1_information_elements::CauseIE;
-use rpkt::gtpv1::gtpv1_information_elements::GtpuPeerAddrIE;
-use rpkt::gtpv1::gtpv1_information_elements::PrivateExtentionIE;
-use rpkt::gtpv1::gtpv1_information_elements::TunnelEndpointIdentControlPlaneIE;
-use rpkt::gtpv1::gtpv1_information_elements::TunnelEndpointIdentData1IE;
-use rpkt::gtpv1::gtpv1_information_elements::CAUSE_IE_HEADER_LEN;
-use rpkt::gtpv1::gtpv1_information_elements::CAUSE_IE_HEADER_TEMPLATE;
-use rpkt::gtpv1::gtpv1_information_elements::GTPU_PEER_ADDR_IE_HEADER_TEMPLATE;
-use rpkt::gtpv1::gtpv1_information_elements::PRIVATE_EXTENTION_IE_HEADER_LEN;
-use rpkt::gtpv1::gtpv1_information_elements::PRIVATE_EXTENTION_IE_HEADER_TEMPLATE;
-use rpkt::gtpv1::gtpv1_information_elements::TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE;
-use rpkt::gtpv1::gtpv1_information_elements::TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE;
-use rpkt::gtpv1::gtpv1_information_elements::{Gtpv1IEGroup, Gtpv1IEGroupIter};
+use rpkt::gtpv1::gtpv1_extentions::ExtPduNumber;
+use rpkt::gtpv1::gtpv1_extentions::ExtUdpPort;
+use rpkt::gtpv1::gtpv1_extentions::EXT_PDU_NUMBER_HEADER_TEMPLATE;
+use rpkt::gtpv1::gtpv1_extentions::EXT_UDP_PORT_HEADER_TEMPLATE;
+use rpkt::gtpv1::gtpv1_information_elements::*;
 use rpkt::gtpv1::*;
 use rpkt::ipv4::IpProtocol;
 use rpkt::ipv4::Ipv4;
@@ -207,6 +199,188 @@ fn gtp_c1_build() {
     eth.set_ethertype(EtherType::IPV4);
 
     let eth_release = eth.release();
-
     assert_eq!(eth_release.chunk(), &pkt);
+}
+
+#[test]
+fn gtp_u1_ext_parse() {
+    // to_hex_dump("gtp-u-1ext.dat");
+    let pkt = file_to_packet("gtp-u-1ext.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse(eth.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::UDP);
+
+    let udp = Udp::parse(ipv4.payload()).unwrap();
+    assert_eq!(udp.src_port(), 2152);
+    assert_eq!(udp.dst_port(), 2152);
+
+    let gtp = Gtpv1::parse(udp.payload()).unwrap();
+    assert_eq!(gtp.extention_header_present(), true);
+    assert_eq!(gtp.sequence_present(), true);
+    assert_eq!(gtp.npdu_present(), false);
+    assert_eq!(gtp.message_type(), Gtpv1MsgType::G_PDU);
+    assert_eq!(gtp.packet_len() as usize, 92 + GTPV1_HEADER_LEN);
+    assert_eq!(gtp.teid(), 1);
+    assert_eq!(gtp.sequence(), 10461);
+    assert_eq!(gtp.next_extention_header(), Gtpv1NextExtention::PDU_NUMBER);
+
+    let ext = ExtPduNumber::parse(gtp.payload()).unwrap();
+    assert_eq!(ext.pdcp_number(), 2308);
+    assert_eq!(
+        ext.next_extention_header(),
+        Gtpv1NextExtention::NO_EXTENTION
+    );
+
+    let ipv4 = Ipv4::parse(ext.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+}
+
+#[test]
+fn gtp_u1_ext_build() {
+    let pkt = file_to_packet("gtp-u-1ext.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(84);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 84..]);
+
+    let mut ext = ExtPduNumber::prepend_header(pbuf, &EXT_PDU_NUMBER_HEADER_TEMPLATE);
+    ext.set_pdcp_number(2308);
+    ext.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);
+
+    let mut gtpv1_header = GTPV1_HEADER_TEMPLATE.clone();
+    let mut gtpv1_hdr_mut = Gtpv1::from_header_array_mut(&mut gtpv1_header);
+    gtpv1_hdr_mut.set_extention_header_present(true);
+    gtpv1_hdr_mut.set_sequence_present(true);
+    gtpv1_hdr_mut.set_message_type(Gtpv1MsgType::G_PDU);
+    gtpv1_hdr_mut.set_teid(1);
+
+    let mut gtpv1 = Gtpv1::prepend_header(ext.release(), &gtpv1_header);
+    gtpv1.set_sequence(10461);
+    gtpv1.set_next_extention_header(Gtpv1NextExtention::PDU_NUMBER);
+
+    let mut udp = Udp::prepend_header(gtpv1.release(), &UDP_HEADER_TEMPLATE);
+    udp.set_checksum(0xb58d);
+    udp.set_dst_port(2152);
+    udp.set_src_port(2152);
+
+    let mut ipv4 = Ipv4::prepend_header(udp.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4.set_ident(0);
+    ipv4.set_ttl(64);
+    ipv4.set_dont_frag(true);
+    ipv4.set_protocol(IpProtocol::UDP);
+    ipv4.set_checksum(0x67b7);
+    ipv4.set_src_addr(Ipv4Addr::new(192, 168, 40, 179));
+    ipv4.set_dst_addr(Ipv4Addr::new(192, 168, 40, 178));
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x00, 0x0c, 0x29, 0xda, 0xd1, 0xde]));
+    eth.set_src_addr(EtherAddr([0x00, 0x0c, 0x29, 0xe3, 0xc6, 0x4d]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    let eth_release = eth.release();
+    assert_eq!(eth_release.chunk(), &pkt);
+}
+
+#[test]
+fn gtp_u2_ext_parse() {
+    // to_hex_dump("gtp-u-2ext.dat");
+    let pkt = file_to_packet("gtp-u-2ext.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse(eth.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::UDP);
+
+    let udp = Udp::parse(ipv4.payload()).unwrap();
+    assert_eq!(udp.src_port(), 2152);
+    assert_eq!(udp.dst_port(), 2152);
+
+    let gtp = Gtpv1::parse(udp.payload()).unwrap();
+    assert_eq!(gtp.extention_header_present(), true);
+    assert_eq!(gtp.sequence_present(), true);
+    assert_eq!(gtp.npdu_present(), false);
+    assert_eq!(gtp.message_type(), Gtpv1MsgType::G_PDU);
+    assert_eq!(gtp.packet_len() as usize, 96 + GTPV1_HEADER_LEN);
+    assert_eq!(gtp.teid(), 1);
+    assert_eq!(gtp.sequence(), 10461);
+    assert_eq!(gtp.next_extention_header(), Gtpv1NextExtention::PDU_NUMBER);
+
+    let ext = ExtPduNumber::parse(gtp.payload()).unwrap();
+    assert_eq!(ext.pdcp_number(), 2308);
+    assert_eq!(ext.next_extention_header(), Gtpv1NextExtention::UDP_PORT);
+
+    let ext = ExtUdpPort::parse(ext.payload()).unwrap();
+    assert_eq!(ext.udp_port(), 1308);
+    assert_eq!(
+        ext.next_extention_header(),
+        Gtpv1NextExtention::NO_EXTENTION
+    );
+
+    let ipv4 = Ipv4::parse(ext.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+}
+
+#[test]
+fn gtp_u2_ext_build() {
+    let pkt = file_to_packet("gtp-u-2ext.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(84);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 84..]);
+
+    let mut ext = ExtUdpPort::prepend_header(pbuf, &EXT_UDP_PORT_HEADER_TEMPLATE);
+    ext.set_udp_port(1308);
+    ext.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);
+
+    let mut ext = ExtPduNumber::prepend_header(ext.release(), &EXT_PDU_NUMBER_HEADER_TEMPLATE);
+    ext.set_pdcp_number(2308);
+    ext.set_next_extention_header(Gtpv1NextExtention::UDP_PORT);
+
+    let mut gtpv1_header = GTPV1_HEADER_TEMPLATE.clone();
+    let mut gtpv1_hdr_mut = Gtpv1::from_header_array_mut(&mut gtpv1_header);
+    gtpv1_hdr_mut.set_extention_header_present(true);
+    gtpv1_hdr_mut.set_sequence_present(true);
+    gtpv1_hdr_mut.set_message_type(Gtpv1MsgType::G_PDU);
+    gtpv1_hdr_mut.set_teid(1);
+
+    let mut gtpv1 = Gtpv1::prepend_header(ext.release(), &gtpv1_header);
+    gtpv1.set_sequence(10461);
+    gtpv1.set_next_extention_header(Gtpv1NextExtention::PDU_NUMBER);
+
+    let mut udp = Udp::prepend_header(gtpv1.release(), &UDP_HEADER_TEMPLATE);
+    udp.set_checksum(0x983c);
+    udp.set_dst_port(2152);
+    udp.set_src_port(2152);
+
+    let mut ipv4 = Ipv4::prepend_header(udp.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4.set_ident(0);
+    ipv4.set_ttl(64);
+    ipv4.set_dont_frag(true);
+    ipv4.set_protocol(IpProtocol::UDP);
+    ipv4.set_checksum(0x67b3);
+    ipv4.set_src_addr(Ipv4Addr::new(192, 168, 40, 179));
+    ipv4.set_dst_addr(Ipv4Addr::new(192, 168, 40, 178));
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x00, 0x0c, 0x29, 0xda, 0xd1, 0xde]));
+    eth.set_src_addr(EtherAddr([0x00, 0x0c, 0x29, 0xe3, 0xc6, 0x4d]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    let eth_release = eth.release();
+    assert_eq!(eth_release.chunk(), &pkt);
+}
+
+#[test]
+fn p() {
+    to_hex_dump("gtp-u-ipv6.dat");
 }

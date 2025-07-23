@@ -471,8 +471,8 @@ impl<T: Buf> ExtPduNumber<T> {
         u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
-    pub fn next_extention_header(&self) -> u8 {
-        self.buf.chunk()[3]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        Gtpv1NextExtention::from(self.buf.chunk()[3])
     }
 }
 impl<T: PktBuf> ExtPduNumber<T> {
@@ -501,8 +501,8 @@ impl<T: PktBufMut> ExtPduNumber<T> {
         (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: u8) {
-        self.buf.chunk_mut()[3] = value;
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        self.buf.chunk_mut()[3] = u8::from(value);
     }
 }
 impl<'a> ExtPduNumber<Cursor<'a>> {
@@ -2998,7 +2998,7 @@ impl<'a> GtpuTunnelStatusInfoIE<CursorMut<'a>> {
 pub const RECOVERY_TIME_STAMP_IE_HEADER_LEN: usize = 7;
 /// A fixed RecoveryTimeStampIE header.
 pub const RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE: [u8; 7] =
-    [0xe7, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00];
+    [0xe7, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct RecoveryTimeStampIE<T> {
