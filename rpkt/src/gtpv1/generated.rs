@@ -5,7 +5,7 @@ use crate::cursors::*;
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::traits::*;
 
-use super::GtpNextExtention;
+use super::GtpuNextExtention;
 
 /// A constant that defines the fixed byte length of the Gtpv1 protocol header.
 pub const GTPV1_HEADER_LEN: usize = 8;
@@ -268,9 +268,9 @@ impl<T: Buf> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
+    pub fn next_extention_header(&self) -> u8 {
         assert!(self.header_len() == 12);
-        self.buf.chunk()[11].into()
+        self.buf.chunk()[11]
     }
 }
 
@@ -300,9 +300,9 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
+    pub fn set_next_extention_header(&mut self, value: u8) {
         assert!(self.header_len() == 12);
-        self.buf.chunk_mut()[11] = value.into();
+        self.buf.chunk_mut()[11] = value;
     }
 }
 
@@ -350,8 +350,8 @@ impl<T: Buf> ExtUdpPort<T> {
         u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
-        GtpNextExtention::from(self.buf.chunk()[3])
+    pub fn next_extention_header(&self) -> u8 {
+        self.buf.chunk()[3]
     }
 }
 impl<T: PktBuf> ExtUdpPort<T> {
@@ -380,8 +380,8 @@ impl<T: PktBufMut> ExtUdpPort<T> {
         (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
-        self.buf.chunk_mut()[3] = u8::from(value);
+    pub fn set_next_extention_header(&mut self, value: u8) {
+        self.buf.chunk_mut()[3] = value;
     }
 }
 impl<'a> ExtUdpPort<Cursor<'a>> {
@@ -467,12 +467,12 @@ impl<T: Buf> ExtPduNumber<T> {
         self.buf.chunk()[0]
     }
     #[inline]
-    pub fn udp_port(&self) -> u16 {
+    pub fn pdcp_number(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
-        GtpNextExtention::from(self.buf.chunk()[3])
+    pub fn next_extention_header(&self) -> u8 {
+        self.buf.chunk()[3]
     }
 }
 impl<T: PktBuf> ExtPduNumber<T> {
@@ -497,12 +497,12 @@ impl<T: PktBufMut> ExtPduNumber<T> {
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
-    pub fn set_udp_port(&mut self, value: u16) {
+    pub fn set_pdcp_number(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
-        self.buf.chunk_mut()[3] = u8::from(value);
+    pub fn set_next_extention_header(&mut self, value: u8) {
+        self.buf.chunk_mut()[3] = value;
     }
 }
 impl<'a> ExtPduNumber<Cursor<'a>> {
@@ -609,8 +609,8 @@ impl<T: Buf> ExtLongPduNumber<T> {
         self.buf.chunk()[6]
     }
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
-        GtpNextExtention::from(self.buf.chunk()[7])
+    pub fn next_extention_header(&self) -> u8 {
+        self.buf.chunk()[7]
     }
 }
 impl<T: PktBuf> ExtLongPduNumber<T> {
@@ -658,8 +658,8 @@ impl<T: PktBufMut> ExtLongPduNumber<T> {
         self.buf.chunk_mut()[6] = value;
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
-        self.buf.chunk_mut()[7] = u8::from(value);
+    pub fn set_next_extention_header(&mut self, value: u8) {
+        self.buf.chunk_mut()[7] = value;
     }
 }
 impl<'a> ExtLongPduNumber<Cursor<'a>> {
@@ -753,8 +753,8 @@ impl<T: Buf> ExtServiceClassIndicator<T> {
         self.buf.chunk()[2]
     }
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
-        GtpNextExtention::from(self.buf.chunk()[3])
+    pub fn next_extention_header(&self) -> u8 {
+        self.buf.chunk()[3]
     }
 }
 impl<T: PktBuf> ExtServiceClassIndicator<T> {
@@ -787,8 +787,8 @@ impl<T: PktBufMut> ExtServiceClassIndicator<T> {
         self.buf.chunk_mut()[2] = value;
     }
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
-        self.buf.chunk_mut()[3] = u8::from(value);
+    pub fn set_next_extention_header(&mut self, value: u8) {
+        self.buf.chunk_mut()[3] = value;
     }
 }
 impl<'a> ExtServiceClassIndicator<Cursor<'a>> {
@@ -977,8 +977,8 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> GtpNextExtention {
-        self.buf.chunk()[self.header_len() as usize - 1].into()
+    pub fn next_extention_header_type(&self) -> u8 {
+        self.buf.chunk()[self.header_len() as usize - 1]
     }
 }
 
@@ -993,9 +993,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: GtpNextExtention) {
+    pub fn set_next_extention_header_type(&mut self, value: u8) {
         let index = self.header_len() as usize - 1;
-        self.buf.chunk_mut()[index] = value.into();
+        self.buf.chunk_mut()[index] = value;
     }
 }
 
@@ -1336,38 +1336,34 @@ impl<'a> UlPduSessionInfo<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum PduSessionInfoGroup<T> {
+pub enum PduSessionUp<T> {
     DlPduSessionInfo_(DlPduSessionInfo<T>),
     UlPduSessionInfo_(UlPduSessionInfo<T>),
 }
-impl<T: Buf> PduSessionInfoGroup<T> {
+impl<T: Buf> PduSessionUp<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[0] >> 4;
         match cond_value0 {
-            0 => {
-                DlPduSessionInfo::parse(buf).map(|pkt| PduSessionInfoGroup::DlPduSessionInfo_(pkt))
-            }
-            1 => {
-                UlPduSessionInfo::parse(buf).map(|pkt| PduSessionInfoGroup::UlPduSessionInfo_(pkt))
-            }
+            0 => DlPduSessionInfo::parse(buf).map(|pkt| PduSessionUp::DlPduSessionInfo_(pkt)),
+            1 => UlPduSessionInfo::parse(buf).map(|pkt| PduSessionUp::UlPduSessionInfo_(pkt)),
             _ => Err(buf),
         }
     }
 }
 
-/// A constant that defines the fixed byte length of the NrUpFrameDlUserData protocol header.
-pub const NR_UP_FRAME_DL_USER_DATA_HEADER_LEN: usize = 5;
-/// A fixed NrUpFrameDlUserData header.
-pub const NR_UP_FRAME_DL_USER_DATA_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the DlUserData protocol header.
+pub const DL_USER_DATA_HEADER_LEN: usize = 5;
+/// A fixed DlUserData header.
+pub const DL_USER_DATA_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NrUpFrameDlUserData<T> {
+pub struct DlUserData<T> {
     buf: T,
 }
-impl<T: Buf> NrUpFrameDlUserData<T> {
+impl<T: Buf> DlUserData<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1442,7 +1438,7 @@ impl<T: Buf> NrUpFrameDlUserData<T> {
         (read_uint_from_be_bytes(&self.buf.chunk()[2..5])) as u32
     }
 }
-impl<T: PktBuf> NrUpFrameDlUserData<T> {
+impl<T: PktBuf> DlUserData<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1450,7 +1446,7 @@ impl<T: PktBuf> NrUpFrameDlUserData<T> {
         buf
     }
 }
-impl<T: PktBufMut> NrUpFrameDlUserData<T> {
+impl<T: PktBufMut> DlUserData<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
         assert!(buf.chunk_headroom() >= 5);
@@ -1519,7 +1515,7 @@ impl<T: PktBufMut> NrUpFrameDlUserData<T> {
         write_uint_as_be_bytes(&mut self.buf.chunk_mut()[2..5], (value as u64));
     }
 }
-impl<'a> NrUpFrameDlUserData<Cursor<'a>> {
+impl<'a> DlUserData<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1540,7 +1536,7 @@ impl<'a> NrUpFrameDlUserData<Cursor<'a>> {
         }
     }
 }
-impl<'a> NrUpFrameDlUserData<CursorMut<'a>> {
+impl<'a> DlUserData<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1562,17 +1558,16 @@ impl<'a> NrUpFrameDlUserData<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the NrUpFrameDlDataDeliveryStatus protocol header.
-pub const NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 5;
-/// A fixed NrUpFrameDlDataDeliveryStatus header.
-pub const NR_UP_FRAME_DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 5] =
-    [0x10, 0x00, 0x00, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the DlDataDeliveryStatus protocol header.
+pub const DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 5;
+/// A fixed DlDataDeliveryStatus header.
+pub const DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 5] = [0x10, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NrUpFrameDlDataDeliveryStatus<T> {
+pub struct DlDataDeliveryStatus<T> {
     buf: T,
 }
-impl<T: Buf> NrUpFrameDlDataDeliveryStatus<T> {
+impl<T: Buf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1647,7 +1642,7 @@ impl<T: Buf> NrUpFrameDlDataDeliveryStatus<T> {
         (read_uint_from_be_bytes(&self.buf.chunk()[2..5])) as u32
     }
 }
-impl<T: PktBuf> NrUpFrameDlDataDeliveryStatus<T> {
+impl<T: PktBuf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1655,7 +1650,7 @@ impl<T: PktBuf> NrUpFrameDlDataDeliveryStatus<T> {
         buf
     }
 }
-impl<T: PktBufMut> NrUpFrameDlDataDeliveryStatus<T> {
+impl<T: PktBufMut> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
         assert!(buf.chunk_headroom() >= 5);
@@ -1724,7 +1719,7 @@ impl<T: PktBufMut> NrUpFrameDlDataDeliveryStatus<T> {
         write_uint_as_be_bytes(&mut self.buf.chunk_mut()[2..5], (value as u64));
     }
 }
-impl<'a> NrUpFrameDlDataDeliveryStatus<Cursor<'a>> {
+impl<'a> DlDataDeliveryStatus<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1745,7 +1740,7 @@ impl<'a> NrUpFrameDlDataDeliveryStatus<Cursor<'a>> {
         }
     }
 }
-impl<'a> NrUpFrameDlDataDeliveryStatus<CursorMut<'a>> {
+impl<'a> DlDataDeliveryStatus<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1767,16 +1762,16 @@ impl<'a> NrUpFrameDlDataDeliveryStatus<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the NrUpFrameAssistInfoData protocol header.
-pub const NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_LEN: usize = 2;
-/// A fixed NrUpFrameAssistInfoData header.
-pub const NR_UP_FRAME_ASSIST_INFO_DATA_HEADER_TEMPLATE: [u8; 2] = [0x20, 0x00];
+/// A constant that defines the fixed byte length of the AssistanceInformationData protocol header.
+pub const ASSISTANCE_INFORMATION_DATA_HEADER_LEN: usize = 2;
+/// A fixed AssistanceInformationData header.
+pub const ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE: [u8; 2] = [0x20, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NrUpFrameAssistInfoData<T> {
+pub struct AssistanceInformationData<T> {
     buf: T,
 }
-impl<T: Buf> NrUpFrameAssistInfoData<T> {
+impl<T: Buf> AssistanceInformationData<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1831,7 +1826,7 @@ impl<T: Buf> NrUpFrameAssistInfoData<T> {
         self.buf.chunk()[1] & 0x1
     }
 }
-impl<T: PktBuf> NrUpFrameAssistInfoData<T> {
+impl<T: PktBuf> AssistanceInformationData<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -1839,7 +1834,7 @@ impl<T: PktBuf> NrUpFrameAssistInfoData<T> {
         buf
     }
 }
-impl<T: PktBufMut> NrUpFrameAssistInfoData<T> {
+impl<T: PktBufMut> AssistanceInformationData<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
         assert!(buf.chunk_headroom() >= 2);
@@ -1883,7 +1878,7 @@ impl<T: PktBufMut> NrUpFrameAssistInfoData<T> {
         self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
 }
-impl<'a> NrUpFrameAssistInfoData<Cursor<'a>> {
+impl<'a> AssistanceInformationData<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1904,7 +1899,7 @@ impl<'a> NrUpFrameAssistInfoData<Cursor<'a>> {
         }
     }
 }
-impl<'a> NrUpFrameAssistInfoData<CursorMut<'a>> {
+impl<'a> AssistanceInformationData<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1927,25 +1922,22 @@ impl<'a> NrUpFrameAssistInfoData<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum NrUpFrameGroup<T> {
-    NrUpFrameDlUserData_(NrUpFrameDlUserData<T>),
-    NrUpFrameDlDataDeliveryStatus_(NrUpFrameDlDataDeliveryStatus<T>),
-    NrUpFrameAssistInfoData_(NrUpFrameAssistInfoData<T>),
+pub enum NrUp<T> {
+    DlUserData_(DlUserData<T>),
+    DlDataDeliveryStatus_(DlDataDeliveryStatus<T>),
+    AssistanceInformationData_(AssistanceInformationData<T>),
 }
-impl<T: Buf> NrUpFrameGroup<T> {
+impl<T: Buf> NrUp<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[0] >> 4;
         match cond_value0 {
-            0 => {
-                NrUpFrameDlUserData::parse(buf).map(|pkt| NrUpFrameGroup::NrUpFrameDlUserData_(pkt))
-            }
-            1 => NrUpFrameDlDataDeliveryStatus::parse(buf)
-                .map(|pkt| NrUpFrameGroup::NrUpFrameDlDataDeliveryStatus_(pkt)),
-            2 => NrUpFrameAssistInfoData::parse(buf)
-                .map(|pkt| NrUpFrameGroup::NrUpFrameAssistInfoData_(pkt)),
+            0 => DlUserData::parse(buf).map(|pkt| NrUp::DlUserData_(pkt)),
+            1 => DlDataDeliveryStatus::parse(buf).map(|pkt| NrUp::DlDataDeliveryStatus_(pkt)),
+            2 => AssistanceInformationData::parse(buf)
+                .map(|pkt| NrUp::AssistanceInformationData_(pkt)),
             _ => Err(buf),
         }
     }
@@ -2320,6 +2312,149 @@ impl<'a> GtpuPeerAddrIE<CursorMut<'a>> {
     }
 }
 
+/// A constant that defines the fixed byte length of the ExtHeaderTypeListIE protocol header.
+pub const EXT_HEADER_TYPE_LIST_IE_HEADER_LEN: usize = 2;
+/// A fixed ExtHeaderTypeListIE header.
+pub const EXT_HEADER_TYPE_LIST_IE_HEADER_TEMPLATE: [u8; 2] = [0x8d, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct ExtHeaderTypeListIE<T> {
+    buf: T,
+}
+impl<T: Buf> ExtHeaderTypeListIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 + 2
+    }
+}
+impl<T: PktBuf> ExtHeaderTypeListIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> ExtHeaderTypeListIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = ExtHeaderTypeListIE::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 141);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 257) && (value >= 2));
+        self.buf.chunk_mut()[1] = ((value - 2) as u8);
+    }
+}
+impl<'a> ExtHeaderTypeListIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> ExtHeaderTypeListIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the PrivateExtentionIE protocol header.
 pub const PRIVATE_EXTENTION_IE_HEADER_LEN: usize = 5;
 /// A fixed PrivateExtentionIE header.
@@ -2465,6 +2600,167 @@ impl<'a> PrivateExtentionIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the GtpuTunnelStatusInfoIE protocol header.
+pub const GTPU_TUNNEL_STATUS_INFO_IE_HEADER_LEN: usize = 4;
+/// A fixed GtpuTunnelStatusInfoIE header.
+pub const GTPU_TUNNEL_STATUS_INFO_IE_HEADER_TEMPLATE: [u8; 4] = [0xe6, 0x00, 0x01, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct GtpuTunnelStatusInfoIE<T> {
+    buf: T,
+}
+impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn spare(&self) -> u8 {
+        self.buf.chunk()[3] >> 1
+    }
+    #[inline]
+    pub fn spoc(&self) -> u8 {
+        self.buf.chunk()[3] & 0x1
+    }
+    #[inline]
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 3
+    }
+}
+impl<T: PktBuf> GtpuTunnelStatusInfoIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> GtpuTunnelStatusInfoIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = GtpuTunnelStatusInfoIE::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 230);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_spare(&mut self, value: u8) {
+        assert!(value <= 0x7f);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x01) | (value << 1);
+    }
+    #[inline]
+    pub fn set_spoc(&mut self, value: u8) {
+        assert!(value <= 0x1);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xfe) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65538) && (value >= 3));
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 3) as u16).to_be_bytes());
+    }
+}
+impl<'a> GtpuTunnelStatusInfoIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> GtpuTunnelStatusInfoIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
@@ -2624,38 +2920,45 @@ impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {
 }
 
 #[derive(Debug)]
-pub enum Gtpv1IEGroup<T> {
+pub enum GtpuIEGroup<T> {
     RecoveryIE_(RecoveryIE<T>),
     TunnelEndpointIdentData1IE_(TunnelEndpointIdentData1IE<T>),
+    ExtHeaderTypeListIE_(ExtHeaderTypeListIE<T>),
     GtpuPeerAddrIE_(GtpuPeerAddrIE<T>),
     PrivateExtentionIE_(PrivateExtentionIE<T>),
     RecoveryTimeStampIE_(RecoveryTimeStampIE<T>),
+    GtpuTunnelStatusInfoIE_(GtpuTunnelStatusInfoIE<T>),
 }
-impl<T: Buf> Gtpv1IEGroup<T> {
+impl<T: Buf> GtpuIEGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
         if buf.chunk().len() < 1 {
             return Err(buf);
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
-            14 => RecoveryIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryIE_(pkt)),
+            14 => RecoveryIE::parse(buf).map(|pkt| GtpuIEGroup::RecoveryIE_(pkt)),
             16 => TunnelEndpointIdentData1IE::parse(buf)
-                .map(|pkt| Gtpv1IEGroup::TunnelEndpointIdentData1IE_(pkt)),
-            133 => GtpuPeerAddrIE::parse(buf).map(|pkt| Gtpv1IEGroup::GtpuPeerAddrIE_(pkt)),
-            255 => PrivateExtentionIE::parse(buf).map(|pkt| Gtpv1IEGroup::PrivateExtentionIE_(pkt)),
-            231 => {
-                RecoveryTimeStampIE::parse(buf).map(|pkt| Gtpv1IEGroup::RecoveryTimeStampIE_(pkt))
+                .map(|pkt| GtpuIEGroup::TunnelEndpointIdentData1IE_(pkt)),
+            141 => {
+                ExtHeaderTypeListIE::parse(buf).map(|pkt| GtpuIEGroup::ExtHeaderTypeListIE_(pkt))
             }
+            133 => GtpuPeerAddrIE::parse(buf).map(|pkt| GtpuIEGroup::GtpuPeerAddrIE_(pkt)),
+            255 => PrivateExtentionIE::parse(buf).map(|pkt| GtpuIEGroup::PrivateExtentionIE_(pkt)),
+            231 => {
+                RecoveryTimeStampIE::parse(buf).map(|pkt| GtpuIEGroup::RecoveryTimeStampIE_(pkt))
+            }
+            230 => GtpuTunnelStatusInfoIE::parse(buf)
+                .map(|pkt| GtpuIEGroup::GtpuTunnelStatusInfoIE_(pkt)),
             _ => Err(buf),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Gtpv1IEGroupIter<'a> {
+pub struct GtpuIEGroupIter<'a> {
     buf: &'a [u8],
 }
-impl<'a> Gtpv1IEGroupIter<'a> {
+impl<'a> GtpuIEGroupIter<'a> {
     pub fn from_slice(slice: &'a [u8]) -> Self {
         Self { buf: slice }
     }
@@ -2664,8 +2967,8 @@ impl<'a> Gtpv1IEGroupIter<'a> {
         self.buf
     }
 }
-impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
-    type Item = Gtpv1IEGroup<Cursor<'a>>;
+impl<'a> Iterator for GtpuIEGroupIter<'a> {
+    type Item = GtpuIEGroup<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -2678,7 +2981,7 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..2]),
                     };
                     self.buf = &self.buf[2..];
-                    Gtpv1IEGroup::RecoveryIE_(result)
+                    GtpuIEGroup::RecoveryIE_(result)
                 })
                 .ok(),
             16 => TunnelEndpointIdentData1IE::parse(self.buf)
@@ -2687,7 +2990,16 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[..5]),
                     };
                     self.buf = &self.buf[5..];
-                    Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result)
+                    GtpuIEGroup::TunnelEndpointIdentData1IE_(result)
+                })
+                .ok(),
+            141 => ExtHeaderTypeListIE::parse(self.buf)
+                .map(|_pkt| {
+                    let result = ExtHeaderTypeListIE {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    GtpuIEGroup::ExtHeaderTypeListIE_(result)
                 })
                 .ok(),
             133 => GtpuPeerAddrIE::parse(self.buf)
@@ -2696,7 +3008,7 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Gtpv1IEGroup::GtpuPeerAddrIE_(result)
+                    GtpuIEGroup::GtpuPeerAddrIE_(result)
                 })
                 .ok(),
             255 => PrivateExtentionIE::parse(self.buf)
@@ -2705,7 +3017,7 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Gtpv1IEGroup::PrivateExtentionIE_(result)
+                    GtpuIEGroup::PrivateExtentionIE_(result)
                 })
                 .ok(),
             231 => RecoveryTimeStampIE::parse(self.buf)
@@ -2714,7 +3026,16 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Gtpv1IEGroup::RecoveryTimeStampIE_(result)
+                    GtpuIEGroup::RecoveryTimeStampIE_(result)
+                })
+                .ok(),
+            230 => GtpuTunnelStatusInfoIE::parse(self.buf)
+                .map(|_pkt| {
+                    let result = GtpuTunnelStatusInfoIE {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    GtpuIEGroup::GtpuTunnelStatusInfoIE_(result)
                 })
                 .ok(),
             _ => None,
@@ -2723,10 +3044,10 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
 }
 
 #[derive(Debug)]
-pub struct Gtpv1IEGroupIterMut<'a> {
+pub struct GtpuIEGroupIterMut<'a> {
     buf: &'a mut [u8],
 }
-impl<'a> Gtpv1IEGroupIterMut<'a> {
+impl<'a> GtpuIEGroupIterMut<'a> {
     pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
         Self { buf: slice_mut }
     }
@@ -2735,8 +3056,8 @@ impl<'a> Gtpv1IEGroupIterMut<'a> {
         &self.buf[..]
     }
 }
-impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
-    type Item = Gtpv1IEGroup<CursorMut<'a>>;
+impl<'a> Iterator for GtpuIEGroupIterMut<'a> {
+    type Item = GtpuIEGroup<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -2750,7 +3071,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                     let result = RecoveryIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::RecoveryIE_(result))
+                    Some(GtpuIEGroup::RecoveryIE_(result))
                 }
                 Err(_) => None,
             },
@@ -2761,7 +3082,20 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                     let result = TunnelEndpointIdentData1IE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::TunnelEndpointIdentData1IE_(result))
+                    Some(GtpuIEGroup::TunnelEndpointIdentData1IE_(result))
+                }
+                Err(_) => None,
+            },
+            141 => match ExtHeaderTypeListIE::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = ExtHeaderTypeListIE {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(GtpuIEGroup::ExtHeaderTypeListIE_(result))
                 }
                 Err(_) => None,
             },
@@ -2774,7 +3108,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                     let result = GtpuPeerAddrIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::GtpuPeerAddrIE_(result))
+                    Some(GtpuIEGroup::GtpuPeerAddrIE_(result))
                 }
                 Err(_) => None,
             },
@@ -2787,7 +3121,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                     let result = PrivateExtentionIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::PrivateExtentionIE_(result))
+                    Some(GtpuIEGroup::PrivateExtentionIE_(result))
                 }
                 Err(_) => None,
             },
@@ -2800,7 +3134,20 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                     let result = RecoveryTimeStampIE {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Gtpv1IEGroup::RecoveryTimeStampIE_(result))
+                    Some(GtpuIEGroup::RecoveryTimeStampIE_(result))
+                }
+                Err(_) => None,
+            },
+            230 => match GtpuTunnelStatusInfoIE::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = GtpuTunnelStatusInfoIE {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(GtpuIEGroup::GtpuTunnelStatusInfoIE_(result))
                 }
                 Err(_) => None,
             },

@@ -6,7 +6,7 @@ use crate::cursors::*;
 use crate::traits::*;
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 
-use super::GtpNextExtention;
+use super::GtpuNextExtention;
 %%
 
 // Telecom protocols are too complex, we try to converge
@@ -39,10 +39,10 @@ packet Gtpv1 {
 
 %%
 impl<T: Buf> Gtpv1<T> {
-    /// A customized `header_len` function. 
+    /// A customized `header_len` function.
     /// The header length of Gtpv1 protocol is either 8 or 12 bytes, depending
     /// on the values of the sequence_present, extention_header_present and npdu_present
-    /// flag bits. 
+    /// flag bits.
     #[inline]
     pub fn header_len(&self) -> usize {
         let first_byte = self.buf.chunk()[0];
@@ -80,9 +80,9 @@ impl<T: Buf> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn next_extention_header(&self) -> GtpNextExtention {
+    pub fn next_extention_header(&self) -> u8 {
         assert!(self.header_len() == 12);
-        self.buf.chunk()[11].into()
+        self.buf.chunk()[11]
     }
 }
 
@@ -112,9 +112,9 @@ impl<T: PktBufMut> Gtpv1<T> {
     /// # Panics
     /// This function panics if `self.header_len() != 8`.
     #[inline]
-    pub fn set_next_extention_header(&mut self, value: GtpNextExtention) {
+    pub fn set_next_extention_header(&mut self, value: u8) {
         assert!(self.header_len() == 12);
-        self.buf.chunk_mut()[11] = value.into();
+        self.buf.chunk_mut()[11] = value;
     }
 }
 %%
@@ -124,7 +124,7 @@ packet ExtUdpPort {
     header = [
         len = Field{bit = 8, default=@1},
         udp_port = Field{bit = 16},
-        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+        next_extention_header = Field{bit = 8}
     ]
 }
 
@@ -132,8 +132,8 @@ packet ExtUdpPort {
 packet ExtPduNumber {
     header = [
         len = Field{bit = 8, default=@1},
-        udp_port = Field{bit = 16},
-        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+        pdcp_number = Field{bit = 16},
+        next_extention_header = Field{bit = 8}
     ]
 }
 
@@ -146,7 +146,7 @@ packet ExtLongPduNumber {
         spare2 = Field{bit = 8},
         spare3 = Field{bit = 8},
         spare4 = Field{bit = 8},
-        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+        next_extention_header = Field{bit = 8}
     ]
 }
 
@@ -156,7 +156,7 @@ packet ExtServiceClassIndicator {
         len = Field{bit = 8, default=@1},
         service_class_indicator = Field{bit = 8},
         spare = Field{bit = 8},
-        next_extention_header = Field{bit = 8, arg=%%GtpNextExtention%%}
+        next_extention_header = Field{bit = 8}
     ]
 }
 
@@ -181,8 +181,8 @@ impl<T: Buf> ExtContainer<T> {
 
     /// Get the value of the next extention header type.
     #[inline]
-    pub fn next_extention_header_type(&self) -> GtpNextExtention {
-        self.buf.chunk()[self.header_len() as usize - 1].into()
+    pub fn next_extention_header_type(&self) -> u8 {
+        self.buf.chunk()[self.header_len() as usize - 1]
     }
 }
 
@@ -197,9 +197,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 
     /// Set the next extention header type.
     #[inline]
-    pub fn set_next_extention_header_type(&mut self, value: GtpNextExtention) {
+    pub fn set_next_extention_header_type(&mut self, value: u8) {
         let index = self.header_len() as usize - 1;
-        self.buf.chunk_mut()[index] = value.into();
+        self.buf.chunk_mut()[index] = value;
     }
 }
 %%
@@ -240,7 +240,7 @@ packet UlPduSessionInfo {
     cond = (pdu_type == 1)
 }
 
-group PduSessionInfoGroup =  {
+group PduSessionUp =  {
    members = [
         DlPduSessionInfo,
         UlPduSessionInfo
@@ -248,7 +248,7 @@ group PduSessionInfoGroup =  {
 }
 
 // Defined according to TS 138 425
-packet NrUpFrameDlUserData {
+packet DlUserData {
     header = [
         pdu_type = Field{bit = 4, default=@0},
         spare1 = Field{bit = 1},
@@ -267,7 +267,7 @@ packet NrUpFrameDlUserData {
 }
 
 // Defined according to TS 138 425
-packet NrUpFrameDlDataDeliveryStatus {
+packet DlDataDeliveryStatus {
     header = [
         pdu_type = Field{bit = 4, default=@1},
         highest_trans_nr_pdcp_sn_ind = Field{bit = 1},
@@ -286,7 +286,7 @@ packet NrUpFrameDlDataDeliveryStatus {
 }
 
 // Defined according to TS 138 425
-packet NrUpFrameAssistInfoData {
+packet AssistanceInformationData {
     header = [
         pdu_type = Field{bit = 4, default=@2},
         pdcp_dupl_ind = Field{bit = 1},        
@@ -299,15 +299,15 @@ packet NrUpFrameAssistInfoData {
     cond = (pdu_type == 2)
 }
 
-group NrUpFrameGroup =  {
+group NrUp =  {
    members = [
-        NrUpFrameDlUserData,
-        NrUpFrameDlDataDeliveryStatus,
-        NrUpFrameAssistInfoData
+        DlUserData,
+        DlDataDeliveryStatus,
+        AssistanceInformationData
     ]
 }
 
-// The information elements for gtp-c, defined according to TS 129 281.
+// The information elements for gtp-u, defined according to TS 129 281.
 
 packet RecoveryIE {
     header = [
@@ -337,7 +337,16 @@ packet GtpuPeerAddrIE {
 }
 
 // 8.5 Extention header type list 
-// The definition is not clear, we omit the implementation.
+packet ExtHeaderTypeListIE {
+    header = [
+        type_ = Field{bit = 8, default=@141},
+        len = Field{bit = 8, gen = false},
+    ],
+    length = [
+        header_len = len+2
+    ],
+    cond = (type_==141)
+}
 
 packet PrivateExtentionIE {
     header = [
@@ -352,7 +361,18 @@ packet PrivateExtentionIE {
 }
 
 // 8.7 Gtp-u tunnel status information.
-// The definition is not clear, we omit the implementation.
+packet GtpuTunnelStatusInfoIE {
+    header = [
+        type_ = Field{bit = 8, default=@230},
+        len = Field{bit = 16, default=1, gen = false},
+        spare = Field{bit = 7},
+        spoc = Field{bit = 1}
+    ],
+    length = [
+        header_len = len + 3
+    ],
+    cond = (type_==230),
+}
 
 packet RecoveryTimeStampIE {
     header = [
@@ -366,13 +386,15 @@ packet RecoveryTimeStampIE {
     cond = (type_==231)
 }
 
-group Gtpv1IEGroup = {
+group GtpuIEGroup = {
     members = [
         RecoveryIE,
         TunnelEndpointIdentData1IE,
+        ExtHeaderTypeListIE,
         GtpuPeerAddrIE,
         PrivateExtentionIE,
         RecoveryTimeStampIE,
+        GtpuTunnelStatusInfoIE
     ],
     enable_iter=true
 }
