@@ -2685,7 +2685,7 @@ impl<'a> ExtHeaderTypeListIE<CursorMut<'a>> {
 /// A constant that defines the fixed byte length of the PrivateExtentionIE protocol header.
 pub const PRIVATE_EXTENTION_IE_HEADER_LEN: usize = 5;
 /// A fixed PrivateExtentionIE header.
-pub const PRIVATE_EXTENTION_IE_HEADER_TEMPLATE: [u8; 5] = [0xff, 0x00, 0x05, 0x00, 0x00];
+pub const PRIVATE_EXTENTION_IE_HEADER_TEMPLATE: [u8; 5] = [0xff, 0x00, 0x02, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct PrivateExtentionIE<T> {

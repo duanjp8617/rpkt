@@ -369,7 +369,7 @@ packet ExtHeaderTypeListIE {
 packet PrivateExtentionIE {
     header = [
         type_ = Field{bit = 8, default=@255},
-        len = Field{bit = 16, default=5, gen = false},
+        len = Field{bit = 16, default=2, gen = false},
         extention_ident = Field{bit = 16},
     ],
     length = [
