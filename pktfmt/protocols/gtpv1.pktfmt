@@ -395,7 +395,7 @@ packet GtpuTunnelStatusInfoIE {
 packet RecoveryTimeStampIE {
     header = [
         type_ = Field{bit = 8, default=@231},
-        len = Field{bit = 16, default=7, gen = false},
+        len = Field{bit = 16, default=4, gen = false},
         recovery_time_stamp = Field{bit = 32},
     ],
     length = [
