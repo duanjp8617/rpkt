@@ -3213,11 +3213,6 @@ impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
@@ -3225,13 +3220,12 @@ impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
         &self.buf.chunk()[0..4]
     }
     #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[4..header_len]
-    }
-    #[inline]
     pub fn type_(&self) -> u8 {
         self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
     pub fn spare(&self) -> u8 {
@@ -3241,38 +3235,32 @@ impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
     pub fn spoc(&self) -> u8 {
         self.buf.chunk()[3] & 0x1
     }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 3
-    }
 }
 impl<T: PktBuf> GtpuTunnelStatusInfoIE<T> {
     #[inline]
     pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(header_len);
+        buf.advance(4);
         buf
     }
 }
 impl<T: PktBufMut> GtpuTunnelStatusInfoIE<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = GtpuTunnelStatusInfoIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
+        assert!(buf.chunk_headroom() >= 4);
+        buf.move_back(4);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[4..header_len]
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 230);
         self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 1);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_spare(&mut self, value: u8) {
@@ -3284,11 +3272,6 @@ impl<T: PktBufMut> GtpuTunnelStatusInfoIE<T> {
         assert!(value <= 0x1);
         self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xfe) | value;
     }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65538) && (value >= 3));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 3) as u16).to_be_bytes());
-    }
 }
 impl<'a> GtpuTunnelStatusInfoIE<Cursor<'a>> {
     #[inline]
@@ -3298,17 +3281,11 @@ impl<'a> GtpuTunnelStatusInfoIE<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        Cursor::new(&self.buf.chunk()[4..])
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -3325,17 +3302,11 @@ impl<'a> GtpuTunnelStatusInfoIE<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        CursorMut::new(&mut self.buf.chunk_mut()[4..])
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -3375,11 +3346,6 @@ impl<T: Buf> RecoveryTimeStampIE<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
@@ -3387,45 +3353,33 @@ impl<T: Buf> RecoveryTimeStampIE<T> {
         &self.buf.chunk()[0..7]
     }
     #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[7..header_len]
-    }
-    #[inline]
     pub fn type_(&self) -> u8 {
         self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
     }
     #[inline]
     pub fn recovery_time_stamp(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[3..7]).try_into().unwrap())
     }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 3
-    }
 }
 impl<T: PktBuf> RecoveryTimeStampIE<T> {
     #[inline]
     pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(header_len);
+        buf.advance(7);
         buf
     }
 }
 impl<T: PktBufMut> RecoveryTimeStampIE<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
-        let header_len = RecoveryTimeStampIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 7) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
         (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[7..header_len]
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -3433,13 +3387,13 @@ impl<T: PktBufMut> RecoveryTimeStampIE<T> {
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
-    pub fn set_recovery_time_stamp(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[3..7]).copy_from_slice(&value.to_be_bytes());
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 4);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65538) && (value >= 3));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 3) as u16).to_be_bytes());
+    pub fn set_recovery_time_stamp(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[3..7]).copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> RecoveryTimeStampIE<Cursor<'a>> {
@@ -3450,17 +3404,11 @@ impl<'a> RecoveryTimeStampIE<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        Cursor::new(&self.buf.chunk()[7..])
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -3477,17 +3425,11 @@ impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -3624,18 +3566,18 @@ impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
             231 => RecoveryTimeStampIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = RecoveryTimeStampIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..7]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[7..];
                     Gtpv1IEGroup::RecoveryTimeStampIE_(result)
                 })
                 .ok(),
             230 => GtpuTunnelStatusInfoIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = GtpuTunnelStatusInfoIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..4]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[4..];
                     Gtpv1IEGroup::GtpuTunnelStatusInfoIE_(result)
                 })
                 .ok(),
@@ -3750,9 +3692,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             231 => match RecoveryTimeStampIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
                     self.buf = snd;
                     let result = RecoveryTimeStampIE {
                         buf: CursorMut::new(fst),
@@ -3763,9 +3703,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             230 => match GtpuTunnelStatusInfoIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
                     self.buf = snd;
                     let result = GtpuTunnelStatusInfoIE {
                         buf: CursorMut::new(fst),

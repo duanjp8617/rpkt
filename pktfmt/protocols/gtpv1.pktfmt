@@ -573,12 +573,9 @@ packet PrivateExtentionIE {
 packet GtpuTunnelStatusInfoIE {
     header = [
         type_ = Field{bit = 8, default=@230},
-        len = Field{bit = 16, default=1, gen = false},
+        len = Field{bit = 16, default=@1},
         spare = Field{bit = 7},
         spoc = Field{bit = 1}
-    ],
-    length = [
-        header_len = len + 3
     ],
     cond = (type_==230),
 }
@@ -586,11 +583,8 @@ packet GtpuTunnelStatusInfoIE {
 packet RecoveryTimeStampIE {
     header = [
         type_ = Field{bit = 8, default=@231},
-        len = Field{bit = 16, default=4, gen = false},
+        len = Field{bit = 16, default=@4},
         recovery_time_stamp = Field{bit = 32},
-    ],
-    length = [
-        header_len = len+3
     ],
     cond = (type_==231)
 }

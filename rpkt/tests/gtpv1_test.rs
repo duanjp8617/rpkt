@@ -554,8 +554,3 @@ fn gtp_pdu_session_container_build() {
     let eth_release = eth.release();
     assert_eq!(eth_release.chunk(), &pkt);
 }
-
-#[test]
-fn p() {
-    to_hex_dump("gtpv2-with-piggyback.dat");
-}
