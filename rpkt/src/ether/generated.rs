@@ -30,10 +30,6 @@ impl<T: Buf> EtherFrame<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 14] {
-        ETHER_FRAME_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 14 {
@@ -110,6 +106,10 @@ impl<'a> EtherFrame<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 14] {
+        ETHER_FRAME_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> EtherFrame<CursorMut<'a>> {
     #[inline]
@@ -156,10 +156,6 @@ impl<T: Buf> EtherDot3Frame<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 14] {
-        ETHER_DOT3_FRAME_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -251,6 +247,10 @@ impl<'a> EtherDot3Frame<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 14] {
+        ETHER_DOT3_FRAME_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> EtherDot3Frame<CursorMut<'a>> {

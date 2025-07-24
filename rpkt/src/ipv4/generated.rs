@@ -31,10 +31,6 @@ impl<T: Buf> Ipv4<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 20] {
-        IPV4_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 20 {
@@ -254,6 +250,10 @@ impl<'a> Ipv4<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 20] {
+        IPV4_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> Ipv4<CursorMut<'a>> {
     #[inline]
@@ -341,10 +341,6 @@ impl<T: Buf> EolOption<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 1] {
-        EOL_OPTION_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 1 {
@@ -404,6 +400,10 @@ impl<'a> EolOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        EOL_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
@@ -448,10 +448,6 @@ impl<T: Buf> NopOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 1] {
-        NOP_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -513,6 +509,10 @@ impl<'a> NopOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        NOP_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
@@ -557,10 +557,6 @@ impl<T: Buf> TimestampOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        TIMESTAMP_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -679,6 +675,10 @@ impl<'a> TimestampOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        TIMESTAMP_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> TimestampOption<CursorMut<'a>> {
     #[inline]
@@ -729,10 +729,6 @@ impl<T: Buf> RecordRouteOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        RECORD_ROUTE_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -833,6 +829,10 @@ impl<'a> RecordRouteOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        RECORD_ROUTE_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> RecordRouteOption<CursorMut<'a>> {
     #[inline]
@@ -883,10 +883,6 @@ impl<T: Buf> RouteAlertOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        ROUTE_ALERT_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -975,6 +971,10 @@ impl<'a> RouteAlertOption<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        ROUTE_ALERT_OPTION_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> RouteAlertOption<CursorMut<'a>> {

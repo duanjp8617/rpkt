@@ -86,7 +86,7 @@ fn gtpv2_with_teid_parse() {
             ie.var_header_slice()[3]
         ),
         Ipv4Addr::from_str("111.71.236.49").unwrap()
-    );    
+    );
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::AggregateMaxBitRateIE_(pkt) => pkt,
@@ -104,7 +104,7 @@ fn gtpv2_with_teid_parse() {
     assert_eq!(
         ie.var_header_slice(),
         &[0x53, 0x02, 0x89, 0x70, 0x72, 0x61, 0x23, 0x60][..]
-    );    
+    );
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::UeTimeZoneIE_(pkt) => pkt,
@@ -160,13 +160,13 @@ fn gtpv2_with_teid_build() {
     let mut pbuf = CursorMut::new(&mut buf);
     pbuf.advance(1600);
 
-    let mut id_hdr = RECOVERY_IE_HEADER_TEMPLATE.clone();
+    let mut id_hdr = RecoveryIE::default_header();
     RecoveryIE::from_header_array_mut(&mut id_hdr).set_header_len(1 + 4);
 
     let mut ie = RecoveryIE::prepend_header(pbuf, &id_hdr);
     ie.var_header_slice_mut()[0] = 18;
 
-    let mut id_hdr = BEARER_CONTEXT_IE_HEADER_TEMPLATE.clone();
+    let mut id_hdr = BearerContextIE::default_header();
     BearerContextIE::from_header_array_mut(&mut id_hdr).set_header_len(18 + 4);
 
     let mut ie = BearerContextIE::prepend_header(ie.release(), &id_hdr);
@@ -174,7 +174,7 @@ fn gtpv2_with_teid_build() {
         let mut pbuf = CursorMut::new(ie.var_header_slice_mut());
         pbuf.advance(18);
 
-        let mut id_hdr = FULLY_QUALIFIED_TEID_IE_HEADER_TEMPLATE.clone();
+        let mut id_hdr = FullyQualifiedTeidIE::default_header();
         FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr).set_header_len(9 + 4);
 
         let mut ie = FullyQualifiedTeidIE::prepend_header(pbuf, &id_hdr);
@@ -197,7 +197,7 @@ fn gtpv2_with_teid_build() {
     ie.set_time_zone(0x23);
     ie.set_daylight_saving_time(0);
 
-    let mut id_hdr = MOBILE_EQUIPMENT_ID_IE_HEADER_TEMPLATE.clone();
+    let mut id_hdr = MobileEquipmentIdIE::default_header();
     MobileEquipmentIdIE::from_header_array_mut(&mut id_hdr).set_header_len(8 + 4);
 
     let mut ie = MobileEquipmentIdIE::prepend_header(ie.release(), &id_hdr);
@@ -211,7 +211,7 @@ fn gtpv2_with_teid_build() {
     ie.set_apn_ambr_for_downlink(2048);
     ie.set_apn_ambr_for_uplink(2048);
 
-    let mut id_hdr = FULLY_QUALIFIED_TEID_IE_HEADER_TEMPLATE.clone();
+    let mut id_hdr = FullyQualifiedTeidIE::default_header();
     FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr)
         .set_header_len(4 + FULLY_QUALIFIED_TEID_IE_HEADER_LEN as u32);
     let mut ie = FullyQualifiedTeidIE::prepend_header(ie.release(), &id_hdr);
@@ -237,7 +237,7 @@ fn gtpv2_with_teid_build() {
     ie.set_mnc_digit2(2);
     ie.set_mnc_digit3(0xf);
 
-    let mut id_hdr = USER_LOCATION_INFO_IE_HEADER_TEMPLATE.clone();
+    let mut id_hdr = UserLocationInfoIE::default_header();
     UserLocationInfoIE::from_header_array_mut(&mut id_hdr).set_header_len(4 + 13);
     let mut ie = UserLocationInfoIE::prepend_header(ie.release(), &id_hdr);
     ie.set_ecgi(true);
@@ -248,7 +248,7 @@ fn gtpv2_with_teid_build() {
         ][..],
     );
 
-    let mut id_hdr = GTPV2_HEADER_TEMPLATE.clone();
+    let mut id_hdr = Gtpv2::default_header();
     Gtpv2::from_header_array_mut(&mut id_hdr).set_teid_present(true);
     let mut gtp = Gtpv2::prepend_header(ie.release(), &id_hdr);
     gtp.set_message_type(34);

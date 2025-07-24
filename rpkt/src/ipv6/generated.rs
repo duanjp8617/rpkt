@@ -33,10 +33,6 @@ impl<T: Buf> Ipv6<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 40] {
-        IPV6_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 40 {
@@ -172,6 +168,10 @@ impl<'a> Ipv6<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 40] {
+        IPV6_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> Ipv6<CursorMut<'a>> {

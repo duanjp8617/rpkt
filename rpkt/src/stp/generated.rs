@@ -30,10 +30,6 @@ impl<T: Buf> StpTcnBpdu<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        STP_TCN_BPDU_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -113,6 +109,10 @@ impl<'a> StpTcnBpdu<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        STP_TCN_BPDU_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> StpTcnBpdu<CursorMut<'a>> {
     #[inline]
@@ -161,10 +161,6 @@ impl<T: Buf> StpConfBpdu<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 35] {
-        STP_CONF_BPDU_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -305,6 +301,10 @@ impl<'a> StpConfBpdu<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 35] {
+        STP_CONF_BPDU_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> StpConfBpdu<CursorMut<'a>> {
@@ -467,10 +467,6 @@ impl<T: Buf> RstpConfBpdu<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 36] {
-        RSTP_CONF_BPDU_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 36 {
@@ -617,6 +613,10 @@ impl<'a> RstpConfBpdu<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 36] {
+        RSTP_CONF_BPDU_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> RstpConfBpdu<CursorMut<'a>> {
@@ -781,10 +781,6 @@ impl<T: Buf> MstpConfBpdu<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 102] {
-        MSTP_CONF_BPDU_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1031,6 +1027,10 @@ impl<'a> MstpConfBpdu<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 102] {
+        MSTP_CONF_BPDU_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> MstpConfBpdu<CursorMut<'a>> {
@@ -1285,10 +1285,6 @@ impl<T: Buf> MstiConf<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 16] {
-        MSTI_CONF_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 16 {
@@ -1396,6 +1392,10 @@ impl<'a> MstiConf<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 16] {
+        MSTI_CONF_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> MstiConf<CursorMut<'a>> {

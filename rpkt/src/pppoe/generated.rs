@@ -30,10 +30,6 @@ impl<T: Buf> PppoeSession<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 8] {
-        PPPOE_SESSION_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 8 {
@@ -157,6 +153,10 @@ impl<'a> PppoeSession<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        PPPOE_SESSION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> PppoeSession<CursorMut<'a>> {
     #[inline]
@@ -207,10 +207,6 @@ impl<T: Buf> PppoeDiscovery<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 6] {
-        PPPOE_DISCOVERY_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -326,6 +322,10 @@ impl<'a> PppoeDiscovery<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        PPPOE_DISCOVERY_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> PppoeDiscovery<CursorMut<'a>> {
     #[inline]
@@ -395,10 +395,6 @@ impl<T: Buf> PppoeTag<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        PPPOE_TAG_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -492,6 +488,10 @@ impl<'a> PppoeTag<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        PPPOE_TAG_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> PppoeTag<CursorMut<'a>> {

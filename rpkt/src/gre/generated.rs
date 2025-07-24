@@ -30,10 +30,6 @@ impl<T: Buf> Gre<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        GRE_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -188,6 +184,10 @@ impl<'a> Gre<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        GRE_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> Gre<CursorMut<'a>> {
@@ -369,10 +369,6 @@ impl<T: Buf> GreForPPTP<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 8] {
-        GRE_FOR_PPTP_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -574,6 +570,10 @@ impl<'a> GreForPPTP<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        GRE_FOR_PPTP_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> GreForPPTP<CursorMut<'a>> {
     #[inline]
@@ -694,10 +694,6 @@ impl<T: Buf> PPTP<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        PPTP_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -771,6 +767,10 @@ impl<'a> PPTP<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        PPTP_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> PPTP<CursorMut<'a>> {

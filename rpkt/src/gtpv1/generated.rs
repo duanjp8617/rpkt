@@ -30,10 +30,6 @@ impl<T: Buf> Gtpv1<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 8] {
-        GTPV1_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 8 {
@@ -199,6 +195,10 @@ impl<'a> Gtpv1<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        GTPV1_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> Gtpv1<CursorMut<'a>> {
     #[inline]
@@ -333,10 +333,6 @@ impl<T: Buf> ExtUdpPort<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        EXT_UDP_PORT_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -412,6 +408,10 @@ impl<'a> ExtUdpPort<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_UDP_PORT_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtUdpPort<CursorMut<'a>> {
     #[inline]
@@ -456,10 +456,6 @@ impl<T: Buf> ExtPduNumber<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        EXT_PDU_NUMBER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -537,6 +533,10 @@ impl<'a> ExtPduNumber<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_PDU_NUMBER_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtPduNumber<CursorMut<'a>> {
     #[inline]
@@ -582,10 +582,6 @@ impl<T: Buf> ExtLongPduNumber<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 8] {
-        EXT_LONG_PDU_NUMBER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -698,6 +694,10 @@ impl<'a> ExtLongPduNumber<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        EXT_LONG_PDU_NUMBER_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtLongPduNumber<CursorMut<'a>> {
     #[inline]
@@ -742,10 +742,6 @@ impl<T: Buf> ExtServiceClassIndicator<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        EXT_SERVICE_CLASS_INDICATOR_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -831,6 +827,10 @@ impl<'a> ExtServiceClassIndicator<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_SERVICE_CLASS_INDICATOR_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtServiceClassIndicator<CursorMut<'a>> {
     #[inline]
@@ -875,10 +875,6 @@ impl<T: Buf> ExtContainer<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 1] {
-        EXT_CONTAINER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -963,6 +959,10 @@ impl<'a> ExtContainer<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        EXT_CONTAINER_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtContainer<CursorMut<'a>> {
     #[inline]
@@ -1044,10 +1044,6 @@ impl<T: Buf> DlPduSessionInfo<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        DL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1204,6 +1200,10 @@ impl<'a> DlPduSessionInfo<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        DL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> DlPduSessionInfo<CursorMut<'a>> {
     #[inline]
@@ -1286,10 +1286,6 @@ impl<T: Buf> UlPduSessionInfo<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        UL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1446,6 +1442,10 @@ impl<'a> UlPduSessionInfo<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        UL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> UlPduSessionInfo<CursorMut<'a>> {
     #[inline]
@@ -1547,10 +1547,6 @@ impl<T: Buf> DlUserData<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 6] {
-        DL_USER_DATA_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1743,6 +1739,10 @@ impl<'a> DlUserData<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        DL_USER_DATA_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> DlUserData<CursorMut<'a>> {
     #[inline]
@@ -1826,10 +1826,6 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 7] {
-        DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2021,6 +2017,10 @@ impl<'a> DlDataDeliveryStatus<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> DlDataDeliveryStatus<CursorMut<'a>> {
     #[inline]
@@ -2103,10 +2103,6 @@ impl<T: Buf> AssistanceInformationData<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2255,6 +2251,10 @@ impl<'a> AssistanceInformationData<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> AssistanceInformationData<CursorMut<'a>> {
     #[inline]
@@ -2361,10 +2361,6 @@ impl<T: Buf> CauseIE<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 2] {
-        CAUSE_IE_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 2 {
@@ -2432,6 +2428,10 @@ impl<'a> CauseIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        CAUSE_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> CauseIE<CursorMut<'a>> {
     #[inline]
@@ -2476,10 +2476,6 @@ impl<T: Buf> RecoveryIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 2] {
-        RECOVERY_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2549,6 +2545,10 @@ impl<'a> RecoveryIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        RECOVERY_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> RecoveryIE<CursorMut<'a>> {
     #[inline]
@@ -2593,10 +2593,6 @@ impl<T: Buf> TunnelEndpointIdentData1IE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 5] {
-        TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2666,6 +2662,10 @@ impl<'a> TunnelEndpointIdentData1IE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> TunnelEndpointIdentData1IE<CursorMut<'a>> {
     #[inline]
@@ -2711,10 +2711,6 @@ impl<T: Buf> TunnelEndpointIdentControlPlaneIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 5] {
-        TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2784,6 +2780,10 @@ impl<'a> TunnelEndpointIdentControlPlaneIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> TunnelEndpointIdentControlPlaneIE<CursorMut<'a>> {
     #[inline]
@@ -2828,10 +2828,6 @@ impl<T: Buf> GtpuPeerAddrIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        GTPU_PEER_ADDR_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2925,6 +2921,10 @@ impl<'a> GtpuPeerAddrIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        GTPU_PEER_ADDR_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> GtpuPeerAddrIE<CursorMut<'a>> {
     #[inline]
@@ -2975,10 +2975,6 @@ impl<T: Buf> ExtHeaderTypeListIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 2] {
-        EXT_HEADER_TYPE_LIST_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -3072,6 +3068,10 @@ impl<'a> ExtHeaderTypeListIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        EXT_HEADER_TYPE_LIST_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> ExtHeaderTypeListIE<CursorMut<'a>> {
     #[inline]
@@ -3122,10 +3122,6 @@ impl<T: Buf> PrivateExtentionIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 5] {
-        PRIVATE_EXTENTION_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -3227,6 +3223,10 @@ impl<'a> PrivateExtentionIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        PRIVATE_EXTENTION_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> PrivateExtentionIE<CursorMut<'a>> {
     #[inline]
@@ -3277,10 +3277,6 @@ impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        GTPU_TUNNEL_STATUS_INFO_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -3369,6 +3365,10 @@ impl<'a> GtpuTunnelStatusInfoIE<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        GTPU_TUNNEL_STATUS_INFO_IE_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> GtpuTunnelStatusInfoIE<CursorMut<'a>> {
     #[inline]
@@ -3414,10 +3414,6 @@ impl<T: Buf> RecoveryTimeStampIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 7] {
-        RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -3495,6 +3491,10 @@ impl<'a> RecoveryTimeStampIE<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> RecoveryTimeStampIE<CursorMut<'a>> {

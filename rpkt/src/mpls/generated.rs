@@ -28,10 +28,6 @@ impl<T: Buf> Mpls<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        MPLS_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -117,6 +113,10 @@ impl<'a> Mpls<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        MPLS_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> Mpls<CursorMut<'a>> {

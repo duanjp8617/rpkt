@@ -30,10 +30,6 @@ impl<T: Buf> Tcp<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 20] {
-        TCP_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 20 {
@@ -253,6 +249,10 @@ impl<'a> Tcp<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 20] {
+        TCP_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> Tcp<CursorMut<'a>> {
     #[inline]
@@ -303,10 +303,6 @@ impl<T: Buf> EolOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 1] {
-        EOL_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -368,6 +364,10 @@ impl<'a> EolOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        EOL_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> EolOption<CursorMut<'a>> {
     #[inline]
@@ -412,10 +412,6 @@ impl<T: Buf> NopOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 1] {
-        NOP_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -477,6 +473,10 @@ impl<'a> NopOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        NOP_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> NopOption<CursorMut<'a>> {
     #[inline]
@@ -521,10 +521,6 @@ impl<T: Buf> MssOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        MSS_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -614,6 +610,10 @@ impl<'a> MssOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        MSS_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> MssOption<CursorMut<'a>> {
     #[inline]
@@ -662,10 +662,6 @@ impl<T: Buf> WsoptOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 3] {
-        WSOPT_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -755,6 +751,10 @@ impl<'a> WsoptOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        WSOPT_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> WsoptOption<CursorMut<'a>> {
     #[inline]
@@ -803,10 +803,6 @@ impl<T: Buf> SackpermOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 2] {
-        SACKPERM_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -888,6 +884,10 @@ impl<'a> SackpermOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        SACKPERM_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> SackpermOption<CursorMut<'a>> {
     #[inline]
@@ -936,10 +936,6 @@ impl<T: Buf> SackOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 2] {
-        SACK_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1032,6 +1028,10 @@ impl<'a> SackOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        SACK_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> SackOption<CursorMut<'a>> {
     #[inline]
@@ -1083,10 +1083,6 @@ impl<T: Buf> TsOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 10] {
-        TS_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1184,6 +1180,10 @@ impl<'a> TsOption<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 10] {
+        TS_OPTION_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> TsOption<CursorMut<'a>> {
     #[inline]
@@ -1235,10 +1235,6 @@ impl<T: Buf> FoOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 18] {
-        FO_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1327,6 +1323,10 @@ impl<'a> FoOption<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 18] {
+        FO_OPTION_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> FoOption<CursorMut<'a>> {

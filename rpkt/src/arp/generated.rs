@@ -33,10 +33,6 @@ impl<T: Buf> Arp<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 28] {
-        ARP_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 28 {
@@ -174,6 +170,10 @@ impl<'a> Arp<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 28] {
+        ARP_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> Arp<CursorMut<'a>> {

@@ -28,10 +28,6 @@ impl<T: Buf> VlanFrame<T> {
         self.buf
     }
     #[inline]
-    pub fn default_header() -> [u8; 4] {
-        VLAN_FRAME_HEADER_TEMPLATE.clone()
-    }
-    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -120,6 +116,10 @@ impl<'a> VlanFrame<Cursor<'a>> {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        VLAN_FRAME_HEADER_TEMPLATE.clone()
+    }
 }
 impl<'a> VlanFrame<CursorMut<'a>> {
     #[inline]
@@ -164,10 +164,6 @@ impl<T: Buf> VlanDot3Frame<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
-    }
-    #[inline]
-    pub fn default_header() -> [u8; 4] {
-        VLAN_DOT3_FRAME_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -271,6 +267,10 @@ impl<'a> VlanDot3Frame<Cursor<'a>> {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        VLAN_DOT3_FRAME_HEADER_TEMPLATE.clone()
     }
 }
 impl<'a> VlanDot3Frame<CursorMut<'a>> {

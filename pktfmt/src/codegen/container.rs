@@ -118,7 +118,7 @@ let header_len = (self.header_len() as usize);
         .unwrap();
     }
 
-    pub fn code_gen_for_fixed_header(
+    pub fn code_gen_for_default_header(
         header_len: &str,
         header_template_name: &str,
         output: &mut dyn Write,
