@@ -1185,6 +1185,10 @@ impl<T: Buf> RatTypeIE<T> {
         self.buf.chunk()[0]
     }
     #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
+    }
+    #[inline]
     pub fn cr_flag(&self) -> u8 {
         self.buf.chunk()[3] >> 4
     }
@@ -1217,6 +1221,11 @@ impl<T: PktBufMut> RatTypeIE<T> {
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 82);
         self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 1);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_cr_flag(&mut self, value: u8) {
@@ -1316,6 +1325,10 @@ impl<T: Buf> ServingNetworkIE<T> {
         self.buf.chunk()[0]
     }
     #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
+    }
+    #[inline]
     pub fn cr_flag(&self) -> u8 {
         self.buf.chunk()[3] >> 4
     }
@@ -1368,6 +1381,11 @@ impl<T: PktBufMut> ServingNetworkIE<T> {
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 83);
         self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 3);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_cr_flag(&mut self, value: u8) {
@@ -2084,6 +2102,10 @@ impl<T: Buf> UeTimeZoneIE<T> {
         self.buf.chunk()[0]
     }
     #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
+    }
+    #[inline]
     pub fn cr_flag(&self) -> u8 {
         self.buf.chunk()[3] >> 4
     }
@@ -2124,6 +2146,11 @@ impl<T: PktBufMut> UeTimeZoneIE<T> {
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 114);
         self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 2);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_cr_flag(&mut self, value: u8) {

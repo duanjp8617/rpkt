@@ -260,7 +260,7 @@ packet MobileEquipmentIdIE {
 packet RatTypeIE {
     header = [
         type_ = Field{bit = 8, default=@82},
-        len = Field{bit = 16, default = @1, gen = false},
+        len = Field{bit = 16, default = @1},
         cr_flag = Field{bit = 4},
         instance = Field{bit = 4},
         rat_type = Field{bit = 8},
@@ -272,7 +272,7 @@ packet RatTypeIE {
 packet ServingNetworkIE {
     header = [
         type_ = Field{bit = 8, default=@83},
-        len = Field{bit = 16, default = @3, gen = false},
+        len = Field{bit = 16, default = @3},
         cr_flag = Field{bit = 4},
         instance = Field{bit = 4},
         mcc_digit2 = Field{bit = 4},
@@ -343,7 +343,7 @@ packet BearerContextIE {
 packet UeTimeZoneIE {
     header = [
         type_ = Field{bit = 8, default=@114},
-        len = Field{bit = 16, default = @2, gen = false},
+        len = Field{bit = 16, default = @2},
         cr_flag = Field{bit = 4},
         instance = Field{bit = 4},
         time_zone = Field{bit = 8},

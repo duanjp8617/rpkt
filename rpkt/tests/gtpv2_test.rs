@@ -56,6 +56,7 @@ fn gtpv2_with_teid_parse() {
         Gtpv2IEGroup::ServingNetworkIE_(pkt) => pkt,
         _ => panic!(),
     };
+    assert_eq!(ie.len(), 3);
     assert_eq!(ie.mcc_digit1(), 4);
     assert_eq!(ie.mcc_digit2(), 6);
     assert_eq!(ie.mcc_digit3(), 6);
@@ -68,6 +69,7 @@ fn gtpv2_with_teid_parse() {
         _ => panic!(),
     };
     assert_eq!(ie.rat_type(), 6);
+    assert_eq!(ie.len(), 1);
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::FullyQualifiedTeidIE_(pkt) => pkt,
@@ -84,7 +86,7 @@ fn gtpv2_with_teid_parse() {
             ie.var_header_slice()[3]
         ),
         Ipv4Addr::from_str("111.71.236.49").unwrap()
-    );
+    );    
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::AggregateMaxBitRateIE_(pkt) => pkt,
@@ -92,6 +94,7 @@ fn gtpv2_with_teid_parse() {
     };
     assert_eq!(ie.apn_ambr_for_uplink(), 2048);
     assert_eq!(ie.apn_ambr_for_downlink(), 2048);
+    assert_eq!(ie.len(), 8);
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::MobileEquipmentIdIE_(pkt) => pkt,
@@ -101,7 +104,7 @@ fn gtpv2_with_teid_parse() {
     assert_eq!(
         ie.var_header_slice(),
         &[0x53, 0x02, 0x89, 0x70, 0x72, 0x61, 0x23, 0x60][..]
-    );
+    );    
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::UeTimeZoneIE_(pkt) => pkt,
@@ -109,6 +112,7 @@ fn gtpv2_with_teid_parse() {
     };
     assert_eq!(ie.time_zone(), 0x23);
     assert_eq!(ie.daylight_saving_time(), 0);
+    assert_eq!(ie.len(), 2);
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::BearerContextIE_(pkt) => pkt,
@@ -121,6 +125,7 @@ fn gtpv2_with_teid_parse() {
             _ => panic!(),
         };
         assert_eq!(sub_ie.eps_bearer_id(), 5);
+        assert_eq!(sub_ie.len(), 1);
 
         let sub_ie = match Gtpv2IEGroup::group_parse(sub_ie.payload()).unwrap() {
             Gtpv2IEGroup::FullyQualifiedTeidIE_(pkt) => pkt,
