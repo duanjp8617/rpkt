@@ -117,4 +117,20 @@ let header_len = (self.header_len() as usize);
         )
         .unwrap();
     }
+
+    pub fn code_gen_for_fixed_header(
+        header_len: &str,
+        header_template_name: &str,
+        output: &mut dyn Write,
+    ) {
+        write!(
+            output,
+            "#[inline]
+pub fn default_header() -> [u8; {header_len}] {{
+{header_template_name}.clone()
+}}
+"
+        )
+        .unwrap();
+    }
 }

@@ -28,6 +28,10 @@ impl<T: Buf> Gtpv2<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        GTPV2_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -384,6 +388,10 @@ impl<T: Buf> InternationalMobileSubscriberIdIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -544,6 +552,10 @@ impl<T: Buf> RecoveryIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        RECOVERY_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -709,6 +721,10 @@ impl<T: Buf> AggregateMaxBitRateIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 12] {
+        AGGREGATE_MAX_BIT_RATE_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 12 {
@@ -855,6 +871,10 @@ impl<T: Buf> EpsBearerIdIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        EPS_BEARER_ID_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1005,6 +1025,10 @@ impl<T: Buf> MobileEquipmentIdIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        MOBILE_EQUIPMENT_ID_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1168,6 +1192,10 @@ impl<T: Buf> RatTypeIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 5] {
+        RAT_TYPE_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 5 {
@@ -1306,6 +1334,10 @@ impl<T: Buf> ServingNetworkIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        SERVING_NETWORK_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1492,6 +1524,10 @@ impl<T: Buf> UserLocationInfoIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        USER_LOCATION_INFO_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1728,6 +1764,10 @@ impl<T: Buf> FullyQualifiedTeidIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 9] {
+        FULLY_QUALIFIED_TEID_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 9 {
@@ -1924,6 +1964,10 @@ impl<T: Buf> BearerContextIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        BEARER_CONTEXT_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -2083,6 +2127,10 @@ impl<T: Buf> UeTimeZoneIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        UE_TIME_ZONE_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {

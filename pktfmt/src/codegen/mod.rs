@@ -197,6 +197,11 @@ impl<'a> PktGen<'a> {
             Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
             Container::code_gen_for_buf("buf", "T", impl_block.get_writer());
             Container::code_gen_for_release("buf", "T", impl_block.get_writer());
+            Container::code_gen_for_fixed_header(
+                &format!("{}", self.item().header().header_len_in_bytes()),
+                &self.header_gen.header_template_name(),
+                impl_block.get_writer(),
+            );
 
             // Packet parse with format checking.
             parse.code_gen_for_pktbuf("parse", "buf", "T", impl_block.get_writer());

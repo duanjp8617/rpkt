@@ -30,6 +30,10 @@ impl<T: Buf> Tcp<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 20] {
+        TCP_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 20 {
@@ -301,6 +305,10 @@ impl<T: Buf> EolOption<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 1] {
+        EOL_OPTION_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 1 {
@@ -406,6 +414,10 @@ impl<T: Buf> NopOption<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 1] {
+        NOP_OPTION_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 1 {
@@ -509,6 +521,10 @@ impl<T: Buf> MssOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        MSS_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -648,6 +664,10 @@ impl<T: Buf> WsoptOption<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 3] {
+        WSOPT_OPTION_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 3 {
@@ -785,6 +805,10 @@ impl<T: Buf> SackpermOption<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 2] {
+        SACKPERM_OPTION_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 2 {
@@ -912,6 +936,10 @@ impl<T: Buf> SackOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        SACK_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1055,6 +1083,10 @@ impl<T: Buf> TsOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 10] {
+        TS_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1203,6 +1235,10 @@ impl<T: Buf> FoOption<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 18] {
+        FO_OPTION_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {

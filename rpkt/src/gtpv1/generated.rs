@@ -30,6 +30,10 @@ impl<T: Buf> Gtpv1<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 8] {
+        GTPV1_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 8 {
@@ -329,6 +333,10 @@ impl<T: Buf> ExtUdpPort<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_UDP_PORT_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -448,6 +456,10 @@ impl<T: Buf> ExtPduNumber<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_PDU_NUMBER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -570,6 +582,10 @@ impl<T: Buf> ExtLongPduNumber<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        EXT_LONG_PDU_NUMBER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -728,6 +744,10 @@ impl<T: Buf> ExtServiceClassIndicator<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        EXT_SERVICE_CLASS_INDICATOR_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -855,6 +875,10 @@ impl<T: Buf> ExtContainer<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        EXT_CONTAINER_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1020,6 +1044,10 @@ impl<T: Buf> DlPduSessionInfo<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        DL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1258,6 +1286,10 @@ impl<T: Buf> UlPduSessionInfo<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        UL_PDU_SESSION_INFO_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1515,6 +1547,10 @@ impl<T: Buf> DlUserData<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        DL_USER_DATA_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -1792,6 +1828,10 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 7] {
+        DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 7 {
@@ -2065,6 +2105,10 @@ impl<T: Buf> AssistanceInformationData<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 3] {
+        ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 3 {
@@ -2317,6 +2361,10 @@ impl<T: Buf> CauseIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 2] {
+        CAUSE_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 2 {
@@ -2430,6 +2478,10 @@ impl<T: Buf> RecoveryIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 2] {
+        RECOVERY_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 2 {
@@ -2541,6 +2593,10 @@ impl<T: Buf> TunnelEndpointIdentData1IE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        TUNNEL_ENDPOINT_IDENT_DATA1_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2657,6 +2713,10 @@ impl<T: Buf> TunnelEndpointIdentControlPlaneIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 5] {
+        TUNNEL_ENDPOINT_IDENT_CONTROL_PLANE_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 5 {
@@ -2768,6 +2828,10 @@ impl<T: Buf> GtpuPeerAddrIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 3] {
+        GTPU_PEER_ADDR_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -2913,6 +2977,10 @@ impl<T: Buf> ExtHeaderTypeListIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 2] {
+        EXT_HEADER_TYPE_LIST_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 2 {
@@ -3054,6 +3122,10 @@ impl<T: Buf> PrivateExtentionIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        PRIVATE_EXTENTION_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
@@ -3207,6 +3279,10 @@ impl<T: Buf> GtpuTunnelStatusInfoIE<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        GTPU_TUNNEL_STATUS_INFO_IE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -3338,6 +3414,10 @@ impl<T: Buf> RecoveryTimeStampIE<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        RECOVERY_TIME_STAMP_IE_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {

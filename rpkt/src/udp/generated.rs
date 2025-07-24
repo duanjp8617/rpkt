@@ -27,6 +27,10 @@ impl<T: Buf> Udp<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 8] {
+        UDP_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 8 {

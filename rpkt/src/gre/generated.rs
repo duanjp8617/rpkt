@@ -30,6 +30,10 @@ impl<T: Buf> Gre<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 4] {
+        GRE_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 4 {
@@ -367,6 +371,10 @@ impl<T: Buf> GreForPPTP<T> {
         self.buf
     }
     #[inline]
+    pub fn default_header() -> [u8; 8] {
+        GRE_FOR_PPTP_HEADER_TEMPLATE.clone()
+    }
+    #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
         if chunk_len < 8 {
@@ -684,6 +692,10 @@ impl<T: Buf> PPTP<T> {
     #[inline]
     pub fn release(self) -> T {
         self.buf
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        PPTP_HEADER_TEMPLATE.clone()
     }
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
