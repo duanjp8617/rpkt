@@ -1000,9 +1000,9 @@ impl<T: PktBufMut> ExtContainer<T> {
 }
 
 /// A constant that defines the fixed byte length of the DlPduSessionInfo protocol header.
-pub const DL_PDU_SESSION_INFO_HEADER_LEN: usize = 2;
+pub const DL_PDU_SESSION_INFO_HEADER_LEN: usize = 3;
 /// A fixed DlPduSessionInfo header.
-pub const DL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
+pub const DL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 3] = [0x01, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct DlPduSessionInfo<T> {
@@ -1024,122 +1024,154 @@ impl<T: Buf> DlPduSessionInfo<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 2 {
+        if chunk_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..2]
+        &self.buf.chunk()[0..3]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[3..header_len]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        self.buf.chunk()[1] >> 4
     }
     #[inline]
     pub fn qmp(&self) -> bool {
-        self.buf.chunk()[0] & 0x8 != 0
+        self.buf.chunk()[1] & 0x8 != 0
     }
     #[inline]
     pub fn snp(&self) -> bool {
-        self.buf.chunk()[0] & 0x4 != 0
+        self.buf.chunk()[1] & 0x4 != 0
     }
     #[inline]
     pub fn msnp(&self) -> bool {
-        self.buf.chunk()[0] & 0x2 != 0
+        self.buf.chunk()[1] & 0x2 != 0
     }
     #[inline]
     pub fn spare(&self) -> u8 {
-        self.buf.chunk()[0] & 0x1
+        self.buf.chunk()[1] & 0x1
     }
     #[inline]
     pub fn ppp(&self) -> bool {
-        self.buf.chunk()[1] & 0x80 != 0
+        self.buf.chunk()[2] & 0x80 != 0
     }
     #[inline]
     pub fn rqi(&self) -> bool {
-        self.buf.chunk()[1] & 0x40 != 0
+        self.buf.chunk()[2] & 0x40 != 0
     }
     #[inline]
     pub fn qos_flow_identifier(&self) -> u8 {
-        self.buf.chunk()[1] & 0x3f
+        self.buf.chunk()[2] & 0x3f
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[0]) as u16 * 4
     }
 }
 impl<T: PktBuf> DlPduSessionInfo<T> {
     #[inline]
     pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(2);
+        buf.advance(header_len);
         buf
     }
 }
 impl<T: PktBufMut> DlPduSessionInfo<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        assert!(buf.chunk_headroom() >= 2);
-        buf.move_back(2);
-        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
+        let header_len = DlPduSessionInfo::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 3) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[3..header_len]
     }
     #[inline]
     pub fn set_pdu_type(&mut self, value: u8) {
         assert!(value == 0);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_qmp(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_snp(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_msnp(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_spare(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
     #[inline]
     pub fn set_ppp(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x7f) | (value << 7);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x7f) | (value << 7);
     }
     #[inline]
     pub fn set_rqi(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xbf) | (value << 6);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xbf) | (value << 6);
     }
     #[inline]
     pub fn set_qos_flow_identifier(&mut self, value: u8) {
         assert!(value <= 0x3f);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xc0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1020) && (value % 4 == 0));
+        self.buf.chunk_mut()[0] = ((value / 4) as u8);
     }
 }
 impl<'a> DlPduSessionInfo<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[2..])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1149,28 +1181,66 @@ impl<'a> DlPduSessionInfo<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[2..])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
     }
 }
 
+impl<T: Buf> DlPduSessionInfo<T> {
+    /// Return a byte slice covering the variable content of the
+    /// DlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_PDU_SESSION_INFO_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlPduSessionInfo<T> {
+    /// Return a mutable byte slice of covering the variable content of the
+    /// DlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_PDU_SESSION_INFO_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+
 /// A constant that defines the fixed byte length of the UlPduSessionInfo protocol header.
-pub const UL_PDU_SESSION_INFO_HEADER_LEN: usize = 2;
+pub const UL_PDU_SESSION_INFO_HEADER_LEN: usize = 3;
 /// A fixed UlPduSessionInfo header.
-pub const UL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 2] = [0x10, 0x00];
+pub const UL_PDU_SESSION_INFO_HEADER_TEMPLATE: [u8; 3] = [0x01, 0x10, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct UlPduSessionInfo<T> {
@@ -1192,122 +1262,154 @@ impl<T: Buf> UlPduSessionInfo<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 2 {
+        if chunk_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..2]
+        &self.buf.chunk()[0..3]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[3..header_len]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        self.buf.chunk()[1] >> 4
     }
     #[inline]
     pub fn qmp(&self) -> u8 {
-        (self.buf.chunk()[0] >> 3) & 0x1
+        (self.buf.chunk()[1] >> 3) & 0x1
     }
     #[inline]
     pub fn dl_delay_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 2) & 0x1
+        (self.buf.chunk()[1] >> 2) & 0x1
     }
     #[inline]
     pub fn ul_delay_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 1) & 0x1
+        (self.buf.chunk()[1] >> 1) & 0x1
     }
     #[inline]
     pub fn snp(&self) -> u8 {
-        self.buf.chunk()[0] & 0x1
+        self.buf.chunk()[1] & 0x1
     }
     #[inline]
     pub fn n3_n9_delay_ind(&self) -> u8 {
-        self.buf.chunk()[1] >> 7
+        self.buf.chunk()[2] >> 7
     }
     #[inline]
     pub fn new_ie_flag(&self) -> u8 {
-        (self.buf.chunk()[1] >> 6) & 0x1
+        (self.buf.chunk()[2] >> 6) & 0x1
     }
     #[inline]
     pub fn qos_flow_identifier(&self) -> u8 {
-        self.buf.chunk()[1] & 0x3f
+        self.buf.chunk()[2] & 0x3f
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[0]) as u16 * 4
     }
 }
 impl<T: PktBuf> UlPduSessionInfo<T> {
     #[inline]
     pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(2);
+        buf.advance(header_len);
         buf
     }
 }
 impl<T: PktBufMut> UlPduSessionInfo<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        assert!(buf.chunk_headroom() >= 2);
-        buf.move_back(2);
-        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
+        let header_len = UlPduSessionInfo::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 3) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[3..header_len]
     }
     #[inline]
     pub fn set_pdu_type(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_qmp(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_dl_delay_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_ul_delay_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_snp(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
     #[inline]
     pub fn set_n3_n9_delay_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x7f) | (value << 7);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x7f) | (value << 7);
     }
     #[inline]
     pub fn set_new_ie_flag(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xbf) | (value << 6);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xbf) | (value << 6);
     }
     #[inline]
     pub fn set_qos_flow_identifier(&mut self, value: u8) {
         assert!(value <= 0x3f);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xc0) | value;
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xc0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1020) && (value % 4 == 0));
+        self.buf.chunk_mut()[0] = ((value / 4) as u8);
     }
 }
 impl<'a> UlPduSessionInfo<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[2..])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1317,21 +1419,59 @@ impl<'a> UlPduSessionInfo<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[2..])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
+    }
+}
+
+impl<T: Buf> UlPduSessionInfo<T> {
+    /// Return a byte slice covering the variable content of the
+    /// UlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[UL_PDU_SESSION_INFO_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> UlPduSessionInfo<T> {
+    /// Return a mutable byte slice of covering the variable content of the
+    /// UlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[UL_PDU_SESSION_INFO_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
     }
 }
 
@@ -1342,10 +1482,10 @@ pub enum PduSessionUp<T> {
 }
 impl<T: Buf> PduSessionUp<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 1 {
+        if buf.chunk().len() < 2 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[0] >> 4;
+        let cond_value0 = buf.chunk()[1] >> 4;
         match cond_value0 {
             0 => DlPduSessionInfo::parse(buf).map(|pkt| PduSessionUp::DlPduSessionInfo_(pkt)),
             1 => UlPduSessionInfo::parse(buf).map(|pkt| PduSessionUp::UlPduSessionInfo_(pkt)),
@@ -1355,9 +1495,9 @@ impl<T: Buf> PduSessionUp<T> {
 }
 
 /// A constant that defines the fixed byte length of the DlUserData protocol header.
-pub const DL_USER_DATA_HEADER_LEN: usize = 5;
+pub const DL_USER_DATA_HEADER_LEN: usize = 6;
 /// A fixed DlUserData header.
-pub const DL_USER_DATA_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
+pub const DL_USER_DATA_HEADER_TEMPLATE: [u8; 6] = [0x02, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct DlUserData<T> {
@@ -1379,158 +1519,190 @@ impl<T: Buf> DlUserData<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 5 {
+        if chunk_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..5]
+        &self.buf.chunk()[0..6]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[6..header_len]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        self.buf.chunk()[1] >> 4
     }
     #[inline]
     pub fn spare1(&self) -> u8 {
-        (self.buf.chunk()[0] >> 3) & 0x1
-    }
-    #[inline]
-    pub fn dl_discard_blocks(&self) -> u8 {
-        (self.buf.chunk()[0] >> 2) & 0x1
-    }
-    #[inline]
-    pub fn dl_flush(&self) -> u8 {
-        (self.buf.chunk()[0] >> 1) & 0x1
-    }
-    #[inline]
-    pub fn report_polling(&self) -> u8 {
-        self.buf.chunk()[0] & 0x1
-    }
-    #[inline]
-    pub fn spare2(&self) -> u8 {
-        self.buf.chunk()[1] >> 5
-    }
-    #[inline]
-    pub fn req_oos_report(&self) -> u8 {
-        (self.buf.chunk()[1] >> 4) & 0x1
-    }
-    #[inline]
-    pub fn report_deliverd(&self) -> u8 {
         (self.buf.chunk()[1] >> 3) & 0x1
     }
     #[inline]
-    pub fn user_data_exist(&self) -> u8 {
+    pub fn dl_discard_blocks(&self) -> u8 {
         (self.buf.chunk()[1] >> 2) & 0x1
     }
     #[inline]
-    pub fn assist_info_report_polling(&self) -> u8 {
+    pub fn dl_flush(&self) -> u8 {
         (self.buf.chunk()[1] >> 1) & 0x1
     }
     #[inline]
-    pub fn retrans_on(&self) -> u8 {
+    pub fn report_polling(&self) -> u8 {
         self.buf.chunk()[1] & 0x1
     }
     #[inline]
+    pub fn spare2(&self) -> u8 {
+        self.buf.chunk()[2] >> 5
+    }
+    #[inline]
+    pub fn req_oos_report(&self) -> u8 {
+        (self.buf.chunk()[2] >> 4) & 0x1
+    }
+    #[inline]
+    pub fn report_deliverd(&self) -> u8 {
+        (self.buf.chunk()[2] >> 3) & 0x1
+    }
+    #[inline]
+    pub fn user_data_exist(&self) -> u8 {
+        (self.buf.chunk()[2] >> 2) & 0x1
+    }
+    #[inline]
+    pub fn assist_info_report_polling(&self) -> u8 {
+        (self.buf.chunk()[2] >> 1) & 0x1
+    }
+    #[inline]
+    pub fn retrans_on(&self) -> u8 {
+        self.buf.chunk()[2] & 0x1
+    }
+    #[inline]
     pub fn nr_u_seq(&self) -> u32 {
-        (read_uint_from_be_bytes(&self.buf.chunk()[2..5])) as u32
+        (read_uint_from_be_bytes(&self.buf.chunk()[3..6])) as u32
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[0]) as u16 * 4
     }
 }
 impl<T: PktBuf> DlUserData<T> {
     #[inline]
     pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(5);
+        buf.advance(header_len);
         buf
     }
 }
 impl<T: PktBufMut> DlUserData<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
-        assert!(buf.chunk_headroom() >= 5);
-        buf.move_back(5);
-        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        let header_len = DlUserData::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 6) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[6..header_len]
     }
     #[inline]
     pub fn set_pdu_type(&mut self, value: u8) {
         assert!(value == 0);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_spare1(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_dl_discard_blocks(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_dl_flush(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_report_polling(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
     #[inline]
     pub fn set_spare2(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x1f) | (value << 5);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x1f) | (value << 5);
     }
     #[inline]
     pub fn set_req_oos_report(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xef) | (value << 4);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xef) | (value << 4);
     }
     #[inline]
     pub fn set_report_deliverd(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_user_data_exist(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_assist_info_report_polling(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_retrans_on(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfe) | value;
     }
     #[inline]
     pub fn set_nr_u_seq(&mut self, value: u32) {
         assert!(value <= 0xffffff);
-        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[2..5], (value as u64));
+        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[3..6], (value as u64));
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1020) && (value % 4 == 0));
+        self.buf.chunk_mut()[0] = ((value / 4) as u8);
     }
 }
 impl<'a> DlUserData<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1540,28 +1712,67 @@ impl<'a> DlUserData<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
     }
 }
 
+impl<T: Buf> DlUserData<T> {
+    /// Return a byte slice covering the variable content of the
+    /// DlUserData header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_USER_DATA_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlUserData<T> {
+    /// Return a mutable byte slice of covering the variable content of the
+    /// DlUserData header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_USER_DATA_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+
 /// A constant that defines the fixed byte length of the DlDataDeliveryStatus protocol header.
-pub const DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 6;
+pub const DL_DATA_DELIVERY_STATUS_HEADER_LEN: usize = 7;
 /// A fixed DlDataDeliveryStatus header.
-pub const DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 6] = [0x10, 0x00, 0x00, 0x00, 0x00, 0x00];
+pub const DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE: [u8; 7] =
+    [0x02, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct DlDataDeliveryStatus<T> {
@@ -1583,157 +1794,189 @@ impl<T: Buf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 6 {
+        if chunk_len < 7 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 7)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..6]
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[7..header_len]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        self.buf.chunk()[1] >> 4
     }
     #[inline]
     pub fn highest_trans_nr_pdcp_sn_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 3) & 0x1
-    }
-    #[inline]
-    pub fn highest_deliverd_nr_pdcp_sn_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 2) & 0x1
-    }
-    #[inline]
-    pub fn final_frame_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 1) & 0x1
-    }
-    #[inline]
-    pub fn lost_packet_report(&self) -> u8 {
-        self.buf.chunk()[0] & 0x1
-    }
-    #[inline]
-    pub fn spare2(&self) -> u8 {
-        self.buf.chunk()[1] >> 5
-    }
-    #[inline]
-    pub fn delivered_nr_pdcp_sn_range_ind(&self) -> u8 {
-        (self.buf.chunk()[1] >> 4) & 0x1
-    }
-    #[inline]
-    pub fn data_rate_ind(&self) -> u8 {
         (self.buf.chunk()[1] >> 3) & 0x1
     }
     #[inline]
-    pub fn retrans_nf_pdcp_sn_ind(&self) -> u8 {
+    pub fn highest_deliverd_nr_pdcp_sn_ind(&self) -> u8 {
         (self.buf.chunk()[1] >> 2) & 0x1
     }
     #[inline]
-    pub fn delivered_retrans_nr_pdcp_sn_ind(&self) -> u8 {
+    pub fn final_frame_ind(&self) -> u8 {
         (self.buf.chunk()[1] >> 1) & 0x1
     }
     #[inline]
-    pub fn cause_report(&self) -> u8 {
+    pub fn lost_packet_report(&self) -> u8 {
         self.buf.chunk()[1] & 0x1
     }
     #[inline]
+    pub fn spare2(&self) -> u8 {
+        self.buf.chunk()[2] >> 5
+    }
+    #[inline]
+    pub fn delivered_nr_pdcp_sn_range_ind(&self) -> u8 {
+        (self.buf.chunk()[2] >> 4) & 0x1
+    }
+    #[inline]
+    pub fn data_rate_ind(&self) -> u8 {
+        (self.buf.chunk()[2] >> 3) & 0x1
+    }
+    #[inline]
+    pub fn retrans_nf_pdcp_sn_ind(&self) -> u8 {
+        (self.buf.chunk()[2] >> 2) & 0x1
+    }
+    #[inline]
+    pub fn delivered_retrans_nr_pdcp_sn_ind(&self) -> u8 {
+        (self.buf.chunk()[2] >> 1) & 0x1
+    }
+    #[inline]
+    pub fn cause_report(&self) -> u8 {
+        self.buf.chunk()[2] & 0x1
+    }
+    #[inline]
     pub fn buf_size_for_data_radio_bearer(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[2..6]).try_into().unwrap())
+        u32::from_be_bytes((&self.buf.chunk()[3..7]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[0]) as u16 * 4
     }
 }
 impl<T: PktBuf> DlDataDeliveryStatus<T> {
     #[inline]
     pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(6);
+        buf.advance(header_len);
         buf
     }
 }
 impl<T: PktBufMut> DlDataDeliveryStatus<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
-        assert!(buf.chunk_headroom() >= 6);
-        buf.move_back(6);
-        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        let header_len = DlDataDeliveryStatus::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 7) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[7..header_len]
     }
     #[inline]
     pub fn set_pdu_type(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_highest_trans_nr_pdcp_sn_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_highest_deliverd_nr_pdcp_sn_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_final_frame_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_lost_packet_report(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
     #[inline]
     pub fn set_spare2(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x1f) | (value << 5);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x1f) | (value << 5);
     }
     #[inline]
     pub fn set_delivered_nr_pdcp_sn_range_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xef) | (value << 4);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xef) | (value << 4);
     }
     #[inline]
     pub fn set_data_rate_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_retrans_nf_pdcp_sn_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_delivered_retrans_nr_pdcp_sn_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_cause_report(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfe) | value;
     }
     #[inline]
     pub fn set_buf_size_for_data_radio_bearer(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[2..6]).copy_from_slice(&value.to_be_bytes());
+        (&mut self.buf.chunk_mut()[3..7]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1020) && (value % 4 == 0));
+        self.buf.chunk_mut()[0] = ((value / 4) as u8);
     }
 }
 impl<'a> DlDataDeliveryStatus<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 6 {
+        if remaining_len < 7 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 7)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[6..])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1743,28 +1986,66 @@ impl<'a> DlDataDeliveryStatus<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 6 {
+        if remaining_len < 7 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 7)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
     }
 }
 
+impl<T: Buf> DlDataDeliveryStatus<T> {
+    /// Return a byte slice covering the variable content of the
+    /// DlDataDeliveryStatus header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_DATA_DELIVERY_STATUS_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlDataDeliveryStatus<T> {
+    /// Return a mutable byte slice of covering the variable content of the
+    /// DlDataDeliveryStatus header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_DATA_DELIVERY_STATUS_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+
 /// A constant that defines the fixed byte length of the AssistanceInformationData protocol header.
-pub const ASSISTANCE_INFORMATION_DATA_HEADER_LEN: usize = 2;
+pub const ASSISTANCE_INFORMATION_DATA_HEADER_LEN: usize = 3;
 /// A fixed AssistanceInformationData header.
-pub const ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE: [u8; 2] = [0x20, 0x00];
+pub const ASSISTANCE_INFORMATION_DATA_HEADER_TEMPLATE: [u8; 3] = [0x01, 0x20, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct AssistanceInformationData<T> {
@@ -1786,113 +2067,146 @@ impl<T: Buf> AssistanceInformationData<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 2 {
+        if chunk_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..2]
+        &self.buf.chunk()[0..3]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[3..header_len]
     }
     #[inline]
     pub fn pdu_type(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        self.buf.chunk()[1] >> 4
     }
     #[inline]
     pub fn pdcp_dupl_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 3) & 0x1
+        (self.buf.chunk()[1] >> 3) & 0x1
     }
     #[inline]
     pub fn assist_info_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 2) & 0x1
+        (self.buf.chunk()[1] >> 2) & 0x1
     }
     #[inline]
     pub fn ul_delay_ind(&self) -> u8 {
-        (self.buf.chunk()[0] >> 1) & 0x1
+        (self.buf.chunk()[1] >> 1) & 0x1
     }
     #[inline]
     pub fn dl_delay_ind(&self) -> u8 {
-        self.buf.chunk()[0] & 0x1
+        self.buf.chunk()[1] & 0x1
     }
     #[inline]
     pub fn spare(&self) -> u8 {
-        self.buf.chunk()[1] >> 1
+        self.buf.chunk()[2] >> 1
     }
     #[inline]
     pub fn pdcp_duplication_activation_suggestion(&self) -> u8 {
-        self.buf.chunk()[1] & 0x1
+        self.buf.chunk()[2] & 0x1
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[0]) as u16 * 4
     }
 }
 impl<T: PktBuf> AssistanceInformationData<T> {
     #[inline]
     pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(2);
+        buf.advance(header_len);
         buf
     }
 }
 impl<T: PktBufMut> AssistanceInformationData<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        assert!(buf.chunk_headroom() >= 2);
-        buf.move_back(2);
-        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
+        let header_len =
+            AssistanceInformationData::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 3) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[3..header_len]
     }
     #[inline]
     pub fn set_pdu_type(&mut self, value: u8) {
         assert!(value == 2);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_pdcp_dupl_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf7) | (value << 3);
     }
     #[inline]
     pub fn set_assist_info_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfb) | (value << 2);
     }
     #[inline]
     pub fn set_ul_delay_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfd) | (value << 1);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfd) | (value << 1);
     }
     #[inline]
     pub fn set_dl_delay_ind(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfe) | value;
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
     }
     #[inline]
     pub fn set_spare(&mut self, value: u8) {
         assert!(value <= 0x7f);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x01) | (value << 1);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x01) | (value << 1);
     }
     #[inline]
     pub fn set_pdcp_duplication_activation_suggestion(&mut self, value: u8) {
         assert!(value <= 0x1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xfe) | value;
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfe) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1020) && (value % 4 == 0));
+        self.buf.chunk_mut()[0] = ((value / 4) as u8);
     }
 }
 impl<'a> AssistanceInformationData<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[2..])
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
@@ -1902,21 +2216,59 @@ impl<'a> AssistanceInformationData<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 2 {
+        if remaining_len < 3 {
             return Err(buf);
         }
         let container = Self { buf };
+        if ((container.header_len() as usize) < 3)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[2..])
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
+    }
+}
+
+impl<T: Buf> AssistanceInformationData<T> {
+    /// Return a byte slice covering the variable content of the
+    /// AssistanceInformationData header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[ASSISTANCE_INFORMATION_DATA_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> AssistanceInformationData<T> {
+    /// Return a mutable byte slice of covering the variable content of the
+    /// AssistanceInformationData header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[ASSISTANCE_INFORMATION_DATA_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
     }
 }
 
@@ -1928,10 +2280,10 @@ pub enum NrUp<T> {
 }
 impl<T: Buf> NrUp<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 1 {
+        if buf.chunk().len() < 2 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[0] >> 4;
+        let cond_value0 = buf.chunk()[1] >> 4;
         match cond_value0 {
             0 => DlUserData::parse(buf).map(|pkt| NrUp::DlUserData_(pkt)),
             1 => DlDataDeliveryStatus::parse(buf).map(|pkt| NrUp::DlDataDeliveryStatus_(pkt)),

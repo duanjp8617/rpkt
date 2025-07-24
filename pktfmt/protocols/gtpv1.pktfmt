@@ -211,8 +211,11 @@ impl<T: PktBufMut> ExtContainer<T> {
 // their own helpers to process the variable-length frame payload.
 
 // Defined according to TS 138 415
+// We add the extention container structure to the Pdu
+// session info structure, to facilitate parsing/building
 packet DlPduSessionInfo {
     header = [
+        len = Field{bit = 8, default = 1, gen = false},
         pdu_type = Field{bit = 4, default=@0},
         qmp = Field{bit = 1, arg=bool},
         snp = Field{bit = 1, arg=bool},
@@ -222,12 +225,50 @@ packet DlPduSessionInfo {
         rqi = Field{bit = 1, arg=bool},
         qos_flow_identifier = Field{bit = 6},
     ],
+    length = [
+        header_len = len*4
+    ],
     cond = (pdu_type == 0)
 }
+
+%%
+impl<T: Buf> DlPduSessionInfo<T> {
+    /// Return a byte slice covering the variable content of the 
+    /// DlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_PDU_SESSION_INFO_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlPduSessionInfo<T> {
+    /// Return a mutable byte slice of covering the variable content of the 
+    /// DlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_PDU_SESSION_INFO_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
 
 // Defined according to TS 138 415
 packet UlPduSessionInfo {
     header = [
+        len = Field{bit = 8, default = 1, gen = false},
         pdu_type = Field{bit = 4, default=@1},
         qmp = Field{bit = 1},
         dl_delay_ind = Field{bit = 1},
@@ -237,8 +278,45 @@ packet UlPduSessionInfo {
         new_ie_flag = Field{bit = 1},
         qos_flow_identifier = Field{bit = 6},
     ],
+    length = [
+        header_len = len*4
+    ],
     cond = (pdu_type == 1)
 }
+
+%%
+impl<T: Buf> UlPduSessionInfo<T> {
+    /// Return a byte slice covering the variable content of the 
+    /// UlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[UL_PDU_SESSION_INFO_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> UlPduSessionInfo<T> {
+    /// Return a mutable byte slice of covering the variable content of the 
+    /// UlPduSessionInfo header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[UL_PDU_SESSION_INFO_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
 
 group PduSessionUp =  {
    members = [
@@ -250,6 +328,7 @@ group PduSessionUp =  {
 // Defined according to TS 138 425
 packet DlUserData {
     header = [
+        len = Field{bit = 8, default = 2, gen = false},
         pdu_type = Field{bit = 4, default=@0},
         spare1 = Field{bit = 1},
         dl_discard_blocks = Field{bit = 1},
@@ -263,12 +342,50 @@ packet DlUserData {
         retrans_on = Field{bit = 1},
         nr_u_seq = Field{bit = 24},
     ],
+    length = [
+        header_len = len*4
+    ],
     cond = (pdu_type == 0)
 }
+
+%%
+impl<T: Buf> DlUserData<T> {
+    /// Return a byte slice covering the variable content of the 
+    /// DlUserData header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_USER_DATA_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlUserData<T> {
+    /// Return a mutable byte slice of covering the variable content of the 
+    /// DlUserData header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_USER_DATA_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
 
 // Defined according to TS 138 425
 packet DlDataDeliveryStatus {
     header = [
+        len = Field{bit = 8, default = 2, gen = false},
         pdu_type = Field{bit = 4, default=@1},
         highest_trans_nr_pdcp_sn_ind = Field{bit = 1},
         highest_deliverd_nr_pdcp_sn_ind = Field{bit = 1},
@@ -282,12 +399,50 @@ packet DlDataDeliveryStatus {
         cause_report = Field{bit = 1},
         buf_size_for_data_radio_bearer = Field{bit = 32},
     ],
+    length = [
+        header_len = len*4
+    ],
     cond = (pdu_type == 1)
 }
+
+%%
+impl<T: Buf> DlDataDeliveryStatus<T> {
+    /// Return a byte slice covering the variable content of the 
+    /// DlDataDeliveryStatus header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[DL_DATA_DELIVERY_STATUS_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> DlDataDeliveryStatus<T> {
+    /// Return a mutable byte slice of covering the variable content of the 
+    /// DlDataDeliveryStatus header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[DL_DATA_DELIVERY_STATUS_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
 
 // Defined according to TS 138 425
 packet AssistanceInformationData {
     header = [
+        len = Field{bit = 8, default = 1, gen = false},
         pdu_type = Field{bit = 4, default=@2},
         pdcp_dupl_ind = Field{bit = 1},        
         assist_info_ind = Field{bit = 1},
@@ -296,8 +451,45 @@ packet AssistanceInformationData {
         spare = Field{bit = 7},
         pdcp_duplication_activation_suggestion = Field{bit = 1},        
     ],
+    length = [
+        header_len = len*4
+    ],
     cond = (pdu_type == 2)
 }
+
+%%
+impl<T: Buf> AssistanceInformationData<T> {
+    /// Return a byte slice covering the variable content of the 
+    /// AssistanceInformationData header.
+    #[inline]
+    pub fn variable_content(&self) -> &[u8] {
+        &self.buf.chunk()[ASSISTANCE_INFORMATION_DATA_HEADER_LEN..(self.header_len() as usize - 1)]
+    }
+
+    /// Get the value of the next extention header type.
+    #[inline]
+    pub fn next_extention_header(&self) -> Gtpv1NextExtention {
+        self.buf.chunk()[self.header_len() as usize - 1].into()
+    }
+}
+
+impl<T: PktBufMut> AssistanceInformationData<T> {
+    /// Return a mutable byte slice of covering the variable content of the 
+    /// AssistanceInformationData header.
+    #[inline]
+    pub fn variable_content_mut(&mut self) -> &mut [u8] {
+        let index = self.header_len() as usize - 1;
+        &mut self.buf.chunk_mut()[ASSISTANCE_INFORMATION_DATA_HEADER_LEN..index]
+    }
+
+    /// Set the next extention header type.
+    #[inline]
+    pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
+        let index = self.header_len() as usize - 1;
+        self.buf.chunk_mut()[index] = value.into();
+    }
+}
+%%
 
 group NrUp =  {
    members = [
@@ -341,7 +533,6 @@ packet TunnelEndpointIdentControlPlaneIE {
     ],
     cond = (type_==17)
 }
-
 
 packet GtpuPeerAddrIE {
     header = [
