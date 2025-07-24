@@ -18,6 +18,8 @@ use rpkt::gtpv1::nr_up::NrUp;
 use rpkt::gtpv1::nr_up::DL_DATA_DELIVERY_STATUS_HEADER_LEN;
 use rpkt::gtpv1::nr_up::DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE;
 use rpkt::gtpv1::pdu_session_up::PduSessionUp;
+use rpkt::gtpv1::pdu_session_up::UlPduSessionInfo;
+use rpkt::gtpv1::pdu_session_up::UL_PDU_SESSION_INFO_HEADER_TEMPLATE;
 use rpkt::gtpv1::*;
 use rpkt::ipv4::IpProtocol;
 use rpkt::ipv4::Ipv4;
@@ -415,20 +417,19 @@ fn gtp_nr_container_parse() {
         Gtpv1NextExtention::NR_RAN_CONTAINER
     );
 
-    let ext = ExtContainer::parse(gtp.payload()).unwrap();
-    assert_eq!(
-        ext.next_extention_header(),
-        Gtpv1NextExtention::NO_EXTENTION
-    );
-
-    let pkt = match NrUp::group_parse(ext.extention_header_content()).unwrap() {
+    let pkt = match NrUp::group_parse(gtp.payload()).unwrap() {
         NrUp::DlDataDeliveryStatus_(pkt) => pkt,
         _ => panic!(),
     };
     assert_eq!(pkt.highest_trans_nr_pdcp_sn_ind(), 1);
     assert_eq!(pkt.buf_size_for_data_radio_bearer(), 0);
-    let remaining = &pkt.buf()[DL_DATA_DELIVERY_STATUS_HEADER_LEN..];
-    assert_eq!(read_3_bytes(&remaining[..3]), 2);
+    assert_eq!(read_3_bytes(&pkt.variable_content()[..3]), 2);
+    assert_eq!(
+        pkt.next_extention_header(),
+        Gtpv1NextExtention::NO_EXTENTION
+    );
+
+    assert_eq!(pkt.payload().chunk().len(), 0);
 }
 
 #[test]
@@ -438,18 +439,14 @@ fn gtp_nr_container_build() {
     let mut pbuf = CursorMut::new(&mut buf);
     pbuf.advance(1600);
 
-    let mut hdr = [0];
-    let mut hdr_mut = ExtContainer::from_header_array_mut(&mut hdr);
+    let mut hdr = DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE.clone();
+    let mut hdr_mut = DlDataDeliveryStatus::from_header_array_mut(&mut hdr);
     hdr_mut.set_header_len(12);
-    let mut ext = ExtContainer::prepend_header(pbuf, &hdr);
-    ext.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);
 
-    let mut inner_pbuf = CursorMut::new(ext.extention_header_content_mut());
-    inner_pbuf.advance(6);
-    write_3_bytes(&mut inner_pbuf.chunk_mut()[..3], 2);
-    let mut nrup_pkt =
-        DlDataDeliveryStatus::prepend_header(inner_pbuf, &DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE);
-    nrup_pkt.set_highest_trans_nr_pdcp_sn_ind(1);
+    let mut nrpkt = DlDataDeliveryStatus::prepend_header(pbuf, &hdr);
+    nrpkt.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);
+    write_3_bytes(&mut nrpkt.variable_content_mut()[..3], 2);
+    nrpkt.set_highest_trans_nr_pdcp_sn_ind(1);
 
     let mut gtpv1_header = GTPV1_HEADER_TEMPLATE.clone();
     let mut gtpv1_hdr_mut = Gtpv1::from_header_array_mut(&mut gtpv1_header);
@@ -458,7 +455,7 @@ fn gtp_nr_container_build() {
     gtpv1_hdr_mut.set_message_type(Gtpv1MsgType::G_PDU);
     gtpv1_hdr_mut.set_teid(1);
 
-    let mut gtpv1 = Gtpv1::prepend_header(ext.release(), &gtpv1_header);
+    let mut gtpv1 = Gtpv1::prepend_header(nrpkt.release(), &gtpv1_header);
     gtpv1.set_next_extention_header(Gtpv1NextExtention::NR_RAN_CONTAINER);
 
     let mut udp = Udp::prepend_header(gtpv1.release(), &UDP_HEADER_TEMPLATE);
@@ -511,20 +508,66 @@ fn gtp_pdu_session_container_parse() {
         Gtpv1NextExtention::PDU_SESSION_CONTAINER
     );
 
-    let ext = ExtContainer::parse(gtp.payload()).unwrap();
-    assert_eq!(
-        ext.next_extention_header(),
-        Gtpv1NextExtention::NO_EXTENTION
-    );
-
-    let pkt = match PduSessionUp::group_parse(ext.extention_header_content()).unwrap() {
+    let pkt = match PduSessionUp::group_parse(gtp.payload()).unwrap() {
         PduSessionUp::UlPduSessionInfo_(pkt) => pkt,
         _ => panic!(),
     };
     assert_eq!(pkt.qos_flow_identifier(), 1);
-    assert_eq!(pkt.buf().len(), 2);
+    assert_eq!(
+        pkt.next_extention_header(),
+        Gtpv1NextExtention::NO_EXTENTION
+    );
+    assert_eq!(pkt.header_len(), 4);
 
-    let ipv4 = Ipv4::parse(ext.payload()).unwrap();
+    let ipv4 = Ipv4::parse(pkt.payload()).unwrap();
     assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+
     println!("{}", ipv4.buf().chunk().len());
+}
+
+#[test]
+fn gtp_pdu_session_container_build() {
+    let pkt = file_to_packet("gtp_pdu_session_container.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(151);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 151..]);
+
+    let mut pdupkt = UlPduSessionInfo::prepend_header(pbuf, &UL_PDU_SESSION_INFO_HEADER_TEMPLATE);
+    pdupkt.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);
+    pdupkt.set_qos_flow_identifier(1);
+
+    let mut gtpv1_header = GTPV1_HEADER_TEMPLATE.clone();
+    let mut gtpv1_hdr_mut = Gtpv1::from_header_array_mut(&mut gtpv1_header);
+    gtpv1_hdr_mut.set_extention_header_present(true);
+    gtpv1_hdr_mut.set_sequence_present(false);
+    gtpv1_hdr_mut.set_message_type(Gtpv1MsgType::G_PDU);
+    gtpv1_hdr_mut.set_teid(14872);
+
+    let mut gtpv1 = Gtpv1::prepend_header(pdupkt.release(), &gtpv1_header);
+    gtpv1.set_next_extention_header(Gtpv1NextExtention::PDU_SESSION_CONTAINER);
+
+    let mut udp = Udp::prepend_header(gtpv1.release(), &UDP_HEADER_TEMPLATE);
+    udp.set_checksum(0x1714);
+    udp.set_dst_port(2152);
+    udp.set_src_port(2152);
+
+    let mut ipv4 = Ipv4::prepend_header(udp.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4.set_ident(0xa79b);
+    ipv4.set_ttl(64);
+    ipv4.set_dont_frag(true);
+    ipv4.set_protocol(IpProtocol::UDP);
+    ipv4.set_checksum(0x7c3b);
+    ipv4.set_src_addr(Ipv4Addr::new(10, 10, 1, 39));
+    ipv4.set_dst_addr(Ipv4Addr::new(10, 10, 1, 25));
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x00, 0x0c, 0x29, 0xda, 0xd1, 0xde]));
+    eth.set_src_addr(EtherAddr([0x00, 0x0c, 0x29, 0xe3, 0xc6, 0x4d]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    let eth_release = eth.release();
+    assert_eq!(eth_release.chunk(), &pkt);
 }
