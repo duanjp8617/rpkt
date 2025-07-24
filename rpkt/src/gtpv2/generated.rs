@@ -361,6 +361,1098 @@ impl<T: PktBufMut> Gtpv2<T> {
     }
 }
 
+/// A constant that defines the fixed byte length of the InternationalMobileSubscriberIdIE protocol header.
+pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN: usize = 4;
+/// A fixed InternationalMobileSubscriberIdIE header.
+pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct InternationalMobileSubscriberIdIE<T> {
+    buf: T,
+}
+impl<T: Buf> InternationalMobileSubscriberIdIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
+    }
+}
+impl<T: PktBuf> InternationalMobileSubscriberIdIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> InternationalMobileSubscriberIdIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len =
+            InternationalMobileSubscriberIdIE::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65539) && (value >= 4));
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
+    }
+}
+impl<'a> InternationalMobileSubscriberIdIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> InternationalMobileSubscriberIdIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the RecoveryIE protocol header.
+pub const RECOVERY_IE_HEADER_LEN: usize = 4;
+/// A fixed RecoveryIE header.
+pub const RECOVERY_IE_HEADER_TEMPLATE: [u8; 4] = [0x03, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct RecoveryIE<T> {
+    buf: T,
+}
+impl<T: Buf> RecoveryIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
+    }
+}
+impl<T: PktBuf> RecoveryIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> RecoveryIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = RecoveryIE::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 3);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65539) && (value >= 4));
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
+    }
+}
+impl<'a> RecoveryIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> RecoveryIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the AggregateMaxBitRateIE protocol header.
+pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_LEN: usize = 12;
+/// A fixed AggregateMaxBitRateIE header.
+pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_TEMPLATE: [u8; 12] = [
+    0x48, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
+#[derive(Debug, Clone, Copy)]
+pub struct AggregateMaxBitRateIE<T> {
+    buf: T,
+}
+impl<T: Buf> AggregateMaxBitRateIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..12]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn apn_ambr_for_uplink(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn apn_ambr_for_downlink(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> AggregateMaxBitRateIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(12);
+        buf
+    }
+}
+impl<T: PktBufMut> AggregateMaxBitRateIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 12]) -> Self {
+        assert!(buf.chunk_headroom() >= 12);
+        buf.move_back(12);
+        (&mut buf.chunk_mut()[0..12]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 72);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 8);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_apn_ambr_for_uplink(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_apn_ambr_for_downlink(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> AggregateMaxBitRateIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[12..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 12]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> AggregateMaxBitRateIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[12..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 12]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the EpsBearerIdIE protocol header.
+pub const EPS_BEARER_ID_IE_HEADER_LEN: usize = 5;
+/// A fixed EpsBearerIdIE header.
+pub const EPS_BEARER_ID_IE_HEADER_TEMPLATE: [u8; 5] = [0x49, 0x00, 0x01, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct EpsBearerIdIE<T> {
+    buf: T,
+}
+impl<T: Buf> EpsBearerIdIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..5]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn len(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn spare(&self) -> u8 {
+        self.buf.chunk()[4] >> 4
+    }
+    #[inline]
+    pub fn eps_bearer_id(&self) -> u8 {
+        self.buf.chunk()[4] & 0xf
+    }
+}
+impl<T: PktBuf> EpsBearerIdIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(5);
+        buf
+    }
+}
+impl<T: PktBufMut> EpsBearerIdIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
+        assert!(buf.chunk_headroom() >= 5);
+        buf.move_back(5);
+        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 73);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_len(&mut self, value: u16) {
+        assert!(value == 1);
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_spare(&mut self, value: u8) {
+        assert!(value == 0);
+        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_eps_bearer_id(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0xf0) | value;
+    }
+}
+impl<'a> EpsBearerIdIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[5..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> EpsBearerIdIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the MobileEquipmentIdIE protocol header.
+pub const MOBILE_EQUIPMENT_ID_IE_HEADER_LEN: usize = 4;
+/// A fixed MobileEquipmentIdIE header.
+pub const MOBILE_EQUIPMENT_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x4b, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct MobileEquipmentIdIE<T> {
+    buf: T,
+}
+impl<T: Buf> MobileEquipmentIdIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn header_len(&self) -> u32 {
+        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
+    }
+}
+impl<T: PktBuf> MobileEquipmentIdIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> MobileEquipmentIdIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = MobileEquipmentIdIE::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 75);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u32) {
+        assert!((value <= 65539) && (value >= 4));
+        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
+    }
+}
+impl<'a> MobileEquipmentIdIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> MobileEquipmentIdIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the RatTypeIE protocol header.
+pub const RAT_TYPE_IE_HEADER_LEN: usize = 5;
+/// A fixed RatTypeIE header.
+pub const RAT_TYPE_IE_HEADER_TEMPLATE: [u8; 5] = [0x52, 0x00, 0x01, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct RatTypeIE<T> {
+    buf: T,
+}
+impl<T: Buf> RatTypeIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..5]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn rat_type(&self) -> u8 {
+        self.buf.chunk()[4]
+    }
+}
+impl<T: PktBuf> RatTypeIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(5);
+        buf
+    }
+}
+impl<T: PktBufMut> RatTypeIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
+        assert!(buf.chunk_headroom() >= 5);
+        buf.move_back(5);
+        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 82);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_rat_type(&mut self, value: u8) {
+        self.buf.chunk_mut()[4] = value;
+    }
+}
+impl<'a> RatTypeIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[5..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> RatTypeIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the ServingNetworkIE protocol header.
+pub const SERVING_NETWORK_IE_HEADER_LEN: usize = 7;
+/// A fixed ServingNetworkIE header.
+pub const SERVING_NETWORK_IE_HEADER_TEMPLATE: [u8; 7] = [0x53, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct ServingNetworkIE<T> {
+    buf: T,
+}
+impl<T: Buf> ServingNetworkIE<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn cr_flag(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn instance(&self) -> u8 {
+        self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn mcc_digit2(&self) -> u8 {
+        self.buf.chunk()[4] >> 4
+    }
+    #[inline]
+    pub fn mcc_digit1(&self) -> u8 {
+        self.buf.chunk()[4] & 0xf
+    }
+    #[inline]
+    pub fn mnc_digit3(&self) -> u8 {
+        self.buf.chunk()[5] >> 4
+    }
+    #[inline]
+    pub fn mcc_digit3(&self) -> u8 {
+        self.buf.chunk()[5] & 0xf
+    }
+    #[inline]
+    pub fn mnc_digit2(&self) -> u8 {
+        self.buf.chunk()[6] >> 4
+    }
+    #[inline]
+    pub fn mnc_digit1(&self) -> u8 {
+        self.buf.chunk()[6] & 0xf
+    }
+}
+impl<T: PktBuf> ServingNetworkIE<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(7);
+        buf
+    }
+}
+impl<T: PktBufMut> ServingNetworkIE<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 83);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_cr_flag(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_instance(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mcc_digit2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc_digit1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc_digit3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc_digit3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc_digit2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc_digit1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0xf0) | value;
+    }
+}
+impl<'a> ServingNetworkIE<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[7..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+}
+impl<'a> ServingNetworkIE<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the UserLocationInfoIE protocol header.
 pub const USER_LOCATION_INFO_IE_HEADER_LEN: usize = 5;
 /// A fixed UserLocationInfoIE header.
@@ -594,552 +1686,6 @@ impl<'a> UserLocationInfoIE<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the InternationalMobileSubscriberIdIE protocol header.
-pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN: usize = 4;
-/// A fixed InternationalMobileSubscriberIdIE header.
-pub const INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct InternationalMobileSubscriberIdIE<T> {
-    buf: T,
-}
-impl<T: Buf> InternationalMobileSubscriberIdIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..4]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[4..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> InternationalMobileSubscriberIdIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> InternationalMobileSubscriberIdIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len =
-            InternationalMobileSubscriberIdIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[4..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 1);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> InternationalMobileSubscriberIdIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> InternationalMobileSubscriberIdIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
-/// A constant that defines the fixed byte length of the ServingNetworkIE protocol header.
-pub const SERVING_NETWORK_IE_HEADER_LEN: usize = 7;
-/// A fixed ServingNetworkIE header.
-pub const SERVING_NETWORK_IE_HEADER_TEMPLATE: [u8; 7] = [0x53, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct ServingNetworkIE<T> {
-    buf: T,
-}
-impl<T: Buf> ServingNetworkIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 7 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..7]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[7..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn mcc_digit2(&self) -> u8 {
-        self.buf.chunk()[4] >> 4
-    }
-    #[inline]
-    pub fn mcc_digit1(&self) -> u8 {
-        self.buf.chunk()[4] & 0xf
-    }
-    #[inline]
-    pub fn mnc_digit3(&self) -> u8 {
-        self.buf.chunk()[5] >> 4
-    }
-    #[inline]
-    pub fn mcc_digit3(&self) -> u8 {
-        self.buf.chunk()[5] & 0xf
-    }
-    #[inline]
-    pub fn mnc_digit2(&self) -> u8 {
-        self.buf.chunk()[6] >> 4
-    }
-    #[inline]
-    pub fn mnc_digit1(&self) -> u8 {
-        self.buf.chunk()[6] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> ServingNetworkIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> ServingNetworkIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
-        let header_len = ServingNetworkIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 7) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[7..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 83);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_mcc_digit2(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_mcc_digit1(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_mnc_digit3(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_mcc_digit3(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_mnc_digit2(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_mnc_digit1(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[6] = (self.buf.chunk_mut()[6] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> ServingNetworkIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 7 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> ServingNetworkIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 7 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 7)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
-/// A constant that defines the fixed byte length of the RatTypeIE protocol header.
-pub const RAT_TYPE_IE_HEADER_LEN: usize = 5;
-/// A fixed RatTypeIE header.
-pub const RAT_TYPE_IE_HEADER_TEMPLATE: [u8; 5] = [0x52, 0x00, 0x01, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct RatTypeIE<T> {
-    buf: T,
-}
-impl<T: Buf> RatTypeIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 5 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..5]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[5..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn rat_type(&self) -> u8 {
-        self.buf.chunk()[4]
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> RatTypeIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> RatTypeIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
-        let header_len = RatTypeIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 5) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[5..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 82);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_rat_type(&mut self, value: u8) {
-        self.buf.chunk_mut()[4] = value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> RatTypeIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> RatTypeIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
 /// A constant that defines the fixed byte length of the FullyQualifiedTeidIE protocol header.
 pub const FULLY_QUALIFIED_TEID_IE_HEADER_LEN: usize = 9;
 /// A fixed FullyQualifiedTeidIE header.
@@ -1337,533 +1883,6 @@ impl<'a> FullyQualifiedTeidIE<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the AggregateMaxBitRateIE protocol header.
-pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_LEN: usize = 12;
-/// A fixed AggregateMaxBitRateIE header.
-pub const AGGREGATE_MAX_BIT_RATE_IE_HEADER_TEMPLATE: [u8; 12] = [
-    0x48, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-];
-
-#[derive(Debug, Clone, Copy)]
-pub struct AggregateMaxBitRateIE<T> {
-    buf: T,
-}
-impl<T: Buf> AggregateMaxBitRateIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 12 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 12)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..12]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[12..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn apn_ambr_for_uplink(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn apn_ambr_for_downlink(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> AggregateMaxBitRateIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> AggregateMaxBitRateIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 12]) -> Self {
-        let header_len = AggregateMaxBitRateIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 12) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..12]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[12..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 72);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_apn_ambr_for_uplink(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
-    }
-    #[inline]
-    pub fn set_apn_ambr_for_downlink(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> AggregateMaxBitRateIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 12 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 12)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 12]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> AggregateMaxBitRateIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 12 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 12)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 12]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
-/// A constant that defines the fixed byte length of the MobileEquipmentIdIE protocol header.
-pub const MOBILE_EQUIPMENT_ID_IE_HEADER_LEN: usize = 4;
-/// A fixed MobileEquipmentIdIE header.
-pub const MOBILE_EQUIPMENT_ID_IE_HEADER_TEMPLATE: [u8; 4] = [0x4b, 0x00, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct MobileEquipmentIdIE<T> {
-    buf: T,
-}
-impl<T: Buf> MobileEquipmentIdIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..4]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[4..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> MobileEquipmentIdIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> MobileEquipmentIdIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = MobileEquipmentIdIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[4..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 75);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> MobileEquipmentIdIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> MobileEquipmentIdIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
-/// A constant that defines the fixed byte length of the UeTimeZoneIE protocol header.
-pub const UE_TIME_ZONE_IE_HEADER_LEN: usize = 6;
-/// A fixed UeTimeZoneIE header.
-pub const UE_TIME_ZONE_IE_HEADER_TEMPLATE: [u8; 6] = [0x72, 0x00, 0x02, 0x00, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct UeTimeZoneIE<T> {
-    buf: T,
-}
-impl<T: Buf> UeTimeZoneIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 6 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..6]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[6..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn time_zone(&self) -> u8 {
-        self.buf.chunk()[4]
-    }
-    #[inline]
-    pub fn spare(&self) -> u8 {
-        self.buf.chunk()[5] >> 2
-    }
-    #[inline]
-    pub fn daylight_saving_time(&self) -> u8 {
-        self.buf.chunk()[5] & 0x3
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> UeTimeZoneIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> UeTimeZoneIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
-        let header_len = UeTimeZoneIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 6) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[6..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 114);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_time_zone(&mut self, value: u8) {
-        self.buf.chunk_mut()[4] = value;
-    }
-    #[inline]
-    pub fn set_spare(&mut self, value: u8) {
-        assert!(value <= 0x3f);
-        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x03) | (value << 2);
-    }
-    #[inline]
-    pub fn set_daylight_saving_time(&mut self, value: u8) {
-        assert!(value <= 0x3);
-        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0xfc) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> UeTimeZoneIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 6 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> UeTimeZoneIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 6 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 6)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
 /// A constant that defines the fixed byte length of the BearerContextIE protocol header.
 pub const BEARER_CONTEXT_IE_HEADER_LEN: usize = 4;
 /// A fixed BearerContextIE header.
@@ -2025,16 +2044,16 @@ impl<'a> BearerContextIE<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the EpsBearerIdIE protocol header.
-pub const EPS_BEARER_ID_IE_HEADER_LEN: usize = 5;
-/// A fixed EpsBearerIdIE header.
-pub const EPS_BEARER_ID_IE_HEADER_TEMPLATE: [u8; 5] = [0x49, 0x00, 0x01, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the UeTimeZoneIE protocol header.
+pub const UE_TIME_ZONE_IE_HEADER_LEN: usize = 6;
+/// A fixed UeTimeZoneIE header.
+pub const UE_TIME_ZONE_IE_HEADER_TEMPLATE: [u8; 6] = [0x72, 0x00, 0x02, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EpsBearerIdIE<T> {
+pub struct UeTimeZoneIE<T> {
     buf: T,
 }
-impl<T: Buf> EpsBearerIdIE<T> {
+impl<T: Buf> UeTimeZoneIE<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -2050,25 +2069,15 @@ impl<T: Buf> EpsBearerIdIE<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 5 {
+        if chunk_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..5]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[5..header_len]
+        &self.buf.chunk()[0..6]
     }
     #[inline]
     pub fn type_(&self) -> u8 {
@@ -2081,46 +2090,39 @@ impl<T: Buf> EpsBearerIdIE<T> {
     #[inline]
     pub fn instance(&self) -> u8 {
         self.buf.chunk()[3] & 0xf
+    }
+    #[inline]
+    pub fn time_zone(&self) -> u8 {
+        self.buf.chunk()[4]
     }
     #[inline]
     pub fn spare(&self) -> u8 {
-        self.buf.chunk()[4] >> 4
+        self.buf.chunk()[5] >> 2
     }
     #[inline]
-    pub fn eps_bearer_id(&self) -> u8 {
-        self.buf.chunk()[4] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
+    pub fn daylight_saving_time(&self) -> u8 {
+        self.buf.chunk()[5] & 0x3
     }
 }
-impl<T: PktBuf> EpsBearerIdIE<T> {
+impl<T: PktBuf> UeTimeZoneIE<T> {
     #[inline]
     pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
         let mut buf = self.buf;
-        buf.advance(header_len);
+        buf.advance(6);
         buf
     }
 }
-impl<T: PktBufMut> EpsBearerIdIE<T> {
+impl<T: PktBufMut> UeTimeZoneIE<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
-        let header_len = EpsBearerIdIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 5) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        assert!(buf.chunk_headroom() >= 6);
+        buf.move_back(6);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
     }
     #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[5..header_len]
-    }
-    #[inline]
     pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 73);
+        assert!(value == 114);
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
@@ -2132,233 +2134,59 @@ impl<T: PktBufMut> EpsBearerIdIE<T> {
     pub fn set_instance(&mut self, value: u8) {
         assert!(value <= 0xf);
         self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_time_zone(&mut self, value: u8) {
+        self.buf.chunk_mut()[4] = value;
     }
     #[inline]
     pub fn set_spare(&mut self, value: u8) {
-        assert!(value == 0);
-        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0x0f) | (value << 4);
+        assert!(value <= 0x3f);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0x03) | (value << 2);
     }
     #[inline]
-    pub fn set_eps_bearer_id(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[4] = (self.buf.chunk_mut()[4] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
+    pub fn set_daylight_saving_time(&mut self, value: u8) {
+        assert!(value <= 0x3);
+        self.buf.chunk_mut()[5] = (self.buf.chunk_mut()[5] & 0xfc) | value;
     }
 }
-impl<'a> EpsBearerIdIE<Cursor<'a>> {
+impl<'a> UeTimeZoneIE<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        Cursor::new(&self.buf.chunk()[6..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
 }
-impl<'a> EpsBearerIdIE<CursorMut<'a>> {
+impl<'a> UeTimeZoneIE<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 5 {
+        if remaining_len < 6 {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 5)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
         Ok(container)
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        CursorMut::new(&mut self.buf.chunk_mut()[6..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
-        Self {
-            buf: CursorMut::new(header_array.as_mut_slice()),
-        }
-    }
-}
-
-/// A constant that defines the fixed byte length of the RecoveryIE protocol header.
-pub const RECOVERY_IE_HEADER_LEN: usize = 4;
-/// A fixed RecoveryIE header.
-pub const RECOVERY_IE_HEADER_TEMPLATE: [u8; 4] = [0x03, 0x00, 0x00, 0x00];
-
-#[derive(Debug, Clone, Copy)]
-pub struct RecoveryIE<T> {
-    buf: T,
-}
-impl<T: Buf> RecoveryIE<T> {
-    #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
-        Self { buf }
-    }
-    #[inline]
-    pub fn buf(&self) -> &T {
-        &self.buf
-    }
-    #[inline]
-    pub fn release(self) -> T {
-        self.buf
-    }
-    #[inline]
-    pub fn parse(buf: T) -> Result<Self, T> {
-        let chunk_len = buf.chunk().len();
-        if chunk_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..4]
-    }
-    #[inline]
-    pub fn var_header_slice(&self) -> &[u8] {
-        let header_len = (self.header_len() as usize);
-        &self.buf.chunk()[4..header_len]
-    }
-    #[inline]
-    pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
-    }
-    #[inline]
-    pub fn cr_flag(&self) -> u8 {
-        self.buf.chunk()[3] >> 4
-    }
-    #[inline]
-    pub fn instance(&self) -> u8 {
-        self.buf.chunk()[3] & 0xf
-    }
-    #[inline]
-    pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap())) as u32 + 4
-    }
-}
-impl<T: PktBuf> RecoveryIE<T> {
-    #[inline]
-    pub fn payload(self) -> T {
-        let header_len = self.header_len() as usize;
-        let mut buf = self.buf;
-        buf.advance(header_len);
-        buf
-    }
-}
-impl<T: PktBufMut> RecoveryIE<T> {
-    #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = RecoveryIE::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
-        buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
-        Self { buf }
-    }
-    #[inline]
-    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
-        let header_len = (self.header_len() as usize);
-        &mut self.buf.chunk_mut()[4..header_len]
-    }
-    #[inline]
-    pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 3);
-        self.buf.chunk_mut()[0] = value;
-    }
-    #[inline]
-    pub fn set_cr_flag(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
-    }
-    #[inline]
-    pub fn set_instance(&mut self, value: u8) {
-        assert!(value <= 0xf);
-        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf0) | value;
-    }
-    #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
-        assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
-    }
-}
-impl<'a> RecoveryIE<Cursor<'a>> {
-    #[inline]
-    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
-        Self {
-            buf: Cursor::new(header_array.as_slice()),
-        }
-    }
-}
-impl<'a> RecoveryIE<CursorMut<'a>> {
-    #[inline]
-    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
-        let remaining_len = buf.chunk().len();
-        if remaining_len < 4 {
-            return Err(buf);
-        }
-        let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
-            return Err(container.buf);
-        }
-        Ok(container)
-    }
-    #[inline]
-    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
-    }
-    #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
@@ -2450,18 +2278,18 @@ impl<'a> Iterator for Gtpv2IEGroupIter<'a> {
             83 => ServingNetworkIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = ServingNetworkIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..7]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[7..];
                     Gtpv2IEGroup::ServingNetworkIE_(result)
                 })
                 .ok(),
             82 => RatTypeIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = RatTypeIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..5]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[5..];
                     Gtpv2IEGroup::RatTypeIE_(result)
                 })
                 .ok(),
@@ -2477,9 +2305,9 @@ impl<'a> Iterator for Gtpv2IEGroupIter<'a> {
             72 => AggregateMaxBitRateIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = AggregateMaxBitRateIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..12]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[12..];
                     Gtpv2IEGroup::AggregateMaxBitRateIE_(result)
                 })
                 .ok(),
@@ -2495,9 +2323,9 @@ impl<'a> Iterator for Gtpv2IEGroupIter<'a> {
             114 => UeTimeZoneIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = UeTimeZoneIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..6]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[6..];
                     Gtpv2IEGroup::UeTimeZoneIE_(result)
                 })
                 .ok(),
@@ -2513,9 +2341,9 @@ impl<'a> Iterator for Gtpv2IEGroupIter<'a> {
             73 => EpsBearerIdIE::parse(self.buf)
                 .map(|_pkt| {
                     let result = EpsBearerIdIE {
-                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                        buf: Cursor::new(&self.buf[..5]),
                     };
-                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    self.buf = &self.buf[5..];
                     Gtpv2IEGroup::EpsBearerIdIE_(result)
                 })
                 .ok(),
@@ -2582,9 +2410,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             83 => match ServingNetworkIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
                     self.buf = snd;
                     let result = ServingNetworkIE {
                         buf: CursorMut::new(fst),
@@ -2595,9 +2421,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             82 => match RatTypeIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = RatTypeIE {
                         buf: CursorMut::new(fst),
@@ -2621,9 +2445,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             72 => match AggregateMaxBitRateIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(12);
                     self.buf = snd;
                     let result = AggregateMaxBitRateIE {
                         buf: CursorMut::new(fst),
@@ -2647,9 +2469,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             114 => match UeTimeZoneIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(6);
                     self.buf = snd;
                     let result = UeTimeZoneIE {
                         buf: CursorMut::new(fst),
@@ -2673,9 +2493,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             73 => match EpsBearerIdIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let header_len = _pkt.header_len() as usize;
-                    let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = EpsBearerIdIE {
                         buf: CursorMut::new(fst),
