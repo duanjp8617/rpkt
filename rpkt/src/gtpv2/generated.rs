@@ -1740,6 +1740,1369 @@ impl<'a> UserLocationInfoIE<CursorMut<'a>> {
     }
 }
 
+/// A constant that defines the fixed byte length of the UliCgi protocol header.
+pub const ULI_CGI_HEADER_LEN: usize = 7;
+/// A fixed UliCgi header.
+pub const ULI_CGI_HEADER_TEMPLATE: [u8; 7] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliCgi<T> {
+    buf: T,
+}
+impl<T: Buf> UliCgi<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn location_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[3..5]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn cell_identity(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> UliCgi<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(7);
+        buf
+    }
+}
+impl<T: PktBufMut> UliCgi<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_location_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[3..5]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_cell_identity(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> UliCgi<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[7..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        ULI_CGI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliCgi<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliSai protocol header.
+pub const ULI_SAI_HEADER_LEN: usize = 7;
+/// A fixed UliSai header.
+pub const ULI_SAI_HEADER_TEMPLATE: [u8; 7] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliSai<T> {
+    buf: T,
+}
+impl<T: Buf> UliSai<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn location_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[3..5]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn servie_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> UliSai<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(7);
+        buf
+    }
+}
+impl<T: PktBufMut> UliSai<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_location_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[3..5]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_servie_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> UliSai<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[7..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        ULI_SAI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliSai<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliRai protocol header.
+pub const ULI_RAI_HEADER_LEN: usize = 7;
+/// A fixed UliRai header.
+pub const ULI_RAI_HEADER_TEMPLATE: [u8; 7] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliRai<T> {
+    buf: T,
+}
+impl<T: Buf> UliRai<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn location_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[3..5]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn routing_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> UliRai<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(7);
+        buf
+    }
+}
+impl<T: PktBufMut> UliRai<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_location_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[3..5]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_routing_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> UliRai<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[7..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        ULI_RAI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliRai<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliTai protocol header.
+pub const ULI_TAI_HEADER_LEN: usize = 5;
+/// A fixed UliTai header.
+pub const ULI_TAI_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliTai<T> {
+    buf: T,
+}
+impl<T: Buf> UliTai<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..5]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn tracking_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[3..5]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> UliTai<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(5);
+        buf
+    }
+}
+impl<T: PktBufMut> UliTai<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
+        assert!(buf.chunk_headroom() >= 5);
+        buf.move_back(5);
+        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_tracking_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[3..5]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> UliTai<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[5..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        ULI_TAI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliTai<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliEcgi protocol header.
+pub const ULI_ECGI_HEADER_LEN: usize = 7;
+/// A fixed UliEcgi header.
+pub const ULI_ECGI_HEADER_TEMPLATE: [u8; 7] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliEcgi<T> {
+    buf: T,
+}
+impl<T: Buf> UliEcgi<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn spare(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn e_utran_cell_identifier(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[3..7]).try_into().unwrap()) & 0xfffffff
+    }
+}
+impl<T: PktBuf> UliEcgi<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(7);
+        buf
+    }
+}
+impl<T: PktBufMut> UliEcgi<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        assert!(buf.chunk_headroom() >= 7);
+        buf.move_back(7);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_spare(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_e_utran_cell_identifier(&mut self, value: u32) {
+        assert!(value <= 0xfffffff);
+        let write_value = value | (((self.buf.chunk_mut()[3] & 0xf0) as u32) << 24);
+        (&mut self.buf.chunk_mut()[3..7]).copy_from_slice(&write_value.to_be_bytes());
+    }
+}
+impl<'a> UliEcgi<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[7..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        ULI_ECGI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliEcgi<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliLai protocol header.
+pub const ULI_LAI_HEADER_LEN: usize = 5;
+/// A fixed UliLai header.
+pub const ULI_LAI_HEADER_TEMPLATE: [u8; 5] = [0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliLai<T> {
+    buf: T,
+}
+impl<T: Buf> UliLai<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..5]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn local_area_code(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[3..5]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> UliLai<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(5);
+        buf
+    }
+}
+impl<T: PktBufMut> UliLai<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 5]) -> Self {
+        assert!(buf.chunk_headroom() >= 5);
+        buf.move_back(5);
+        (&mut buf.chunk_mut()[0..5]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_local_area_code(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[3..5]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> UliLai<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[5..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 5] {
+        ULI_LAI_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliLai<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 5 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliMacroEnodebIdField protocol header.
+pub const ULI_MACRO_ENODEB_ID_FIELD_HEADER_LEN: usize = 6;
+/// A fixed UliMacroEnodebIdField header.
+pub const ULI_MACRO_ENODEB_ID_FIELD_HEADER_TEMPLATE: [u8; 6] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliMacroEnodebIdField<T> {
+    buf: T,
+}
+impl<T: Buf> UliMacroEnodebIdField<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..6]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn spare(&self) -> u8 {
+        self.buf.chunk()[3] >> 4
+    }
+    #[inline]
+    pub fn macro_enodeb_id(&self) -> u32 {
+        (read_uint_from_be_bytes(&self.buf.chunk()[3..6]) & 0xfffff) as u32
+    }
+}
+impl<T: PktBuf> UliMacroEnodebIdField<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(6);
+        buf
+    }
+}
+impl<T: PktBufMut> UliMacroEnodebIdField<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        assert!(buf.chunk_headroom() >= 6);
+        buf.move_back(6);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_spare(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_macro_enodeb_id(&mut self, value: u32) {
+        assert!(value <= 0xfffff);
+        let write_value = (value as u64) | (((self.buf.chunk_mut()[3] & 0xf0) as u64) << 16);
+        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[3..6], write_value);
+    }
+}
+impl<'a> UliMacroEnodebIdField<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[6..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        ULI_MACRO_ENODEB_ID_FIELD_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliMacroEnodebIdField<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the UliExtendedMacroEnodebIdField protocol header.
+pub const ULI_EXTENDED_MACRO_ENODEB_ID_FIELD_HEADER_LEN: usize = 6;
+/// A fixed UliExtendedMacroEnodebIdField header.
+pub const ULI_EXTENDED_MACRO_ENODEB_ID_FIELD_HEADER_TEMPLATE: [u8; 6] =
+    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct UliExtendedMacroEnodebIdField<T> {
+    buf: T,
+}
+impl<T: Buf> UliExtendedMacroEnodebIdField<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..6]
+    }
+    #[inline]
+    pub fn mcc2(&self) -> u8 {
+        self.buf.chunk()[0] >> 4
+    }
+    #[inline]
+    pub fn mcc1(&self) -> u8 {
+        self.buf.chunk()[0] & 0xf
+    }
+    #[inline]
+    pub fn mnc3(&self) -> u8 {
+        self.buf.chunk()[1] >> 4
+    }
+    #[inline]
+    pub fn mcc3(&self) -> u8 {
+        self.buf.chunk()[1] & 0xf
+    }
+    #[inline]
+    pub fn mnc2(&self) -> u8 {
+        self.buf.chunk()[2] >> 4
+    }
+    #[inline]
+    pub fn mnc1(&self) -> u8 {
+        self.buf.chunk()[2] & 0xf
+    }
+    #[inline]
+    pub fn sm_enb(&self) -> u8 {
+        self.buf.chunk()[3] >> 7
+    }
+    #[inline]
+    pub fn spare(&self) -> u8 {
+        (self.buf.chunk()[3] >> 5) & 0x3
+    }
+    #[inline]
+    pub fn macro_enodeb_id(&self) -> u32 {
+        (read_uint_from_be_bytes(&self.buf.chunk()[3..6]) & 0x1fffff) as u32
+    }
+}
+impl<T: PktBuf> UliExtendedMacroEnodebIdField<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(6);
+        buf
+    }
+}
+impl<T: PktBufMut> UliExtendedMacroEnodebIdField<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        assert!(buf.chunk_headroom() >= 6);
+        buf.move_back(6);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_mcc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mcc3(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_mnc2(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_mnc1(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_sm_enb(&mut self, value: u8) {
+        assert!(value <= 0x1);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x7f) | (value << 7);
+    }
+    #[inline]
+    pub fn set_spare(&mut self, value: u8) {
+        assert!(value <= 0x3);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0x9f) | (value << 5);
+    }
+    #[inline]
+    pub fn set_macro_enodeb_id(&mut self, value: u32) {
+        assert!(value <= 0x1fffff);
+        let write_value = (value as u64) | (((self.buf.chunk_mut()[3] & 0xe0) as u64) << 16);
+        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[3..6], write_value);
+    }
+}
+impl<'a> UliExtendedMacroEnodebIdField<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[6..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        ULI_EXTENDED_MACRO_ENODEB_ID_FIELD_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> UliExtendedMacroEnodebIdField<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the FullyQualifiedTeidIE protocol header.
 pub const FULLY_QUALIFIED_TEID_IE_HEADER_LEN: usize = 9;
 /// A fixed FullyQualifiedTeidIE header.

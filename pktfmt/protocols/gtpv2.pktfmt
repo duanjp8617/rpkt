@@ -307,6 +307,109 @@ packet UserLocationInfoIE {
     cond = (type_==86)
 }
 
+packet UliCgi {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        location_area_code = Field{bit = 16},
+        cell_identity = Field{bit = 16}
+    ]
+}
+
+packet UliSai {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        location_area_code = Field{bit = 16},
+        servie_area_code = Field{bit = 16}
+    ]
+}
+
+packet UliRai {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        location_area_code = Field{bit = 16},
+        routing_area_code = Field{bit = 16}
+    ]
+}
+
+packet UliTai {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},        
+        tracking_area_code = Field{bit = 16}
+    ]
+}
+
+packet UliEcgi {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        spare = Field{bit = 4},
+        e_utran_cell_identifier = Field{bit = 28},
+    ]
+}
+
+packet UliLai {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},        
+        local_area_code = Field{bit = 16}
+    ]
+}
+
+packet UliMacroEnodebIdField {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        spare = Field{bit = 4},
+        macro_enodeb_id = Field{bit = 20},        
+    ]
+}
+
+packet UliExtendedMacroEnodebIdField {
+    header = [
+        mcc2 = Field{bit = 4},
+        mcc1 = Field{bit = 4},
+        mnc3 = Field{bit = 4},
+        mcc3 = Field{bit = 4},
+        mnc2 = Field{bit = 4},
+        mnc1 = Field{bit = 4},
+        sm_enb = Field{bit = 1},
+        spare = Field{bit = 2},
+        macro_enodeb_id = Field{bit = 21},        
+    ]
+}
+
 // fully qualified tunnel endpoint identifier 87
 packet FullyQualifiedTeidIE {
     header = [

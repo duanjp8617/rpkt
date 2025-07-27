@@ -38,3 +38,5 @@ pub mod gtpv2_information_elements {
         UserLocationInfoIE, USER_LOCATION_INFO_IE_HEADER_LEN, USER_LOCATION_INFO_IE_HEADER_TEMPLATE,
     };
 }
+
+pub mod uli;
