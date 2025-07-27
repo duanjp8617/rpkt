@@ -50,7 +50,15 @@ pub mod gtpv1_information_elements {
     //! gtp-u/c information elements according to TS 29.281 and 29.060.
     pub use super::generated::{CauseIE, CAUSE_IE_HEADER_LEN, CAUSE_IE_HEADER_TEMPLATE};
     pub use super::generated::{
+        ExtHeaderTypeListIE, EXT_HEADER_TYPE_LIST_IE_HEADER_LEN,
+        EXT_HEADER_TYPE_LIST_IE_HEADER_TEMPLATE,
+    };
+    pub use super::generated::{
         GtpuPeerAddrIE, GTPU_PEER_ADDR_IE_HEADER_LEN, GTPU_PEER_ADDR_IE_HEADER_TEMPLATE,
+    };
+    pub use super::generated::{
+        GtpuTunnelStatusInfoIE, GTPU_TUNNEL_STATUS_INFO_IE_HEADER_LEN,
+        GTPU_TUNNEL_STATUS_INFO_IE_HEADER_TEMPLATE,
     };
     pub use super::generated::{Gtpv1IEGroup, Gtpv1IEGroupIter, Gtpv1IEGroupIterMut};
     pub use super::generated::{
