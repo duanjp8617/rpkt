@@ -10,7 +10,6 @@ use rpkt::gtpv2::*;
 use rpkt::ipv4::*;
 use rpkt::udp::*;
 use rpkt::Buf;
-use rpkt::PktBuf;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
