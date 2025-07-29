@@ -10,6 +10,7 @@ use rpkt::gtpv2::*;
 use rpkt::ipv4::*;
 use rpkt::udp::*;
 use rpkt::Buf;
+use rpkt::PktBuf;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
@@ -373,4 +374,74 @@ fn gtpv2_with_piggyback_parse() {
         &[0x33, 0x87, 0x93, 0x34, 0x49, 0x51, 0x83, 0xf6]
     );
     assert_eq!(ie.payload().chunk().len(), 0);
+}
+
+#[test]
+fn gtpv2_with_piggyback_build() {
+    let pkt = file_to_packet("gtpv2-with-piggyback.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    let mut hdr = InternationalMobileSubscriberIdIE::default_header();
+    InternationalMobileSubscriberIdIE::from_header_array_mut(&mut hdr)
+        .set_header_len((INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN + 8) as u32);
+    let mut ie = InternationalMobileSubscriberIdIE::prepend_header(pbuf, &hdr);
+    ie.var_header_slice_mut()
+        .copy_from_slice(&[0x33, 0x87, 0x93, 0x34, 0x49, 0x51, 0x83, 0xf6]);
+
+    let mut hdr = Gtpv2::default_header();
+    Gtpv2::from_header_array_mut(&mut hdr).set_piggybacking_flag(false);
+    Gtpv2::from_header_array_mut(&mut hdr).set_teid_present(true);
+    Gtpv2::from_header_array_mut(&mut hdr).set_message_priority_present(true);
+    let mut gtp_pkt = Gtpv2::prepend_header(ie.release(), &hdr);
+    gtp_pkt.set_message_type(33);
+    gtp_pkt.set_teid(87654);
+    gtp_pkt.set_seq_number(67890);
+    gtp_pkt.set_message_priority(0x9);
+
+    let cursor = gtp_pkt.release().cursor();
+    let mut pbuf = CursorMut::new(&mut buf[..cursor]);
+    pbuf.advance(cursor);
+
+    let mut hdr = RecoveryIE::default_header();
+    RecoveryIE::from_header_array_mut(&mut hdr).set_header_len((RECOVERY_IE_HEADER_LEN + 1) as u32);
+    let mut ie = RecoveryIE::prepend_header(pbuf, &hdr);
+    ie.var_header_slice_mut()[0] = 17;
+
+    let mut hdr = Gtpv2::default_header();
+    Gtpv2::from_header_array_mut(&mut hdr).set_piggybacking_flag(true);
+    Gtpv2::from_header_array_mut(&mut hdr).set_teid_present(false);
+    Gtpv2::from_header_array_mut(&mut hdr).set_message_priority_present(false);
+    let mut gtp_pkt = Gtpv2::prepend_header(ie.release(), &hdr);
+    gtp_pkt.set_message_type(1);
+    gtp_pkt.set_seq_number(12345);
+    gtp_pkt.set_spare_last(0);
+
+    let first_msg_len = gtp_pkt.release().chunk().len();
+    let payload_len = buf.len() - cursor + first_msg_len;
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600 - payload_len);
+
+    let mut udp = Udp::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
+    udp.set_src_port(2123);
+    udp.set_dst_port(2123);
+    udp.set_checksum(0x92d3);
+
+    let mut ipv4 = Ipv4::prepend_header(udp.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4.set_dscp(0);
+    ipv4.set_ecn(0);
+    ipv4.set_ident(1);
+    ipv4.set_ttl(64);
+    ipv4.set_protocol(IpProtocol::UDP);
+    ipv4.set_checksum(0xf62e);
+    ipv4.set_src_addr(Ipv4Addr::from_str("192.168.1.100").unwrap());
+    ipv4.set_dst_addr(Ipv4Addr::from_str("192.168.1.200").unwrap());
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x08, 0xb4, 0xb1, 0x1a, 0x46, 0xad]));
+    eth.set_src_addr(EtherAddr([0x10, 0x5b, 0xad, 0xb0, 0xf5, 0x07]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    assert_eq!(eth.release().chunk(), &pkt);
 }
