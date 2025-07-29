@@ -23,6 +23,12 @@ pub mod options {
         RouteAlertOption, ROUTE_ALERT_OPTION_HEADER_LEN, ROUTE_ALERT_OPTION_HEADER_TEMPLATE,
     };
 
+    pub use super::generated::{
+        CommercialSecurity, CommercialSecurityTag, COMMERCIAL_SECURITY_HEADER_LEN,
+        COMMERCIAL_SECURITY_HEADER_TEMPLATE, COMMERCIAL_SECURITY_TAG_HEADER_LEN,
+        COMMERCIAL_SECURITY_TAG_HEADER_TEMPLATE,
+    };
+
     pub use super::generated::{Ipv4Options, Ipv4OptionsIter, Ipv4OptionsIterMut};
 }
 

@@ -118,7 +118,7 @@ packet RecordRouteOption {
 // https://www.ietf.org/archive/id/draft-ietf-cipso-ipsecurity-01.txt
 packet CommercialSecurity {
     header = [
-        type_ = Field {bit = 8, default = @143},
+        type_ = Field {bit = 8, default = @134},
         len = Field {
             bit = 8,
             default = 6,
@@ -129,7 +129,7 @@ packet CommercialSecurity {
     length = [
         header_len=len
     ],
-    cond = (type_ == 143),
+    cond = (type_ == 134),
 }
 
 packet CommercialSecurityTag {

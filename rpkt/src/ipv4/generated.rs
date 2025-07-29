@@ -865,7 +865,7 @@ impl<'a> RecordRouteOption<CursorMut<'a>> {
 /// A constant that defines the fixed byte length of the CommercialSecurity protocol header.
 pub const COMMERCIAL_SECURITY_HEADER_LEN: usize = 6;
 /// A fixed CommercialSecurity header.
-pub const COMMERCIAL_SECURITY_HEADER_TEMPLATE: [u8; 6] = [0x8f, 0x06, 0x00, 0x00, 0x00, 0x00];
+pub const COMMERCIAL_SECURITY_HEADER_TEMPLATE: [u8; 6] = [0x86, 0x06, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
 pub struct CommercialSecurity<T> {
@@ -945,7 +945,7 @@ impl<T: PktBufMut> CommercialSecurity<T> {
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
-        assert!(value == 143);
+        assert!(value == 134);
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
@@ -1340,7 +1340,7 @@ impl<T: Buf> Ipv4Options<T> {
             68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
             7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
             148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4Options::RouteAlertOption_(pkt)),
-            143 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
+            134 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
             _ => Err(buf),
         }
     }
@@ -1412,7 +1412,7 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     Ipv4Options::RouteAlertOption_(result)
                 })
                 .ok(),
-            143 => CommercialSecurity::parse(self.buf)
+            134 => CommercialSecurity::parse(self.buf)
                 .map(|_pkt| {
                     let result = CommercialSecurity {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
@@ -1508,7 +1508,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            143 => match CommercialSecurity::parse(&self.buf[..]) {
+            134 => match CommercialSecurity::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
