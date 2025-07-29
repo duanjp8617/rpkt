@@ -1,6 +1,6 @@
 //! The payload of user location information IE.
 
-use super::gtpv2_information_elements::{UserLocationInfoIE, USER_LOCATION_INFO_IE_HEADER_LEN};
+use super::gtpv2_information_elements::UserLocationInfoIE;
 use crate::traits::{Buf, PktBufMut};
 use crate::CursorMut;
 
