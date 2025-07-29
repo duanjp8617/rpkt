@@ -318,16 +318,16 @@ impl<T: PktBufMut> Ipv4Packet<T> {
 }
 */
 
-/// A constant that defines the fixed byte length of the EolOption protocol header.
-pub const EOL_OPTION_HEADER_LEN: usize = 1;
-/// A fixed EolOption header.
-pub const EOL_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
+/// A constant that defines the fixed byte length of the Eol protocol header.
+pub const EOL_HEADER_LEN: usize = 1;
+/// A fixed Eol header.
+pub const EOL_HEADER_TEMPLATE: [u8; 1] = [0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EolOption<T> {
+pub struct Eol<T> {
     buf: T,
 }
-impl<T: Buf> EolOption<T> {
+impl<T: Buf> Eol<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -358,7 +358,7 @@ impl<T: Buf> EolOption<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> EolOption<T> {
+impl<T: PktBuf> Eol<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -366,7 +366,7 @@ impl<T: PktBuf> EolOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> EolOption<T> {
+impl<T: PktBufMut> Eol<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -380,7 +380,7 @@ impl<T: PktBufMut> EolOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> EolOption<Cursor<'a>> {
+impl<'a> Eol<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -402,10 +402,10 @@ impl<'a> EolOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 1] {
-        EOL_OPTION_HEADER_TEMPLATE.clone()
+        EOL_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> EolOption<CursorMut<'a>> {
+impl<'a> Eol<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1321,7 +1321,7 @@ impl<'a> RouteAlertOption<CursorMut<'a>> {
 
 #[derive(Debug)]
 pub enum Ipv4Options<T> {
-    EolOption_(EolOption<T>),
+    Eol_(Eol<T>),
     NopOption_(NopOption<T>),
     TimestampOption_(TimestampOption<T>),
     RecordRouteOption_(RecordRouteOption<T>),
@@ -1335,7 +1335,7 @@ impl<T: Buf> Ipv4Options<T> {
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
-            0 => EolOption::parse(buf).map(|pkt| Ipv4Options::EolOption_(pkt)),
+            0 => Eol::parse(buf).map(|pkt| Ipv4Options::Eol_(pkt)),
             1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
             68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
             7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
@@ -1367,13 +1367,13 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            0 => EolOption::parse(self.buf)
+            0 => Eol::parse(self.buf)
                 .map(|_pkt| {
-                    let result = EolOption {
+                    let result = Eol {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4Options::EolOption_(result)
+                    Ipv4Options::Eol_(result)
                 })
                 .ok(),
             1 => NopOption::parse(self.buf)
@@ -1447,14 +1447,14 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            0 => match EolOption::parse(&self.buf[..]) {
+            0 => match Eol::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = EolOption {
+                    let result = Eol {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4Options::EolOption_(result))
+                    Some(Ipv4Options::Eol_(result))
                 }
                 Err(_) => None,
             },

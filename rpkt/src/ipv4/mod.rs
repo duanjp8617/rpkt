@@ -6,7 +6,7 @@ pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 /// The Ipv4 options.
 pub mod options {
     // The Ipv4 Eol option
-    pub use super::generated::{EolOption, EOL_OPTION_HEADER_LEN, EOL_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Eol, EOL_HEADER_LEN, EOL_HEADER_TEMPLATE};
 
     // The Ipv4 Nop option
     pub use super::generated::{NopOption, NOP_OPTION_HEADER_LEN, NOP_OPTION_HEADER_TEMPLATE};

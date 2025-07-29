@@ -52,14 +52,13 @@ fn ipv4_option1_parse() {
     );
 
     let op2 = match option_iter.next().unwrap() {
-        Ipv4Options::EolOption_(pkt) => pkt,
+        Ipv4Options::Eol_(pkt) => pkt,
         _ => panic!(),
     };
     assert_eq!(op2.type_(), 0);
 
     let payload = ipv4.payload();
 
-    println!("{}", payload.chunk().len());
     assert_eq!(&pkt[payload.cursor()..], payload.chunk());
 }
 
