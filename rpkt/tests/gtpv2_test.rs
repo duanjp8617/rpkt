@@ -43,14 +43,32 @@ fn gtpv2_with_teid_parse() {
     assert_eq!(ie.type_(), 86);
     assert_eq!(ie.ecgi(), true);
     assert_eq!(ie.tai(), true);
-    assert_eq!(
-        ie.var_header_slice().len(),
-        ie.header_len() as usize - USER_LOCATION_INFO_IE_HEADER_LEN
-    );
-    assert_eq!(
-        ie.var_header_slice(),
-        &[0x64, 0xf6, 0x29, 0x2e, 0x18, 0x64, 0xf6, 0x29, 0x01, 0xce, 0x66, 0x21,][..]
-    );
+
+    let uli_var_header = uli::UliVarHeader::try_from(&ie).unwrap();
+    assert_eq!(uli_var_header.extended_macro_enodeb_id.is_none(), true);
+    assert_eq!(uli_var_header.macro_enodeb_id.is_none(), true);
+    assert_eq!(uli_var_header.lai.is_none(), true);
+    assert_eq!(uli_var_header.rai.is_none(), true);
+    assert_eq!(uli_var_header.sai.is_none(), true);
+    assert_eq!(uli_var_header.cgi.is_none(), true);
+
+    let tai = uli_var_header.tai.unwrap();
+    assert_eq!(tai.tracking_area_code(), 0x2e18);
+    assert_eq!(tai.mcc1(), 4);
+    assert_eq!(tai.mcc2(), 6);
+    assert_eq!(tai.mcc3(), 6);
+    assert_eq!(tai.mnc1(), 9);
+    assert_eq!(tai.mnc2(), 2);
+    assert_eq!(tai.mnc3(), 0xf);
+
+    let ecgi = uli_var_header.ecgi.unwrap();
+    assert_eq!(ecgi.e_utran_cell_identifier(), 30303777);
+    assert_eq!(ecgi.mcc1(), 4);
+    assert_eq!(ecgi.mcc2(), 6);
+    assert_eq!(ecgi.mcc3(), 6);
+    assert_eq!(ecgi.mnc1(), 9);
+    assert_eq!(ecgi.mnc2(), 2);
+    assert_eq!(ecgi.mnc3(), 0xf);
 
     let ie = match Gtpv2IEGroup::group_parse(ie.payload()).unwrap() {
         Gtpv2IEGroup::ServingNetworkIE_(pkt) => pkt,

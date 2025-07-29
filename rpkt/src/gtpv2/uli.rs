@@ -106,7 +106,7 @@ pub struct UliVarHeader<'a> {
 impl<'a> UliVarHeader<'a> {
     /// Try to construct the helper from a give `DlPduSessionInfo`.
     pub fn try_from<T: 'a + Buf>(pkt: &'a UserLocationInfoIE<T>) -> Option<Self> {
-        let mut payload = &pkt.var_header_slice()[USER_LOCATION_INFO_IE_HEADER_LEN..];
+        let mut payload = pkt.var_header_slice();
 
         access_imutable_field!(cgi, pkt.cgi(), ULI_CGI_HEADER_LEN, UliCgi, payload);
         access_imutable_field!(sai, pkt.sai(), ULI_SAI_HEADER_LEN, UliSai, payload);
@@ -176,7 +176,7 @@ impl<'a> UliVarHeaderMut<'a> {
         let pkt_macro_enodeb_id = pkt.macro_enodeb_id();
         let pkt_extended_macro_enodeb_id = pkt.extended_macro_enodeb_id();
 
-        let mut payload = &mut pkt.var_header_slice_mut()[USER_LOCATION_INFO_IE_HEADER_LEN..];
+        let mut payload = pkt.var_header_slice_mut();
 
         access_mutable_field!(cgi, pkt_cgi, ULI_CGI_HEADER_LEN, UliCgi, payload);
         access_mutable_field!(sai, pkt_sai, ULI_SAI_HEADER_LEN, UliSai, payload);
