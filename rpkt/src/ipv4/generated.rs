@@ -862,6 +862,322 @@ impl<'a> RecordRouteOption<CursorMut<'a>> {
     }
 }
 
+/// A constant that defines the fixed byte length of the CommercialSecurity protocol header.
+pub const COMMERCIAL_SECURITY_HEADER_LEN: usize = 6;
+/// A fixed CommercialSecurity header.
+pub const COMMERCIAL_SECURITY_HEADER_TEMPLATE: [u8; 6] = [0x8f, 0x06, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct CommercialSecurity<T> {
+    buf: T,
+}
+impl<T: Buf> CommercialSecurity<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..6]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[6..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn doi(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[2..6]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> CommercialSecurity<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> CommercialSecurity<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 6]) -> Self {
+        let header_len = CommercialSecurity::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 6) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[6..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 143);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_doi(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[2..6]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> CommercialSecurity<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 6] {
+        COMMERCIAL_SECURITY_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> CommercialSecurity<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 6 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 6)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the CommercialSecurityTag protocol header.
+pub const COMMERCIAL_SECURITY_TAG_HEADER_LEN: usize = 4;
+/// A fixed CommercialSecurityTag header.
+pub const COMMERCIAL_SECURITY_TAG_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x04, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct CommercialSecurityTag<T> {
+    buf: T,
+}
+impl<T: Buf> CommercialSecurityTag<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[4..header_len]
+    }
+    #[inline]
+    pub fn tag_type(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn alignment_octet(&self) -> u8 {
+        self.buf.chunk()[2]
+    }
+    #[inline]
+    pub fn sensitivity_level(&self) -> u8 {
+        self.buf.chunk()[3]
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> CommercialSecurityTag<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> CommercialSecurityTag<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = CommercialSecurityTag::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[4..header_len]
+    }
+    #[inline]
+    pub fn set_tag_type(&mut self, value: u8) {
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_alignment_octet(&mut self, value: u8) {
+        assert!(value == 0);
+        self.buf.chunk_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_sensitivity_level(&mut self, value: u8) {
+        self.buf.chunk_mut()[3] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> CommercialSecurityTag<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        COMMERCIAL_SECURITY_TAG_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> CommercialSecurityTag<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 4)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the RouteAlertOption protocol header.
 pub const ROUTE_ALERT_OPTION_HEADER_LEN: usize = 4;
 /// A fixed RouteAlertOption header.
@@ -1010,6 +1326,7 @@ pub enum Ipv4Options<T> {
     TimestampOption_(TimestampOption<T>),
     RecordRouteOption_(RecordRouteOption<T>),
     RouteAlertOption_(RouteAlertOption<T>),
+    CommercialSecurity_(CommercialSecurity<T>),
 }
 impl<T: Buf> Ipv4Options<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
@@ -1023,6 +1340,7 @@ impl<T: Buf> Ipv4Options<T> {
             68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
             7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
             148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4Options::RouteAlertOption_(pkt)),
+            143 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
             _ => Err(buf),
         }
     }
@@ -1092,6 +1410,15 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
                     Ipv4Options::RouteAlertOption_(result)
+                })
+                .ok(),
+            143 => CommercialSecurity::parse(self.buf)
+                .map(|_pkt| {
+                    let result = CommercialSecurity {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv4Options::CommercialSecurity_(result)
                 })
                 .ok(),
             _ => None,
@@ -1178,6 +1505,19 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                         buf: CursorMut::new(fst),
                     };
                     Some(Ipv4Options::RouteAlertOption_(result))
+                }
+                Err(_) => None,
+            },
+            143 => match CommercialSecurity::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = CommercialSecurity {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4Options::CommercialSecurity_(result))
                 }
                 Err(_) => None,
             },

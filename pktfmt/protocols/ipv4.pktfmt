@@ -114,6 +114,39 @@ packet RecordRouteOption {
     cond = (type_ == 7),
 }
 
+// A legacy option defined in 
+// https://www.ietf.org/archive/id/draft-ietf-cipso-ipsecurity-01.txt
+packet CommercialSecurity {
+    header = [
+        type_ = Field {bit = 8, default = @143},
+        len = Field {
+            bit = 8,
+            default = 6,
+            gen = false,
+        },
+        doi = Field {bit = 32},
+    ],
+    length = [
+        header_len=len
+    ],
+    cond = (type_ == 143),
+}
+
+packet CommercialSecurityTag {
+    header = [
+        tag_type = Field{bit = 8},
+        len = Field {
+            bit = 8, default = 4, gen = false,
+        },
+        alignment_octet = Field{bit = 8, default=@0},
+        sensitivity_level = Field{bit = 8}
+    ]
+    ,
+    length = [
+        header_len=len
+    ]
+}
+
 packet RouteAlertOption {
     header = [
         type_ = Field {bit = 8, default = @148},
@@ -136,7 +169,8 @@ group Ipv4Options = {
         NopOption,
         TimestampOption,
         RecordRouteOption,
-        RouteAlertOption
+        RouteAlertOption,
+        CommercialSecurity
     ],
     enable_iter = true,
 }
