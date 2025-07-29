@@ -260,11 +260,32 @@ fn gtpv2_with_teid_build() {
     let mut ie = UserLocationInfoIE::prepend_header(ie.release(), &id_hdr);
     ie.set_ecgi(true);
     ie.set_tai(true);
-    ie.var_header_slice_mut().copy_from_slice(
-        &[
-            0x64, 0xf6, 0x29, 0x2e, 0x18, 0x64, 0xf6, 0x29, 0x01, 0xce, 0x66, 0x21,
-        ][..],
-    );
+
+    let uli_var_header = uli::UliVarHeaderMut::try_from(&mut ie).unwrap();
+    assert_eq!(uli_var_header.extended_macro_enodeb_id.is_none(), true);
+    assert_eq!(uli_var_header.macro_enodeb_id.is_none(), true);
+    assert_eq!(uli_var_header.lai.is_none(), true);
+    assert_eq!(uli_var_header.rai.is_none(), true);
+    assert_eq!(uli_var_header.sai.is_none(), true);
+    assert_eq!(uli_var_header.cgi.is_none(), true);
+
+    let mut tai = uli_var_header.tai.unwrap();
+    tai.set_tracking_area_code(0x2e18);
+    tai.set_mcc1(4);
+    tai.set_mcc2(6);
+    tai.set_mcc3(6);
+    tai.set_mnc1(9);
+    tai.set_mnc2(2);
+    tai.set_mnc3(0xf);
+
+    let mut ecgi = uli_var_header.ecgi.unwrap();
+    ecgi.set_e_utran_cell_identifier(30303777);
+    ecgi.set_mcc1(4);
+    ecgi.set_mcc2(6);
+    ecgi.set_mcc3(6);
+    ecgi.set_mnc1(9);
+    ecgi.set_mnc2(2);
+    ecgi.set_mnc3(0xf);
 
     let mut id_hdr = Gtpv2::default_header();
     Gtpv2::from_header_array_mut(&mut id_hdr).set_teid_present(true);
