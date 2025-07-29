@@ -316,3 +316,61 @@ fn gtpv2_with_teid_build() {
 
     assert_eq!(eth.release().chunk(), &pkt);
 }
+
+#[test]
+fn gtpv2_with_piggyback_parse() {
+    let pkt = file_to_packet("gtpv2-with-piggyback.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse(eth.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::UDP);
+
+    let udp = Udp::parse(ipv4.payload()).unwrap();
+    assert_eq!(udp.src_port(), 2123);
+
+    let gtp = Gtpv2::parse(udp.payload()).unwrap();
+    assert_eq!(gtp.version(), 2);
+    assert_eq!(gtp.piggybacking_flag(), true);
+    assert_eq!(gtp.teid_present(), false);
+    assert_eq!(gtp.message_priority_present(), false);
+    assert_eq!(gtp.message_type(), 1);
+    assert_eq!(gtp.packet_len() as usize, GTPV2_HEADER_LEN + 9);
+    assert_eq!(gtp.seq_number(), 12345);
+    assert_eq!(gtp.spare_last(), 0);
+
+    {
+        let ie = match Gtpv2IEGroup::group_parse(gtp.payload()).unwrap() {
+            Gtpv2IEGroup::RecoveryIE_(pkt) => pkt,
+            _ => panic!(),
+        };
+        assert_eq!(ie.var_header_slice()[0], 17);
+    }
+
+    let mut after_current_msg = *gtp.buf();
+    after_current_msg.advance(gtp.packet_len() as usize);
+
+    let gtp = Gtpv2::parse(after_current_msg).unwrap();
+    assert_eq!(gtp.version(), 2);
+    assert_eq!(gtp.piggybacking_flag(), false);
+    assert_eq!(gtp.teid_present(), true);
+    assert_eq!(gtp.message_priority_present(), true);
+    assert_eq!(gtp.message_type(), 33);
+    assert_eq!(gtp.packet_len() as usize, GTPV2_HEADER_LEN + 20);
+    assert_eq!(gtp.teid(), 87654);
+    assert_eq!(gtp.seq_number(), 67890);
+    assert_eq!(gtp.message_priority(), 0x9);
+    assert_eq!(gtp.spare_last(), 0);
+
+    let ie = match Gtpv2IEGroup::group_parse(gtp.payload()).unwrap() {
+        Gtpv2IEGroup::InternationalMobileSubscriberIdIE_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(
+        ie.var_header_slice(),
+        &[0x33, 0x87, 0x93, 0x34, 0x49, 0x51, 0x83, 0xf6]
+    );
+    assert_eq!(ie.payload().chunk().len(), 0);
+}

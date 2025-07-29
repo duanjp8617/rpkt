@@ -65,8 +65,12 @@ impl<T: Buf> Gtpv2<T> {
         self.buf.chunk()[0] & 0x8 != 0
     }
     #[inline]
+    pub fn message_priority_present(&self) -> bool {
+        self.buf.chunk()[0] & 0x4 != 0
+    }
+    #[inline]
     pub fn spare(&self) -> u8 {
-        self.buf.chunk()[0] & 0x7
+        self.buf.chunk()[0] & 0x3
     }
     #[inline]
     pub fn message_type(&self) -> u8 {
@@ -125,9 +129,14 @@ impl<T: PktBufMut> Gtpv2<T> {
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
     }
     #[inline]
+    pub fn set_message_priority_present(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfb) | (value << 2);
+    }
+    #[inline]
     pub fn set_spare(&mut self, value: u8) {
-        assert!(value <= 0x7);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf8) | value;
+        assert!(value <= 0x3);
+        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xfc) | value;
     }
     #[inline]
     pub fn set_message_type(&mut self, value: u8) {
@@ -216,18 +225,6 @@ impl<T: Buf> Gtpv2<T> {
         }
     }
 
-    /// Return the message priority present flag.
-    ///
-    /// # Panics
-    /// This function panics if:
-    /// 1. `self.teid_present()` is false.
-    /// 2. The packet buffer has invalid form.
-    #[inline]
-    pub fn message_priority_present(&self) -> bool {
-        assert!(self.teid_present());
-        (self.buf.chunk()[0] & (1 << 2)) != 0
-    }
-
     /// Return the teid value.
     ///
     /// # Panics
@@ -286,22 +283,6 @@ impl<T: Buf> Gtpv2<T> {
 }
 
 impl<T: PktBufMut> Gtpv2<T> {
-    /// Set the message priority present flag.
-    ///
-    /// # Panics
-    /// This function panics if:
-    /// 1. `self.teid_present()` is false.
-    /// 2. The packet buffer has invalid form.
-    #[inline]
-    pub fn set_message_priority_present(&mut self, value: bool) {
-        assert!(self.teid_present());
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | (1 << 2);
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & (!(1 << 2));
-        }
-    }
-
     /// Set the teid value.
     ///
     /// # Panics

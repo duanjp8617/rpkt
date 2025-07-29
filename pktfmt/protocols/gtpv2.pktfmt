@@ -13,7 +13,8 @@ packet Gtpv2 {
         version = Field{bit = 3, default=@2},
         piggybacking_flag = Field{bit = 1, arg = bool},
         teid_present = Field{bit = 1, arg = bool},
-        spare=Field{bit = 3},
+        message_priority_present = Field{bit = 1, arg = bool},
+        spare=Field{bit = 2},
         message_type = Field{bit = 8},
         message_len = Field{bit = 16, default=4, gen=false},
     ],
@@ -36,18 +37,6 @@ impl<T: Buf> Gtpv2<T> {
         } else {
             8
         }
-    }
-
-    /// Return the message priority present flag.
-    ///
-    /// # Panics
-    /// This function panics if:
-    /// 1. `self.teid_present()` is false.
-    /// 2. The packet buffer has invalid form.
-    #[inline]
-    pub fn message_priority_present(&self) -> bool {
-        assert!(self.teid_present());
-        (self.buf.chunk()[0] & (1 << 2)) != 0
     }
 
     /// Return the teid value.
@@ -108,22 +97,6 @@ impl<T: Buf> Gtpv2<T> {
 }
 
 impl<T: PktBufMut> Gtpv2<T> {
-    /// Set the message priority present flag.
-    ///
-    /// # Panics
-    /// This function panics if:
-    /// 1. `self.teid_present()` is false.
-    /// 2. The packet buffer has invalid form.
-    #[inline]
-    pub fn set_message_priority_present(&mut self, value: bool) {
-        assert!(self.teid_present());
-        if value {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] | (1 << 2);
-        } else {
-            self.buf.chunk_mut()[0] = self.buf.chunk_mut()[0] & (!(1 << 2));
-        }
-    }
-
     /// Set the teid value.
     ///
     /// # Panics

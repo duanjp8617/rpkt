@@ -5,7 +5,7 @@ use bytes::Buf;
 use crate::{PktBuf, PktBufMut};
 
 /// A container type that turns a byte slice into `PktBuf`.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Cursor<'a> {
     chunk: &'a [u8],
     start_addr: *const u8,
