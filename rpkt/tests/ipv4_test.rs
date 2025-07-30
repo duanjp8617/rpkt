@@ -7,6 +7,7 @@ use common::*;
 use rpkt::ether::*;
 use rpkt::ipv4::options::*;
 use rpkt::ipv4::*;
+use rpkt::network_rw::*;
 use rpkt::Buf;
 use rpkt::PktBuf;
 use rpkt::PktBufMut;
@@ -107,4 +108,51 @@ fn ipv4_option1_build() {
     eth.set_ethertype(EtherType::IPV4);
 
     assert_eq!(eth.release().chunk(), pkt);
+}
+
+#[test]
+fn ipv4_option2_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option2.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse(eth.payload()).unwrap();
+    assert_eq!(ipv4.header_len(), 60);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 124);
+    assert_eq!(ipv4.ident(), 33505);
+    assert_eq!(ipv4.dont_frag(), true);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+    assert_eq!(ipv4.checksum(), 0x0d44);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.6").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::Timestamp_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 40);
+    assert_eq!(op1.pointer(), 9);
+    assert_eq!(op1.oflw(), 0);
+    assert_eq!(op1.flg(), 0);
+    for i in 0..9 {
+        let val = read_4_bytes(&op1.var_header_slice()[4 * i..4 * i + 4]);
+        if i == 0 {
+            assert_eq!(val, 82524601);
+        } else {
+            assert_eq!(val, 0);
+        }
+    }
+
+    let payload = ipv4.payload();
+
+    assert_eq!(&pkt[payload.cursor()..], payload.chunk());
 }

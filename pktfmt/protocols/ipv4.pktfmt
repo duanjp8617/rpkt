@@ -80,7 +80,7 @@ packet NopOption {
     cond = (type_ == 1),
 }
 
-packet TimestampOption {
+packet Timestamp {
     header = [
         type_ = Field {bit = 8, default = @68},
         len = Field {
@@ -167,7 +167,7 @@ group Ipv4Options = {
     members = [
         Eol,
         NopOption,
-        TimestampOption,
+        Timestamp,
         RecordRouteOption,
         RouteAlertOption,
         CommercialSecurity

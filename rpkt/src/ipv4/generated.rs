@@ -536,16 +536,16 @@ impl<'a> NopOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the TimestampOption protocol header.
-pub const TIMESTAMP_OPTION_HEADER_LEN: usize = 4;
-/// A fixed TimestampOption header.
-pub const TIMESTAMP_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
+/// A constant that defines the fixed byte length of the Timestamp protocol header.
+pub const TIMESTAMP_HEADER_LEN: usize = 4;
+/// A fixed Timestamp header.
+pub const TIMESTAMP_HEADER_TEMPLATE: [u8; 4] = [0x44, 0x04, 0x05, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct TimestampOption<T> {
+pub struct Timestamp<T> {
     buf: T,
 }
-impl<T: Buf> TimestampOption<T> {
+impl<T: Buf> Timestamp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -602,7 +602,7 @@ impl<T: Buf> TimestampOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> TimestampOption<T> {
+impl<T: PktBuf> Timestamp<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -611,10 +611,10 @@ impl<T: PktBuf> TimestampOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> TimestampOption<T> {
+impl<T: PktBufMut> Timestamp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = TimestampOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = Timestamp::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -649,7 +649,7 @@ impl<T: PktBufMut> TimestampOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> TimestampOption<Cursor<'a>> {
+impl<'a> Timestamp<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -677,10 +677,10 @@ impl<'a> TimestampOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 4] {
-        TIMESTAMP_OPTION_HEADER_TEMPLATE.clone()
+        TIMESTAMP_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> TimestampOption<CursorMut<'a>> {
+impl<'a> Timestamp<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1323,7 +1323,7 @@ impl<'a> RouteAlertOption<CursorMut<'a>> {
 pub enum Ipv4Options<T> {
     Eol_(Eol<T>),
     NopOption_(NopOption<T>),
-    TimestampOption_(TimestampOption<T>),
+    Timestamp_(Timestamp<T>),
     RecordRouteOption_(RecordRouteOption<T>),
     RouteAlertOption_(RouteAlertOption<T>),
     CommercialSecurity_(CommercialSecurity<T>),
@@ -1337,7 +1337,7 @@ impl<T: Buf> Ipv4Options<T> {
         match cond_value0 {
             0 => Eol::parse(buf).map(|pkt| Ipv4Options::Eol_(pkt)),
             1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
-            68 => TimestampOption::parse(buf).map(|pkt| Ipv4Options::TimestampOption_(pkt)),
+            68 => Timestamp::parse(buf).map(|pkt| Ipv4Options::Timestamp_(pkt)),
             7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
             148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4Options::RouteAlertOption_(pkt)),
             134 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
@@ -1385,13 +1385,13 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     Ipv4Options::NopOption_(result)
                 })
                 .ok(),
-            68 => TimestampOption::parse(self.buf)
+            68 => Timestamp::parse(self.buf)
                 .map(|_pkt| {
-                    let result = TimestampOption {
+                    let result = Timestamp {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4Options::TimestampOption_(result)
+                    Ipv4Options::Timestamp_(result)
                 })
                 .ok(),
             7 => RecordRouteOption::parse(self.buf)
@@ -1469,16 +1469,16 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            68 => match TimestampOption::parse(&self.buf[..]) {
+            68 => match Timestamp::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = TimestampOption {
+                    let result = Timestamp {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4Options::TimestampOption_(result))
+                    Some(Ipv4Options::Timestamp_(result))
                 }
                 Err(_) => None,
             },

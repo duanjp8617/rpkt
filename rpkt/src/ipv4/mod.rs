@@ -12,7 +12,7 @@ pub mod options {
     pub use super::generated::{NopOption, NOP_OPTION_HEADER_LEN, NOP_OPTION_HEADER_TEMPLATE};
 
     pub use super::generated::{
-        TimestampOption, TIMESTAMP_OPTION_HEADER_LEN, TIMESTAMP_OPTION_HEADER_TEMPLATE,
+        Timestamp, TIMESTAMP_HEADER_LEN, TIMESTAMP_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
