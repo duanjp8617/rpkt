@@ -29,6 +29,10 @@ pub mod options {
         StrictSourceRoute, STRICT_SOURCE_ROUTE_HEADER_LEN, STRICT_SOURCE_ROUTE_HEADER_TEMPLATE,
     };
 
+    pub use super::generated::{
+        LooseSourceRoute, LOOSE_SOURCE_ROUTE_HEADER_LEN, LOOSE_SOURCE_ROUTE_HEADER_TEMPLATE,
+    };
+
     pub use super::generated::{Ipv4Options, Ipv4OptionsIter, Ipv4OptionsIterMut};
 }
 

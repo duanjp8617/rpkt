@@ -163,6 +163,23 @@ packet RouteAlert {
     cond = (type_ == 148),
 }
 
+packet LooseSourceRoute {
+    header = [
+        type_ = Field {bit = 8, default = @131},
+        len = Field {
+            bit = 8,            
+            default = @7,
+            gen = false,
+        },
+        pointer = Field{bit = 8},
+        dest_addr = Field{bit = 32, arg = %%Ipv4Addr%%}
+    ],
+    length = [
+        header_len=len
+    ],
+    cond = (type_ == 131),
+}
+
 packet StrictSourceRoute {
     header = [
         type_ = Field {bit = 8, default = @137},
@@ -188,7 +205,8 @@ group Ipv4Options = {
         RecordRoute,
         RouteAlert,
         CommercialSecurity,
-        StrictSourceRoute
+        StrictSourceRoute,
+        LooseSourceRoute
     ],
     enable_iter = true,
 }
