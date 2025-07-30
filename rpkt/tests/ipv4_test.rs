@@ -156,3 +156,54 @@ fn ipv4_option2_parse() {
 
     assert_eq!(&pkt[payload.cursor()..], payload.chunk());
 }
+
+#[test]
+fn ipv4_option2_build() {
+    let pkt = file_to_packet("IPv4Option2.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(64);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 64..]);
+
+    let mut hdr = Ipv4::default_header();
+    Ipv4::from_header_array_mut(&mut hdr).set_header_len(60);
+    let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
+    ipv4.set_dscp(0);
+    ipv4.set_ecn(0);
+    ipv4.set_ident(33505);
+    ipv4.set_dont_frag(true);
+    ipv4.set_more_frag(false);
+    ipv4.set_ttl(64);
+    ipv4.set_protocol(IpProtocol::ICMP);
+    ipv4.set_checksum(0x0d44);
+    ipv4.set_src_addr(Ipv4Addr::from_str("10.0.0.6").unwrap());
+    ipv4.set_dst_addr(Ipv4Addr::from_str("10.0.0.138").unwrap());
+
+    {
+        let option_pbuf = CursorMut::new(ipv4.var_header_slice_mut());
+
+        let mut ts = Timestamp::parse_unchecked(option_pbuf);
+        ts.set_header_len(40);
+        ts.set_type_(68);
+        ts.set_pointer(9);
+        ts.set_oflw(0);
+        ts.set_flg(0);
+
+        for i in 0..9 {
+            if i == 0 {
+                write_4_bytes(&mut ts.var_header_slice_mut()[4 * i..4 * i + 4], 82524601);
+            } else {
+                write_4_bytes(&mut ts.var_header_slice_mut()[4 * i..4 * i + 4], 0);
+            }
+        }
+    }
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0xc4, 0x12, 0xf5, 0xff, 0x72, 0xe8]));
+    eth.set_src_addr(EtherAddr([0x08, 0x00, 0x27, 0x19, 0x1c, 0x78]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    assert_eq!(eth.release().chunk(), pkt);
+}
