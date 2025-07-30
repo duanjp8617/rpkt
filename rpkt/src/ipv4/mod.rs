@@ -16,7 +16,7 @@ pub mod options {
     };
 
     pub use super::generated::{
-        RecordRouteOption, RECORD_ROUTE_OPTION_HEADER_LEN, RECORD_ROUTE_OPTION_HEADER_TEMPLATE,
+        RecordRoute, RECORD_ROUTE_HEADER_LEN, RECORD_ROUTE_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{

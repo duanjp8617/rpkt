@@ -708,16 +708,16 @@ impl<'a> Timestamp<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the RecordRouteOption protocol header.
-pub const RECORD_ROUTE_OPTION_HEADER_LEN: usize = 3;
-/// A fixed RecordRouteOption header.
-pub const RECORD_ROUTE_OPTION_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
+/// A constant that defines the fixed byte length of the RecordRoute protocol header.
+pub const RECORD_ROUTE_HEADER_LEN: usize = 3;
+/// A fixed RecordRoute header.
+pub const RECORD_ROUTE_HEADER_TEMPLATE: [u8; 3] = [0x07, 0x03, 0x04];
 
 #[derive(Debug, Clone, Copy)]
-pub struct RecordRouteOption<T> {
+pub struct RecordRoute<T> {
     buf: T,
 }
-impl<T: Buf> RecordRouteOption<T> {
+impl<T: Buf> RecordRoute<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -766,7 +766,7 @@ impl<T: Buf> RecordRouteOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> RecordRouteOption<T> {
+impl<T: PktBuf> RecordRoute<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -775,10 +775,10 @@ impl<T: PktBuf> RecordRouteOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> RecordRouteOption<T> {
+impl<T: PktBufMut> RecordRoute<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
-        let header_len = RecordRouteOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = RecordRoute::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len >= 3) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
@@ -803,7 +803,7 @@ impl<T: PktBufMut> RecordRouteOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> RecordRouteOption<Cursor<'a>> {
+impl<'a> RecordRoute<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -831,10 +831,10 @@ impl<'a> RecordRouteOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 3] {
-        RECORD_ROUTE_OPTION_HEADER_TEMPLATE.clone()
+        RECORD_ROUTE_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> RecordRouteOption<CursorMut<'a>> {
+impl<'a> RecordRoute<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1324,7 +1324,7 @@ pub enum Ipv4Options<T> {
     Eol_(Eol<T>),
     NopOption_(NopOption<T>),
     Timestamp_(Timestamp<T>),
-    RecordRouteOption_(RecordRouteOption<T>),
+    RecordRoute_(RecordRoute<T>),
     RouteAlert_(RouteAlert<T>),
     CommercialSecurity_(CommercialSecurity<T>),
 }
@@ -1338,7 +1338,7 @@ impl<T: Buf> Ipv4Options<T> {
             0 => Eol::parse(buf).map(|pkt| Ipv4Options::Eol_(pkt)),
             1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
             68 => Timestamp::parse(buf).map(|pkt| Ipv4Options::Timestamp_(pkt)),
-            7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
+            7 => RecordRoute::parse(buf).map(|pkt| Ipv4Options::RecordRoute_(pkt)),
             148 => RouteAlert::parse(buf).map(|pkt| Ipv4Options::RouteAlert_(pkt)),
             134 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
             _ => Err(buf),
@@ -1394,13 +1394,13 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     Ipv4Options::Timestamp_(result)
                 })
                 .ok(),
-            7 => RecordRouteOption::parse(self.buf)
+            7 => RecordRoute::parse(self.buf)
                 .map(|_pkt| {
-                    let result = RecordRouteOption {
+                    let result = RecordRoute {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4Options::RecordRouteOption_(result)
+                    Ipv4Options::RecordRoute_(result)
                 })
                 .ok(),
             148 => RouteAlert::parse(self.buf)
@@ -1482,16 +1482,16 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            7 => match RecordRouteOption::parse(&self.buf[..]) {
+            7 => match RecordRoute::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = RecordRouteOption {
+                    let result = RecordRoute {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4Options::RecordRouteOption_(result))
+                    Some(Ipv4Options::RecordRoute_(result))
                 }
                 Err(_) => None,
             },

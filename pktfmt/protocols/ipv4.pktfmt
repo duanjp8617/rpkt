@@ -98,7 +98,7 @@ packet Timestamp {
     cond = (type_ == 68)
 }
 
-packet RecordRouteOption {
+packet RecordRoute {
     header = [
         type_ = Field {bit = 8, default = @7},
         len = Field {
@@ -168,7 +168,7 @@ group Ipv4Options = {
         Eol,
         NopOption,
         Timestamp,
-        RecordRouteOption,
+        RecordRoute,
         RouteAlert,
         CommercialSecurity
     ],
