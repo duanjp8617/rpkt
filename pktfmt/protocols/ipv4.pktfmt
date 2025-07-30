@@ -147,7 +147,7 @@ packet CommercialSecurityTag {
     ]
 }
 
-packet RouteAlertOption {
+packet RouteAlert {
     header = [
         type_ = Field {bit = 8, default = @148},
         len = Field {
@@ -169,7 +169,7 @@ group Ipv4Options = {
         NopOption,
         Timestamp,
         RecordRouteOption,
-        RouteAlertOption,
+        RouteAlert,
         CommercialSecurity
     ],
     enable_iter = true,

@@ -1178,16 +1178,16 @@ impl<'a> CommercialSecurityTag<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the RouteAlertOption protocol header.
-pub const ROUTE_ALERT_OPTION_HEADER_LEN: usize = 4;
-/// A fixed RouteAlertOption header.
-pub const ROUTE_ALERT_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the RouteAlert protocol header.
+pub const ROUTE_ALERT_HEADER_LEN: usize = 4;
+/// A fixed RouteAlert header.
+pub const ROUTE_ALERT_HEADER_TEMPLATE: [u8; 4] = [0x94, 0x04, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct RouteAlertOption<T> {
+pub struct RouteAlert<T> {
     buf: T,
 }
-impl<T: Buf> RouteAlertOption<T> {
+impl<T: Buf> RouteAlert<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1231,7 +1231,7 @@ impl<T: Buf> RouteAlertOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> RouteAlertOption<T> {
+impl<T: PktBuf> RouteAlert<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -1240,10 +1240,10 @@ impl<T: PktBuf> RouteAlertOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> RouteAlertOption<T> {
+impl<T: PktBufMut> RouteAlert<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = RouteAlertOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = RouteAlert::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -1264,7 +1264,7 @@ impl<T: PktBufMut> RouteAlertOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> RouteAlertOption<Cursor<'a>> {
+impl<'a> RouteAlert<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1290,10 +1290,10 @@ impl<'a> RouteAlertOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 4] {
-        ROUTE_ALERT_OPTION_HEADER_TEMPLATE.clone()
+        ROUTE_ALERT_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> RouteAlertOption<CursorMut<'a>> {
+impl<'a> RouteAlert<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1325,7 +1325,7 @@ pub enum Ipv4Options<T> {
     NopOption_(NopOption<T>),
     Timestamp_(Timestamp<T>),
     RecordRouteOption_(RecordRouteOption<T>),
-    RouteAlertOption_(RouteAlertOption<T>),
+    RouteAlert_(RouteAlert<T>),
     CommercialSecurity_(CommercialSecurity<T>),
 }
 impl<T: Buf> Ipv4Options<T> {
@@ -1339,7 +1339,7 @@ impl<T: Buf> Ipv4Options<T> {
             1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
             68 => Timestamp::parse(buf).map(|pkt| Ipv4Options::Timestamp_(pkt)),
             7 => RecordRouteOption::parse(buf).map(|pkt| Ipv4Options::RecordRouteOption_(pkt)),
-            148 => RouteAlertOption::parse(buf).map(|pkt| Ipv4Options::RouteAlertOption_(pkt)),
+            148 => RouteAlert::parse(buf).map(|pkt| Ipv4Options::RouteAlert_(pkt)),
             134 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
             _ => Err(buf),
         }
@@ -1403,13 +1403,13 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     Ipv4Options::RecordRouteOption_(result)
                 })
                 .ok(),
-            148 => RouteAlertOption::parse(self.buf)
+            148 => RouteAlert::parse(self.buf)
                 .map(|_pkt| {
-                    let result = RouteAlertOption {
+                    let result = RouteAlert {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    Ipv4Options::RouteAlertOption_(result)
+                    Ipv4Options::RouteAlert_(result)
                 })
                 .ok(),
             134 => CommercialSecurity::parse(self.buf)
@@ -1495,16 +1495,16 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            148 => match RouteAlertOption::parse(&self.buf[..]) {
+            148 => match RouteAlert::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = RouteAlertOption {
+                    let result = RouteAlert {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4Options::RouteAlertOption_(result))
+                    Some(Ipv4Options::RouteAlert_(result))
                 }
                 Err(_) => None,
             },

@@ -20,7 +20,7 @@ pub mod options {
     };
 
     pub use super::generated::{
-        RouteAlertOption, ROUTE_ALERT_OPTION_HEADER_LEN, ROUTE_ALERT_OPTION_HEADER_TEMPLATE,
+        RouteAlert, ROUTE_ALERT_HEADER_LEN, ROUTE_ALERT_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
@@ -39,6 +39,9 @@ enum_sim! {
     pub struct IpProtocol (u8) {
         /// IP packet payload is ICMP protocol.
         ICMP = 1,
+
+        /// IGMP protocol
+        IGMP = 2,
 
         /// IP in IP
         IPIP = 4,
