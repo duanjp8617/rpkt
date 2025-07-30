@@ -427,16 +427,16 @@ impl<'a> Eol<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the NopOption protocol header.
-pub const NOP_OPTION_HEADER_LEN: usize = 1;
-/// A fixed NopOption header.
-pub const NOP_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
+/// A constant that defines the fixed byte length of the Nop protocol header.
+pub const NOP_HEADER_LEN: usize = 1;
+/// A fixed Nop header.
+pub const NOP_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NopOption<T> {
+pub struct Nop<T> {
     buf: T,
 }
-impl<T: Buf> NopOption<T> {
+impl<T: Buf> Nop<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -467,7 +467,7 @@ impl<T: Buf> NopOption<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> NopOption<T> {
+impl<T: PktBuf> Nop<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -475,7 +475,7 @@ impl<T: PktBuf> NopOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> NopOption<T> {
+impl<T: PktBufMut> Nop<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -489,7 +489,7 @@ impl<T: PktBufMut> NopOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> NopOption<Cursor<'a>> {
+impl<'a> Nop<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -511,10 +511,10 @@ impl<'a> NopOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 1] {
-        NOP_OPTION_HEADER_TEMPLATE.clone()
+        NOP_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> NopOption<CursorMut<'a>> {
+impl<'a> Nop<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1319,14 +1319,166 @@ impl<'a> RouteAlert<CursorMut<'a>> {
     }
 }
 
+/// A constant that defines the fixed byte length of the StrictSourceRoute protocol header.
+pub const STRICT_SOURCE_ROUTE_HEADER_LEN: usize = 7;
+/// A fixed StrictSourceRoute header.
+pub const STRICT_SOURCE_ROUTE_HEADER_TEMPLATE: [u8; 7] = [0x89, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct StrictSourceRoute<T> {
+    buf: T,
+}
+impl<T: Buf> StrictSourceRoute<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) != 7)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..7]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn pointer(&self) -> u8 {
+        self.buf.chunk()[2]
+    }
+    #[inline]
+    pub fn dest_addr(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[3..7]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.chunk()[1])
+    }
+}
+impl<T: PktBuf> StrictSourceRoute<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> StrictSourceRoute<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 7]) -> Self {
+        let header_len = StrictSourceRoute::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 7) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..7]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 137);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_pointer(&mut self, value: u8) {
+        self.buf.chunk_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_dest_addr(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[3..7]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u8) {
+        assert!((value == 7));
+        self.buf.chunk_mut()[1] = (value);
+    }
+}
+impl<'a> StrictSourceRoute<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if (container.header_len() as usize) != 7 {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 7] {
+        STRICT_SOURCE_ROUTE_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> StrictSourceRoute<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 7 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if (container.header_len() as usize) != 7 {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Ipv4Options<T> {
     Eol_(Eol<T>),
-    NopOption_(NopOption<T>),
+    Nop_(Nop<T>),
     Timestamp_(Timestamp<T>),
     RecordRoute_(RecordRoute<T>),
     RouteAlert_(RouteAlert<T>),
     CommercialSecurity_(CommercialSecurity<T>),
+    StrictSourceRoute_(StrictSourceRoute<T>),
 }
 impl<T: Buf> Ipv4Options<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
@@ -1336,11 +1488,12 @@ impl<T: Buf> Ipv4Options<T> {
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
             0 => Eol::parse(buf).map(|pkt| Ipv4Options::Eol_(pkt)),
-            1 => NopOption::parse(buf).map(|pkt| Ipv4Options::NopOption_(pkt)),
+            1 => Nop::parse(buf).map(|pkt| Ipv4Options::Nop_(pkt)),
             68 => Timestamp::parse(buf).map(|pkt| Ipv4Options::Timestamp_(pkt)),
             7 => RecordRoute::parse(buf).map(|pkt| Ipv4Options::RecordRoute_(pkt)),
             148 => RouteAlert::parse(buf).map(|pkt| Ipv4Options::RouteAlert_(pkt)),
             134 => CommercialSecurity::parse(buf).map(|pkt| Ipv4Options::CommercialSecurity_(pkt)),
+            137 => StrictSourceRoute::parse(buf).map(|pkt| Ipv4Options::StrictSourceRoute_(pkt)),
             _ => Err(buf),
         }
     }
@@ -1376,13 +1529,13 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     Ipv4Options::Eol_(result)
                 })
                 .ok(),
-            1 => NopOption::parse(self.buf)
+            1 => Nop::parse(self.buf)
                 .map(|_pkt| {
-                    let result = NopOption {
+                    let result = Nop {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    Ipv4Options::NopOption_(result)
+                    Ipv4Options::Nop_(result)
                 })
                 .ok(),
             68 => Timestamp::parse(self.buf)
@@ -1419,6 +1572,15 @@ impl<'a> Iterator for Ipv4OptionsIter<'a> {
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
                     Ipv4Options::CommercialSecurity_(result)
+                })
+                .ok(),
+            137 => StrictSourceRoute::parse(self.buf)
+                .map(|_pkt| {
+                    let result = StrictSourceRoute {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv4Options::StrictSourceRoute_(result)
                 })
                 .ok(),
             _ => None,
@@ -1458,14 +1620,14 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 }
                 Err(_) => None,
             },
-            1 => match NopOption::parse(&self.buf[..]) {
+            1 => match Nop::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = NopOption {
+                    let result = Nop {
                         buf: CursorMut::new(fst),
                     };
-                    Some(Ipv4Options::NopOption_(result))
+                    Some(Ipv4Options::Nop_(result))
                 }
                 Err(_) => None,
             },
@@ -1518,6 +1680,19 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                         buf: CursorMut::new(fst),
                     };
                     Some(Ipv4Options::CommercialSecurity_(result))
+                }
+                Err(_) => None,
+            },
+            137 => match StrictSourceRoute::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = StrictSourceRoute {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv4Options::StrictSourceRoute_(result))
                 }
                 Err(_) => None,
             },

@@ -73,7 +73,7 @@ packet Eol {
     cond = (type_ == 0),
 }
 
-packet NopOption {
+packet Nop {
     header = [
         type_ = Field {bit = 8, default = @1},
     ],
@@ -163,14 +163,32 @@ packet RouteAlert {
     cond = (type_ == 148),
 }
 
+packet StrictSourceRoute {
+    header = [
+        type_ = Field {bit = 8, default = @137},
+        len = Field {
+            bit = 8,            
+            default = @7,
+            gen = false,
+        },
+        pointer = Field{bit = 8},
+        dest_addr = Field{bit = 32, arg = %%Ipv4Addr%%}
+    ],
+    length = [
+        header_len=len
+    ],
+    cond = (type_ == 137),
+}
+
 group Ipv4Options = {
     members = [
         Eol,
-        NopOption,
+        Nop,
         Timestamp,
         RecordRoute,
         RouteAlert,
-        CommercialSecurity
+        CommercialSecurity,
+        StrictSourceRoute
     ],
     enable_iter = true,
 }
