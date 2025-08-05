@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
+#![allow(unreachable_patterns)]
 
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;
@@ -1545,7 +1546,7 @@ impl<T: Buf> Ipv6Options<T> {
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
-            2..=255 => Generic::parse(buf).map(|pkt| Ipv6Options::Generic_(pkt)),
+            2..5 | 6..=255 => Generic::parse(buf).map(|pkt| Ipv6Options::Generic_(pkt)),
             5 => RouterAlert::parse(buf).map(|pkt| Ipv6Options::RouterAlert_(pkt)),
             1 => Padn::parse(buf).map(|pkt| Ipv6Options::Padn_(pkt)),
             0 => Pad0::parse(buf).map(|pkt| Ipv6Options::Pad0_(pkt)),
@@ -1575,7 +1576,7 @@ impl<'a> Iterator for Ipv6OptionsIter<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            2..=255 => Generic::parse(self.buf)
+            2..5 | 6..=255 => Generic::parse(self.buf)
                 .map(|_pkt| {
                     let result = Generic {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
@@ -1637,7 +1638,7 @@ impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            2..=255 => match Generic::parse(&self.buf[..]) {
+            2..5 | 6..=255 => match Generic::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =

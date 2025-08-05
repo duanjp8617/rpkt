@@ -1,6 +1,7 @@
 %%
 #![allow(missing_docs)]
 #![allow(unused_parens)]
+#![allow(unreachable_patterns)]
 
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;
@@ -93,7 +94,7 @@ packet Generic {
     length = [
         header_len = len+2
     ],
-    cond = (type_ == 2..),
+    cond = (type_ == 2..5 || 6..),
 }
 
 packet RouterAlert {
