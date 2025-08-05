@@ -282,16 +282,16 @@ impl<'a> Tcp<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the EolOption protocol header.
-pub const EOL_OPTION_HEADER_LEN: usize = 1;
-/// A fixed EolOption header.
-pub const EOL_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x00];
+/// A constant that defines the fixed byte length of the Eol protocol header.
+pub const EOL_HEADER_LEN: usize = 1;
+/// A fixed Eol header.
+pub const EOL_HEADER_TEMPLATE: [u8; 1] = [0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct EolOption<T> {
+pub struct Eol<T> {
     buf: T,
 }
-impl<T: Buf> EolOption<T> {
+impl<T: Buf> Eol<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -322,7 +322,7 @@ impl<T: Buf> EolOption<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> EolOption<T> {
+impl<T: PktBuf> Eol<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -330,7 +330,7 @@ impl<T: PktBuf> EolOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> EolOption<T> {
+impl<T: PktBufMut> Eol<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -344,7 +344,7 @@ impl<T: PktBufMut> EolOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> EolOption<Cursor<'a>> {
+impl<'a> Eol<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -366,10 +366,10 @@ impl<'a> EolOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 1] {
-        EOL_OPTION_HEADER_TEMPLATE.clone()
+        EOL_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> EolOption<CursorMut<'a>> {
+impl<'a> Eol<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -391,16 +391,16 @@ impl<'a> EolOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the NopOption protocol header.
-pub const NOP_OPTION_HEADER_LEN: usize = 1;
-/// A fixed NopOption header.
-pub const NOP_OPTION_HEADER_TEMPLATE: [u8; 1] = [0x01];
+/// A constant that defines the fixed byte length of the Nop protocol header.
+pub const NOP_HEADER_LEN: usize = 1;
+/// A fixed Nop header.
+pub const NOP_HEADER_TEMPLATE: [u8; 1] = [0x01];
 
 #[derive(Debug, Clone, Copy)]
-pub struct NopOption<T> {
+pub struct Nop<T> {
     buf: T,
 }
-impl<T: Buf> NopOption<T> {
+impl<T: Buf> Nop<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -431,7 +431,7 @@ impl<T: Buf> NopOption<T> {
         self.buf.chunk()[0]
     }
 }
-impl<T: PktBuf> NopOption<T> {
+impl<T: PktBuf> Nop<T> {
     #[inline]
     pub fn payload(self) -> T {
         let mut buf = self.buf;
@@ -439,7 +439,7 @@ impl<T: PktBuf> NopOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> NopOption<T> {
+impl<T: PktBufMut> Nop<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
         assert!(buf.chunk_headroom() >= 1);
@@ -453,7 +453,7 @@ impl<T: PktBufMut> NopOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
 }
-impl<'a> NopOption<Cursor<'a>> {
+impl<'a> Nop<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -475,10 +475,10 @@ impl<'a> NopOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 1] {
-        NOP_OPTION_HEADER_TEMPLATE.clone()
+        NOP_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> NopOption<CursorMut<'a>> {
+impl<'a> Nop<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -500,16 +500,16 @@ impl<'a> NopOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the MssOption protocol header.
-pub const MSS_OPTION_HEADER_LEN: usize = 4;
-/// A fixed MssOption header.
-pub const MSS_OPTION_HEADER_TEMPLATE: [u8; 4] = [0x02, 0x04, 0x00, 0x00];
+/// A constant that defines the fixed byte length of the Mss protocol header.
+pub const MSS_HEADER_LEN: usize = 4;
+/// A fixed Mss header.
+pub const MSS_HEADER_TEMPLATE: [u8; 4] = [0x02, 0x04, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct MssOption<T> {
+pub struct Mss<T> {
     buf: T,
 }
-impl<T: Buf> MssOption<T> {
+impl<T: Buf> Mss<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -553,7 +553,7 @@ impl<T: Buf> MssOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> MssOption<T> {
+impl<T: PktBuf> Mss<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -562,10 +562,10 @@ impl<T: PktBuf> MssOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> MssOption<T> {
+impl<T: PktBufMut> Mss<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = MssOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = Mss::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -586,7 +586,7 @@ impl<T: PktBufMut> MssOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> MssOption<Cursor<'a>> {
+impl<'a> Mss<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -612,10 +612,10 @@ impl<'a> MssOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 4] {
-        MSS_OPTION_HEADER_TEMPLATE.clone()
+        MSS_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> MssOption<CursorMut<'a>> {
+impl<'a> Mss<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -641,16 +641,16 @@ impl<'a> MssOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the WsoptOption protocol header.
-pub const WSOPT_OPTION_HEADER_LEN: usize = 3;
-/// A fixed WsoptOption header.
-pub const WSOPT_OPTION_HEADER_TEMPLATE: [u8; 3] = [0x03, 0x03, 0x00];
+/// A constant that defines the fixed byte length of the WindowScale protocol header.
+pub const WINDOW_SCALE_HEADER_LEN: usize = 3;
+/// A fixed WindowScale header.
+pub const WINDOW_SCALE_HEADER_TEMPLATE: [u8; 3] = [0x03, 0x03, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct WsoptOption<T> {
+pub struct WindowScale<T> {
     buf: T,
 }
-impl<T: Buf> WsoptOption<T> {
+impl<T: Buf> WindowScale<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -686,7 +686,7 @@ impl<T: Buf> WsoptOption<T> {
         self.buf.chunk()[0]
     }
     #[inline]
-    pub fn wsopt(&self) -> u8 {
+    pub fn shift_count(&self) -> u8 {
         self.buf.chunk()[2]
     }
     #[inline]
@@ -694,7 +694,7 @@ impl<T: Buf> WsoptOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> WsoptOption<T> {
+impl<T: PktBuf> WindowScale<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -703,10 +703,10 @@ impl<T: PktBuf> WsoptOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> WsoptOption<T> {
+impl<T: PktBufMut> WindowScale<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
-        let header_len = WsoptOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = WindowScale::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len == 3) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
@@ -718,7 +718,7 @@ impl<T: PktBufMut> WsoptOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
-    pub fn set_wsopt(&mut self, value: u8) {
+    pub fn set_shift_count(&mut self, value: u8) {
         self.buf.chunk_mut()[2] = value;
     }
     #[inline]
@@ -727,7 +727,7 @@ impl<T: PktBufMut> WsoptOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> WsoptOption<Cursor<'a>> {
+impl<'a> WindowScale<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -753,10 +753,10 @@ impl<'a> WsoptOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 3] {
-        WSOPT_OPTION_HEADER_TEMPLATE.clone()
+        WINDOW_SCALE_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> WsoptOption<CursorMut<'a>> {
+impl<'a> WindowScale<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -782,16 +782,16 @@ impl<'a> WsoptOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the SackpermOption protocol header.
-pub const SACKPERM_OPTION_HEADER_LEN: usize = 2;
-/// A fixed SackpermOption header.
-pub const SACKPERM_OPTION_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x02];
+/// A constant that defines the fixed byte length of the SackPermitted protocol header.
+pub const SACK_PERMITTED_HEADER_LEN: usize = 2;
+/// A fixed SackPermitted header.
+pub const SACK_PERMITTED_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x02];
 
 #[derive(Debug, Clone, Copy)]
-pub struct SackpermOption<T> {
+pub struct SackPermitted<T> {
     buf: T,
 }
-impl<T: Buf> SackpermOption<T> {
+impl<T: Buf> SackPermitted<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -831,7 +831,7 @@ impl<T: Buf> SackpermOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> SackpermOption<T> {
+impl<T: PktBuf> SackPermitted<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -840,10 +840,10 @@ impl<T: PktBuf> SackpermOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> SackpermOption<T> {
+impl<T: PktBufMut> SackPermitted<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        let header_len = SackpermOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = SackPermitted::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len == 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
@@ -860,7 +860,7 @@ impl<T: PktBufMut> SackpermOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> SackpermOption<Cursor<'a>> {
+impl<'a> SackPermitted<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -886,10 +886,10 @@ impl<'a> SackpermOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 2] {
-        SACKPERM_OPTION_HEADER_TEMPLATE.clone()
+        SACK_PERMITTED_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> SackpermOption<CursorMut<'a>> {
+impl<'a> SackPermitted<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -915,16 +915,16 @@ impl<'a> SackpermOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the SackOption protocol header.
-pub const SACK_OPTION_HEADER_LEN: usize = 2;
-/// A fixed SackOption header.
-pub const SACK_OPTION_HEADER_TEMPLATE: [u8; 2] = [0x05, 0x0a];
+/// A constant that defines the fixed byte length of the Sack protocol header.
+pub const SACK_HEADER_LEN: usize = 2;
+/// A fixed Sack header.
+pub const SACK_HEADER_TEMPLATE: [u8; 2] = [0x05, 0x0a];
 
 #[derive(Debug, Clone, Copy)]
-pub struct SackOption<T> {
+pub struct Sack<T> {
     buf: T,
 }
-impl<T: Buf> SackOption<T> {
+impl<T: Buf> Sack<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -969,7 +969,7 @@ impl<T: Buf> SackOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> SackOption<T> {
+impl<T: PktBuf> Sack<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -978,10 +978,10 @@ impl<T: PktBuf> SackOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> SackOption<T> {
+impl<T: PktBufMut> Sack<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        let header_len = SackOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = Sack::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
@@ -1002,7 +1002,7 @@ impl<T: PktBufMut> SackOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> SackOption<Cursor<'a>> {
+impl<'a> Sack<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1030,10 +1030,10 @@ impl<'a> SackOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 2] {
-        SACK_OPTION_HEADER_TEMPLATE.clone()
+        SACK_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> SackOption<CursorMut<'a>> {
+impl<'a> Sack<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1061,17 +1061,17 @@ impl<'a> SackOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the TsOption protocol header.
-pub const TS_OPTION_HEADER_LEN: usize = 10;
-/// A fixed TsOption header.
-pub const TS_OPTION_HEADER_TEMPLATE: [u8; 10] =
+/// A constant that defines the fixed byte length of the Timestamp protocol header.
+pub const TIMESTAMP_HEADER_LEN: usize = 10;
+/// A fixed Timestamp header.
+pub const TIMESTAMP_HEADER_TEMPLATE: [u8; 10] =
     [0x08, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
 
 #[derive(Debug, Clone, Copy)]
-pub struct TsOption<T> {
+pub struct Timestamp<T> {
     buf: T,
 }
-impl<T: Buf> TsOption<T> {
+impl<T: Buf> Timestamp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1119,7 +1119,7 @@ impl<T: Buf> TsOption<T> {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> TsOption<T> {
+impl<T: PktBuf> Timestamp<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -1128,10 +1128,10 @@ impl<T: PktBuf> TsOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> TsOption<T> {
+impl<T: PktBufMut> Timestamp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 10]) -> Self {
-        let header_len = TsOption::parse_unchecked(&header[..]).header_len() as usize;
+        let header_len = Timestamp::parse_unchecked(&header[..]).header_len() as usize;
         assert!((header_len == 10) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..10]).copy_from_slice(&header.as_ref()[..]);
@@ -1156,7 +1156,7 @@ impl<T: PktBufMut> TsOption<T> {
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> TsOption<Cursor<'a>> {
+impl<'a> Timestamp<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1182,10 +1182,10 @@ impl<'a> TsOption<Cursor<'a>> {
     }
     #[inline]
     pub fn default_header() -> [u8; 10] {
-        TS_OPTION_HEADER_TEMPLATE.clone()
+        TIMESTAMP_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> TsOption<CursorMut<'a>> {
+impl<'a> Timestamp<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
@@ -1211,19 +1211,16 @@ impl<'a> TsOption<CursorMut<'a>> {
     }
 }
 
-/// A constant that defines the fixed byte length of the FoOption protocol header.
-pub const FO_OPTION_HEADER_LEN: usize = 18;
-/// A fixed FoOption header.
-pub const FO_OPTION_HEADER_TEMPLATE: [u8; 18] = [
-    0x22, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00,
-];
+/// A constant that defines the fixed byte length of the FastOpen protocol header.
+pub const FAST_OPEN_HEADER_LEN: usize = 2;
+/// A fixed FastOpen header.
+pub const FAST_OPEN_HEADER_TEMPLATE: [u8; 2] = [0x22, 0x12];
 
 #[derive(Debug, Clone, Copy)]
-pub struct FoOption<T> {
+pub struct FastOpen<T> {
     buf: T,
 }
-impl<T: Buf> FoOption<T> {
+impl<T: Buf> FastOpen<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
         Self { buf }
@@ -1239,11 +1236,11 @@ impl<T: Buf> FoOption<T> {
     #[inline]
     pub fn parse(buf: T) -> Result<Self, T> {
         let chunk_len = buf.chunk().len();
-        if chunk_len < 18 {
+        if chunk_len < 2 {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) != 18)
+        if ((container.header_len() as usize) < 2)
             || ((container.header_len() as usize) > chunk_len)
         {
             return Err(container.buf);
@@ -1252,22 +1249,23 @@ impl<T: Buf> FoOption<T> {
     }
     #[inline]
     pub fn fix_header_slice(&self) -> &[u8] {
-        &self.buf.chunk()[0..18]
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
     }
     #[inline]
     pub fn type_(&self) -> u8 {
         self.buf.chunk()[0]
     }
     #[inline]
-    pub fn fo(&self) -> &[u8] {
-        &self.buf.chunk()[2..18]
-    }
-    #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.chunk()[1])
     }
 }
-impl<T: PktBuf> FoOption<T> {
+impl<T: PktBuf> FastOpen<T> {
     #[inline]
     pub fn payload(self) -> T {
         let header_len = self.header_len() as usize;
@@ -1276,14 +1274,19 @@ impl<T: PktBuf> FoOption<T> {
         buf
     }
 }
-impl<T: PktBufMut> FoOption<T> {
+impl<T: PktBufMut> FastOpen<T> {
     #[inline]
-    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 18]) -> Self {
-        let header_len = FoOption::parse_unchecked(&header[..]).header_len() as usize;
-        assert!((header_len == 18) && (header_len <= buf.chunk_headroom()));
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = FastOpen::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
-        (&mut buf.chunk_mut()[0..18]).copy_from_slice(&header.as_ref()[..]);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
         Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
@@ -1291,24 +1294,21 @@ impl<T: PktBufMut> FoOption<T> {
         self.buf.chunk_mut()[0] = value;
     }
     #[inline]
-    pub fn set_fo(&mut self, value: &[u8]) {
-        (&mut self.buf.chunk_mut()[2..18]).copy_from_slice(value);
-    }
-    #[inline]
     pub fn set_header_len(&mut self, value: u8) {
-        assert!((value == 18));
         self.buf.chunk_mut()[1] = (value);
     }
 }
-impl<'a> FoOption<Cursor<'a>> {
+impl<'a> FastOpen<Cursor<'a>> {
     #[inline]
     pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 18 {
+        if remaining_len < 2 {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 18 {
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
             return Err(container.buf);
         }
         Ok(container)
@@ -1319,25 +1319,27 @@ impl<'a> FoOption<Cursor<'a>> {
         Cursor::new(&self.buf.chunk()[header_len..])
     }
     #[inline]
-    pub fn from_header_array(header_array: &'a [u8; 18]) -> Self {
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
         Self {
             buf: Cursor::new(header_array.as_slice()),
         }
     }
     #[inline]
-    pub fn default_header() -> [u8; 18] {
-        FO_OPTION_HEADER_TEMPLATE.clone()
+    pub fn default_header() -> [u8; 2] {
+        FAST_OPEN_HEADER_TEMPLATE.clone()
     }
 }
-impl<'a> FoOption<CursorMut<'a>> {
+impl<'a> FastOpen<CursorMut<'a>> {
     #[inline]
     pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
         let remaining_len = buf.chunk().len();
-        if remaining_len < 18 {
+        if remaining_len < 2 {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 18 {
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
             return Err(container.buf);
         }
         Ok(container)
@@ -1348,7 +1350,7 @@ impl<'a> FoOption<CursorMut<'a>> {
         CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
     }
     #[inline]
-    pub fn from_header_array_mut(header_array: &'a mut [u8; 18]) -> Self {
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
@@ -1357,14 +1359,14 @@ impl<'a> FoOption<CursorMut<'a>> {
 
 #[derive(Debug)]
 pub enum TcpOptions<T> {
-    EolOption_(EolOption<T>),
-    NopOption_(NopOption<T>),
-    MssOption_(MssOption<T>),
-    WsoptOption_(WsoptOption<T>),
-    SackpermOption_(SackpermOption<T>),
-    SackOption_(SackOption<T>),
-    TsOption_(TsOption<T>),
-    FoOption_(FoOption<T>),
+    Eol_(Eol<T>),
+    Nop_(Nop<T>),
+    Mss_(Mss<T>),
+    WindowScale_(WindowScale<T>),
+    SackPermitted_(SackPermitted<T>),
+    Sack_(Sack<T>),
+    Timestamp_(Timestamp<T>),
+    FastOpen_(FastOpen<T>),
 }
 impl<T: Buf> TcpOptions<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
@@ -1373,14 +1375,14 @@ impl<T: Buf> TcpOptions<T> {
         }
         let cond_value0 = buf.chunk()[0];
         match cond_value0 {
-            0 => EolOption::parse(buf).map(|pkt| TcpOptions::EolOption_(pkt)),
-            1 => NopOption::parse(buf).map(|pkt| TcpOptions::NopOption_(pkt)),
-            2 => MssOption::parse(buf).map(|pkt| TcpOptions::MssOption_(pkt)),
-            3 => WsoptOption::parse(buf).map(|pkt| TcpOptions::WsoptOption_(pkt)),
-            4 => SackpermOption::parse(buf).map(|pkt| TcpOptions::SackpermOption_(pkt)),
-            5 => SackOption::parse(buf).map(|pkt| TcpOptions::SackOption_(pkt)),
-            8 => TsOption::parse(buf).map(|pkt| TcpOptions::TsOption_(pkt)),
-            34 => FoOption::parse(buf).map(|pkt| TcpOptions::FoOption_(pkt)),
+            0 => Eol::parse(buf).map(|pkt| TcpOptions::Eol_(pkt)),
+            1 => Nop::parse(buf).map(|pkt| TcpOptions::Nop_(pkt)),
+            2 => Mss::parse(buf).map(|pkt| TcpOptions::Mss_(pkt)),
+            3 => WindowScale::parse(buf).map(|pkt| TcpOptions::WindowScale_(pkt)),
+            4 => SackPermitted::parse(buf).map(|pkt| TcpOptions::SackPermitted_(pkt)),
+            5 => Sack::parse(buf).map(|pkt| TcpOptions::Sack_(pkt)),
+            8 => Timestamp::parse(buf).map(|pkt| TcpOptions::Timestamp_(pkt)),
+            34 => FastOpen::parse(buf).map(|pkt| TcpOptions::FastOpen_(pkt)),
             _ => Err(buf),
         }
     }
@@ -1407,76 +1409,76 @@ impl<'a> Iterator for TcpOptionsIter<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            0 => EolOption::parse(self.buf)
+            0 => Eol::parse(self.buf)
                 .map(|_pkt| {
-                    let result = EolOption {
+                    let result = Eol {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    TcpOptions::EolOption_(result)
+                    TcpOptions::Eol_(result)
                 })
                 .ok(),
-            1 => NopOption::parse(self.buf)
+            1 => Nop::parse(self.buf)
                 .map(|_pkt| {
-                    let result = NopOption {
+                    let result = Nop {
                         buf: Cursor::new(&self.buf[..1]),
                     };
                     self.buf = &self.buf[1..];
-                    TcpOptions::NopOption_(result)
+                    TcpOptions::Nop_(result)
                 })
                 .ok(),
-            2 => MssOption::parse(self.buf)
+            2 => Mss::parse(self.buf)
                 .map(|_pkt| {
-                    let result = MssOption {
+                    let result = Mss {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::MssOption_(result)
+                    TcpOptions::Mss_(result)
                 })
                 .ok(),
-            3 => WsoptOption::parse(self.buf)
+            3 => WindowScale::parse(self.buf)
                 .map(|_pkt| {
-                    let result = WsoptOption {
+                    let result = WindowScale {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::WsoptOption_(result)
+                    TcpOptions::WindowScale_(result)
                 })
                 .ok(),
-            4 => SackpermOption::parse(self.buf)
+            4 => SackPermitted::parse(self.buf)
                 .map(|_pkt| {
-                    let result = SackpermOption {
+                    let result = SackPermitted {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::SackpermOption_(result)
+                    TcpOptions::SackPermitted_(result)
                 })
                 .ok(),
-            5 => SackOption::parse(self.buf)
+            5 => Sack::parse(self.buf)
                 .map(|_pkt| {
-                    let result = SackOption {
+                    let result = Sack {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::SackOption_(result)
+                    TcpOptions::Sack_(result)
                 })
                 .ok(),
-            8 => TsOption::parse(self.buf)
+            8 => Timestamp::parse(self.buf)
                 .map(|_pkt| {
-                    let result = TsOption {
+                    let result = Timestamp {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::TsOption_(result)
+                    TcpOptions::Timestamp_(result)
                 })
                 .ok(),
-            34 => FoOption::parse(self.buf)
+            34 => FastOpen::parse(self.buf)
                 .map(|_pkt| {
-                    let result = FoOption {
+                    let result = FastOpen {
                         buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
                     };
                     self.buf = &self.buf[_pkt.header_len() as usize..];
-                    TcpOptions::FoOption_(result)
+                    TcpOptions::FastOpen_(result)
                 })
                 .ok(),
             _ => None,
@@ -1505,103 +1507,103 @@ impl<'a> Iterator for TcpOptionsIterMut<'a> {
         }
         let cond_value0 = self.buf[0];
         match cond_value0 {
-            0 => match EolOption::parse(&self.buf[..]) {
+            0 => match Eol::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = EolOption {
+                    let result = Eol {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::EolOption_(result))
+                    Some(TcpOptions::Eol_(result))
                 }
                 Err(_) => None,
             },
-            1 => match NopOption::parse(&self.buf[..]) {
+            1 => match Nop::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
-                    let result = NopOption {
+                    let result = Nop {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::NopOption_(result))
+                    Some(TcpOptions::Nop_(result))
                 }
                 Err(_) => None,
             },
-            2 => match MssOption::parse(&self.buf[..]) {
+            2 => match Mss::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = MssOption {
+                    let result = Mss {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::MssOption_(result))
+                    Some(TcpOptions::Mss_(result))
                 }
                 Err(_) => None,
             },
-            3 => match WsoptOption::parse(&self.buf[..]) {
+            3 => match WindowScale::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = WsoptOption {
+                    let result = WindowScale {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::WsoptOption_(result))
+                    Some(TcpOptions::WindowScale_(result))
                 }
                 Err(_) => None,
             },
-            4 => match SackpermOption::parse(&self.buf[..]) {
+            4 => match SackPermitted::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = SackpermOption {
+                    let result = SackPermitted {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::SackpermOption_(result))
+                    Some(TcpOptions::SackPermitted_(result))
                 }
                 Err(_) => None,
             },
-            5 => match SackOption::parse(&self.buf[..]) {
+            5 => match Sack::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = SackOption {
+                    let result = Sack {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::SackOption_(result))
+                    Some(TcpOptions::Sack_(result))
                 }
                 Err(_) => None,
             },
-            8 => match TsOption::parse(&self.buf[..]) {
+            8 => match Timestamp::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = TsOption {
+                    let result = Timestamp {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::TsOption_(result))
+                    Some(TcpOptions::Timestamp_(result))
                 }
                 Err(_) => None,
             },
-            34 => match FoOption::parse(&self.buf[..]) {
+            34 => match FastOpen::parse(&self.buf[..]) {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
                         std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
-                    let result = FoOption {
+                    let result = FastOpen {
                         buf: CursorMut::new(fst),
                     };
-                    Some(TcpOptions::FoOption_(result))
+                    Some(TcpOptions::FastOpen_(result))
                 }
                 Err(_) => None,
             },

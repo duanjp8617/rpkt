@@ -5,25 +5,25 @@ pub use generated::{Tcp, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 
 /// Tcp options.
 pub mod options {
-    pub use super::generated::{EolOption, EOL_OPTION_HEADER_LEN, EOL_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Eol, EOL_HEADER_LEN, EOL_HEADER_TEMPLATE};
 
-    pub use super::generated::{NopOption, NOP_OPTION_HEADER_LEN, NOP_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Nop, NOP_HEADER_LEN, NOP_HEADER_TEMPLATE};
 
-    pub use super::generated::{MssOption, MSS_OPTION_HEADER_LEN, MSS_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Mss, MSS_HEADER_LEN, MSS_HEADER_TEMPLATE};
 
     pub use super::generated::{
-        WsoptOption, WSOPT_OPTION_HEADER_LEN, WSOPT_OPTION_HEADER_TEMPLATE,
+        WindowScale, WINDOW_SCALE_HEADER_LEN, WINDOW_SCALE_HEADER_TEMPLATE,
     };
 
     pub use super::generated::{
-        SackpermOption, SACKPERM_OPTION_HEADER_LEN, SACKPERM_OPTION_HEADER_TEMPLATE,
+        SackPermitted, SACK_PERMITTED_HEADER_LEN, SACK_PERMITTED_HEADER_TEMPLATE,
     };
 
-    pub use super::generated::{SackOption, SACK_OPTION_HEADER_LEN, SACK_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Sack, SACK_HEADER_LEN, SACK_HEADER_TEMPLATE};
 
-    pub use super::generated::{TsOption, TS_OPTION_HEADER_LEN, TS_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{Timestamp, TIMESTAMP_HEADER_LEN, TIMESTAMP_HEADER_TEMPLATE};
 
-    pub use super::generated::{FoOption, FO_OPTION_HEADER_LEN, FO_OPTION_HEADER_TEMPLATE};
+    pub use super::generated::{FastOpen, FAST_OPEN_HEADER_LEN, FAST_OPEN_HEADER_TEMPLATE};
 
     pub use super::generated::{TcpOptions, TcpOptionsIter, TcpOptionsIterMut};
 }

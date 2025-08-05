@@ -35,21 +35,21 @@ packet Tcp {
     ]
 }
 
-packet EolOption {
+packet Eol {
     header = [
         type_ = Field {bit = 8, default = @0},
     ],
     cond = (type_ == 0),
 }
 
-packet NopOption {
+packet Nop {
     header = [
         type_ = Field {bit = 8, default = @1},
     ],
     cond = (type_ == 1),
 }
 
-packet MssOption {
+packet Mss {
     header = [
         type_ = Field {bit = 8, default = @2},
         len = Field {
@@ -65,7 +65,7 @@ packet MssOption {
     cond = (type_ == 2),
 }
 
-packet WsoptOption {
+packet WindowScale {
     header = [
         type_ = Field {bit = 8, default = @3},
         len = Field {
@@ -73,7 +73,7 @@ packet WsoptOption {
             default = @3,
             gen = false,
         },
-        wsopt = Field {bit = 8}
+        shift_count = Field {bit = 8}
     ],
     length = [
         header_len = len
@@ -81,7 +81,7 @@ packet WsoptOption {
     cond = (type_ == 3),
 }
 
-packet SackpermOption {
+packet SackPermitted {
     header = [
         type_ = Field {bit = 8, default = @4},
         len = Field {
@@ -96,7 +96,7 @@ packet SackpermOption {
     cond = (type_ == 4),
 }
 
-packet SackOption {
+packet Sack {
     header = [
         type_ = Field {bit = 8, default = @5},
         len = Field {
@@ -111,7 +111,7 @@ packet SackOption {
     cond = (type_ == 5),
 }
 
-packet TsOption {
+packet Timestamp {
     header = [
         type_ = Field {bit = 8, default = @8},
         len = Field {
@@ -128,15 +128,14 @@ packet TsOption {
     cond = (type_ == 8),
 }
 
-packet FoOption {
+packet FastOpen {
     header = [
         type_ = Field {bit = 8, default = @34},
         len = Field {
             bit = 8, 
-            default = @18,
+            default = 18,
             gen = false,
         },
-        fo = Field {bit = 128},
     ],
     length = [
         header_len = len
@@ -146,14 +145,14 @@ packet FoOption {
 
 group TcpOptions = {
     members = [
-        EolOption, 
-        NopOption,
-        MssOption,
-        WsoptOption,
-        SackpermOption,
-        SackOption,
-        TsOption,
-        FoOption
+        Eol, 
+        Nop,
+        Mss,
+        WindowScale,
+        SackPermitted,
+        Sack,
+        Timestamp,
+        FastOpen
     ],
     enable_iter = true
 }
