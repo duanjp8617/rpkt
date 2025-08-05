@@ -27,3 +27,74 @@ packet Ipv6 {
         payload_len=payload_len_
     ]
 }
+
+packet DestOptions {
+    header = [
+        next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
+        len = Field{bit = 8, default=0, gen=false}
+    ],
+    length = [
+        header_len = 8*len + 8,
+    ]
+}
+
+packet HopByHopOption {
+    header = [
+        next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
+        len = Field{bit = 8, default=0, gen=false}
+    ],
+    length = [
+        header_len = 8*len + 8,
+    ]
+}
+
+packet Generic {
+    header = [
+        type_ = Field{bit = 8},
+        len = Field{bit = 8, gen = false},
+    ],
+    length = [
+        header_len = len+2
+    ],
+    cond = (type_ == 2..),
+}
+
+packet RouterAlert {
+    header = [
+        type_ = Field{bit = 8, default=@0x05},
+        len = Field{bit = 8, default=@2, gen = false},
+        router_alert = Field{bit = 16}
+    ],
+    length = [
+        header_len = len+2
+    ],
+    cond = (type_ == 0x05),
+}
+
+packet Padn {
+    header = [
+        type_ = Field{bit = 8, default=@1},
+        len = Field{bit = 8, gen = false},
+    ],
+    length = [
+        header_len = len+2
+    ],
+    cond = (type_ == 1),
+}
+
+packet Pad0 {
+    header = [
+        type_ = Field{bit = 8, default=@0},        
+    ],
+    cond = (type_ == 0),
+}
+
+group Ipv6Options = {
+    members = [
+        Generic,
+        RouterAlert,
+        Padn,
+        Pad0
+    ],
+    enable_iter = true,
+}

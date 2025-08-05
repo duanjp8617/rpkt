@@ -199,3 +199,999 @@ impl<'a> Ipv6<CursorMut<'a>> {
         }
     }
 }
+
+/// A constant that defines the fixed byte length of the DestOptions protocol header.
+pub const DEST_OPTIONS_HEADER_LEN: usize = 2;
+/// A fixed DestOptions header.
+pub const DEST_OPTIONS_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct DestOptions<T> {
+    buf: T,
+}
+impl<T: Buf> DestOptions<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
+    }
+    #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.chunk()[0])
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 * 8 + 8
+    }
+}
+impl<T: PktBuf> DestOptions<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> DestOptions<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = DestOptions::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
+    }
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.chunk_mut()[0] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 2048) && (value >= 8) && ((value - 8) % 8 == 0));
+        self.buf.chunk_mut()[1] = (((value - 8) / 8) as u8);
+    }
+}
+impl<'a> DestOptions<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        DEST_OPTIONS_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> DestOptions<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the HopByHopOption protocol header.
+pub const HOP_BY_HOP_OPTION_HEADER_LEN: usize = 2;
+/// A fixed HopByHopOption header.
+pub const HOP_BY_HOP_OPTION_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct HopByHopOption<T> {
+    buf: T,
+}
+impl<T: Buf> HopByHopOption<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
+    }
+    #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.chunk()[0])
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 * 8 + 8
+    }
+}
+impl<T: PktBuf> HopByHopOption<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> HopByHopOption<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = HopByHopOption::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
+    }
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.chunk_mut()[0] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 2048) && (value >= 8) && ((value - 8) % 8 == 0));
+        self.buf.chunk_mut()[1] = (((value - 8) / 8) as u8);
+    }
+}
+impl<'a> HopByHopOption<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        HOP_BY_HOP_OPTION_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> HopByHopOption<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the Generic protocol header.
+pub const GENERIC_HEADER_LEN: usize = 2;
+/// A fixed Generic header.
+pub const GENERIC_HEADER_TEMPLATE: [u8; 2] = [0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct Generic<T> {
+    buf: T,
+}
+impl<T: Buf> Generic<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 + 2
+    }
+}
+impl<T: PktBuf> Generic<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> Generic<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = Generic::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 257) && (value >= 2));
+        self.buf.chunk_mut()[1] = ((value - 2) as u8);
+    }
+}
+impl<'a> Generic<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        GENERIC_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> Generic<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the RouterAlert protocol header.
+pub const ROUTER_ALERT_HEADER_LEN: usize = 4;
+/// A fixed RouterAlert header.
+pub const ROUTER_ALERT_HEADER_TEMPLATE: [u8; 4] = [0x05, 0x02, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct RouterAlert<T> {
+    buf: T,
+}
+impl<T: Buf> RouterAlert<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) != 4)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..4]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn router_alert(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 + 2
+    }
+}
+impl<T: PktBuf> RouterAlert<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> RouterAlert<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
+        let header_len = RouterAlert::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 5);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_router_alert(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value == 4) && (value >= 2));
+        self.buf.chunk_mut()[1] = ((value - 2) as u8);
+    }
+}
+impl<'a> RouterAlert<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if (container.header_len() as usize) != 4 {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 4] {
+        ROUTER_ALERT_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> RouterAlert<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 4 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if (container.header_len() as usize) != 4 {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the Padn protocol header.
+pub const PADN_HEADER_LEN: usize = 2;
+/// A fixed Padn header.
+pub const PADN_HEADER_TEMPLATE: [u8; 2] = [0x01, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct Padn<T> {
+    buf: T,
+}
+impl<T: Buf> Padn<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..2]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[2..header_len]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 + 2
+    }
+}
+impl<T: PktBuf> Padn<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> Padn<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
+        let header_len = Padn::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[2..header_len]
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 1);
+        self.buf.chunk_mut()[0] = value;
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 257) && (value >= 2));
+        self.buf.chunk_mut()[1] = ((value - 2) as u8);
+    }
+}
+impl<'a> Padn<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 2] {
+        PADN_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> Padn<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 2 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 2)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the Pad0 protocol header.
+pub const PAD0_HEADER_LEN: usize = 1;
+/// A fixed Pad0 header.
+pub const PAD0_HEADER_TEMPLATE: [u8; 1] = [0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct Pad0<T> {
+    buf: T,
+}
+impl<T: Buf> Pad0<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..1]
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[0]
+    }
+}
+impl<T: PktBuf> Pad0<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(1);
+        buf
+    }
+}
+impl<T: PktBufMut> Pad0<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 1]) -> Self {
+        assert!(buf.chunk_headroom() >= 1);
+        buf.move_back(1);
+        (&mut buf.chunk_mut()[0..1]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        assert!(value == 0);
+        self.buf.chunk_mut()[0] = value;
+    }
+}
+impl<'a> Pad0<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[1..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 1] {
+        PAD0_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> Pad0<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 1 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[1..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Ipv6Options<T> {
+    Generic_(Generic<T>),
+    RouterAlert_(RouterAlert<T>),
+    Padn_(Padn<T>),
+    Pad0_(Pad0<T>),
+}
+impl<T: Buf> Ipv6Options<T> {
+    pub fn group_parse(buf: T) -> Result<Self, T> {
+        if buf.chunk().len() < 1 {
+            return Err(buf);
+        }
+        let cond_value0 = buf.chunk()[0];
+        match cond_value0 {
+            2..=255 => Generic::parse(buf).map(|pkt| Ipv6Options::Generic_(pkt)),
+            5 => RouterAlert::parse(buf).map(|pkt| Ipv6Options::RouterAlert_(pkt)),
+            1 => Padn::parse(buf).map(|pkt| Ipv6Options::Padn_(pkt)),
+            0 => Pad0::parse(buf).map(|pkt| Ipv6Options::Pad0_(pkt)),
+            _ => Err(buf),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Ipv6OptionsIter<'a> {
+    buf: &'a [u8],
+}
+impl<'a> Ipv6OptionsIter<'a> {
+    pub fn from_slice(slice: &'a [u8]) -> Self {
+        Self { buf: slice }
+    }
+
+    pub fn buf(&self) -> &'a [u8] {
+        self.buf
+    }
+}
+impl<'a> Iterator for Ipv6OptionsIter<'a> {
+    type Item = Ipv6Options<Cursor<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
+            2..=255 => Generic::parse(self.buf)
+                .map(|_pkt| {
+                    let result = Generic {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv6Options::Generic_(result)
+                })
+                .ok(),
+            5 => RouterAlert::parse(self.buf)
+                .map(|_pkt| {
+                    let result = RouterAlert {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv6Options::RouterAlert_(result)
+                })
+                .ok(),
+            1 => Padn::parse(self.buf)
+                .map(|_pkt| {
+                    let result = Padn {
+                        buf: Cursor::new(&self.buf[.._pkt.header_len() as usize]),
+                    };
+                    self.buf = &self.buf[_pkt.header_len() as usize..];
+                    Ipv6Options::Padn_(result)
+                })
+                .ok(),
+            0 => Pad0::parse(self.buf)
+                .map(|_pkt| {
+                    let result = Pad0 {
+                        buf: Cursor::new(&self.buf[..1]),
+                    };
+                    self.buf = &self.buf[1..];
+                    Ipv6Options::Pad0_(result)
+                })
+                .ok(),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Ipv6OptionsIterMut<'a> {
+    buf: &'a mut [u8],
+}
+impl<'a> Ipv6OptionsIterMut<'a> {
+    pub fn from_slice_mut(slice_mut: &'a mut [u8]) -> Self {
+        Self { buf: slice_mut }
+    }
+
+    pub fn buf(&self) -> &[u8] {
+        &self.buf[..]
+    }
+}
+impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
+    type Item = Ipv6Options<CursorMut<'a>>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.buf.len() < 1 {
+            return None;
+        }
+        let cond_value0 = self.buf[0];
+        match cond_value0 {
+            2..=255 => match Generic::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = Generic {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv6Options::Generic_(result))
+                }
+                Err(_) => None,
+            },
+            5 => match RouterAlert::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = RouterAlert {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv6Options::RouterAlert_(result))
+                }
+                Err(_) => None,
+            },
+            1 => match Padn::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let header_len = _pkt.header_len() as usize;
+                    let (fst, snd) =
+                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                    self.buf = snd;
+                    let result = Padn {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv6Options::Padn_(result))
+                }
+                Err(_) => None,
+            },
+            0 => match Pad0::parse(&self.buf[..]) {
+                Ok(_pkt) => {
+                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    self.buf = snd;
+                    let result = Pad0 {
+                        buf: CursorMut::new(fst),
+                    };
+                    Some(Ipv6Options::Pad0_(result))
+                }
+                Err(_) => None,
+            },
+            _ => None,
+        }
+    }
+}
