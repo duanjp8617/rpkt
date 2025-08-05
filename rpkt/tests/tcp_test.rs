@@ -246,3 +246,115 @@ fn tcp_packet_with_options2_build() {
 
     assert_eq!(eth.release().chunk(), &pkt);
 }
+
+#[test]
+fn tcp_packet_with_mss_sackperm_parse() {
+    let pkt = file_to_packet("TcpPacketWithMssSackperm.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse(eth.payload()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+
+    let tcp = Tcp::parse(ipv4.payload()).unwrap();
+    assert_eq!(tcp.src_port(), 2000);
+    assert_eq!(tcp.dst_port(), 6712);
+    assert_eq!(tcp.seq_num(), 191135221);
+    assert_eq!(tcp.ack_num(), 4211666100);
+    assert_eq!(tcp.header_len() - 20, 8);
+    assert_eq!(tcp.cwr(), false);
+    assert_eq!(tcp.ece(), false);
+    assert_eq!(tcp.urg(), false);
+    assert_eq!(tcp.ack(), true);
+    assert_eq!(tcp.psh(), false);
+    assert_eq!(tcp.rst(), false);
+    assert_eq!(tcp.syn(), true);
+    assert_eq!(tcp.fin(), false);
+    assert_eq!(tcp.window_size(), 64240);
+    assert_eq!(tcp.checksum(), 0xe310);
+    assert_eq!(tcp.urgent_pointer(), 0);
+
+    let mut tcp_opts = TcpOptionsIter::from_slice(tcp.var_header_slice());
+
+    let mss = match tcp_opts.next().unwrap() {
+        TcpOptions::Mss_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(mss.mss(), 1460);
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _ = match tcp_opts.next().unwrap() {
+        TcpOptions::SackPermitted_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    assert_eq!(tcp_opts.next().is_none(), true);
+
+    let payload = tcp.payload();
+    assert_eq!(payload.chunk(), &pkt[pkt.len() - payload.chunk().len()..]);
+}
+
+#[test]
+fn tcp_packet_with_mss_sackperm_build() {
+    let pkt = file_to_packet("TcpPacketWithMssSackperm.dat");
+
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    let mut hdr = Tcp::default_header();
+    Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 8);
+    let mut tcp = Tcp::prepend_header(pbuf, &hdr);
+    tcp.set_src_port(2000);
+    tcp.set_dst_port(6712);
+    tcp.set_seq_num(191135221);
+    tcp.set_ack_num(4211666100);
+    tcp.set_cwr(false);
+    tcp.set_ece(false);
+    tcp.set_urg(false);
+    tcp.set_ack(true);
+    tcp.set_psh(false);
+    tcp.set_rst(false);
+    tcp.set_syn(true);
+    tcp.set_fin(false);
+    tcp.set_window_size(64240);
+    tcp.set_checksum(0xe310);
+    tcp.set_urgent_pointer(0);
+
+    let mut option_pbuf = CursorMut::new(tcp.var_header_slice_mut());
+    option_pbuf.advance(8);
+
+    let sack_permitted =
+        SackPermitted::prepend_header(option_pbuf, &SACK_PERMITTED_HEADER_TEMPLATE);
+    let nop1 = Nop::prepend_header(sack_permitted.release(), &NOP_HEADER_TEMPLATE);
+    let nop2 = Nop::prepend_header(nop1.release(), &NOP_HEADER_TEMPLATE);
+    let mut mss = Mss::prepend_header(nop2.release(), &MSS_HEADER_TEMPLATE);
+    mss.set_mss(1460);
+
+    let mut ipv4 = Ipv4::prepend_header(tcp.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4.set_ident(0);
+    ipv4.set_dont_frag(true);
+    ipv4.set_ttl(64);
+    ipv4.set_protocol(IpProtocol::TCP);
+    ipv4.set_checksum(0x28da);
+    ipv4.set_src_addr(Ipv4Addr::from_str("192.168.200.21").unwrap());
+    ipv4.set_dst_addr(Ipv4Addr::from_str("192.168.200.135").unwrap());
+
+    let mut eth = EtherFrame::prepend_header(ipv4.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0xec, 0xf4, 0xbb, 0xd9, 0x3e, 0x7d]));
+    eth.set_src_addr(EtherAddr([0x00, 0x0c, 0x29, 0x1c, 0xe3, 0x19]));
+    eth.set_ethertype(EtherType::IPV4);
+
+    assert_eq!(eth.release().chunk(), &pkt);
+}
