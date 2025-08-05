@@ -48,6 +48,43 @@ packet HopByHopOption {
     ]
 }
 
+packet RoutingHeader {
+    header = [
+        next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
+        len = Field{bit = 8, default=0, gen=false},
+        type_ = Field{bit = 8},
+        segments_left = Field{bit = 8},
+        type_specific_data = Field{bit = 32},
+    ],
+    length = [
+        header_len = 8*len + 8,
+    ]
+}
+
+packet FragmentHeader {
+    header = [
+        next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
+        reserved = Field{bit = 8, default=0},
+        offset = Field{bit = 13},
+        reserved1 = Field{bit = 2},
+        more_frag = Field{bit = 1, arg = bool},
+        ident = Field{bit = 32,}
+    ]
+}
+
+packet AuthenticationHeader {
+    header = [
+        next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
+        len = Field{bit = 8, default=1, gen=false},
+        reserved = Field{bit = 16},
+        security_parameters_index = Field{bit = 32},
+        seq_num_field = Field{bit = 32},
+    ],
+    length = [
+        header_len = 4*len + 8,
+    ]
+}
+
 packet Generic {
     header = [
         type_ = Field{bit = 8},

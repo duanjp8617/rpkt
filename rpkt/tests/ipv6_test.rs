@@ -15,5 +15,5 @@ use rpkt::{Cursor, CursorMut};
 
 #[test]
 fn p() {
-    to_hex_dump("ipv6_options_hop_by_hop.dat");
+    to_hex_dump("ipv6_options_ah.dat");
 }

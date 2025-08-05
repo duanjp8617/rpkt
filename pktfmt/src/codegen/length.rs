@@ -172,7 +172,7 @@ impl<'a> LengthSetMethod<'a> {
         }
 
         let reverse_exec_guards = self.expr.reverse_exec_guard(write_value);
-        if reverse_exec_guards.len() > 0 {
+        if reverse_exec_guards.len() > 0 && !self.field.default_fix {
             // This guard condition ensures that the `write_value`
             // can be divided without remainder.
             guards.extend(reverse_exec_guards);

@@ -492,6 +492,502 @@ impl<'a> HopByHopOption<CursorMut<'a>> {
     }
 }
 
+/// A constant that defines the fixed byte length of the RoutingHeader protocol header.
+pub const ROUTING_HEADER_HEADER_LEN: usize = 8;
+/// A fixed RoutingHeader header.
+pub const ROUTING_HEADER_HEADER_TEMPLATE: [u8; 8] =
+    [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct RoutingHeader<T> {
+    buf: T,
+}
+impl<T: Buf> RoutingHeader<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 8)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..8]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[8..header_len]
+    }
+    #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.chunk()[0])
+    }
+    #[inline]
+    pub fn type_(&self) -> u8 {
+        self.buf.chunk()[2]
+    }
+    #[inline]
+    pub fn segments_left(&self) -> u8 {
+        self.buf.chunk()[3]
+    }
+    #[inline]
+    pub fn type_specific_data(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 * 8 + 8
+    }
+}
+impl<T: PktBuf> RoutingHeader<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> RoutingHeader<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
+        let header_len = RoutingHeader::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 8) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[8..header_len]
+    }
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.chunk_mut()[0] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_type_(&mut self, value: u8) {
+        self.buf.chunk_mut()[2] = value;
+    }
+    #[inline]
+    pub fn set_segments_left(&mut self, value: u8) {
+        self.buf.chunk_mut()[3] = value;
+    }
+    #[inline]
+    pub fn set_type_specific_data(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 2048) && (value >= 8) && ((value - 8) % 8 == 0));
+        self.buf.chunk_mut()[1] = (((value - 8) / 8) as u8);
+    }
+}
+impl<'a> RoutingHeader<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 8)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        ROUTING_HEADER_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> RoutingHeader<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 8)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the FragmentHeader protocol header.
+pub const FRAGMENT_HEADER_HEADER_LEN: usize = 8;
+/// A fixed FragmentHeader header.
+pub const FRAGMENT_HEADER_HEADER_TEMPLATE: [u8; 8] =
+    [0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+
+#[derive(Debug, Clone, Copy)]
+pub struct FragmentHeader<T> {
+    buf: T,
+}
+impl<T: Buf> FragmentHeader<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..8]
+    }
+    #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.chunk()[0])
+    }
+    #[inline]
+    pub fn reserved(&self) -> u8 {
+        self.buf.chunk()[1]
+    }
+    #[inline]
+    pub fn offset(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()) >> 3
+    }
+    #[inline]
+    pub fn reserved1(&self) -> u8 {
+        (self.buf.chunk()[3] >> 1) & 0x3
+    }
+    #[inline]
+    pub fn more_frag(&self) -> bool {
+        self.buf.chunk()[3] & 0x1 != 0
+    }
+    #[inline]
+    pub fn ident(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+    }
+}
+impl<T: PktBuf> FragmentHeader<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let mut buf = self.buf;
+        buf.advance(8);
+        buf
+    }
+}
+impl<T: PktBufMut> FragmentHeader<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
+        assert!(buf.chunk_headroom() >= 8);
+        buf.move_back(8);
+        (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.chunk_mut()[0] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_reserved(&mut self, value: u8) {
+        self.buf.chunk_mut()[1] = value;
+    }
+    #[inline]
+    pub fn set_offset(&mut self, value: u16) {
+        assert!(value <= 0x1fff);
+        let write_value = (value << 3) | ((self.buf.chunk_mut()[3] & 0x7) as u16);
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&write_value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_reserved1(&mut self, value: u8) {
+        assert!(value <= 0x3);
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xf9) | (value << 1);
+    }
+    #[inline]
+    pub fn set_more_frag(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.chunk_mut()[3] = (self.buf.chunk_mut()[3] & 0xfe) | value;
+    }
+    #[inline]
+    pub fn set_ident(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> FragmentHeader<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        Cursor::new(&self.buf.chunk()[8..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 8] {
+        FRAGMENT_HEADER_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> FragmentHeader<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 8 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        CursorMut::new(&mut self.buf.chunk_mut()[8..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
+/// A constant that defines the fixed byte length of the AuthenticationHeader protocol header.
+pub const AUTHENTICATION_HEADER_HEADER_LEN: usize = 12;
+/// A fixed AuthenticationHeader header.
+pub const AUTHENTICATION_HEADER_HEADER_TEMPLATE: [u8; 12] = [
+    0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
+
+#[derive(Debug, Clone, Copy)]
+pub struct AuthenticationHeader<T> {
+    buf: T,
+}
+impl<T: Buf> AuthenticationHeader<T> {
+    #[inline]
+    pub fn parse_unchecked(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn buf(&self) -> &T {
+        &self.buf
+    }
+    #[inline]
+    pub fn release(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn parse(buf: T) -> Result<Self, T> {
+        let chunk_len = buf.chunk().len();
+        if chunk_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 12)
+            || ((container.header_len() as usize) > chunk_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn fix_header_slice(&self) -> &[u8] {
+        &self.buf.chunk()[0..12]
+    }
+    #[inline]
+    pub fn var_header_slice(&self) -> &[u8] {
+        let header_len = (self.header_len() as usize);
+        &self.buf.chunk()[12..header_len]
+    }
+    #[inline]
+    pub fn next_header(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.chunk()[0])
+    }
+    #[inline]
+    pub fn reserved(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn security_parameters_index(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn seq_num_field(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u16 {
+        (self.buf.chunk()[1]) as u16 * 4 + 8
+    }
+}
+impl<T: PktBuf> AuthenticationHeader<T> {
+    #[inline]
+    pub fn payload(self) -> T {
+        let header_len = self.header_len() as usize;
+        let mut buf = self.buf;
+        buf.advance(header_len);
+        buf
+    }
+}
+impl<T: PktBufMut> AuthenticationHeader<T> {
+    #[inline]
+    pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 12]) -> Self {
+        let header_len = AuthenticationHeader::parse_unchecked(&header[..]).header_len() as usize;
+        assert!((header_len >= 12) && (header_len <= buf.chunk_headroom()));
+        buf.move_back(header_len);
+        (&mut buf.chunk_mut()[0..12]).copy_from_slice(&header.as_ref()[..]);
+        Self { buf }
+    }
+    #[inline]
+    pub fn var_header_slice_mut(&mut self) -> &mut [u8] {
+        let header_len = (self.header_len() as usize);
+        &mut self.buf.chunk_mut()[12..header_len]
+    }
+    #[inline]
+    pub fn set_next_header(&mut self, value: IpProtocol) {
+        self.buf.chunk_mut()[0] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_reserved(&mut self, value: u16) {
+        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_security_parameters_index(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_seq_num_field(&mut self, value: u32) {
+        (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_header_len(&mut self, value: u16) {
+        assert!((value <= 1028) && (value >= 8) && ((value - 8) % 4 == 0));
+        self.buf.chunk_mut()[1] = (((value - 8) / 4) as u8);
+    }
+}
+impl<'a> AuthenticationHeader<Cursor<'a>> {
+    #[inline]
+    pub fn parse_from_cursor(buf: Cursor<'a>) -> Result<Self, Cursor<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 12)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor(&self) -> Cursor<'_> {
+        let header_len = self.header_len() as usize;
+        Cursor::new(&self.buf.chunk()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array(header_array: &'a [u8; 12]) -> Self {
+        Self {
+            buf: Cursor::new(header_array.as_slice()),
+        }
+    }
+    #[inline]
+    pub fn default_header() -> [u8; 12] {
+        AUTHENTICATION_HEADER_HEADER_TEMPLATE.clone()
+    }
+}
+impl<'a> AuthenticationHeader<CursorMut<'a>> {
+    #[inline]
+    pub fn parse_from_cursor_mut(buf: CursorMut<'a>) -> Result<Self, CursorMut<'a>> {
+        let remaining_len = buf.chunk().len();
+        if remaining_len < 12 {
+            return Err(buf);
+        }
+        let container = Self { buf };
+        if ((container.header_len() as usize) < 12)
+            || ((container.header_len() as usize) > remaining_len)
+        {
+            return Err(container.buf);
+        }
+        Ok(container)
+    }
+    #[inline]
+    pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
+        let header_len = self.header_len() as usize;
+        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+    }
+    #[inline]
+    pub fn from_header_array_mut(header_array: &'a mut [u8; 12]) -> Self {
+        Self {
+            buf: CursorMut::new(header_array.as_mut_slice()),
+        }
+    }
+}
+
 /// A constant that defines the fixed byte length of the Generic protocol header.
 pub const GENERIC_HEADER_LEN: usize = 2;
 /// A fixed Generic header.
@@ -720,7 +1216,7 @@ impl<T: PktBufMut> RouterAlert<T> {
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u16) {
-        assert!((value == 4) && (value >= 2));
+        assert!((value == 4));
         self.buf.chunk_mut()[1] = ((value - 2) as u8);
     }
 }
