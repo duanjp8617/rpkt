@@ -6,7 +6,6 @@ use common::*;
 
 use rpkt::ether::*;
 use rpkt::ipv4::*;
-use rpkt::network_rw::*;
 use rpkt::tcp::options::*;
 use rpkt::tcp::*;
 use rpkt::Buf;

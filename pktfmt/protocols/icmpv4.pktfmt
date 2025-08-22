@@ -1,8 +1,371 @@
-message Icmpv4DestUnreachable {
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+use crate::ipv4::Ipv4Addr;
+%%
+
+// ICMP Echo Reply (Type 0)
+packet EchoReply {
     header = [
-        type_ = Field{bit = 8, default = 3},
+        type_ = Field{bit = 8, default = @0},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 0),
+}
+
+// ICMP Destination Unreachable (Type 3)
+packet DestUnreachable {
+    header = [
+        type_ = Field{bit = 8, default = @3},
         code = Field{bit = 8},
         checksum = Field{bit = 16},
-        unused = Field{bit = 32},
+        unused = Field{bit = 32, default = @0},
     ],
+    cond = (type_ == 3),
 }
+
+// ICMP Source Quench (Type 4) - Deprecated but still defined
+packet SourceQuench {
+    header = [
+        type_ = Field{bit = 8, default = @4},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        unused = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 4),
+}
+
+// ICMP Redirect (Type 5)
+packet Redirect {
+    header = [
+        type_ = Field{bit = 8, default = @5},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        gateway_addr = Field{bit = 32, arg = %%Ipv4Addr%%},
+    ],
+    cond = (type_ == 5),
+}
+
+// ICMP Echo Request (Type 8)
+packet EchoRequest {
+    header = [
+        type_ = Field{bit = 8, default = @8},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 8),
+}
+
+// ICMP Router Advertisement (Type 9)
+packet RouterAdvertisement {
+    header = [
+        type_ = Field{bit = 8, default = @9},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        num_addrs = Field{bit = 8},
+        addr_entry_size = Field{bit = 8, default = @2},
+        lifetime = Field{bit = 16},
+    ],
+    cond = (type_ == 9),
+}
+
+// ICMP Router Solicitation (Type 10)
+packet RouterSolicitation {
+    header = [
+        type_ = Field{bit = 8, default = @10},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 10),
+}
+
+// ICMP Time Exceeded (Type 11)
+packet TimeExceeded {
+    header = [
+        type_ = Field{bit = 8, default = @11},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        unused = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 11),
+}
+
+// ICMP Parameter Problem (Type 12)
+packet ParameterProblem {
+    header = [
+        type_ = Field{bit = 8, default = @12},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        pointer = Field{bit = 8},
+        unused = Field{bit = 24, default = @0},
+    ],
+    cond = (type_ == 12),
+}
+
+// ICMP Timestamp Request (Type 13)
+packet TimestampRequest {
+    header = [
+        type_ = Field{bit = 8, default = @13},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+        originate_timestamp = Field{bit = 32},
+        receive_timestamp = Field{bit = 32, default = @0},
+        transmit_timestamp = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 13),
+}
+
+// ICMP Timestamp Reply (Type 14)
+packet TimestampReply {
+    header = [
+        type_ = Field{bit = 8, default = @14},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+        originate_timestamp = Field{bit = 32},
+        receive_timestamp = Field{bit = 32},
+        transmit_timestamp = Field{bit = 32},
+    ],
+    cond = (type_ == 14),
+}
+
+// ICMP Information Request (Type 15) - Deprecated
+packet InformationRequest {
+    header = [
+        type_ = Field{bit = 8, default = @15},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 15),
+}
+
+// ICMP Information Reply (Type 16) - Deprecated
+packet InformationReply {
+    header = [
+        type_ = Field{bit = 8, default = @16},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 16),
+}
+
+// ICMP Address Mask Request (Type 17)
+packet AddressMaskRequest {
+    header = [
+        type_ = Field{bit = 8, default = @17},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+        address_mask = Field{bit = 32, arg = %%Ipv4Addr%%, default = @0},
+    ],
+    cond = (type_ == 17),
+}
+
+// ICMP Address Mask Reply (Type 18)
+packet AddressMaskReply {
+    header = [
+        type_ = Field{bit = 8, default = @18},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+        address_mask = Field{bit = 32, arg = %%Ipv4Addr%%},
+    ],
+    cond = (type_ == 18),
+}
+
+// ICMP Extended Echo Request (Type 42) - RFC 8335
+packet ExtendedEchoRequest {
+    header = [
+        type_ = Field{bit = 8, default = @42},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 8},
+        req = Field{bit = 1, arg = bool},
+        reserved = Field{bit = 7, default = @0},
+    ],
+    cond = (type_ == 42),
+}
+
+// ICMP Extended Echo Reply (Type 43) - RFC 8335
+packet ExtendedEchoReply {
+    header = [
+        type_ = Field{bit = 8, default = @43},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 8},
+        req = Field{bit = 1, arg = bool},
+        state = Field{bit = 3},
+        reserved = Field{bit = 4, default = @0},
+    ],
+    cond = (type_ == 43),
+}
+
+// Group all ICMP message types
+group Icmpv4 = {
+    members = [
+        EchoReply,
+        DestUnreachable,
+        SourceQuench,
+        Redirect,
+        EchoRequest,
+        RouterAdvertisement,
+        RouterSolicitation,
+        TimeExceeded,
+        ParameterProblem,
+        TimestampRequest,
+        TimestampReply,
+        InformationRequest,
+        InformationReply,
+        AddressMaskRequest,
+        AddressMaskReply,
+        ExtendedEchoRequest,
+        ExtendedEchoReply
+    ],
+    enable_iter = false
+}
+
+%%
+// ICMP message type constants
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IcmpType {
+    EchoReply = 0,
+    DestUnreachable = 3,
+    SourceQuench = 4,
+    Redirect = 5,
+    EchoRequest = 8,
+    RouterAdvertisement = 9,
+    RouterSolicitation = 10,
+    TimeExceeded = 11,
+    ParameterProblem = 12,
+    TimestampRequest = 13,
+    TimestampReply = 14,
+    InformationRequest = 15,
+    InformationReply = 16,
+    AddressMaskRequest = 17,
+    AddressMaskReply = 18,
+    ExtendedEchoRequest = 42,
+    ExtendedEchoReply = 43,
+}
+
+impl From<u8> for IcmpType {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => IcmpType::EchoReply,
+            3 => IcmpType::DestUnreachable,
+            4 => IcmpType::SourceQuench,
+            5 => IcmpType::Redirect,
+            8 => IcmpType::EchoRequest,
+            9 => IcmpType::RouterAdvertisement,
+            10 => IcmpType::RouterSolicitation,
+            11 => IcmpType::TimeExceeded,
+            12 => IcmpType::ParameterProblem,
+            13 => IcmpType::TimestampRequest,
+            14 => IcmpType::TimestampReply,
+            15 => IcmpType::InformationRequest,
+            16 => IcmpType::InformationReply,
+            17 => IcmpType::AddressMaskRequest,
+            18 => IcmpType::AddressMaskReply,
+            42 => IcmpType::ExtendedEchoRequest,
+            43 => IcmpType::ExtendedEchoReply,
+            _ => panic!("Unknown ICMP type: {}", value),
+        }
+    }
+}
+
+impl From<IcmpType> for u8 {
+    fn from(icmp_type: IcmpType) -> Self {
+        icmp_type as u8
+    }
+}
+
+// ICMP Destination Unreachable codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DestUnreachableCode {
+    NetworkUnreachable = 0,
+    HostUnreachable = 1,
+    ProtocolUnreachable = 2,
+    PortUnreachable = 3,
+    FragmentationNeededDfSet = 4,
+    SourceRouteFailed = 5,
+    DestNetworkUnknown = 6,
+    DestHostUnknown = 7,
+    SourceHostIsolated = 8,
+    NetworkProhibited = 9,
+    HostProhibited = 10,
+    NetworkUnreachableForTos = 11,
+    HostUnreachableForTos = 12,
+    CommunicationProhibited = 13,
+    HostPrecedenceViolation = 14,
+    PrecedenceCutoffInEffect = 15,
+}
+
+// ICMP Redirect codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RedirectCode {
+    RedirectForNetwork = 0,
+    RedirectForHost = 1,
+    RedirectForTosAndNetwork = 2,
+    RedirectForTosAndHost = 3,
+}
+
+// ICMP Time Exceeded codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeExceededCode {
+    TtlExceededInTransit = 0,
+    FragmentReassemblyTimeExceeded = 1,
+}
+
+// ICMP Parameter Problem codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParameterProblemCode {
+    PointerIndicatesError = 0,
+    MissingRequiredOption = 1,
+    BadLength = 2,
+}
+
+// Helper function to calculate ICMP checksum
+pub fn calculate_icmp_checksum(icmp_data: &[u8]) -> u16 {
+    let mut checksum: u32 = 0;
+    let mut i = 0;
+
+    // Sum all 16-bit words
+    while i < icmp_data.len() - 1 {
+        let word = ((icmp_data[i] as u32) << 8) | (icmp_data[i + 1] as u32);
+        checksum += word;
+        i += 2;
+    }
+
+    // Add the odd byte if present
+    if i < icmp_data.len() {
+        checksum += (icmp_data[i] as u32) << 8;
+    }
+
+    // Fold 32-bit checksum to 16 bits
+    while (checksum >> 16) != 0 {
+        checksum = (checksum & 0xFFFF) + (checksum >> 16);
+    }
+
+    // One's complement
+    !checksum as u16
+}
+%%
