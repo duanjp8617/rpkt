@@ -1,3 +1,86 @@
+//! STP (Spanning Tree Protocol) Implementation
+//!
+//! This module provides comprehensive support for parsing and constructing Spanning Tree Protocol
+//! packets as defined in IEEE 802.1D, IEEE 802.1w (RSTP), and IEEE 802.1s (MSTP). STP prevents
+//! network loops in Ethernet networks by creating a spanning tree topology.
+//!
+//! # Features
+//!
+//! - Support for multiple STP variants (STP, RSTP, MSTP)
+//! - Parse and construct Configuration BPDUs and Topology Change Notification BPDUs
+//! - Bridge ID handling with priority, system ID extension, and MAC address
+//! - Multiple Spanning Tree Instance (MSTI) support for MSTP
+//! - Comprehensive BPDU type and version detection
+//!
+//! # STP Protocol Variants
+//!
+//! This implementation supports three main STP variants:
+//! - **STP (802.1D)**: Original Spanning Tree Protocol
+//! - **RSTP (802.1w)**: Rapid Spanning Tree Protocol for faster convergence
+//! - **MSTP (802.1s)**: Multiple Spanning Tree Protocol for per-VLAN spanning trees
+//!
+//! # BPDU Types
+//!
+//! The module supports various BPDU (Bridge Protocol Data Unit) types:
+//! - **Configuration BPDU**: Carries spanning tree information
+//! - **TCN BPDU**: Topology Change Notification
+//! - **RSTP BPDU**: Enhanced configuration BPDU for RSTP
+//! - **MSTP BPDU**: Multiple Spanning Tree configuration
+//!
+//! # Bridge Identification
+//!
+//! The `BridgeId` type provides access to:
+//! - **Priority**: 4-bit priority value (multiples of 4096)
+//! - **System ID Extension**: 12-bit VLAN ID or instance identifier
+//! - **MAC Address**: 48-bit bridge MAC address
+//!
+//! # Example
+//!
+//! ```rust
+//! use rpkt::stp::*;
+//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::ether::EtherAddr;
+//!
+//! // Parse an STP BPDU
+//! let packet_data = [/* STP BPDU bytes */];
+//! let cursor = Cursor::new(&packet_data);
+//!
+//! // Parse STP group to handle different BPDU types
+//! let stp_group = StpGroup::parse(cursor)?;
+//! match stp_group {
+//!     StpGroup::StpConfBpdu(stp_conf) => {
+//!         println!("STP Configuration BPDU");
+//!         println!("Root ID Priority: {}", stp_conf.root_id().priority());
+//!         println!("Root ID MAC: {}", stp_conf.root_id().mac_addr());
+//!         println!("Root Path Cost: {}", stp_conf.root_path_cost());
+//!         println!("Bridge ID: {:?}", stp_conf.bridge_id());
+//!     }
+//!     StpGroup::StpTcnBpdu(_tcn) => {
+//!         println!("STP Topology Change Notification");
+//!     }
+//!     StpGroup::RstpConfBpdu(rstp_conf) => {
+//!         println!("RSTP Configuration BPDU");
+//!         println!("Version: {:?}", rstp_conf.version());
+//!     }
+//!     StpGroup::MstpConfBpdu(mstp_conf) => {
+//!         println!("MSTP Configuration BPDU");
+//!         println!("Version 3 Length: {}", mstp_conf.version_3_len());
+//!         // Access MSTI configurations
+//!     }
+//! }
+//!
+//! // Working with Bridge IDs
+//! let mut bridge_id = BridgeId::default();
+//! bridge_id.set_priority(32768);  // Must be multiple of 4096
+//! bridge_id.set_sys_id_ext(100);  // VLAN ID
+//! bridge_id.set_mac_addr(EtherAddr([0x00, 0x1a, 0x2b, 0x3c, 0x4d, 0x5e]));
+//!
+//! println!("Priority: {}", bridge_id.priority());
+//! println!("System ID Ext: {}", bridge_id.sys_id_ext());
+//! println!("MAC Address: {}", bridge_id.mac_addr());
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
 mod generated;
 
 pub use generated::StpGroup;

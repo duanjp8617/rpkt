@@ -1,4 +1,70 @@
-//! IPv4 protocol.
+//! IPv4 (Internet Protocol version 4) Implementation
+//!
+//! This module provides support for parsing and constructing IPv4 packets as defined in RFC 791
+//! and related RFCs. IPv4 is the fourth version of the Internet Protocol and the most widely
+//! used version for routing packets across networks.
+//!
+//! # Features
+//!
+//! - Parse IPv4 headers with comprehensive option support
+//! - Construct IPv4 packets with proper checksumming
+//! - Access to all IPv4 header fields (addresses, TTL, protocol, fragmentation info, etc.)
+//! - Extensive IPv4 options support
+//! - Protocol type enumeration for next-layer protocol identification
+//! - Integration with standard library's `Ipv4Addr` type
+//!
+//! # IPv4 Options Support
+//!
+//! This implementation supports the following IPv4 options:
+//! - **EOL (End of Option List)**: Marks the end of options
+//! - **NOP (No Operation)**: Padding option
+//! - **Timestamp**: RFC 781 timestamp option
+//! - **Record Route**: Records route taken by packet
+//! - **Router Alert**: Indicates packet requires special handling
+//! - **Commercial Security**: Security and handling restrictions
+//! - **Strict/Loose Source Routing**: Source-specified routing
+//!
+//! # Protocol Types
+//!
+//! The `IpProtocol` enum provides constants for common next-layer protocols:
+//! - TCP, UDP, ICMP, IGMP
+//! - IPv6 extension headers (for tunneling scenarios)
+//! - GRE, ESP, AH (for VPN and security protocols)
+//!
+//! # Example
+//!
+//! ```rust
+//! use rpkt::ipv4::*;
+//! use rpkt::{Cursor, CursorMut};
+//! use std::net::Ipv4Addr;
+//!
+//! // Parse an IPv4 packet
+//! let packet_data = [/* IPv4 packet bytes */];
+//! let cursor = Cursor::new(&packet_data);
+//! let ipv4 = Ipv4::parse(cursor)?;
+//!
+//! println!("Source: {}", ipv4.src_addr());
+//! println!("Destination: {}", ipv4.dst_addr());
+//! println!("Protocol: {:?}", ipv4.protocol());
+//! println!("TTL: {}", ipv4.ttl());
+//! println!("Fragment offset: {}", ipv4.fragment_offset());
+//!
+//! // Check for specific protocols
+//! match ipv4.protocol() {
+//!     IpProtocol::TCP => println!("This is a TCP packet"),
+//!     IpProtocol::UDP => println!("This is a UDP packet"),
+//!     IpProtocol::ICMP => println!("This is an ICMP packet"),
+//!     _ => println!("Other protocol"),
+//! }
+//!
+//! // Access IPv4 options if present
+//! if let Some(options) = ipv4.options() {
+//!     for option in options.iter() {
+//!         // Process IPv4 options
+//!     }
+//! }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 mod generated;
 pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};

@@ -1,3 +1,90 @@
+//! PPPoE (Point-to-Point Protocol over Ethernet) Implementation
+//!
+//! This module provides support for parsing and constructing PPPoE packets as defined in RFC 2516.
+//! PPPoE is commonly used by DSL and cable internet providers to establish point-to-point
+//! connections over Ethernet networks, enabling authentication and session management.
+//!
+//! # Features
+//!
+//! - Parse PPPoE Discovery and Session packets
+//! - Support for all PPPoE discovery message types (PADI, PADO, PADR, PADS, PADT, etc.)
+//! - PPPoE tag parsing and construction with comprehensive tag type support
+//! - Session ID management for established connections
+//! - Iterator support for processing multiple PPPoE tags
+//!
+//! # PPPoE Packet Types
+//!
+//! This implementation supports two main PPPoE packet types:
+//! - **PppoeDiscovery**: Used during the discovery phase to establish sessions
+//! - **PppoeSession**: Used for actual data transmission once session is established
+//! - **PppoeGroup**: Container for parsing different PPPoE packet types
+//!
+//! # Discovery Phase Messages
+//!
+//! PPPoE uses various code values during the discovery phase:
+//! - **PADI (0x09)**: PPPoE Active Discovery Initiation
+//! - **PADO (0x07)**: PPPoE Active Discovery Offer
+//! - **PADR (0x19)**: PPPoE Active Discovery Request
+//! - **PADS (0x65)**: PPPoE Active Discovery Session-confirmation
+//! - **PADT (0xa7)**: PPPoE Active Discovery Terminate
+//!
+//! # PPPoE Tags
+//!
+//! Discovery packets contain tags with various information:
+//! - **Service-Name**: Requested or offered service
+//! - **AC-Name**: Access Concentrator name
+//! - **Host-Uniq**: Host unique identifier
+//! - **AC-Cookie**: Access Concentrator cookie
+//! - **Relay-Session-Id**: Relay agent session identifier
+//! - **Error tags**: Various error indication tags
+//!
+//! # Example
+//!
+//! ```rust
+//! use rpkt::pppoe::*;
+//! use rpkt::{Cursor, CursorMut};
+//!
+//! // Parse a PPPoE packet
+//! let packet_data = [/* PPPoE packet bytes */];
+//! let cursor = Cursor::new(&packet_data);
+//!
+//! // Try parsing as a PPPoE group (handles both discovery and session)
+//! let pppoe_group = PppoeGroup::parse(cursor)?;
+//! match pppoe_group {
+//!     PppoeGroup::PppoeDiscovery(discovery) => {
+//!         println!("PPPoE Discovery packet");
+//!         match discovery.code() {
+//!             PppoeCode::PADI => println!("PADI - Discovery Initiation"),
+//!             PppoeCode::PADO => println!("PADO - Discovery Offer"),
+//!             PppoeCode::PADR => println!("PADR - Discovery Request"),
+//!             PppoeCode::PADS => println!("PADS - Discovery Session-confirmation"),
+//!             PppoeCode::PADT => println!("PADT - Discovery Terminate"),
+//!             _ => println!("Other discovery code: {:?}", discovery.code()),
+//!         }
+//!
+//!         // Process PPPoE tags
+//!         if let Some(tags) = discovery.tags() {
+//!             for tag in tags.iter() {
+//!                 match tag.tag_type() {
+//!                     PppoeTagType::SVC_NAME => println!("Service Name tag"),
+//!                     PppoeTagType::AC_NAME => println!("AC Name tag"),
+//!                     PppoeTagType::HOST_UNIQ => println!("Host Unique tag"),
+//!                     _ => println!("Other tag: {:?}", tag.tag_type()),
+//!                 }
+//!             }
+//!         }
+//!     }
+//!     PppoeGroup::PppoeSession(session) => {
+//!         println!("PPPoE Session packet");
+//!         println!("Session ID: 0x{:04x}", session.session_id());
+//!         println!("Length: {}", session.length());
+//!         // Process PPP payload
+//!         let ppp_payload = session.payload();
+//!     }
+//! }
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+
 mod generated;
 pub use generated::PppoeGroup;
 pub use generated::{PppoeDiscovery, PPPOE_DISCOVERY_HEADER_LEN, PPPOE_DISCOVERY_HEADER_TEMPLATE};
