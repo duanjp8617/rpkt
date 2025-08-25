@@ -103,12 +103,12 @@ impl<T: PktBufMut> Ipv6<T> {
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
-        assert!(value <= 0xf);
+        assert!(value == 6);
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
     }
     #[inline]
     pub fn set_traffic_class(&mut self, value: u8) {
-        let write_value = ((value << 4) as u16)
+        let write_value = ((value as u16) << 4)
             | (((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8)
             | ((self.buf.chunk_mut()[1] & 0xf) as u16);
         (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());

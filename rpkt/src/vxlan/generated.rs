@@ -119,7 +119,7 @@ impl<T: PktBufMut> Vxlan<T> {
     #[inline]
     pub fn set_reserved_1(&mut self, value: u8) {
         assert!(value <= 0xf);
-        let write_value = ((value << 7) as u16)
+        let write_value = ((value as u16) << 7)
             | (((self.buf.chunk_mut()[0] & 0xf8) as u16) << 8)
             | ((self.buf.chunk_mut()[1] & 0x7f) as u16);
         (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());

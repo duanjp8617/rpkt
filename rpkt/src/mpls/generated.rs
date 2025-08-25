@@ -76,7 +76,7 @@ impl<T: PktBufMut> Mpls<T> {
     #[inline]
     pub fn set_label(&mut self, value: u32) {
         assert!(value <= 0xfffff);
-        let write_value = ((value << 4) as u64) | ((self.buf.chunk_mut()[2] & 0xf) as u64);
+        let write_value = ((value as u64) << 4) | ((self.buf.chunk_mut()[2] & 0xf) as u64);
         write_uint_as_be_bytes(&mut self.buf.chunk_mut()[0..3], write_value);
     }
     #[inline]
