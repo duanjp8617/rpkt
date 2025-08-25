@@ -3,6 +3,8 @@
 #![allow(unused_parens)]
 #![allow(unreachable_patterns)]
 
+use std::net::Ipv6Addr;
+
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;
 use crate::{Buf, PktBuf, PktBufMut};
@@ -21,13 +23,39 @@ packet Ipv6 {
         },
         next_header = Field{bit = 8, arg = %%IpProtocol%%, default=4},
         hop_limit = Field{bit = 8},
-        src_addr = Field{bit = 128},
-        dst_addr = Field{bit = 128},
+        src_addr = Field{bit = 128, gen=false},
+        dst_addr = Field{bit = 128, gen=false},
     ],
     length = [
         payload_len=payload_len_
     ]
 }
+
+%%
+impl<T: Buf> Ipv6<T> {
+    #[inline]
+    pub fn src_addr(&self) -> Ipv6Addr {
+        let b: [u8; 16] = (self.buf.chunk()[8..24].try_into().unwrap());
+        b.into()
+    }
+    #[inline]
+    pub fn dst_addr(&self) -> Ipv6Addr {
+        let b: [u8; 16] = (self.buf.chunk()[24..40].try_into().unwrap());
+        b.into()
+    }
+}
+
+impl<T: PktBufMut> Ipv6<T> {
+    #[inline]
+    pub fn set_src_addr(&mut self, value: Ipv6Addr) {
+        (&mut self.buf.chunk_mut()[8..24]).copy_from_slice(&value.octets());
+    }
+    #[inline]
+    pub fn set_dst_addr(&mut self, value: Ipv6Addr) {
+        (&mut self.buf.chunk_mut()[24..40]).copy_from_slice(&value.octets());
+    }
+}
+%%
 
 packet DestOptions {
     header = [

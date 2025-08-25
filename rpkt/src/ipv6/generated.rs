@@ -2,6 +2,8 @@
 #![allow(unused_parens)]
 #![allow(unreachable_patterns)]
 
+use std::net::Ipv6Addr;
+
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;
 use crate::{Buf, PktBuf, PktBufMut};
@@ -70,14 +72,6 @@ impl<T: Buf> Ipv6<T> {
         self.buf.chunk()[7]
     }
     #[inline]
-    pub fn src_addr(&self) -> &[u8] {
-        &self.buf.chunk()[8..24]
-    }
-    #[inline]
-    pub fn dst_addr(&self) -> &[u8] {
-        &self.buf.chunk()[24..40]
-    }
-    #[inline]
     pub fn payload_len(&self) -> u16 {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
     }
@@ -132,14 +126,6 @@ impl<T: PktBufMut> Ipv6<T> {
     #[inline]
     pub fn set_hop_limit(&mut self, value: u8) {
         self.buf.chunk_mut()[7] = value;
-    }
-    #[inline]
-    pub fn set_src_addr(&mut self, value: &[u8]) {
-        (&mut self.buf.chunk_mut()[8..24]).copy_from_slice(value);
-    }
-    #[inline]
-    pub fn set_dst_addr(&mut self, value: &[u8]) {
-        (&mut self.buf.chunk_mut()[24..40]).copy_from_slice(value);
     }
     #[inline]
     pub fn set_payload_len(&mut self, value: u16) {
@@ -198,6 +184,30 @@ impl<'a> Ipv6<CursorMut<'a>> {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
+    }
+}
+
+impl<T: Buf> Ipv6<T> {
+    #[inline]
+    pub fn src_addr(&self) -> Ipv6Addr {
+        let b: [u8; 16] = (self.buf.chunk()[8..24].try_into().unwrap());
+        b.into()
+    }
+    #[inline]
+    pub fn dst_addr(&self) -> Ipv6Addr {
+        let b: [u8; 16] = (self.buf.chunk()[24..40].try_into().unwrap());
+        b.into()
+    }
+}
+
+impl<T: PktBufMut> Ipv6<T> {
+    #[inline]
+    pub fn set_src_addr(&mut self, value: Ipv6Addr) {
+        (&mut self.buf.chunk_mut()[8..24]).copy_from_slice(&value.octets());
+    }
+    #[inline]
+    pub fn set_dst_addr(&mut self, value: Ipv6Addr) {
+        (&mut self.buf.chunk_mut()[24..40]).copy_from_slice(&value.octets());
     }
 }
 
