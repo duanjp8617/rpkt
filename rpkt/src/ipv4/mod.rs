@@ -107,6 +107,9 @@ pub use core::net::Ipv4Addr;
 enum_sim! {
     /// An enum-like type for representing different protocols in IPv4/v6.
     pub struct IpProtocol (u8) {
+        /// IPv6 hop-by-hop extention
+        IPV6_HOP_BY_HOP_OPTS = 0,
+
         /// IP packet payload is ICMP protocol.
         ICMP = 1,
 
@@ -137,11 +140,14 @@ enum_sim! {
         /// IP packet payload is AH.
         AH = 51,
 
+        /// ICMPv6
+        ICMPV6 = 58,
+
         /// IP packet payload is IPv6 no extention.
         IPV6_NO_NXT = 59,
 
         /// IP packet payload is IPv6 OPTS.
-        IPV6_OPTS = 60,
+        IPV6_DEST_OPTS = 60,
 
         /// Generic Routing Encapsulation
         GRE = 47
