@@ -221,3 +221,241 @@ fn ipv6_options_hop_by_hop_build() {
 
     assert_eq!(eth.release().chunk(), &pkt);
 }
+
+#[test]
+fn ipv6_options_routing1_parse() {
+    let pkt = file_to_packet("ipv6_options_routing1.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV6);
+
+    let ipv6 = Ipv6::parse(eth.payload()).unwrap();
+    assert_eq!(ipv6.version(), 6);
+    assert_eq!(ipv6.traffic_class(), 0);
+    assert_eq!(ipv6.flow_label(), 0);
+    assert_eq!(ipv6.payload_len(), 48);
+    assert_eq!(ipv6.next_header(), IpProtocol::IPV6_ROUTE);
+    assert_eq!(ipv6.hop_limit(), 5);
+    assert_eq!(
+        ipv6.src_addr(),
+        Ipv6Addr::from_str("2200::244:212:3fff:feae:22f7").unwrap()
+    );
+    assert_eq!(
+        ipv6.dst_addr(),
+        Ipv6Addr::from_str("2200::211:2:0:0:2").unwrap()
+    );
+
+    let routing_header = RoutingHeader::parse(ipv6.payload()).unwrap();
+    assert_eq!(routing_header.next_header(), IpProtocol::ICMPV6);
+    assert_eq!(routing_header.header_len(), 40);
+    assert_eq!(routing_header.type_(), 0);
+    assert_eq!(routing_header.segments_left(), 2);
+    assert_eq!(routing_header.type_specific_data(), 0);
+    let b: [u8; 16] = routing_header.var_header_slice()[0..16].try_into().unwrap();
+    assert_eq!(
+        Ipv6Addr::from(b),
+        Ipv6Addr::from_str("2200::210:2:0:0:4").unwrap()
+    );
+    let b: [u8; 16] = routing_header.var_header_slice()[16..32]
+        .try_into()
+        .unwrap();
+    assert_eq!(
+        Ipv6Addr::from(b),
+        Ipv6Addr::from_str("2200::240:2:0:0:4").unwrap()
+    );
+
+    let icmpv6_payload = routing_header.payload();
+    assert_eq!(icmpv6_payload.chunk().len(), 8);
+}
+
+#[test]
+fn ipv6_options_routing1_build() {
+    let pkt = file_to_packet("ipv6_options_routing1.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(8);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 8..]);
+
+    let mut hdr = RoutingHeader::default_header();
+    RoutingHeader::from_header_array_mut(&mut hdr).set_header_len(40);
+    let mut routing_header = RoutingHeader::prepend_header(pbuf, &hdr);
+    routing_header.set_next_header(IpProtocol::ICMPV6);
+    routing_header.set_type_(0);
+    routing_header.set_segments_left(2);
+    routing_header.set_type_specific_data(0);
+    routing_header.var_header_slice_mut()[0..16].copy_from_slice(
+        Ipv6Addr::from_str("2200::210:2:0:0:4")
+            .unwrap()
+            .octets()
+            .as_slice(),
+    );
+    routing_header.var_header_slice_mut()[16..32].copy_from_slice(
+        Ipv6Addr::from_str("2200::240:2:0:0:4")
+            .unwrap()
+            .octets()
+            .as_slice(),
+    );
+
+    let mut ipv6 = Ipv6::prepend_header(routing_header.release(), &IPV6_HEADER_TEMPLATE);
+    ipv6.set_version(6);
+    ipv6.set_traffic_class(0);
+    ipv6.set_flow_label(0);
+    ipv6.set_next_header(IpProtocol::IPV6_ROUTE);
+    ipv6.set_hop_limit(5);
+    ipv6.set_src_addr(Ipv6Addr::from_str("2200::244:212:3fff:feae:22f7").unwrap());
+    ipv6.set_dst_addr(Ipv6Addr::from_str("2200::211:2:0:0:2").unwrap());
+
+    let mut eth = EtherFrame::prepend_header(ipv6.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x00, 0x13, 0xc4, 0xc7, 0x84, 0xf0]));
+    eth.set_src_addr(EtherAddr([0x00, 0x12, 0x3f, 0xae, 0x22, 0xf7]));
+    eth.set_ethertype(EtherType::IPV6);
+
+    assert_eq!(eth.release().chunk(), &pkt);
+}
+
+#[test]
+fn ipv6_options_fragments_parse() {
+    let pkt = file_to_packet("ipv6_options_fragments.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV6);
+
+    let ipv6 = Ipv6::parse(eth.payload()).unwrap();
+    assert_eq!(ipv6.version(), 6);
+    assert_eq!(ipv6.traffic_class(), 0);
+    assert_eq!(ipv6.flow_label(), 0x21289);
+    assert_eq!(ipv6.payload_len(), 1456);
+    assert_eq!(ipv6.next_header(), IpProtocol::IPV6_FRAG);
+    assert_eq!(ipv6.hop_limit(), 64);
+    assert_eq!(
+        ipv6.src_addr(),
+        Ipv6Addr::from_str("2607:f010:3f9::1001").unwrap()
+    );
+    assert_eq!(
+        ipv6.dst_addr(),
+        Ipv6Addr::from_str("2607:f010:3f9::11:0").unwrap()
+    );
+
+    let fragment_header = FragmentHeader::parse(ipv6.payload()).unwrap();
+    assert_eq!(fragment_header.next_header(), IpProtocol::UDP);
+    assert_eq!(fragment_header.reserved(), 0);
+    assert_eq!(fragment_header.offset(), 181);
+    assert_eq!(fragment_header.reserved1(), 0);
+    assert_eq!(fragment_header.more_frag(), true);
+    assert_eq!(fragment_header.ident(), 0xf88eb466);
+
+    let payload = fragment_header.payload();
+    assert_eq!(payload.chunk().len(), 1448);
+}
+
+#[test]
+fn ipv6_options_fragments_build() {
+    let pkt = file_to_packet("ipv6_options_fragments.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(1448);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 1448..]);
+
+    let mut fragment_header =
+        FragmentHeader::prepend_header(pbuf, &FRAGMENT_HEADER_HEADER_TEMPLATE);
+    fragment_header.set_next_header(IpProtocol::UDP);
+    fragment_header.set_reserved(0);
+    fragment_header.set_offset(181);
+    fragment_header.set_reserved1(0);
+    fragment_header.set_more_frag(true);
+    fragment_header.set_ident(0xf88eb466);
+
+    let mut ipv6 = Ipv6::prepend_header(fragment_header.release(), &IPV6_HEADER_TEMPLATE);
+    ipv6.set_version(6);
+    ipv6.set_traffic_class(0);
+    ipv6.set_flow_label(0x21289);
+    ipv6.set_next_header(IpProtocol::IPV6_FRAG);
+    ipv6.set_hop_limit(64);
+    ipv6.set_src_addr(Ipv6Addr::from_str("2607:f010:3f9::1001").unwrap());
+    ipv6.set_dst_addr(Ipv6Addr::from_str("2607:f010:3f9::11:0").unwrap());
+
+    let mut eth = EtherFrame::prepend_header(ipv6.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x00, 0x1d, 0x09, 0x94, 0x65, 0x38]));
+    eth.set_src_addr(EtherAddr([0x68, 0x5b, 0x35, 0xc0, 0x61, 0xb6]));
+    eth.set_ethertype(EtherType::IPV6);
+
+    assert_eq!(eth.release().chunk(), &pkt);
+}
+
+#[test]
+fn ipv6_options_ah_parse() {
+    let pkt = file_to_packet("ipv6_options_ah.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV6);
+
+    let ipv6 = Ipv6::parse(eth.payload()).unwrap();
+    assert_eq!(ipv6.version(), 6);
+    assert_eq!(ipv6.traffic_class(), 0b11100000);
+    assert_eq!(ipv6.flow_label(), 0);
+    assert_eq!(ipv6.payload_len(), 64);
+    assert_eq!(ipv6.next_header(), IpProtocol::AH);
+    assert_eq!(ipv6.hop_limit(), 1);
+    assert_eq!(ipv6.src_addr(), Ipv6Addr::from_str("fe80::2").unwrap());
+    assert_eq!(ipv6.dst_addr(), Ipv6Addr::from_str("ff02::5").unwrap());
+
+    let auth_header = AuthenticationHeader::parse(ipv6.payload()).unwrap();
+    assert_eq!(auth_header.next_header().raw(), 89);
+    assert_eq!(auth_header.header_len(), 24);
+    assert_eq!(auth_header.reserved(), 0);
+    assert_eq!(auth_header.security_parameters_index(), 0x100);
+    assert_eq!(auth_header.seq_num_field(), 32);
+    assert_eq!(
+        auth_header.var_header_slice(),
+        &[0x35, 0x48, 0x21, 0x48, 0xb2, 0x43, 0x5a, 0x23, 0xdc, 0xdd, 0x55, 0x36]
+    );
+
+    let payload = auth_header.payload();
+    assert_eq!(payload.chunk().len(), 40);
+}
+
+#[test]
+fn ipv6_options_ah_build() {
+    let pkt = file_to_packet("ipv6_options_ah.dat");
+    let mut buf = [0; 1600];
+    let mut pbuf = CursorMut::new(&mut buf);
+    pbuf.advance(1600);
+
+    pbuf.move_back(40);
+    pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 40..]);
+
+    let mut hdr = AuthenticationHeader::default_header();
+    AuthenticationHeader::from_header_array_mut(&mut hdr).set_header_len(24);
+    let mut auth_header = AuthenticationHeader::prepend_header(pbuf, &hdr);
+    auth_header.set_next_header(89.into());
+    auth_header.set_reserved(0);
+    auth_header.set_security_parameters_index(0x100);
+    auth_header.set_seq_num_field(32);
+
+    auth_header.var_header_slice_mut().copy_from_slice(&[
+        0x35, 0x48, 0x21, 0x48, 0xb2, 0x43, 0x5a, 0x23, 0xdc, 0xdd, 0x55, 0x36,
+    ]);
+
+    let mut ipv6 = Ipv6::prepend_header(auth_header.release(), &IPV6_HEADER_TEMPLATE);
+    ipv6.set_version(6);
+    ipv6.set_traffic_class(224);
+    ipv6.set_flow_label(0);
+    ipv6.set_next_header(IpProtocol::AH);
+    ipv6.set_hop_limit(1);
+    ipv6.set_src_addr(Ipv6Addr::from_str("fe80::2").unwrap());
+    ipv6.set_dst_addr(Ipv6Addr::from_str("ff02::5").unwrap());
+
+    let mut eth = EtherFrame::prepend_header(ipv6.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth.set_dst_addr(EtherAddr([0x33, 0x33, 0x00, 0x00, 0x00, 0x05]));
+    eth.set_src_addr(EtherAddr([0xc2, 0x01, 0x68, 0xb3, 0x00, 0x01]));
+    eth.set_ethertype(EtherType::IPV6);
+
+    assert_eq!(eth.release().chunk(), &pkt);
+}
