@@ -5,6 +5,7 @@
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 use crate::ipv4::Ipv4Addr;
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 %%
 
 // ICMP Echo Reply (Type 0)

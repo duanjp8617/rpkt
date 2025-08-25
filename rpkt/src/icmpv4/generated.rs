@@ -1,10 +1,10 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::Ipv4Addr;
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
-use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 
 /// A constant that defines the fixed byte length of the EchoReply protocol header.
 pub const ECHO_REPLY_HEADER_LEN: usize = 8;
