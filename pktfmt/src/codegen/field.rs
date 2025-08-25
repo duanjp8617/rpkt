@@ -402,6 +402,13 @@ impl<'a> FieldSetMethod<'a> {
             }
             BuiltinTypes::U8 | BuiltinTypes::U16 | BuiltinTypes::U32 | BuiltinTypes::U64 => {
                 let rw_type = endian_rw_type(end.byte_pos() - self.start.byte_pos() + 1);
+                let write_value = if rw_type != self.field.repr {
+                    // The type needed for endian_write does not match `repr` type.
+                    // We force a up-cast here.
+                    format!("({write_value} as {})", rw_type.to_string())
+                } else {
+                    write_value.to_string()
+                };
 
                 let write_value = if end.bit_pos() < 7 {
                     // The field looks like:
@@ -409,14 +416,6 @@ impl<'a> FieldSetMethod<'a> {
                     //   | field |
                     // Left shift `write_value` to correct position.
                     format!("({write_value}<<{})", 7 - u64::from(end.bit_pos()))
-                } else {
-                    write_value.to_string()
-                };
-
-                let write_value = if rw_type != self.field.repr {
-                    // The type needed for endian_write does not match `repr` type.
-                    // We force a up-cast here.
-                    format!("({write_value} as {})", rw_type.to_string())
                 } else {
                     write_value
                 };
