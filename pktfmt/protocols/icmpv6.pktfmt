@@ -1,0 +1,395 @@
+%%
+#![allow(missing_docs)]
+#![allow(unused_parens)]
+
+use crate::{Buf, PktBuf, PktBufMut};
+use crate::{Cursor, CursorMut};
+use std::net::Ipv6Addr;
+use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
+%%
+
+// ICMPv6 Destination Unreachable (Type 1)
+packet DestUnreachable {
+    header = [
+        type_ = Field{bit = 8, default = @1},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        unused = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 1),
+}
+
+// ICMPv6 Packet Too Big (Type 2)
+packet PacketTooBig {
+    header = [
+        type_ = Field{bit = 8, default = @2},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        mtu = Field{bit = 32},
+    ],
+    cond = (type_ == 2),
+}
+
+// ICMPv6 Time Exceeded (Type 3)
+packet TimeExceeded {
+    header = [
+        type_ = Field{bit = 8, default = @3},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        unused = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 3),
+}
+
+// ICMPv6 Parameter Problem (Type 4)
+packet ParameterProblem {
+    header = [
+        type_ = Field{bit = 8, default = @4},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        pointer = Field{bit = 32},
+    ],
+    cond = (type_ == 4),
+}
+
+// ICMPv6 Echo Request (Type 128)
+packet EchoRequest {
+    header = [
+        type_ = Field{bit = 8, default = @128},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 128),
+}
+
+// ICMPv6 Echo Reply (Type 129)
+packet EchoReply {
+    header = [
+        type_ = Field{bit = 8, default = @129},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        identifier = Field{bit = 16},
+        sequence = Field{bit = 16},
+    ],
+    cond = (type_ == 129),
+}
+
+// ICMPv6 Multicast Listener Query (Type 130)
+packet MulticastListenerQuery {
+    header = [
+        type_ = Field{bit = 8, default = @130},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        max_response_delay = Field{bit = 16},
+        reserved = Field{bit = 16, default = @0},
+        multicast_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 130),
+}
+
+// ICMPv6 Multicast Listener Report (Type 131)
+packet MulticastListenerReport {
+    header = [
+        type_ = Field{bit = 8, default = @131},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        max_response_delay = Field{bit = 16},
+        reserved = Field{bit = 16, default = @0},
+        multicast_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 131),
+}
+
+// ICMPv6 Multicast Listener Done (Type 132)
+packet MulticastListenerDone {
+    header = [
+        type_ = Field{bit = 8, default = @132},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        max_response_delay = Field{bit = 16},
+        reserved = Field{bit = 16, default = @0},
+        multicast_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 132),
+}
+
+// ICMPv6 Router Solicitation (Type 133)
+packet RouterSolicitation {
+    header = [
+        type_ = Field{bit = 8, default = @133},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 32, default = @0},
+    ],
+    cond = (type_ == 133),
+}
+
+// ICMPv6 Router Advertisement (Type 134)
+packet RouterAdvertisement {
+    header = [
+        type_ = Field{bit = 8, default = @134},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        cur_hop_limit = Field{bit = 8},
+        m_flag = Field{bit = 1, arg = bool},
+        o_flag = Field{bit = 1, arg = bool},
+        reserved = Field{bit = 6, default = @0},
+        router_lifetime = Field{bit = 16},
+        reachable_time = Field{bit = 32},
+        retrans_timer = Field{bit = 32},
+    ],
+    cond = (type_ == 134),
+}
+
+// ICMPv6 Neighbor Solicitation (Type 135)
+packet NeighborSolicitation {
+    header = [
+        type_ = Field{bit = 8, default = @135},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 32, default = @0},
+        target_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 135),
+}
+
+// ICMPv6 Neighbor Advertisement (Type 136)
+packet NeighborAdvertisement {
+    header = [
+        type_ = Field{bit = 8, default = @136},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        r_flag = Field{bit = 1, arg = bool},
+        s_flag = Field{bit = 1, arg = bool},
+        o_flag = Field{bit = 1, arg = bool},
+        reserved = Field{bit = 29, default = @0},
+        target_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 136),
+}
+
+// ICMPv6 Redirect (Type 137)
+packet Redirect {
+    header = [
+        type_ = Field{bit = 8, default = @137},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 32, default = @0},
+        target_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+        destination_addr = Field{bit = 128, arg = %%Ipv6Addr%%},
+    ],
+    cond = (type_ == 137),
+}
+
+// ICMPv6 Node Information Query (Type 139)
+packet NodeInfoQuery {
+    header = [
+        type_ = Field{bit = 8, default = @139},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        qtype = Field{bit = 16},
+        flags = Field{bit = 16},
+        nonce = Field{bit = 64},
+    ],
+    cond = (type_ == 139),
+}
+
+// ICMPv6 Node Information Response (Type 140)
+packet NodeInfoResponse {
+    header = [
+        type_ = Field{bit = 8, default = @140},
+        code = Field{bit = 8},
+        checksum = Field{bit = 16},
+        qtype = Field{bit = 16},
+        flags = Field{bit = 16},
+        nonce = Field{bit = 64},
+    ],
+    cond = (type_ == 140),
+}
+
+// ICMPv6 Mobile Prefix Solicitation (Type 146)
+packet MobilePrefixSolicitation {
+    header = [
+        type_ = Field{bit = 8, default = @146},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 16, default = @0},
+        identifier = Field{bit = 16},
+    ],
+    cond = (type_ == 146),
+}
+
+// ICMPv6 Mobile Prefix Advertisement (Type 147)
+packet MobilePrefixAdvertisement {
+    header = [
+        type_ = Field{bit = 8, default = @147},
+        code = Field{bit = 8, default = @0},
+        checksum = Field{bit = 16},
+        reserved = Field{bit = 16, default = @0},
+        identifier = Field{bit = 16},
+    ],
+    cond = (type_ == 147),
+}
+
+// Group all ICMPv6 message types
+group Icmpv6 = {
+    members = [
+        DestUnreachable,
+        PacketTooBig,
+        TimeExceeded,
+        ParameterProblem,
+        EchoRequest,
+        EchoReply,
+        MulticastListenerQuery,
+        MulticastListenerReport,
+        MulticastListenerDone,
+        RouterSolicitation,
+        RouterAdvertisement,
+        NeighborSolicitation,
+        NeighborAdvertisement,
+        Redirect,
+        NodeInfoQuery,
+        NodeInfoResponse,
+        MobilePrefixSolicitation,
+        MobilePrefixAdvertisement
+    ],
+    enable_iter = false
+}
+
+%%
+// ICMPv6 message type constants
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Icmpv6Type {
+    DestUnreachable = 1,
+    PacketTooBig = 2,
+    TimeExceeded = 3,
+    ParameterProblem = 4,
+    EchoRequest = 128,
+    EchoReply = 129,
+    MulticastListenerQuery = 130,
+    MulticastListenerReport = 131,
+    MulticastListenerDone = 132,
+    RouterSolicitation = 133,
+    RouterAdvertisement = 134,
+    NeighborSolicitation = 135,
+    NeighborAdvertisement = 136,
+    Redirect = 137,
+    NodeInfoQuery = 139,
+    NodeInfoResponse = 140,
+    MobilePrefixSolicitation = 146,
+    MobilePrefixAdvertisement = 147,
+}
+
+impl From<u8> for Icmpv6Type {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Icmpv6Type::DestUnreachable,
+            2 => Icmpv6Type::PacketTooBig,
+            3 => Icmpv6Type::TimeExceeded,
+            4 => Icmpv6Type::ParameterProblem,
+            128 => Icmpv6Type::EchoRequest,
+            129 => Icmpv6Type::EchoReply,
+            130 => Icmpv6Type::MulticastListenerQuery,
+            131 => Icmpv6Type::MulticastListenerReport,
+            132 => Icmpv6Type::MulticastListenerDone,
+            133 => Icmpv6Type::RouterSolicitation,
+            134 => Icmpv6Type::RouterAdvertisement,
+            135 => Icmpv6Type::NeighborSolicitation,
+            136 => Icmpv6Type::NeighborAdvertisement,
+            137 => Icmpv6Type::Redirect,
+            139 => Icmpv6Type::NodeInfoQuery,
+            140 => Icmpv6Type::NodeInfoResponse,
+            146 => Icmpv6Type::MobilePrefixSolicitation,
+            147 => Icmpv6Type::MobilePrefixAdvertisement,
+            _ => panic!("Unknown ICMPv6 type: {}", value),
+        }
+    }
+}
+
+impl From<Icmpv6Type> for u8 {
+    fn from(icmpv6_type: Icmpv6Type) -> Self {
+        icmpv6_type as u8
+    }
+}
+
+// ICMPv6 Destination Unreachable codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DestUnreachableCode {
+    NoRouteToDestination = 0,
+    CommunicationProhibited = 1,
+    BeyondScopeOfSourceAddress = 2,
+    AddressUnreachable = 3,
+    PortUnreachable = 4,
+    SourceAddressFailedPolicy = 5,
+    RejectRouteToDestination = 6,
+}
+
+// ICMPv6 Time Exceeded codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeExceededCode {
+    HopLimitExceeded = 0,
+    FragmentReassemblyTimeExceeded = 1,
+}
+
+// ICMPv6 Parameter Problem codes
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParameterProblemCode {
+    ErroneousHeaderField = 0,
+    UnrecognizedNextHeaderType = 1,
+    UnrecognizedIpv6Option = 2,
+}
+
+// Helper function to calculate ICMPv6 checksum
+// Note: ICMPv6 checksum includes IPv6 pseudo-header
+pub fn calculate_icmpv6_checksum(
+    src_addr: &Ipv6Addr,
+    dst_addr: &Ipv6Addr,
+    icmpv6_length: u32,
+    icmpv6_data: &[u8]
+) -> u16 {
+    let mut checksum: u32 = 0;
+
+    // Add IPv6 pseudo-header
+    // Source address (16 bytes)
+    for chunk in src_addr.octets().chunks(2) {
+        let word = ((chunk[0] as u32) << 8) | (chunk.get(1).unwrap_or(&0) as u32);
+        checksum += word;
+    }
+
+    // Destination address (16 bytes)
+    for chunk in dst_addr.octets().chunks(2) {
+        let word = ((chunk[0] as u32) << 8) | (chunk.get(1).unwrap_or(&0) as u32);
+        checksum += word;
+    }
+
+    // ICMPv6 length (4 bytes)
+    checksum += (icmpv6_length >> 16) & 0xFFFF;
+    checksum += icmpv6_length & 0xFFFF;
+
+    // Next header (ICMPv6 = 58)
+    checksum += 58;
+
+    // ICMPv6 header and data
+    let mut i = 0;
+    while i < icmpv6_data.len() - 1 {
+        let word = ((icmpv6_data[i] as u32) << 8) | (icmpv6_data[i + 1] as u32);
+        checksum += word;
+        i += 2;
+    }
+
+    // Add the odd byte if present
+    if i < icmpv6_data.len() {
+        checksum += (icmpv6_data[i] as u32) << 8;
+    }
+
+    // Fold 32-bit checksum to 16 bits
+    while (checksum >> 16) != 0 {
+        checksum = (checksum & 0xFFFF) + (checksum >> 16);
+    }
+
+    // One's complement
+    !checksum as u16
+}
+%%
