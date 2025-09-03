@@ -3,3 +3,4 @@ target/*
 rpkt-dpdk/.dpdk_install
 
 Cargo.lock
+rustfmt.toml
