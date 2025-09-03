@@ -1,8 +1,8 @@
 use std::ffi::CStr;
 use std::sync::Arc;
 
-use arrayvec::ArrayVec;
 use crate::sys as ffi;
+use arrayvec::ArrayVec;
 
 use crate::error::*;
 use crate::offload::*;
@@ -39,18 +39,18 @@ impl PortInfo {
         let mut dev_info: ffi::rte_eth_dev_info = std::mem::zeroed();
         let res = ffi::rte_eth_dev_info_get(port_id, &mut dev_info as *mut ffi::rte_eth_dev_info);
         if res != 0 {
-            return Error::ffi_err(res, "fail to get eth dev info").to_err();
+            return DpdkError::ffi_err(res, "fail to get eth dev info").to_err();
         }
 
         let socket_id = ffi::rte_eth_dev_socket_id(port_id);
         if socket_id < 0 {
-            return Error::ffi_err(res, "fail to get eth socket id").to_err();
+            return DpdkError::ffi_err(res, "fail to get eth socket id").to_err();
         }
 
         let mut eth_addr: ffi::rte_ether_addr = std::mem::zeroed();
         let res = ffi::rte_eth_macaddr_get(port_id, &mut eth_addr as *mut ffi::rte_ether_addr);
         if res != 0 {
-            return Error::ffi_err(res, "fail to get eth mac addrress").to_err();
+            return DpdkError::ffi_err(res, "fail to get eth mac addrress").to_err();
         }
 
         Ok(PortInfo {
@@ -164,7 +164,7 @@ impl PortConf {
     pub fn from_port_info(port_info: &PortInfo) -> Result<Self> {
         // Check whether the port suppports the default ethernet MTU size.
         if Self::RTE_ETHER_MTU < port_info.min_mtu() || Self::RTE_ETHER_MTU > port_info.max_mtu() {
-            return Error::service_err("invalid port mtu").to_err();
+            return DpdkError::service_err("invalid port mtu").to_err();
         }
 
         // Configure tx offloads.
@@ -203,7 +203,7 @@ impl PortConf {
         let rss_hash_key = match port_info.hash_key_size() {
             40 => DEFAULT_RSS_KEY_40B.to_vec(),
             52 => DEFAULT_RSS_KEY_52B.to_vec(),
-            _ => return Error::service_err("invalid rss hash key size").to_err()
+            _ => return DpdkError::service_err("invalid rss hash key size").to_err(),
         };
 
         Ok(Self {
@@ -308,7 +308,7 @@ impl Port {
             || txq_confs.len() > usize::from(u16::MAX)
             || txq_confs.len() == 0
         {
-            return Error::service_err("invalid rx/tx queues").to_err();
+            return DpdkError::service_err("invalid rx/tx queues").to_err();
         }
 
         // Safety: The `rte_eth_dev_configure` only copies the payload.
@@ -323,7 +323,7 @@ impl Port {
             )
         };
         if res != 0 {
-            return Error::ffi_err(res, "fail to configure eth dev").to_err();
+            return DpdkError::ffi_err(res, "fail to configure eth dev").to_err();
         }
 
         let rxq_cts = rxq_confs
@@ -355,13 +355,13 @@ impl Port {
             false => unsafe { ffi::rte_eth_promiscuous_disable(port_id) },
         };
         if res != 0 {
-            return Error::ffi_err(res, "fail to enable promiscuous").to_err();
+            return DpdkError::ffi_err(res, "fail to enable promiscuous").to_err();
         }
 
         // start the device
         let res = unsafe { ffi::rte_eth_dev_start(port_id) };
         if res != 0 {
-            return Error::ffi_err(res, "fail to start eth dev").to_err();
+            return DpdkError::ffi_err(res, "fail to start eth dev").to_err();
         }
 
         Ok(Self {
@@ -379,7 +379,7 @@ impl Port {
         let rxq_ct = self
             .rxq_cts
             .get(usize::from(qid))
-            .ok_or(Error::service_err("invalid queue id"))?;
+            .ok_or(DpdkError::service_err("invalid queue id"))?;
 
         rxq_ct.0.clone_once()
     }
@@ -388,7 +388,7 @@ impl Port {
         let txq = self
             .txqs
             .get(usize::from(qid))
-            .ok_or(Error::service_err("invalid queue id"))?;
+            .ok_or(DpdkError::service_err("invalid queue id"))?;
 
         txq.clone_once()
     }
@@ -417,11 +417,11 @@ impl Port {
     // Safety: the associated mempools for rxqs should be alive.
     pub(crate) fn stop_port(&self) -> Result<()> {
         if unsafe { ffi::rte_eth_dev_stop(self.port_id) } != 0 {
-            return Err(Error::service_err("fail to stop the port"));
+            return Err(DpdkError::service_err("fail to stop the port"));
         }
 
         if unsafe { ffi::rte_eth_dev_close(self.port_id) } != 0 {
-            return Err(Error::service_err("fail to close the port"));
+            return Err(DpdkError::service_err("fail to close the port"));
         }
 
         Ok(())
@@ -508,7 +508,7 @@ impl RxQueue {
         );
 
         if res != 0 {
-            Error::ffi_err(res, "fail to setup rx queue").to_err()
+            DpdkError::ffi_err(res, "fail to setup rx queue").to_err()
         } else {
             Ok(Self {
                 port_id,
@@ -520,7 +520,7 @@ impl RxQueue {
 
     fn clone_once(&self) -> Result<RxQueue> {
         if self.in_use() {
-            return Error::service_err("rx queue is in use").to_err();
+            return DpdkError::service_err("rx queue is in use").to_err();
         }
 
         Ok(RxQueue {
@@ -605,7 +605,7 @@ impl TxQueue {
         };
 
         if res != 0 {
-            Error::ffi_err(res, "fail to setup tx queue").to_err()
+            DpdkError::ffi_err(res, "fail to setup tx queue").to_err()
         } else {
             Ok(Self {
                 port_id,
@@ -617,7 +617,7 @@ impl TxQueue {
 
     fn clone_once(&self) -> Result<TxQueue> {
         if self.in_use() {
-            return Error::service_err("tx queue is in use").to_err();
+            return DpdkError::service_err("tx queue is in use").to_err();
         }
 
         Ok(TxQueue {
@@ -695,7 +695,7 @@ impl Default for PortStats {
 }
 
 /// A context to query the stats counters from the port.
-/// This context is reference counted. 
+/// This context is reference counted.
 pub struct StatsQueryContext {
     port_id: u16,
     counter: Arc<()>,
@@ -723,7 +723,7 @@ impl StatsQueryContext {
 
     fn clone_once(&self) -> Result<Self> {
         if self.in_use() {
-            return Error::service_err("port stats query is in use").to_err();
+            return DpdkError::service_err("port stats query is in use").to_err();
         }
 
         Ok(Self {

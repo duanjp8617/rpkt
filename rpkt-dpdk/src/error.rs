@@ -2,15 +2,15 @@ use std::error;
 use std::fmt;
 use std::os::raw::c_int;
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, DpdkError>;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Error {
+pub struct DpdkError {
     kind: ErrorKind,
     msg: &'static str,
 }
 
-impl Error {
+impl DpdkError {
     pub fn service_err(msg: &'static str) -> Self {
         Self {
             kind: ErrorKind::ServiceError,
@@ -34,7 +34,7 @@ impl Error {
     }
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for DpdkError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             ErrorKind::ServiceError => write!(f, "Dpdk service error: {}.", self.msg),
@@ -49,7 +49,7 @@ impl fmt::Display for Error {
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for DpdkError {}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ErrorKind {

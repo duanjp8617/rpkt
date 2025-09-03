@@ -186,7 +186,7 @@ mod tests {
 
     #[test]
     fn mbuf_data_append_remove() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         {
             let mut config = MempoolConf::default();

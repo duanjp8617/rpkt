@@ -49,12 +49,12 @@ impl LcoreContext {
 
     pub(crate) fn pin(&mut self, lcore: &Lcore) -> Result<()> {
         if LCORE.with(|tl| tl.borrow().is_some()) {
-            return Error::service_err("thread is pinned").to_err();
+            return DpdkError::service_err("thread is pinned").to_err();
         };
 
         let occupied = self.0.get_mut(&lcore.lcore_id).unwrap();
         if *occupied {
-            return Error::service_err("lcore is in use").to_err();
+            return DpdkError::service_err("lcore is in use").to_err();
         }
         *occupied = true;
 
@@ -63,11 +63,12 @@ impl LcoreContext {
             libc::CPU_SET(usize::try_from(lcore.lcore_id).unwrap(), &mut cpu_set);
             let res = ffi::rte_thread_set_affinity(&mut std::mem::transmute(cpu_set));
             if res != 0 {
-                return Error::ffi_err(res, "fail to set thread affinity").to_err();
+                return DpdkError::ffi_err(res, "fail to set thread affinity").to_err();
             }
             let res = ffi::rte_thread_register();
             if res != 0 {
-                return Error::ffi_err(ffi::rte_errno_(), "fail to register rte thread").to_err();
+                return DpdkError::ffi_err(ffi::rte_errno_(), "fail to register rte thread")
+                    .to_err();
             }
         }
 
@@ -138,7 +139,7 @@ mod tests {
     #[test]
     fn bind_lcore_to_thread_0() {
         // Dpdk will only be initialized once
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         let res = service().lcore_bind(0);
         assert_eq!(res.is_err(), true);
@@ -146,7 +147,7 @@ mod tests {
 
     #[test]
     fn bind_2_cores_to_the_same_lcore() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         assert_eq!(service().lcores().len() >= 2, true);
 

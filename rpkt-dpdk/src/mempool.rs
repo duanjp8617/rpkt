@@ -4,8 +4,8 @@ use std::os::raw::c_char;
 use std::ptr::NonNull;
 use std::sync::Arc;
 
-use arrayvec::ArrayVec;
 use crate::sys as ffi;
+use arrayvec::ArrayVec;
 
 use crate::error::*;
 use crate::Mbuf;
@@ -119,13 +119,13 @@ impl Mempool {
     }
 
     pub(crate) fn try_create(mpool_name: String, conf: &MempoolConf) -> Result<Self> {
-        let err = Error::service_err("invalid mempool config");
+        let err = DpdkError::service_err("invalid mempool config");
         let data_room_size = conf.dataroom.checked_add(Self::MBUF_HEADROOM).ok_or(err)?;
         let socket_id = i32::try_from(conf.socket_id).map_err(|_| err)?;
 
         // create the mempool
         let cname =
-            CString::new(mpool_name).map_err(|_| Error::service_err("invalid mempool name"))?;
+            CString::new(mpool_name).map_err(|_| DpdkError::service_err("invalid mempool name"))?;
         let raw = unsafe {
             ffi::rte_pktmbuf_pool_create(
                 cname.as_bytes_with_nul().as_ptr() as *const c_char,
@@ -138,7 +138,7 @@ impl Mempool {
         };
 
         let ptr = NonNull::new(raw).ok_or_else(|| {
-            Error::ffi_err(unsafe { ffi::rte_errno_() }, "fail to allocate mempool")
+            DpdkError::ffi_err(unsafe { ffi::rte_errno_() }, "fail to allocate mempool")
         })?;
 
         Ok(Self {
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn create_mempool_with_same_name() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         {
             let mut config = MempoolConf::default();
@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn mbuf_alloc_and_size_check() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         {
             let mut config = MempoolConf::default();
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn mbuf_data_unchanged_after_realloc() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
 
         {
             let mut config = MempoolConf::default();
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn alloc_mbuf_from_multiple_threads() {
-        DpdkOption::new().init().unwrap();
+        DpdkOption::default().init().unwrap();
         assert_eq!(service().lcores().len() >= 4, true);
 
         let mut config = MempoolConf::default();

@@ -24,7 +24,7 @@ pub fn init_port(
     // make sure that the port is on the correct socket
     let port_info = service().port_info(port_id)?;
     if port_info.socket_id != socket_id {
-        return Err(Error::service_err("invalid socket id"));
+        return Err(DpdkError::service_err("invalid socket id"));
     }
 
     // get the default port conf

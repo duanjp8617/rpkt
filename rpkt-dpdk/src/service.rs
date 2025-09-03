@@ -3,8 +3,8 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard};
 
-use once_cell::sync::OnceCell;
 use crate::sys as ffi;
+use once_cell::sync::OnceCell;
 
 use super::error::*;
 use super::lcore::{self, *};
@@ -13,27 +13,66 @@ use super::port::*;
 
 pub(crate) static SERVICE: OnceCell<DpdkService> = OnceCell::new();
 
-pub struct DpdkOption {}
+/// `DpdkOption` contains an eal argument string for initializing dpdk.
+///
+/// # Default
+///
+/// By default, `DpdkOption` contains the following argument string:
+///
+/// "-n 4 --proc-type primary"
+///
+/// indicating eal is initialized with 4 channels and as primary process.
+pub struct DpdkOption {
+    arg_string: String,
+}
+
+impl Default for DpdkOption {
+    fn default() -> Self {
+        Self {
+            arg_string: "-c 1 -n 4 --proc-type primary".into(),
+        }
+    }
+}
 
 impl DpdkOption {
-    /// Create a new EalOption.
-    pub fn new() -> Self {
-        DpdkOption {}
+    /// Create a new `DpdkOption` with use-defined eal argument string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rpkt_dpdk::DpdkOption;
+    ///
+    /// let res = DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix app1").init();
+    /// assert_eq!(res.is_ok(), true);
+    /// ```
+    pub fn with_eal_arg<S: Into<String>>(arg: S) -> Self {
+        Self {
+            arg_string: arg.into(),
+        }
     }
 
+    /// Initialize dpdk eal using the provided eal argument string.
+    ///
+    /// After initialization, the global singleton [`DpdkService`] can be accessed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rpkt_dpdk::DpdkOption;
+    ///
+    /// let res = DpdkOption::default().init();
+    /// assert_eq!(res.is_ok(), true);
+    /// ```
     pub fn init(self) -> Result<()> {
         SERVICE.get_or_try_init(|| {
-            // prepare the eal paramters, "-c 1 -n 4 --proc-type primary"
+            // eal argument requires a prefix
             let mut args: Vec<CString> = vec![CString::new("./prefix").unwrap()];
-            args.push(CString::new("-c").unwrap());
-            args.push(CString::new("1").unwrap());
-            args.push(CString::new("-n").unwrap());
-            args.push(CString::new("4").unwrap());
-            args.push(CString::new("--proc-type").unwrap());
-            args.push(CString::new("primary").unwrap());
-
-            // let potential errors panic early
-            let lcores = lcore::detect_lcores();
+            // extend `args` with other arguments
+            args.extend(
+                self.arg_string
+                    .split(" ")
+                    .map(|arg| CString::new(arg).unwrap()),
+            );
 
             // initialize dpdk with rte_eal_init
             let c_args: Vec<_> = args
@@ -44,8 +83,12 @@ impl DpdkOption {
                 ffi::rte_eal_init(c_args.len() as c_int, c_args.as_ptr() as *mut *mut c_char)
             };
             if res == -1 {
-                return Error::ffi_err(unsafe { ffi::rte_errno_() }, "fail to init eal").to_err();
+                return DpdkError::ffi_err(unsafe { ffi::rte_errno_() }, "fail to init eal")
+                    .to_err();
             }
+
+            // Detect lcores on the current system
+            let lcores = lcore::detect_lcores();
 
             Ok(DpdkService {
                 service: Mutex::new(ServiceInner {
@@ -70,26 +113,52 @@ struct ServiceInner {
     ports: HashMap<u16, Port>,
 }
 
-// Eal is just a wrapper that provides some public interfaces.
+/// A global singleton providing all the dpdk services.
+/// 
+/// The provided dpdk services include: 
+/// - 
 pub struct DpdkService {
     service: Mutex<ServiceInner>,
     lcores: Vec<Lcore>,
 }
 
+/// Try to acquire a reference to the [`DpdkService`].
+///
+/// # Errors
+///
+/// If [`DpdkService`] is not initialized, this function returns [`DpdkError`].
+pub fn try_service() -> Result<&'static DpdkService> {
+    SERVICE
+        .get()
+        .ok_or(DpdkError::service_err("service is not initialized"))
+}
+
+/// Return a reference to the [`DpdkService`].
+///
+/// # Panics
+/// 
+/// This function panics if  [`DpdkService`] is not correctly initialized.
+pub fn service() -> &'static DpdkService {
+    match SERVICE.get() {
+        Some(handle) => handle,
+        None => panic!("dpdk service is not initialized"),
+    }
+}
+
 impl DpdkService {
     /// Return a static reference to a list of `Lcore` on the current machine.
-    /// 
+    ///
     /// Each `Lcore` contains the lcore id, cpu id and the socket id of the corresponding
-    /// physical CPU core. 
-    /// 
-    /// We obtain the list of `Lcore` by reading the `/sys/` folder under the 
+    /// physical CPU core.
+    ///
+    /// We obtain the list of `Lcore` by reading the `/sys/` folder under the
     /// Linux file system.
     pub fn lcores(&self) -> &Vec<Lcore> {
         &self.lcores
     }
 
     /// Bind the current thread to the lcore indicated by `lcore_id`.
-    /// 
+    ///
     /// This function will fail and return an `Err` if the following conditions happen:
     /// 1. The DPDK service has been shutdown.
     /// 2. The lcore id is invalid on the current machine.
@@ -103,7 +172,7 @@ impl DpdkService {
             .lcores
             .iter()
             .find(|lcore| lcore.lcore_id == lcore_id)
-            .ok_or(Error::service_err("no such lcore"))?;
+            .ok_or(DpdkError::service_err("no such lcore"))?;
 
         inner.lcores.pin(lcore)
     }
@@ -112,7 +181,7 @@ impl DpdkService {
         let mut inner = self.try_lock()?;
 
         if inner.mpools.contains_key(name.as_ref()) {
-            return Error::service_err("mempool already exists").to_err();
+            return DpdkError::service_err("mempool already exists").to_err();
         }
 
         let mp = Mempool::try_create(name.as_ref().to_string(), conf)?;
@@ -127,7 +196,7 @@ impl DpdkService {
         let mp = inner
             .mpools
             .get_mut(name)
-            .ok_or(Error::service_err("no such mempool"))?;
+            .ok_or(DpdkError::service_err("no such mempool"))?;
 
         if !mp.in_use() && mp.full() {
             // We are the sole owner of the counter, this also means that
@@ -138,7 +207,7 @@ impl DpdkService {
             unsafe { Mempool::delete(mp) }
             Ok(())
         } else {
-            Error::service_err("mempool is in use").to_err()
+            DpdkError::service_err("mempool is in use").to_err()
         }
     }
 
@@ -148,7 +217,7 @@ impl DpdkService {
         let mp = inner
             .mpools
             .get(name)
-            .ok_or(Error::service_err("no such mempool"))?;
+            .ok_or(DpdkError::service_err("no such mempool"))?;
         Ok(mp.clone())
     }
 
@@ -161,7 +230,7 @@ impl DpdkService {
         let _inner = self.try_lock()?;
 
         if port_id >= unsafe { ffi::rte_eth_dev_count_avail() } {
-            return Err(Error::service_err("invalid port id"));
+            return Err(DpdkError::service_err("invalid port id"));
         }
         unsafe { PortInfo::try_get(port_id) }
     }
@@ -177,7 +246,7 @@ impl DpdkService {
         let mut inner = self.try_lock()?;
 
         if inner.ports.get(&port_id).is_some() {
-            return Error::service_err("port already configured").to_err();
+            return DpdkError::service_err("port already configured").to_err();
         }
 
         let rxq_confs = rxq_confs
@@ -186,7 +255,7 @@ impl DpdkService {
                 inner
                     .mpools
                     .get(rxq_conf.mp_name.as_str())
-                    .ok_or(Error::service_err("no such mempool"))
+                    .ok_or(DpdkError::service_err("no such mempool"))
                     .map(|mp| (rxq_conf.nb_rx_desc, rxq_conf.socket_id, mp.clone()))
             })
             .collect::<Result<Vec<(u16, u32, Mempool)>>>()?;
@@ -208,10 +277,10 @@ impl DpdkService {
         let port = inner
             .ports
             .get(&port_id)
-            .ok_or(Error::service_err("invalid port id"))?;
+            .ok_or(DpdkError::service_err("invalid port id"))?;
 
         if !port.can_shutdown() {
-            return Error::service_err("port is in use").to_err();
+            return DpdkError::service_err("port is in use").to_err();
         }
 
         port.stop_port()?;
@@ -225,7 +294,7 @@ impl DpdkService {
         let port = inner
             .ports
             .get(&port_id)
-            .ok_or(Error::service_err("invalid port id"))?;
+            .ok_or(DpdkError::service_err("invalid port id"))?;
         port.rx_queue(qid)
     }
 
@@ -234,7 +303,7 @@ impl DpdkService {
         let port = inner
             .ports
             .get(&port_id)
-            .ok_or(Error::service_err("invalid port id"))?;
+            .ok_or(DpdkError::service_err("invalid port id"))?;
         port.tx_queue(qid)
     }
 
@@ -243,7 +312,7 @@ impl DpdkService {
         let port = inner
             .ports
             .get(&port_id)
-            .ok_or(Error::service_err("invalid port id"))?;
+            .ok_or(DpdkError::service_err("invalid port id"))?;
         port.stats_query()
     }
 
@@ -255,7 +324,7 @@ impl DpdkService {
                 unsafe { ffi::rte_eal_cleanup() };
                 inner.started = false;
             } else {
-                return Error::service_err("service is in use").to_err();
+                return DpdkError::service_err("service is in use").to_err();
             }
         }
 
@@ -265,26 +334,9 @@ impl DpdkService {
     fn try_lock(&self) -> Result<MutexGuard<ServiceInner>> {
         let inner = self.service.lock().unwrap();
         if !inner.started {
-            Error::service_err("service is shutdown").to_err()
+            DpdkError::service_err("service is shutdown").to_err()
         } else {
             Ok(inner)
         }
-    }
-}
-
-pub fn try_service() -> Result<&'static DpdkService> {
-    SERVICE
-        .get()
-        .ok_or(Error::service_err("service is not initialized"))
-}
-
-/// Return a static reference to the `DpdkService` instance.
-/// 
-/// The `DpdkService` instance will only be initialized once, and all
-/// subsequent access to the public methods are protected by a global lock. 
-pub fn service() -> &'static DpdkService {
-    match SERVICE.get() {
-        Some(handle) => handle,
-        None => panic!("dpdk service is not initialized"),
     }
 }
