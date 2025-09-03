@@ -43,3 +43,6 @@ required-features = ["multiseg"]
 [[example]]
 name = "jumboframe_rx"
 required-features = ["multiseg"]
+
+[[example]]
+name = "test_bin"

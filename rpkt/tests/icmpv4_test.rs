@@ -1,5 +1,5 @@
 use rpkt::icmpv4::*;
-use rpkt::{Cursor, CursorMut, Buf};
+use rpkt::{Cursor, Buf};
 
 #[test]
 fn test_icmpv4_echo_request_parse() {

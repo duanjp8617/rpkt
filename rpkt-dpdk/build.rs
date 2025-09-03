@@ -1,10 +1,22 @@
 use std::env;
-use std::iter::FromIterator;
-use std::path::PathBuf;
+use std::io::Write;
+use std::path::{PathBuf};
 use std::process::Command;
 
 use bindgen::Formatter;
 use version_compare::Version;
+
+// On Ubuntu server, we need the following packages:
+// 1. meson (apt install meson) for meson build
+// 2. pyelf-tool (apt install python3-pyelftools) for meson configuration
+// 3. clang (apt install clang) for bindgen
+// 4. libnuma-dev (apt install libnuma-dev) for NUMA support
+
+// To make rust-analyzer aware of the PKG_CONFIG_PATH environment variable,
+// add the following to settings.json:
+// "rust-analyzer.cargo.extraEnv": {
+//     "PKG_CONFIG_PATH": "<dpdk_installation_path>/lib/<arch>-<os>/pkgconfig"
+// }
 
 // Build the dpdk ffi library.
 // The library information is acquired through pkg-config.
@@ -15,7 +27,7 @@ fn build_dpdk_ffi() {
         .args(&["--cflags", "libdpdk"])
         .output()
         .unwrap();
-    assert_eq!(output.status.success(), true);
+    assert!(output.status.success());
     let cflags = String::from_utf8(output.stdout).unwrap();
 
     // Compile the csrc/impl.c file into a static library.
@@ -129,28 +141,47 @@ fn main() {
 
     let supported_versions: Vec<(Version, Version)> = raw_supported_versions
         .iter()
-        .map(|(start, end)| {
-            (
-                Version::from(start).expect("Invalid version format"),
-                Version::from(end).expect("Invalid version format"),
-            )
-        })
+        .map(|(start, end)| (Version::from(start).unwrap(), Version::from(end).unwrap()))
         .collect();
 
+    // Save the absolute path of the root directory.
+    let pwd = std::fs::canonicalize(PathBuf::from("./")).unwrap();
+    let dest_path = pwd.join(".dpdk_install");
+
+    let input_pkgconfig_env = if let Ok(env_var) = std::env::var("PKG_CONFIG_PATH") {
+        Some(env_var)
+    } else {
+        // Try to retrieve the dpdk installation path from previous build.
+        match std::fs::read_to_string(dest_path.clone()) {
+            Ok(content) => {
+                env::set_var("PKG_CONFIG_PATH", &content);
+            }
+            _ => {}
+        }
+        None
+    };
+
     // Check DPDK version.
-    let output = Command::new("pkg-config")
+    let Ok(output) = Command::new("pkg-config")
         .args(&["--modversion", "libdpdk"])
         .output()
-        .expect("Cannot find pkg-config. Please install pkg-config.");
+    else {
+        eprintln!("pkg-config is not available on your system.");
+        eprintln!("Please install pkg-config first.");
+        std::process::exit(1);
+    };
 
     if output.status.success() {
         let s = String::from_utf8(output.stdout).unwrap();
         let version_str = s.trim();
-        let version = Version::from(version_str).expect("Invalid DPDK version format");
+        let Some(version) = Version::from(version_str) else {
+            eprintln!("pkg-config reports an invalid DPDK version: {version_str}");
+            std::process::exit(1);
+        };
 
-        let matched = supported_versions.iter().find(|(start, end)| {
-            &version >= start && &version < end
-        });
+        let matched = supported_versions
+            .iter()
+            .find(|(start, end)| &version >= start && &version < end);
 
         if matched.is_none() {
             eprintln!(
@@ -160,15 +191,23 @@ fn main() {
             for (start, end) in &supported_versions {
                 eprintln!("  >= {} and < {}", start, end);
             }
-            panic!("Unsupported DPDK version.");
+            std::process::exit(1);
         }
 
         // Found a installed dpdk library.
         build_dpdk_ffi();
+
+        if let Some(input_pkgconfig_env) = input_pkgconfig_env {
+            let mut f = std::fs::File::create(dest_path).unwrap();
+            f.write_all(format!("{input_pkgconfig_env}").as_bytes())
+                .unwrap();
+        }
+
         return;
     } else {
-        eprintln!("pkg-config can not find installed DPDK library.");
-        eprintln!("Please add the pkgconfig path of the installed DPDK library to PKG_CONFIG_PATH and try again.");
-        panic!();
+        eprintln!("pkg-config can not find installed DPDK library, please build and install DPDK.");
+        eprintln!("If you install DPDK locally, you can build by setting the installation path in PKG_CONFIG_PATH: ");
+        eprintln!("PKG_CONFIG_PATH=<dpdk_installation_path>/lib/<arch>-<os>/pkgconfig cargo build");
+        std::process::exit(1);
     }
 }

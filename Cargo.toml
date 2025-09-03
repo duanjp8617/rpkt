@@ -1,7 +1,8 @@
 [workspace]
 members = [
   "rpkt",
-  "pktfmt"
+  "pktfmt",
+  "rpkt-dpdk"
 ]
 resolver = "2"
 

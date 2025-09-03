@@ -1,3 +1,5 @@
 target/*
-rpkt-dpdk/deps/*
+
+rpkt-dpdk/.dpdk_install
+
 Cargo.lock
