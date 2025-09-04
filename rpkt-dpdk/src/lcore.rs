@@ -21,7 +21,7 @@ pub struct Lcore {
 }
 
 impl Lcore {
-    pub fn current() -> Option<Lcore> {
+    pub(crate) fn current() -> Option<Lcore> {
         LCORE.with(|tl| tl.borrow().as_ref().map(|lcore| *lcore))
     }
 }
@@ -30,21 +30,7 @@ pub(crate) struct LcoreContext(HashMap<u32, bool>);
 
 impl LcoreContext {
     pub(crate) fn create(lcores: &Vec<Lcore>) -> Self {
-        Self(
-            lcores
-                .iter()
-                .map(|lcore| {
-                    if lcore.lcore_id == unsafe { ffi::rte_lcore_id_() } {
-                        LCORE.with(|local| {
-                            *local.borrow_mut() = Some(*lcore);
-                        });
-                        (lcore.lcore_id, true)
-                    } else {
-                        (lcore.lcore_id, false)
-                    }
-                })
-                .collect(),
-        )
+        Self(lcores.iter().map(|lcore| (lcore.lcore_id, false)).collect())
     }
 
     pub(crate) fn pin(&mut self, lcore: &Lcore) -> Result<()> {
@@ -64,12 +50,7 @@ impl LcoreContext {
             let res = ffi::rte_thread_set_affinity(&mut std::mem::transmute(cpu_set));
             if res != 0 {
                 return DpdkError::ffi_err(res, "fail to set thread affinity").to_err();
-            }
-            let res = ffi::rte_thread_register();
-            if res != 0 {
-                return DpdkError::ffi_err(ffi::rte_errno_(), "fail to register rte thread")
-                    .to_err();
-            }
+            }            
         }
 
         LCORE.with(|tl| {
@@ -93,7 +74,7 @@ pub(crate) fn detect_lcores() -> Vec<Lcore> {
             }
         })
         .collect();
-    lcores.sort_by(|a, b| a.lcore_id.cmp(&b.lcore_id));    
+    lcores.sort_by(|a, b| a.lcore_id.cmp(&b.lcore_id));
 
     lcores
 }
@@ -143,7 +124,7 @@ mod tests {
         DpdkOption::default().init().unwrap();
 
         let res = service().lcore_bind(0);
-        assert_eq!(res.is_err(), true);
+        assert_eq!(res.is_ok(), true);
     }
 
     #[test]

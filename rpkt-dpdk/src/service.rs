@@ -72,10 +72,6 @@ impl DpdkOption {
     /// various reasons.
     pub fn init(self) -> Result<()> {
         SERVICE.get_or_try_init(|| {
-            unsafe {
-                println!("rte_lcore_id: {}", ffi::rte_lcore_id_());
-            }
-
             // eal argument requires a prefix
             let mut args: Vec<CString> = vec![CString::new("./prefix").unwrap()];
             // extend `args` with other arguments
@@ -124,13 +120,18 @@ impl DpdkOption {
                 ffi::rte_thread_unregister();
             }
 
-            unsafe {
-                println!("rte_lcore_id: {}", ffi::rte_lcore_id_());
-            }
+            let is_primary = unsafe {
+                match ffi::rte_eal_process_type() {
+                    ffi::rte_proc_type_t_RTE_PROC_PRIMARY => true,
+                    ffi::rte_proc_type_t_RTE_PROC_SECONDARY => false,
+                    _ => panic!("invalid dpdk proc type"),
+                }
+            };
 
             Ok(DpdkService {
                 service: Mutex::new(ServiceInner {
                     started: true,
+                    is_primary,
                     lcores: LcoreContext::create(&lcores),
                     mpools: HashMap::new(),
                     ports: HashMap::new(),
@@ -146,6 +147,7 @@ impl DpdkOption {
 // Holds all the internal states of dpdk
 struct ServiceInner {
     started: bool,
+    is_primary: bool,
     lcores: LcoreContext,
     mpools: HashMap<String, Mempool>,
     ports: HashMap<u16, Port>,
@@ -184,39 +186,31 @@ pub fn service() -> &'static DpdkService {
 }
 
 impl DpdkService {
+    /// Check whether the current process is a dpdk primary process.
+    pub fn is_primary_process(&self) -> Result<bool> {
+        Ok(self.try_lock()?.is_primary)
+    }
+
     /// Get a list of [`Lcore`] on the current machine.
     ///
     /// The lcore list is collected by analyzing the /sys directory of the linux
-    /// file system.
+    /// file system upon dpdk initialization.
     ///
     /// The returned lcore list is sorted by the lcore id in ascending order.
-    ///
-    /// # Example
-    /// ```rust
-    /// use rpkt_dpdk::{service, DpdkOption};
-    ///
-    /// DpdkOption::default().init().unwrap();
-    /// let sorted = service()
-    ///     .lcores()
-    ///     .iter()
-    ///     .map(|lcore| lcore.lcore_id)
-    ///     .is_sorted();
-    /// assert_eq!(sorted, true);
-    /// ```
     pub fn lcores(&self) -> &Vec<Lcore> {
         &self.lcores
     }
 
-    /// Bind the current thread to the lcore indicated by `lcore_id`.
+    /// Bind the current thread to the lcore indicated by `lcore_id`].
+    ///
+    /// [`DpdkService`] manages thread binding in its internal state. It
+    /// enforces the following invariants:
+    /// - Each lcore can only be globally bound once.
+    /// - Each thread can only be bound to a single lcore.
     ///
     /// # Errors
     ///
-    /// It returns [`DpdkError`] for the following reasons:
-    /// 1. The DPDK service has been shutdown.
-    /// 2. The lcore id is invalid on the current machine.
-    /// 3. The thread has already been bind to an lcore.
-    /// 4. The lcore has already been bind to another thread.
-    /// 5. The DPDK FFI fails with lcore binding.
+    /// It returns [`DpdkError`] if the thread binding fails.
     pub fn lcore_bind(&self, lcore_id: u32) -> Result<()> {
         let mut inner = self.try_lock()?;
 
@@ -227,6 +221,35 @@ impl DpdkService {
             .ok_or(DpdkError::service_err("no such lcore"))?;
 
         inner.lcores.pin(lcore)
+    }
+
+    /// Register the current thread as a eal thread.
+    ///
+    /// After the registration, the thread can access some internal eal states,
+    /// like the caches of the memory pool.
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't register the thread as a eal
+    /// thread.
+    pub fn rte_thread_register(&self) -> Result<u32> {
+        let _inner = self.try_lock()?;
+
+        unsafe {
+            let res = ffi::rte_thread_register();
+            if res != 0 {
+                DpdkError::ffi_err(ffi::rte_errno_(), "fail to register rte thread").to_err()
+            } else {
+                Ok(ffi::rte_lcore_id_())
+            }
+        }
+    }
+
+    /// Check which [`Lcore`] that the current thread is bound to.
+    ///
+    /// If the current thread is not bound to a lcore, it returns `None`.
+    pub fn current_lcore(&self) -> Option<Lcore> {
+        Lcore::current()
     }
 
     pub fn mempool_create<S: AsRef<str>>(&self, name: S, conf: &MempoolConf) -> Result<Mempool> {
@@ -389,6 +412,70 @@ impl DpdkService {
             DpdkError::service_err("service is shutdown").to_err()
         } else {
             Ok(inner)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn lcores_doc() {
+        use crate::{service, DpdkOption};
+
+        DpdkOption::default().init().unwrap();
+        let sorted = service()
+            .lcores()
+            .iter()
+            .map(|lcore| lcore.lcore_id)
+            .is_sorted();
+        assert_eq!(sorted, true);
+    }
+
+    #[test]
+    fn lcore_bind_test() {
+        use crate::{service, DpdkOption};
+        use std::thread;
+
+        DpdkOption::default().init().unwrap();
+
+        // launch 2 threads and bind them to different lores.
+        let mut jhs = vec![];
+        for i in 0..2 {
+            let jh = thread::spawn(move || {
+                assert_eq!(service().current_lcore().is_none(), true);
+                service().lcore_bind(i).unwrap();
+                let lcore = service().current_lcore().unwrap();
+                assert_eq!(lcore.lcore_id, i);
+            });
+            jhs.push(jh);
+        }
+
+        for jh in jhs {
+            jh.join().unwrap()
+        }
+    }
+
+    #[test]
+    fn rte_thread_register_test() {
+        use crate::{service, DpdkOption};
+        use std::thread;
+
+        DpdkOption::default().init().unwrap();
+
+        // launch 2 threads bind them to different lores, and register them as eal
+        // thread.
+        let mut jhs = vec![];
+        for i in 0..2 {
+            let jh = thread::spawn(move || {
+                service().lcore_bind(i).unwrap();
+                let rte_lcore_id = service().rte_thread_register().unwrap();
+                println!("{rte_lcore_id}");
+            });
+            jhs.push(jh);
+        }
+
+        for jh in jhs {
+            jh.join().unwrap()
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::env;
 use std::io::Write;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 use bindgen::Formatter;
@@ -51,6 +51,8 @@ fn build_dpdk_ffi() {
         .allowlist_function("rte_thread_unregister")
         .allowlist_function("rte_pktmbuf_pool_create")
         .allowlist_function("rte_mempool_free")
+        .allowlist_function("rte_mp_disable")
+        .allowlist_function("rte_eal_process_type")
         .allowlist_function("rte_pktmbuf_free_bulk")
         .allowlist_function("rte_mempool_avail_count") // this can be removed
         .allowlist_function("rte_eth_dev_info_get")
@@ -75,6 +77,7 @@ fn build_dpdk_ffi() {
         .allowlist_type("rte_mempool")
         .allowlist_type("rte_mbuf")
         .allowlist_type("rte_eth_stats")
+        .allowlist_type("rte_proc_type_t")
         // generate useful dpdk macros defined in rte_build_config.h.
         .allowlist_var("RTE_MAX_LCORE")
         .allowlist_var("RTE_MAX_NUMA_NODES")
