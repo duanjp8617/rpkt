@@ -120,7 +120,10 @@ impl Mempool {
 
     pub(crate) fn try_create(mpool_name: String, conf: &MempoolConf) -> Result<Self> {
         let err = DpdkError::service_err("invalid mempool config");
-        let data_room_size = conf.dataroom.checked_add(Self::MBUF_HEADROOM).ok_or(err)?;
+        let data_room_size = conf
+            .dataroom
+            .checked_add(Self::MBUF_HEADROOM)
+            .ok_or(err.clone())?;
         let socket_id = i32::try_from(conf.socket_id).map_err(|_| err)?;
 
         // create the mempool

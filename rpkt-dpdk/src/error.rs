@@ -4,24 +4,24 @@ use std::os::raw::c_int;
 
 pub type Result<T> = std::result::Result<T, DpdkError>;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct DpdkError {
     kind: ErrorKind,
-    msg: &'static str,
+    msg: String,
 }
 
 impl DpdkError {
-    pub fn service_err(msg: &'static str) -> Self {
+    pub fn service_err<S: Into<String>>(msg: S) -> Self {
         Self {
             kind: ErrorKind::ServiceError,
-            msg,
+            msg: msg.into(),
         }
     }
 
-    pub fn ffi_err(errno: i32, msg: &'static str) -> Self {
+    pub fn ffi_err<S: Into<String>>(errno: i32, msg: S) -> Self {
         Self {
             kind: ErrorKind::FFIError(errno),
-            msg: msg,
+            msg: msg.into(),
         }
     }
 
