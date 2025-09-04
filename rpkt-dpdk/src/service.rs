@@ -21,7 +21,8 @@ pub(crate) static SERVICE: OnceCell<DpdkService> = OnceCell::new();
 ///
 /// "-n 4 --proc-type primary"
 ///
-/// indicating eal is initialized with 4 channels and as primary process.
+/// indicating that eal is initialized with 4 memory channels and as a primary
+/// process.
 pub struct DpdkOption {
     arg_string: String,
 }
@@ -64,8 +65,17 @@ impl DpdkOption {
     /// let res = DpdkOption::default().init();
     /// assert_eq!(res.is_ok(), true);
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function returns [`DpdkError`] if initialization fails due to
+    /// various reasons.
     pub fn init(self) -> Result<()> {
         SERVICE.get_or_try_init(|| {
+            unsafe {
+                println!("rte_lcore_id: {}", ffi::rte_lcore_id_());
+            }
+
             // eal argument requires a prefix
             let mut args: Vec<CString> = vec![CString::new("./prefix").unwrap()];
             // extend `args` with other arguments
@@ -90,6 +100,33 @@ impl DpdkOption {
 
             // Detect lcores on the current system
             let lcores = lcore::detect_lcores();
+
+            // rte_eal_init registers the current thread to lcore 0
+            // we undo it just like erpc
+            unsafe {
+                let mut cpu_set: libc::cpu_set_t = std::mem::zeroed();
+                libc::CPU_ZERO(&mut cpu_set);
+                for lcore in lcores.iter() {
+                    libc::CPU_SET(usize::try_from(lcore.lcore_id).unwrap(), &mut cpu_set);
+                }
+                let res = libc::sched_setaffinity(
+                    0,
+                    std::mem::size_of::<libc::cpu_set_t>(),
+                    &cpu_set as *const libc::cpu_set_t,
+                );
+                if res != 0 {
+                    return DpdkError::service_err(
+                        "fail to unset thread affinity for the current process",
+                    )
+                    .to_err();
+                }
+                // at last, we unregister the current thread as a rte thread
+                ffi::rte_thread_unregister();
+            }
+
+            unsafe {
+                println!("rte_lcore_id: {}", ffi::rte_lcore_id_());
+            }
 
             Ok(DpdkService {
                 service: Mutex::new(ServiceInner {
@@ -158,9 +195,7 @@ impl DpdkService {
     /// ```rust
     /// use rpkt_dpdk::{service, DpdkOption};
     ///
-    /// DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix app1")
-    ///     .init()
-    ///     .unwrap();
+    /// DpdkOption::default().init().unwrap();
     /// let sorted = service()
     ///     .lcores()
     ///     .iter()
@@ -174,8 +209,9 @@ impl DpdkService {
 
     /// Bind the current thread to the lcore indicated by `lcore_id`.
     ///
-    /// This function will fail and return an `Err` if the following conditions
-    /// happen:
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] for the following reasons:
     /// 1. The DPDK service has been shutdown.
     /// 2. The lcore id is invalid on the current machine.
     /// 3. The thread has already been bind to an lcore.

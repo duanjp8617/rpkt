@@ -93,7 +93,8 @@ pub(crate) fn detect_lcores() -> Vec<Lcore> {
             }
         })
         .collect();
-    lcores.sort_by(|a, b| a.lcore_id.cmp(&b.lcore_id));
+    lcores.sort_by(|a, b| a.lcore_id.cmp(&b.lcore_id));    
+
     lcores
 }
 

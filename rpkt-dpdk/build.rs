@@ -48,6 +48,7 @@ fn build_dpdk_ffi() {
         // generate useful dpdk functions
         .allowlist_function("rte_thread_set_affinity")
         .allowlist_function("rte_thread_register")
+        .allowlist_function("rte_thread_unregister")
         .allowlist_function("rte_pktmbuf_pool_create")
         .allowlist_function("rte_mempool_free")
         .allowlist_function("rte_pktmbuf_free_bulk")
