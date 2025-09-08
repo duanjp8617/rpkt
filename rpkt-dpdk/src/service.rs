@@ -314,7 +314,7 @@ impl DpdkService {
         let mp = inner
             .mpools
             .get_mut(name)
-            .ok_or(DpdkError::service_err("no such mempool"))?;
+            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
 
         if !mp.in_use() && mp.full() {
             // We are the sole owner of the mempool and here are no allocated mbufs.
@@ -325,7 +325,7 @@ impl DpdkService {
             }
             Ok(())
         } else {
-            DpdkError::service_err("mempool is in use").to_err()
+            DpdkError::service_err(format!("mempool {name} is in use")).to_err()
         }
     }
 
@@ -337,7 +337,7 @@ impl DpdkService {
             let mp = inner
                 .mpools
                 .get(name)
-                .ok_or(DpdkError::service_err("no such mempool"))?;
+                .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
             Ok(mp.clone())
         } else {
             let cname = CString::new(name)
