@@ -51,6 +51,7 @@ fn build_dpdk_ffi() {
         .allowlist_function("rte_thread_unregister")
         .allowlist_function("rte_pktmbuf_pool_create")
         .allowlist_function("rte_mempool_free")
+        .allowlist_function("rte_mempool_lookup")
         .allowlist_function("rte_mp_disable")
         .allowlist_function("rte_eal_process_type")
         .allowlist_function("rte_pktmbuf_free_bulk")
@@ -83,7 +84,7 @@ fn build_dpdk_ffi() {
         .allowlist_var("RTE_MAX_NUMA_NODES")
         .allowlist_var("RTE_MBUF_MAX_NB_SEGS")
         .allowlist_var("RTE_MBUF_DEFAULT_DATAROOM")
-        .allowlist_var("RTE_PKTMBUF_HEADROOM")
+        .allowlist_var("RTE_PKTMBUF_HEADROOM")        
         .allowlist_var("RTE_ETHDEV_QUEUE_STAT_CNTRS")
         .header("csrc/header.h");
     for cflag in cflags_iter {

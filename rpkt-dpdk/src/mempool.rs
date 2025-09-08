@@ -1,59 +1,10 @@
-use std::convert::TryFrom;
-use std::ffi::CString;
-use std::os::raw::c_char;
 use std::ptr::NonNull;
 use std::sync::Arc;
 
-use crate::sys as ffi;
 use arrayvec::ArrayVec;
 
-use crate::error::*;
+use crate::sys as ffi;
 use crate::Mbuf;
-
-#[derive(Clone, Copy, Debug)]
-pub struct MempoolConf {
-    pub nb_mbufs: u32,
-    pub per_core_caches: u32,
-    pub dataroom: u16,
-    pub socket_id: u32,
-}
-
-impl MempoolConf {
-    pub const DATAROOM: u16 = ffi::RTE_MBUF_DEFAULT_DATAROOM as u16;
-    pub const NB_MBUFS: u32 = 2048;
-    pub const PER_CORE_CACHES: u32 = 0;
-
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set_nb_mbufs(&mut self, val: u32) {
-        self.nb_mbufs = val;
-    }
-
-    pub fn set_per_core_caches(&mut self, val: u32) {
-        self.per_core_caches = val;
-    }
-
-    pub fn set_dataroom(&mut self, val: u16) {
-        self.dataroom = val;
-    }
-
-    pub fn set_socket_id(&mut self, val: u32) {
-        self.socket_id = val;
-    }
-}
-
-impl Default for MempoolConf {
-    fn default() -> Self {
-        Self {
-            nb_mbufs: Self::NB_MBUFS,
-            per_core_caches: Self::PER_CORE_CACHES,
-            dataroom: Self::DATAROOM,
-            socket_id: 0,
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct Mempool {
@@ -64,8 +15,11 @@ pub struct Mempool {
 unsafe impl Send for Mempool {}
 unsafe impl Sync for Mempool {}
 
+// PktmbufPool
 impl Mempool {
-    pub const MBUF_HEADROOM: u16 = ffi::RTE_PKTMBUF_HEADROOM as u16;
+    pub const MBUF_HEADROOM_SIZE: u16 = ffi::RTE_PKTMBUF_HEADROOM as u16;
+
+    pub const MBUF_DATAROOM_SIZE: u16 = ffi::RTE_MBUF_DEFAULT_DATAROOM as u16;
 
     #[inline]
     pub fn try_alloc(&self) -> Option<Mbuf> {
@@ -78,7 +32,7 @@ impl Mempool {
     }
 
     #[inline]
-    pub fn fill_batch<const N: usize>(&self, batch: &mut ArrayVec<Mbuf, N>) {
+    pub fn alloc_in_batch<const N: usize>(&self, batch: &mut ArrayVec<Mbuf, N>) {
         assert!(N <= usize::from(u16::MAX));
         let batch_len = batch.len();
         unsafe {
@@ -118,41 +72,11 @@ impl Mempool {
         self.ptr.as_ptr()
     }
 
-    pub(crate) fn try_create(mpool_name: String, conf: &MempoolConf) -> Result<Self> {
-        let err = DpdkError::service_err("invalid mempool config");
-        let data_room_size = conf
-            .dataroom
-            .checked_add(Self::MBUF_HEADROOM)
-            .ok_or(err.clone())?;
-        let socket_id = i32::try_from(conf.socket_id).map_err(|_| err)?;
-
-        // create the mempool
-        let cname =
-            CString::new(mpool_name).map_err(|_| DpdkError::service_err("invalid mempool name"))?;
-        let raw = unsafe {
-            ffi::rte_pktmbuf_pool_create(
-                cname.as_bytes_with_nul().as_ptr() as *const c_char,
-                conf.nb_mbufs,
-                conf.per_core_caches,
-                0,
-                data_room_size,
-                socket_id,
-            )
-        };
-
-        let ptr = NonNull::new(raw).ok_or_else(|| {
-            DpdkError::ffi_err(unsafe { ffi::rte_errno_() }, "fail to allocate mempool")
-        })?;
-
-        Ok(Self {
+    pub(crate) fn new(ptr: NonNull<ffi::rte_mempool>) -> Self {
+        Self {
             ptr,
             counter: Arc::new(()),
-        })
-    }
-
-    pub(crate) unsafe fn delete(self) {
-        assert!(self.full() == true && self.in_use() == false);
-        ffi::rte_mempool_free(self.ptr.as_ptr());
+        }
     }
 
     pub(crate) fn in_use(&self) -> bool {
@@ -177,13 +101,10 @@ mod tests {
         DpdkOption::default().init().unwrap();
 
         {
-            let mut config = MempoolConf::default();
-            config.nb_mbufs = 128;
-
-            let res = service().mempool_create("wtf", &config);
+            let res = service().mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1);
             assert_eq!(res.is_err(), false);
 
-            let res = service().mempool_create("wtf", &config);
+            let res = service().mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1);
             assert_eq!(res.is_err(), true);
         }
 
@@ -199,10 +120,7 @@ mod tests {
         DpdkOption::default().init().unwrap();
 
         {
-            let mut config = MempoolConf::default();
-            config.nb_mbufs = 128;
-            config.dataroom = 512;
-            let mp = service().mempool_create("wtf", &config).unwrap();
+            let mp = service().mempool_alloc("wtf", 128, 0, 512, -1).unwrap();
 
             for _ in 0..512 {
                 let mut mbuf = mp.try_alloc().unwrap();
@@ -211,17 +129,17 @@ mod tests {
 
             for _ in 0..128 {
                 let mbuf = mp.try_alloc().unwrap();
-                assert_eq!(mbuf.capacity(), 512);
-                assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize);
+                assert_eq!(mbuf.capacity(), 512 - Mempool::MBUF_HEADROOM_SIZE as usize);
+                assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
                 assert_eq!(mbuf.len(), 0);
             }
 
             for _ in 0..(128 / 32) {
                 let mut batch = ArrayVec::<_, 32>::new();
-                mp.fill_batch(&mut batch);
+                mp.alloc_in_batch(&mut batch);
                 for mbuf in batch.iter() {
-                    assert_eq!(mbuf.capacity(), 512);
-                    assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM as usize);
+                    assert_eq!(mbuf.capacity(), 512 - Mempool::MBUF_HEADROOM_SIZE as usize);
+                    assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
                     assert_eq!(mbuf.len(), 0);
                 }
             }
@@ -235,18 +153,22 @@ mod tests {
         DpdkOption::default().init().unwrap();
 
         {
-            let mut config = MempoolConf::default();
-            config.nb_mbufs = 128;
-            let mp = service().mempool_create("wtf", &config).unwrap();
+            let mp = service()
+                .mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1)
+                .unwrap();
             let mut sb = [0; 1];
 
+            let mut mbufs = vec![];
             for i in 0..128 {
                 let mut mbuf = mp.try_alloc().unwrap();
                 sb[0] = i + 1;
                 mbuf.extend_from_slice(&sb[..]);
                 assert_eq!(mbuf.data()[0], i + 1);
+                mbufs.push(mbuf);
             }
+            assert_eq!(mp.try_alloc().is_none(), true);
 
+            drop(mbufs);
             for i in 0..128 {
                 let mut mbuf = mp.try_alloc().unwrap();
                 unsafe { mbuf.extend(1) };
@@ -262,21 +184,30 @@ mod tests {
         DpdkOption::default().init().unwrap();
         assert_eq!(service().lcores().len() >= 4, true);
 
-        let mut config = MempoolConf::default();
-        config.nb_mbufs = 512;
-        config.per_core_caches = 32;
-        service().mempool_create("wtf", &config).unwrap();
+        service()
+            .mempool_alloc(
+                "wtf",
+                512,
+                32,
+                Mempool::MBUF_DATAROOM_SIZE + Mempool::MBUF_HEADROOM_SIZE,
+                -1,
+            )
+            .unwrap();
 
         let mut jhs = Vec::new();
         for i in 2..4 {
             let jh = std::thread::spawn(move || {
                 service().lcore_bind(i).unwrap();
+                service().rte_thread_register().unwrap();
+
                 let mp = service().mempool("wtf").unwrap();
+
                 let mut batch = ArrayVec::<_, 32>::new();
                 for _ in 0..100 {
-                    mp.fill_batch(&mut batch);
+                    mp.alloc_in_batch(&mut batch);
                     for mbuf in batch.drain(..) {
-                        assert_eq!(mbuf.capacity(), MempoolConf::DATAROOM as usize);
+                        assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize);
+                        assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
                     }
                 }
             });
@@ -288,5 +219,33 @@ mod tests {
         }
 
         service().mempool_free("wtf").unwrap();
+    }
+
+    #[test]
+    fn secondary_process_mempool() {
+        // run examples/mempool_primary first
+        DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix mempool_primary --proc-type=secondary")
+            .init()
+            .unwrap();
+        assert_eq!(service().is_primary_process().unwrap(), false);
+
+        assert_eq!(
+            service().mempool_alloc("wtf", 127, 0, 200, -1).is_err(),
+            true
+        );
+
+        let mp = service().mempool("wtf").unwrap();
+        let mut mbufs = vec![];
+        for _ in 0..127 {
+            let mbuf = mp.try_alloc().unwrap();
+            assert_eq!(mbuf.capacity(), 200 - Mempool::MBUF_HEADROOM_SIZE as usize);
+            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
+            assert_eq!(mbuf.len(), 0);
+            mbufs.push(mbuf);
+        }
+        assert_eq!(mp.try_alloc().is_none(), true);
+        assert_eq!(mbufs.len(), 127);
+
+        assert_eq!(service().mempool_free("wtf").is_err(), true);
     }
 }

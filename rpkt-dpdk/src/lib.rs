@@ -12,7 +12,7 @@ mod service;
 pub use service::{service, try_service, DpdkOption, DpdkService};
 
 mod mempool;
-pub use mempool::{Mempool, MempoolConf};
+pub use mempool::Mempool;
 
 #[cfg(not(feature = "multiseg"))]
 mod mbuf;
@@ -35,6 +35,6 @@ pub use port::{
 
 pub mod offload;
 
-pub mod utils;
+// pub mod utils;
 
 pub mod sys;

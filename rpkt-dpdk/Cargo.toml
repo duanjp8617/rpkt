@@ -46,3 +46,6 @@ required-features = ["multiseg"]
 
 [[example]]
 name = "test_bin"
+
+[[example]]
+name = "mempool_primary"

@@ -252,21 +252,64 @@ impl DpdkService {
         Lcore::current()
     }
 
-    pub fn mempool_create<S: AsRef<str>>(&self, name: S, conf: &MempoolConf) -> Result<Mempool> {
+    pub fn mempool_alloc<S: AsRef<str>>(
+        &self,
+        name: S,
+        n: u32,
+        cache_size: u32,
+        data_room_size: u16,
+        socket_id: i32,
+    ) -> Result<Mempool> {
         let mut inner = self.try_lock()?;
 
-        if inner.mpools.contains_key(name.as_ref()) {
-            return DpdkError::service_err("mempool already exists").to_err();
+        // dpdk can only allocate mempool on primary process
+        if !inner.is_primary {
+            DpdkError::service_err("can not allocate memory pool on secondary process").to_err()?
         }
 
-        let mp = Mempool::try_create(name.as_ref().to_string(), conf)?;
-        inner.mpools.insert(name.as_ref().to_string(), mp.clone());
+        // create the mempool with correct name
+        if inner.mpools.contains_key(name.as_ref()) {
+            DpdkError::service_err(format!("mempool {} already exists", name.as_ref())).to_err()?
+        }
+        let cname = CString::new(name.as_ref()).map_err(|_| {
+            DpdkError::service_err(format!("invalid mempool name {}", name.as_ref()))
+        })?;
+        let raw = unsafe {
+            ffi::rte_pktmbuf_pool_create(
+                cname.as_bytes_with_nul().as_ptr() as *const c_char,
+                n,
+                cache_size,
+                0,
+                data_room_size,
+                socket_id,
+            )
+        };
 
-        Ok(mp)
+        // recorded the created mempool in internal states
+        let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
+            DpdkError::ffi_err(
+                unsafe { ffi::rte_errno_() },
+                format!(
+                    "fail to allocate mempool with {n} items (item size = {data_room_size} bytes)"
+                ),
+            )
+        })?;
+        let mempool = Mempool::new(ptr);
+        inner
+            .mpools
+            .insert(name.as_ref().to_string(), mempool.clone());
+
+        Ok(mempool)
     }
 
     pub fn mempool_free(&self, name: &str) -> Result<()> {
         let mut inner = self.try_lock()?;
+
+        // dpdk can only deallocate mempool on primary process
+        if !inner.is_primary {
+            DpdkError::service_err("can not deallocate memory pool on secondary process")
+                .to_err()?
+        }
 
         let mp = inner
             .mpools
@@ -274,12 +317,12 @@ impl DpdkService {
             .ok_or(DpdkError::service_err("no such mempool"))?;
 
         if !mp.in_use() && mp.full() {
-            // We are the sole owner of the counter, this also means that
-            // we are the sole owner of the PtrWrapper, and we are safe to deallocate it.
-            // The mempool to be removed is also full, this means that there are no
-            // out-going mbuf pointers.
+            // We are the sole owner of the mempool and here are no allocated mbufs.
+            // We are safe to delete the mempool.
             let mp = inner.mpools.remove(name).unwrap();
-            unsafe { Mempool::delete(mp) }
+            unsafe {
+                ffi::rte_mempool_free(mp.as_ptr() as *mut ffi::rte_mempool);
+            }
             Ok(())
         } else {
             DpdkError::service_err("mempool is in use").to_err()
@@ -289,11 +332,31 @@ impl DpdkService {
     pub fn mempool(&self, name: &str) -> Result<Mempool> {
         let inner = self.try_lock()?;
 
-        let mp = inner
-            .mpools
-            .get(name)
-            .ok_or(DpdkError::service_err("no such mempool"))?;
-        Ok(mp.clone())
+        if inner.is_primary {
+            // primary process retrieves mempool from internal state
+            let mp = inner
+                .mpools
+                .get(name)
+                .ok_or(DpdkError::service_err("no such mempool"))?;
+            Ok(mp.clone())
+        } else {
+            let cname = CString::new(name)
+                .map_err(|_| DpdkError::service_err(format!("invalid mempool name {name}")))?;
+
+            // secondary process queries mempool from dpdk
+            let raw = unsafe {
+                ffi::rte_mempool_lookup(cname.as_bytes_with_nul().as_ptr() as *const c_char)
+            };
+            let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
+                DpdkError::ffi_err(
+                    unsafe { ffi::rte_errno_() },
+                    format!(
+                        "fail to lookup mempool {name}, make sure that primary process has allocated this mempool"
+                    ),
+                )
+            })?;
+            Ok(Mempool::new(ptr))
+        }
     }
 
     pub fn port_num(&self) -> Result<u16> {
