@@ -17,10 +17,6 @@ unsafe impl Sync for Mempool {}
 
 // PktmbufPool
 impl Mempool {
-    pub const MBUF_HEADROOM_SIZE: u16 = ffi::RTE_PKTMBUF_HEADROOM as u16;
-
-    pub const MBUF_DATAROOM_SIZE: u16 = ffi::RTE_MBUF_DEFAULT_DATAROOM as u16;
-
     #[inline]
     pub fn try_alloc(&self) -> Option<Mbuf> {
         let raw = unsafe { ffi::rte_pktmbuf_alloc_(self.ptr.as_ptr()) };
@@ -93,6 +89,7 @@ impl Mempool {
 
 #[cfg(test)]
 mod tests {
+    use crate::constant::*;
     use crate::*;
     use arrayvec::*;
 
@@ -101,10 +98,10 @@ mod tests {
         DpdkOption::default().init().unwrap();
 
         {
-            let res = service().mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1);
+            let res = service().mempool_alloc("wtf", 128, 0, MBUF_DATAROOM_SIZE, -1);
             assert_eq!(res.is_err(), false);
 
-            let res = service().mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1);
+            let res = service().mempool_alloc("wtf", 128, 0, MBUF_DATAROOM_SIZE, -1);
             assert_eq!(res.is_err(), true);
         }
 
@@ -129,8 +126,8 @@ mod tests {
 
             for _ in 0..128 {
                 let mbuf = mp.try_alloc().unwrap();
-                assert_eq!(mbuf.capacity(), 512 - Mempool::MBUF_HEADROOM_SIZE as usize);
-                assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
+                assert_eq!(mbuf.capacity(), 512 - MBUF_HEADROOM_SIZE as usize);
+                assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
                 assert_eq!(mbuf.len(), 0);
             }
 
@@ -138,8 +135,8 @@ mod tests {
                 let mut batch = ArrayVec::<_, 32>::new();
                 mp.alloc_in_batch(&mut batch);
                 for mbuf in batch.iter() {
-                    assert_eq!(mbuf.capacity(), 512 - Mempool::MBUF_HEADROOM_SIZE as usize);
-                    assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
+                    assert_eq!(mbuf.capacity(), 512 - MBUF_HEADROOM_SIZE as usize);
+                    assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
                     assert_eq!(mbuf.len(), 0);
                 }
             }
@@ -154,7 +151,7 @@ mod tests {
 
         {
             let mp = service()
-                .mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1)
+                .mempool_alloc("wtf", 128, 0, MBUF_DATAROOM_SIZE, -1)
                 .unwrap();
             let mut sb = [0; 1];
 
@@ -185,13 +182,7 @@ mod tests {
         assert_eq!(service().lcores().len() >= 4, true);
 
         service()
-            .mempool_alloc(
-                "wtf",
-                512,
-                32,
-                Mempool::MBUF_DATAROOM_SIZE + Mempool::MBUF_HEADROOM_SIZE,
-                -1,
-            )
+            .mempool_alloc("wtf", 512, 32, MBUF_DATAROOM_SIZE + MBUF_HEADROOM_SIZE, -1)
             .unwrap();
 
         let mut jhs = Vec::new();
@@ -206,8 +197,8 @@ mod tests {
                 for _ in 0..100 {
                     mp.alloc_in_batch(&mut batch);
                     for mbuf in batch.drain(..) {
-                        assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize);
-                        assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
+                        assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize);
+                        assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
                     }
                 }
             });
@@ -238,8 +229,8 @@ mod tests {
         let mut mbufs = vec![];
         for _ in 0..127 {
             let mbuf = mp.try_alloc().unwrap();
-            assert_eq!(mbuf.capacity(), 200 - Mempool::MBUF_HEADROOM_SIZE as usize);
-            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_HEADROOM_SIZE as usize);
+            assert_eq!(mbuf.capacity(), 200 - MBUF_HEADROOM_SIZE as usize);
+            assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
             assert_eq!(mbuf.len(), 0);
             mbufs.push(mbuf);
         }

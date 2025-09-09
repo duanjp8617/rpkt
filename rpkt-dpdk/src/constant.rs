@@ -1,0 +1,30 @@
+use crate::sys as ffi;
+
+/// The default ethernet overhead without VLAN.
+/// It includes the 14-byte ethernet header and the 4-byte crc checksum.
+pub const RTE_ETHER_OVERHEAD: u16 = 14 + 4;
+
+/// The minimum ethernet frame size is 64.
+pub const RTE_ETHER_MIN_LEN: u16 = 64;
+
+/// The maximum ethernet frame size is 1518
+pub const RTE_ETHER_MAX_LEN: u16 = 1518;
+
+/// The default ethernet mtu value.
+pub const RTE_ETHER_MTU: u16 = 1500;
+
+/// The maximum frame size of an ethernet jumboframe.
+pub const RTE_ETHER_MAX_JUMBO_PKT_LEN: u16 = 9600;
+
+/// The default size of the RSS hash key.
+pub const HASH_KEY_SIZE: u8 = 40;
+
+/// Mbuf
+pub const MBUF_HEADROOM_SIZE: u16 = ffi::RTE_PKTMBUF_HEADROOM as u16;
+
+/// Mbuf
+pub const MBUF_DATAROOM_SIZE: u16 = ffi::RTE_MBUF_DEFAULT_DATAROOM as u16;
+
+pub const NB_RX_DESC: u16 = 512;
+
+pub const NB_TX_DESC: u16 = 512;

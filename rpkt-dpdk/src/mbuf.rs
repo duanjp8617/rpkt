@@ -183,6 +183,7 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
 
 #[cfg(test)]
 mod tests {
+    use crate::constant::*;
     use crate::*;
 
     #[test]
@@ -191,7 +192,7 @@ mod tests {
 
         {
             let mp = service()
-                .mempool_alloc("wtf", 128, 0, Mempool::MBUF_DATAROOM_SIZE, -1)
+                .mempool_alloc("wtf", 128, 0, MBUF_DATAROOM_SIZE, -1)
                 .unwrap();
 
             let mut content: [u8; 1024] = [0; 1024];
@@ -203,13 +204,13 @@ mod tests {
             mbuf.extend_from_slice(&content[..512]);
             assert_eq!(mbuf.data(), &content[..512]);
             assert_eq!(mbuf.len(), 512);
-            assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize - 512);
+            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 512);
 
             unsafe { mbuf.extend(512) };
             mbuf.data_mut()[512..].copy_from_slice(&content[512..]);
             assert_eq!(mbuf.data(), content);
             assert_eq!(mbuf.len(), 1024);
-            assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize - 1024);
+            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
 
             let mut front_content: [u8; 64] = [54; 64];
             (&mut front_content[..32]).copy_from_slice(&[44; 32][..]);
@@ -217,41 +218,29 @@ mod tests {
             new_content[0..64].copy_from_slice(&front_content[..]);
             new_content[64..].copy_from_slice(&content[..]);
 
-            assert_eq!(mbuf.front_capacity(), Mempool::MBUF_DATAROOM_SIZE as usize);
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize);
 
             unsafe { mbuf.extend_front(32) };
             mbuf.data_mut()[..32].copy_from_slice(&front_content[32..]);
-            assert_eq!(
-                mbuf.front_capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 32
-            );
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 32);
             assert_eq!(mbuf.data(), &new_content[32..]);
             assert_eq!(mbuf.len(), 1024 + 32);
-            assert_eq!(
-                mbuf.front_capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 32
-            );
-            assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize - 1024);
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 32);
+            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
 
             mbuf.extend_front_from_slice(&front_content[..32]);
-            assert_eq!(
-                mbuf.front_capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 64
-            );
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64);
             assert_eq!(mbuf.data(), &new_content[..]);
             assert_eq!(mbuf.len(), 1024 + 64);
-            assert_eq!(
-                mbuf.front_capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 64
-            );
-            assert_eq!(mbuf.capacity(), Mempool::MBUF_DATAROOM_SIZE as usize - 1024);
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64);
+            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
 
             mbuf.truncate(512);
             assert_eq!(mbuf.len(), 512);
             assert_eq!(mbuf.data(), &new_content[..512]);
             assert_eq!(
                 mbuf.capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
+                MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
             );
 
             mbuf.trim_front(44);
@@ -259,12 +248,9 @@ mod tests {
             assert_eq!(mbuf.data(), &new_content[44..512]);
             assert_eq!(
                 mbuf.capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
+                MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
             );
-            assert_eq!(
-                mbuf.front_capacity(),
-                Mempool::MBUF_DATAROOM_SIZE as usize - 64 + 44
-            );
+            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64 + 44);
         }
 
         service().mempool_free("wtf").unwrap();

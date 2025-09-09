@@ -1,10 +1,12 @@
 use std::collections::HashMap;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard};
 
-use crate::sys as ffi;
 use once_cell::sync::OnceCell;
+
+use crate::conf::*;
+use crate::sys as ffi;
 
 use super::error::*;
 use super::lcore::{self, *};
@@ -359,27 +361,65 @@ impl DpdkService {
         }
     }
 
-    pub fn port_num(&self) -> Result<u16> {
+    pub fn eth_dev_count_avail(&self) -> Result<u16> {
         let _inner = self.try_lock()?;
+
         unsafe { Ok(ffi::rte_eth_dev_count_avail()) }
     }
 
-    pub fn port_info(&self, port_id: u16) -> Result<PortInfo> {
+    pub fn dev_info(&self, port_id: u16) -> Result<DevInfo> {
         let _inner = self.try_lock()?;
 
-        if port_id >= unsafe { ffi::rte_eth_dev_count_avail() } {
-            return Err(DpdkError::service_err("invalid port id"));
+        let mut dev_info: ffi::rte_eth_dev_info = unsafe { std::mem::zeroed() };
+        let res = unsafe {
+            ffi::rte_eth_dev_info_get(port_id, &mut dev_info as *mut ffi::rte_eth_dev_info)
+        };
+        if res != 0 {
+            return DpdkError::ffi_err(
+                res,
+                format!("fail to get rte_eth_dev_info for port {port_id}"),
+            )
+            .to_err();
         }
-        unsafe { PortInfo::try_get(port_id) }
+
+        let socket_id = unsafe { ffi::rte_eth_dev_socket_id(port_id) };
+        if socket_id < 0 {
+            return DpdkError::ffi_err(res, format!("fail to get socket id for port {port_id}"))
+                .to_err();
+        }
+
+        let mut eth_addr: ffi::rte_ether_addr = unsafe { std::mem::zeroed() };
+        let res =
+            unsafe { ffi::rte_eth_macaddr_get(port_id, &mut eth_addr as *mut ffi::rte_ether_addr) };
+        if res != 0 {
+            return DpdkError::ffi_err(res, format!("fail to get mac addrress for port {port_id}"))
+                .to_err();
+        }
+
+        let driver_name = unsafe {
+            CStr::from_ptr(dev_info.driver_name)
+                .to_str()
+                .unwrap_or("")
+                .to_owned()
+        };
+
+        Ok(DevInfo {
+            port_id,
+            socket_id: socket_id as u32,
+            started: false,
+            eth_addr: eth_addr.addr_bytes,
+            driver_name,
+            raw: dev_info,
+        })
     }
 
     // rte_eth_dev_configure
-    pub fn port_configure(
+    pub fn dev_configure_and_start(
         &self,
         port_id: u16,
-        port_conf: &PortConf,
-        rxq_confs: &Vec<RxQueueConf>,
-        txq_confs: &Vec<TxQueueConf>,
+        eth_conf: &EthConf,
+        rxq_confs: &Vec<RxqConf>,
+        txq_confs: &Vec<TxqConf>,
     ) -> Result<()> {
         let mut inner = self.try_lock()?;
 
@@ -403,7 +443,7 @@ impl DpdkService {
             .map(|txq_conf| (txq_conf.nb_tx_desc, txq_conf.socket_id))
             .collect::<Vec<(u16, u32)>>();
 
-        let port = Port::try_create(port_id, port_conf, &rxq_confs, &txq_confs)?;
+        let port = Port::try_create(port_id, eth_conf, &rxq_confs, &txq_confs)?;
         inner.ports.insert(port_id, port);
 
         Ok(())
@@ -469,7 +509,7 @@ impl DpdkService {
         Ok(())
     }
 
-    fn try_lock(&self) -> Result<MutexGuard<ServiceInner>> {
+    fn try_lock(&self) -> Result<MutexGuard<'_, ServiceInner>> {
         let inner = self.service.lock().unwrap();
         if !inner.started {
             DpdkError::service_err("service is shutdown").to_err()

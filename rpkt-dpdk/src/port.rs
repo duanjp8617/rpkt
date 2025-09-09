@@ -1,292 +1,12 @@
-use std::ffi::CStr;
 use std::sync::Arc;
 
 use crate::sys as ffi;
 use arrayvec::ArrayVec;
 
+use crate::conf::*;
 use crate::error::*;
-use crate::offload::*;
 use crate::Mbuf;
 use crate::Mempool;
-
-pub struct DescLim(ffi::rte_eth_desc_lim);
-
-impl DescLim {
-    pub fn nb_max(&self) -> u16 {
-        self.0.nb_max
-    }
-
-    pub fn nb_min(&self) -> u16 {
-        self.0.nb_min
-    }
-
-    pub fn nb_align(&self) -> u16 {
-        self.0.nb_align
-    }
-}
-
-pub struct PortInfo {
-    pub port_id: u16,
-    pub socket_id: u32,
-    pub started: bool,
-    pub eth_addr: [u8; 6],
-    pub driver_name: String,
-    raw: ffi::rte_eth_dev_info,
-}
-
-impl PortInfo {
-    pub(crate) unsafe fn try_get(port_id: u16) -> Result<Self> {
-        let mut dev_info: ffi::rte_eth_dev_info = std::mem::zeroed();
-        let res = ffi::rte_eth_dev_info_get(port_id, &mut dev_info as *mut ffi::rte_eth_dev_info);
-        if res != 0 {
-            return DpdkError::ffi_err(res, "fail to get eth dev info").to_err();
-        }
-
-        let socket_id = ffi::rte_eth_dev_socket_id(port_id);
-        if socket_id < 0 {
-            return DpdkError::ffi_err(res, "fail to get eth socket id").to_err();
-        }
-
-        let mut eth_addr: ffi::rte_ether_addr = std::mem::zeroed();
-        let res = ffi::rte_eth_macaddr_get(port_id, &mut eth_addr as *mut ffi::rte_ether_addr);
-        if res != 0 {
-            return DpdkError::ffi_err(res, "fail to get eth mac addrress").to_err();
-        }
-
-        Ok(PortInfo {
-            port_id,
-            socket_id: socket_id as u32,
-            started: false,
-            eth_addr: eth_addr.addr_bytes,
-            driver_name: CStr::from_ptr(dev_info.driver_name)
-                .to_str()
-                .unwrap_or("")
-                .to_owned(),
-            raw: dev_info,
-        })
-    }
-}
-
-impl PortInfo {
-    // mtu info
-    pub fn min_mtu(&self) -> u16 {
-        self.raw.min_mtu
-    }
-    pub fn max_mtu(&self) -> u16 {
-        self.raw.max_mtu
-    }
-
-    // lro info
-    pub fn min_rx_bufsize(&self) -> u32 {
-        self.raw.min_rx_bufsize
-    }
-
-    pub fn max_rx_pktlen(&self) -> u32 {
-        self.raw.max_rx_pktlen
-    }
-
-    pub fn max_lro_pkt_size(&self) -> u32 {
-        self.raw.max_lro_pkt_size
-    }
-
-    // queue size info
-    pub fn max_rx_queues(&self) -> u16 {
-        self.raw.max_rx_queues
-    }
-    pub fn max_tx_queues(&self) -> u16 {
-        self.raw.max_tx_queues
-    }
-
-    // tx/rx offloads
-    pub fn rx_offload_capa(&self) -> DevRxOffload {
-        DevRxOffload(self.raw.rx_offload_capa & DevRxOffload::ALL_ENABLED.0)
-    }
-    pub fn tx_offload_capa(&self) -> DevTxOffload {
-        DevTxOffload(self.raw.tx_offload_capa & DevTxOffload::ALL_ENABLED.0)
-    }
-
-    // rss info
-    pub fn reta_size(&self) -> u16 {
-        self.raw.reta_size
-    }
-
-    pub fn hash_key_size(&self) -> u8 {
-        self.raw.hash_key_size
-    }
-
-    pub fn flow_type_rss_offloads(&self) -> RssHashFunc {
-        RssHashFunc(self.raw.flow_type_rss_offloads & RssHashFunc::ALL_ENABLED.0)
-    }
-
-    pub fn tx_desc_lim(&self) -> DescLim {
-        DescLim(self.raw.tx_desc_lim)
-    }
-
-    pub fn rx_desc_lim(&self) -> DescLim {
-        DescLim(self.raw.rx_desc_lim)
-    }
-}
-
-#[derive(Clone)]
-pub struct PortConf {
-    pub mtu: u32, // packet length except ethernet overhead
-    pub tx_offloads: DevTxOffload,
-    pub rx_offloads: DevRxOffload,
-    pub rss_hf: RssHashFunc,
-    pub rss_hash_key: Vec<u8>,
-    pub enable_promiscuous: bool,
-}
-
-impl PortConf {
-    /// The default ethernet overhead without VLAN.
-    /// It includes the 14-byte ethernet header and the 4-byte crc checksum.
-    pub const RTE_ETHER_OVERHEAD: u16 = 14 + 4;
-
-    /// The minimum ethernet frame size is 64.
-    pub const RTE_ETHER_MIN_LEN: u16 = 64;
-
-    /// The maximum ethernet frame size is 1518
-    pub const RTE_ETHER_MAX_LEN: u16 = 1518;
-
-    /// The default ethernet mtu value.
-    pub const RTE_ETHER_MTU: u16 = 1500;
-
-    /// The maximum frame size of an ethernet jumboframe.
-    pub const RTE_ETHER_MAX_JUMBO_PKT_LEN: u16 = 9600;
-
-    /// The default size of the RSS hash key.
-    pub const HASH_KEY_SIZE: u8 = 40;
-
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn from_port_info(port_info: &PortInfo) -> Result<Self> {
-        // Check whether the port suppports the default ethernet MTU size.
-        if Self::RTE_ETHER_MTU < port_info.min_mtu() || Self::RTE_ETHER_MTU > port_info.max_mtu() {
-            return DpdkError::service_err("invalid port mtu").to_err();
-        }
-
-        // Configure tx offloads.
-        let supported_tx_offloads = port_info.tx_offload_capa();
-        // By default, we only support checksum offloads.
-        let mut tx_offloads = DevTxOffload::ALL_DISABLED;
-        if supported_tx_offloads.ipv4_cksum() {
-            tx_offloads.enable_ipv4_cksum();
-        }
-        if supported_tx_offloads.tcp_cksum() {
-            tx_offloads.enable_tcp_cksum();
-        }
-        if supported_tx_offloads.udp_cksum() {
-            tx_offloads.enable_udp_cksum();
-        }
-
-        // print rx offload
-        let supported_rx_offloads = port_info.rx_offload_capa();
-        // By default, we only support checksum offloads.
-        // Note: it seems that mlx5 automatically enables rx checksum offloads and rss
-        // no matter whether you configure it or not.
-        let mut rx_offloads = DevRxOffload::ALL_DISABLED;
-        if supported_rx_offloads.ipv4_cksum() {
-            rx_offloads.enable_ipv4_cksum();
-        }
-        if supported_rx_offloads.tcp_cksum() {
-            rx_offloads.enable_tcp_cksum();
-        }
-        if supported_rx_offloads.udp_cksum() {
-            rx_offloads.enable_udp_cksum();
-        }
-        if supported_rx_offloads.rss_hash() {
-            rx_offloads.enable_rss_hash();
-        }
-
-        let rss_hash_key = match port_info.hash_key_size() {
-            40 => DEFAULT_RSS_KEY_40B.to_vec(),
-            52 => DEFAULT_RSS_KEY_52B.to_vec(),
-            _ => return DpdkError::service_err("invalid rss hash key size").to_err(),
-        };
-
-        Ok(Self {
-            mtu: u32::from(Self::RTE_ETHER_MTU),
-            tx_offloads,
-            rx_offloads,
-            rss_hf: port_info.flow_type_rss_offloads(),
-            rss_hash_key: rss_hash_key,
-            enable_promiscuous: true,
-        })
-    }
-
-    pub fn set_mtu(&mut self, val: u32) {
-        self.mtu = val;
-    }
-
-    pub fn set_tx_offloads(&mut self, val: DevTxOffload) {
-        self.tx_offloads = val;
-    }
-
-    pub fn set_rx_offloads(&mut self, val: DevRxOffload) {
-        self.rx_offloads = val;
-    }
-
-    pub fn set_rss_hf(&mut self, val: RssHashFunc) {
-        self.rss_hf = val;
-    }
-
-    pub fn set_rss_hash_key(&mut self, val: &[u8; Self::HASH_KEY_SIZE as usize]) {
-        let mut v = Vec::new();
-        v.extend_from_slice(&val[..]);
-        self.rss_hash_key = v;
-    }
-
-    pub fn set_enable_promiscuous(&mut self, val: bool) {
-        self.enable_promiscuous = val;
-    }
-
-    // Safety: The returned `rte_eth_conf` must not live past `PortConf`.
-    unsafe fn rte_eth_conf(&self, nb_rxq: u16, _nb_txq: u16) -> ffi::rte_eth_conf {
-        let mut rx_mode: ffi::rte_eth_rxmode = std::mem::zeroed();
-        if nb_rxq > 0 {
-            rx_mode.mq_mode = ffi::rte_eth_rx_mq_mode_RTE_ETH_MQ_RX_RSS;
-        } else {
-            rx_mode.mq_mode = ffi::rte_eth_rx_mq_mode_RTE_ETH_MQ_RX_NONE;
-        }
-        // for mlx5 nic, we must set kernel mtu to 9000 first in order to send jumbo frames
-        // we can set with this command: ifconfig 'IFACE' mtu 9000
-        // Yupeng provides this link: https://docs.nvidia.com/networking/display/MFTv4110/Using+mlxconfig
-        rx_mode.mtu = self.mtu;
-        // rx_mode.max_lro_pkt_size
-        rx_mode.offloads = self.rx_offloads.0;
-
-        let mut tx_mode: ffi::rte_eth_txmode = std::mem::zeroed();
-        tx_mode.mq_mode = ffi::rte_eth_tx_mq_mode_RTE_ETH_MQ_TX_NONE;
-        tx_mode.offloads = self.tx_offloads.0;
-
-        let mut rss_conf: ffi::rte_eth_rss_conf = std::mem::zeroed();
-        rss_conf.rss_key = self.rss_hash_key.as_ptr() as *mut u8;
-        rss_conf.rss_key_len = self.rss_hash_key.len() as u8;
-        rss_conf.rss_hf = self.rss_hf.0;
-
-        let mut eth_conf: ffi::rte_eth_conf = std::mem::zeroed();
-        eth_conf.rxmode = rx_mode;
-        eth_conf.txmode = tx_mode;
-        eth_conf.rx_adv_conf.rss_conf = rss_conf;
-
-        eth_conf
-    }
-}
-
-impl Default for PortConf {
-    fn default() -> Self {
-        Self {
-            mtu: u32::from(Self::RTE_ETHER_MTU),
-            tx_offloads: DevTxOffload::ALL_DISABLED,
-            rx_offloads: DevRxOffload::ALL_DISABLED,
-            rss_hf: RssHashFunc::ALL_DISABLED,
-            rss_hash_key: DEFAULT_RSS_KEY_40B.to_vec(),
-            enable_promiscuous: true,
-        }
-    }
-}
 
 pub(crate) struct Port {
     port_id: u16,
@@ -298,7 +18,7 @@ pub(crate) struct Port {
 impl Port {
     pub(crate) fn try_create(
         port_id: u16,
-        port_conf: &PortConf,
+        port_conf: &EthConf,
         rxq_confs: &Vec<(u16, u32, Mempool)>,
         txq_confs: &Vec<(u16, u32)>,
     ) -> Result<Self> {
@@ -312,8 +32,7 @@ impl Port {
         }
 
         // Safety: The `rte_eth_dev_configure` only copies the payload.
-        let eth_conf =
-            unsafe { port_conf.rte_eth_conf(rxq_confs.len() as u16, txq_confs.len() as u16) };
+        let eth_conf = unsafe { port_conf.rte_eth_conf(rxq_confs.len() as u16) };
         let res = unsafe {
             ffi::rte_eth_dev_configure(
                 port_id,
@@ -428,43 +147,6 @@ impl Port {
     }
 }
 
-#[derive(Clone)]
-pub struct RxQueueConf {
-    pub nb_rx_desc: u16,
-    pub socket_id: u32,
-    pub mp_name: String,
-}
-
-impl RxQueueConf {
-    pub const NB_RX_DESC: u16 = 512;
-
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set_nb_rx_desc(&mut self, val: u16) {
-        self.nb_rx_desc = val;
-    }
-
-    pub fn set_socket_id(&mut self, val: u32) {
-        self.socket_id = val;
-    }
-
-    pub fn set_mp_name<S: AsRef<str>>(&mut self, val: S) {
-        self.mp_name = val.as_ref().to_string();
-    }
-}
-
-impl Default for RxQueueConf {
-    fn default() -> Self {
-        Self {
-            nb_rx_desc: Self::NB_RX_DESC,
-            socket_id: 0,
-            mp_name: "".to_string(),
-        }
-    }
-}
-
 pub struct RxQueue {
     port_id: u16,
     qid: u16,
@@ -532,37 +214,6 @@ impl RxQueue {
 
     fn in_use(&self) -> bool {
         Arc::strong_count(&self.counter) != 1
-    }
-}
-
-#[derive(Clone)]
-pub struct TxQueueConf {
-    pub nb_tx_desc: u16,
-    pub socket_id: u32,
-}
-
-impl TxQueueConf {
-    pub const NB_TX_DESC: u16 = 512;
-
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set_nb_tx_desc(&mut self, val: u16) {
-        self.nb_tx_desc = val;
-    }
-
-    pub fn set_socket_id(&mut self, val: u32) {
-        self.socket_id = val;
-    }
-}
-
-impl Default for TxQueueConf {
-    fn default() -> Self {
-        Self {
-            nb_tx_desc: Self::NB_TX_DESC,
-            socket_id: 0,
-        }
     }
 }
 
