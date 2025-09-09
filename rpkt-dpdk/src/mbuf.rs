@@ -2,8 +2,6 @@ use std::ptr::NonNull;
 
 use crate::sys as ffi;
 
-use crate::offload::{MbufRxOffload, MbufTxOffload};
-
 #[derive(Debug)]
 pub struct Mbuf {
     ptr: NonNull<ffi::rte_mbuf>,
@@ -106,8 +104,8 @@ impl Mbuf {
 
     // rx offload
     #[inline]
-    pub fn rx_offload(&self) -> MbufRxOffload {
-        MbufRxOffload(unsafe { self.ptr.as_ref().ol_flags })
+    pub fn rx_offload(&self) -> u64 {
+        unsafe { self.ptr.as_ref().ol_flags }
     }
 
     #[inline]
@@ -116,9 +114,9 @@ impl Mbuf {
     }
 
     #[inline]
-    pub fn set_tx_offload(&mut self, tx_offload: MbufTxOffload) {
+    pub fn set_tx_offload(&mut self, tx_offload: u64) {
         unsafe {
-            self.ptr.as_mut().ol_flags = tx_offload.0;
+            self.ptr.as_mut().ol_flags = tx_offload;
         }
     }
 

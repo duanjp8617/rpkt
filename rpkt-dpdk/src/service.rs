@@ -423,27 +423,116 @@ impl DpdkService {
     ) -> Result<()> {
         let mut inner = self.try_lock()?;
 
+        // we can only configure and start the port once.
         if inner.ports.get(&port_id).is_some() {
-            return DpdkError::service_err("port already configured").to_err();
+            return DpdkError::service_err(format!(
+                "port {port_id} already configured and started"
+            ))
+            .to_err();
         }
 
-        let rxq_confs = rxq_confs
+        // queue id is saved in u16, so check the configured queue sizes.
+        if rxq_confs.len() > 65535 || txq_confs.len() > 65535 {
+            return DpdkError::service_err("too many rx/tx queues").to_err();
+        }
+
+        // check the mempool associated with each rxq
+        for (rxq_id, rxq_conf) in rxq_confs.iter().enumerate() {
+            if inner.mpools.get(rxq_conf.mp_name.as_str()).is_none() {
+                return DpdkError::service_err(format!(
+                    "mempool {} for rxq {rxq_id} is not allocated",
+                    &rxq_conf.mp_name
+                ))
+                .to_err();
+            }
+        }
+
+        // configure the device.
+        // Safety: The `rte_eth_dev_configure` only copies the payload.
+        let rte_eth_conf = unsafe { eth_conf.rte_eth_conf(rxq_confs.len() as u16) };
+        let res = unsafe {
+            ffi::rte_eth_dev_configure(
+                port_id,
+                rxq_confs.len() as u16,
+                txq_confs.len() as u16,
+                &rte_eth_conf as *const ffi::rte_eth_conf,
+            )
+        };
+        if res != 0 {
+            return DpdkError::ffi_err(res, format!("fail to configure eth dev {port_id}"))
+                .to_err();
+        }
+
+        // setup the rx queues
+        let rxqs_with_mp = rxq_confs
             .iter()
-            .map(|rxq_conf| {
-                inner
-                    .mpools
-                    .get(rxq_conf.mp_name.as_str())
-                    .ok_or(DpdkError::service_err("no such mempool"))
-                    .map(|mp| (rxq_conf.nb_rx_desc, rxq_conf.socket_id, mp.clone()))
+            .enumerate()
+            .map(|(rx_queue_id, rxq_conf)| unsafe {
+                let mut rxconf: ffi::rte_eth_rxconf = std::mem::zeroed();
+                rxconf.rx_thresh.pthresh = rxq_conf.pthresh;
+
+                let mp = inner.mpools.get(&rxq_conf.mp_name).unwrap();
+
+                // Safety: rxq lives as long as mp
+                let res = ffi::rte_eth_rx_queue_setup(
+                    port_id,
+                    rx_queue_id as u16,
+                    rxq_conf.nb_rx_desc,
+                    rxq_conf.socket_id,
+                    &mut rxconf as *mut ffi::rte_eth_rxconf,
+                    mp.as_ptr() as *mut ffi::rte_mempool,
+                );
+
+                if res != 0 {
+                    DpdkError::ffi_err(res, format!("fail to setup rx queue {rx_queue_id}"))
+                        .to_err()
+                } else {
+                    Ok((RxQueue::new(port_id, rx_queue_id as u16), mp.clone()))
+                }
             })
-            .collect::<Result<Vec<(u16, u32, Mempool)>>>()?;
+            .collect::<Result<Vec<(RxQueue, Mempool)>>>()?;
 
-        let txq_confs = txq_confs
+        // setup the tx queues
+        let txqs = txq_confs
             .iter()
-            .map(|txq_conf| (txq_conf.nb_tx_desc, txq_conf.socket_id))
-            .collect::<Vec<(u16, u32)>>();
+            .enumerate()
+            .map(|(tx_queue_id, txq_conf)| unsafe {
+                let mut txconf: ffi::rte_eth_txconf = std::mem::zeroed();
+                txconf.tx_thresh.pthresh = txq_conf.pthresh;
 
-        let port = Port::try_create(port_id, eth_conf, &rxq_confs, &txq_confs)?;
+                let res = ffi::rte_eth_tx_queue_setup(
+                    port_id,
+                    tx_queue_id as u16,
+                    txq_conf.nb_tx_desc,
+                    txq_conf.socket_id,
+                    &mut txconf as *mut ffi::rte_eth_txconf,
+                );
+
+                if res != 0 {
+                    DpdkError::ffi_err(res, format!("fail to setup tx queue {tx_queue_id}"))
+                        .to_err()
+                } else {
+                    Ok(TxQueue::new(port_id, tx_queue_id as u16))
+                }
+            })
+            .collect::<Result<Vec<TxQueue>>>()?;
+
+        let res = match eth_conf.enable_promiscuous {
+            true => unsafe { ffi::rte_eth_promiscuous_enable(port_id) },
+            false => unsafe { ffi::rte_eth_promiscuous_disable(port_id) },
+        };
+        if res != 0 {
+            return DpdkError::ffi_err(res, "fail to enable promiscuous").to_err();
+        }
+
+        // start the device
+        let res = unsafe { ffi::rte_eth_dev_start(port_id) };
+        if res != 0 {
+            return DpdkError::ffi_err(res, "fail to start eth dev").to_err();
+        }
+
+        // save the port in the internal state
+        let port = Port::new(port_id, rxqs_with_mp, txqs, StatsQueryContext::new(port_id));
         inner.ports.insert(port_id, port);
 
         Ok(())

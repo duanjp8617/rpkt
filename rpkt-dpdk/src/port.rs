@@ -16,82 +16,18 @@ pub(crate) struct Port {
 }
 
 impl Port {
-    pub(crate) fn try_create(
+    pub(crate) fn new(
         port_id: u16,
-        port_conf: &EthConf,
-        rxq_confs: &Vec<(u16, u32, Mempool)>,
-        txq_confs: &Vec<(u16, u32)>,
-    ) -> Result<Self> {
-        // This check is only required for converting rxq/txq length to u16.
-        if rxq_confs.len() > usize::from(u16::MAX)
-            || rxq_confs.len() == 0
-            || txq_confs.len() > usize::from(u16::MAX)
-            || txq_confs.len() == 0
-        {
-            return DpdkError::service_err("invalid rx/tx queues").to_err();
-        }
-
-        // Safety: The `rte_eth_dev_configure` only copies the payload.
-        let eth_conf = unsafe { port_conf.rte_eth_conf(rxq_confs.len() as u16) };
-        let res = unsafe {
-            ffi::rte_eth_dev_configure(
-                port_id,
-                rxq_confs.len() as u16,
-                txq_confs.len() as u16,
-                &eth_conf as *const ffi::rte_eth_conf,
-            )
-        };
-        if res != 0 {
-            return DpdkError::ffi_err(res, "fail to configure eth dev").to_err();
-        }
-
-        let rxq_cts = rxq_confs
-            .iter()
-            .enumerate()
-            .map(move |(rx_queue_id, (nb_rx_desc, socket_id, mp))| unsafe {
-                // Safety: rxq lives as long as mp
-                RxQueue::try_create(
-                    port_id,
-                    rx_queue_id as u16,
-                    *nb_rx_desc,
-                    *socket_id,
-                    mp.as_ptr() as *mut ffi::rte_mempool,
-                )
-                .map(|rxq| (rxq, mp.clone()))
-            })
-            .collect::<Result<Vec<(RxQueue, Mempool)>>>()?;
-
-        let txqs = txq_confs
-            .into_iter()
-            .enumerate()
-            .map(move |(tx_queue_id, (nb_tx_desc, socket_id))| {
-                TxQueue::try_create(port_id, tx_queue_id as u16, *nb_tx_desc, *socket_id)
-            })
-            .collect::<Result<Vec<TxQueue>>>()?;
-
-        let res = match port_conf.enable_promiscuous {
-            true => unsafe { ffi::rte_eth_promiscuous_enable(port_id) },
-            false => unsafe { ffi::rte_eth_promiscuous_disable(port_id) },
-        };
-        if res != 0 {
-            return DpdkError::ffi_err(res, "fail to enable promiscuous").to_err();
-        }
-
-        // start the device
-        let res = unsafe { ffi::rte_eth_dev_start(port_id) };
-        if res != 0 {
-            return DpdkError::ffi_err(res, "fail to start eth dev").to_err();
-        }
-
-        Ok(Self {
+        rxq_cts: Vec<(RxQueue, Mempool)>,
+        txqs: Vec<TxQueue>,
+        stats_query_ct: StatsQueryContext,
+    ) -> Self {
+        Self {
             port_id,
             rxq_cts,
             txqs,
-            stats_query_ct: StatsQueryContext {
-                port_id,
-                counter: Arc::new(()),
-            },
-        })
+            stats_query_ct,
+        }
     }
 
     pub(crate) fn rx_queue(&self, qid: u16) -> Result<RxQueue> {
@@ -173,30 +109,11 @@ impl RxQueue {
     }
 
     // Safety: the mp must be a valid pointer throughout the lifetime of the RxQueue
-    unsafe fn try_create(
-        port_id: u16,
-        rx_queue_id: u16,
-        nb_rx_desc: u16,
-        socket_id: u32,
-        mp: *mut ffi::rte_mempool,
-    ) -> Result<Self> {
-        let res = ffi::rte_eth_rx_queue_setup(
+    pub(crate) fn new(port_id: u16, qid: u16) -> Self {
+        Self {
             port_id,
-            rx_queue_id,
-            nb_rx_desc,
-            socket_id,
-            std::ptr::null(),
-            mp,
-        );
-
-        if res != 0 {
-            DpdkError::ffi_err(res, "fail to setup rx queue").to_err()
-        } else {
-            Ok(Self {
-                port_id,
-                qid: rx_queue_id,
-                counter: Arc::new(()),
-            })
+            qid,
+            counter: Arc::new(()),
         }
     }
 
@@ -244,25 +161,11 @@ impl TxQueue {
         }
     }
 
-    fn try_create(port_id: u16, tx_queue_id: u16, nb_tx_desc: u16, socket_id: u32) -> Result<Self> {
-        let res = unsafe {
-            ffi::rte_eth_tx_queue_setup(
-                port_id,
-                tx_queue_id,
-                nb_tx_desc,
-                socket_id,
-                std::ptr::null(),
-            )
-        };
-
-        if res != 0 {
-            DpdkError::ffi_err(res, "fail to setup tx queue").to_err()
-        } else {
-            Ok(Self {
-                port_id,
-                qid: tx_queue_id,
-                counter: Arc::new(()),
-            })
+    pub(crate) fn new(port_id: u16, qid: u16) -> Self {
+        Self {
+            port_id,
+            qid,
+            counter: Arc::new(()),
         }
     }
 
@@ -370,6 +273,10 @@ impl StatsQueryContext {
                 ffi::rte_eth_stats_get(self.port_id, &mut port_stats.0 as *mut ffi::rte_eth_stats);
             assert!(res == 0);
         }
+    }
+
+    pub(crate) fn new(port_id: u16) -> Self {
+        Self {port_id, counter: Arc::new(())}
     }
 
     fn clone_once(&self) -> Result<Self> {

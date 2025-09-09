@@ -1,5 +1,4 @@
 use crate::constant;
-use crate::offload::*;
 use crate::sys as ffi;
 
 pub struct DevInfo {
@@ -140,7 +139,7 @@ impl Default for EthConf {
             tx_offloads: 0,
             rx_offloads: 0,
             rss_hf: 0,
-            rss_hash_key: DEFAULT_RSS_KEY_40B.to_vec(),
+            rss_hash_key: constant::DEFAULT_RSS_KEY_40B.to_vec(),
             enable_promiscuous: true,
         }
     }

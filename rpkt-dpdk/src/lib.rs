@@ -31,8 +31,6 @@ pub use pbuf::Pbuf;
 mod port;
 pub use port::{PortStats, RxQueue, StatsQueryContext, TxQueue};
 
-pub mod offload;
-
 // pub mod utils;
 
 pub mod sys;
