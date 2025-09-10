@@ -164,6 +164,12 @@ pub struct RxqConf {
     pub mp_name: String,
 }
 
+impl RxqConf {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl Default for RxqConf {
     fn default() -> Self {
         Self {
@@ -180,6 +186,12 @@ pub struct TxqConf {
     pub nb_tx_desc: u16,
     pub pthresh: u8,
     pub socket_id: u32,
+}
+
+impl TxqConf {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 impl Default for TxqConf {

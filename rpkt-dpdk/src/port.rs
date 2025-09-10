@@ -176,8 +176,6 @@ impl TxQueue {
 pub struct PortStats(ffi::rte_eth_stats);
 
 impl PortStats {
-    pub const QUEUE_STAT_CNTRS: usize = ffi::RTE_ETHDEV_QUEUE_STAT_CNTRS as usize;
-
     pub fn ipackets(&self) -> u64 {
         self.0.ipackets
     }

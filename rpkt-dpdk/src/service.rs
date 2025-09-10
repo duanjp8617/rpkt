@@ -649,6 +649,7 @@ impl DpdkService {
     pub fn gracefull_cleanup(&self) -> Result<()> {
         let mut inner = self.try_lock()?;
 
+        // we only do graceful cleanup for primary process
         if inner.is_primary {
             // first, deallocate the ports
             let port_ids: Vec<u16> = inner.ports.keys().map(|id| *id).collect();
