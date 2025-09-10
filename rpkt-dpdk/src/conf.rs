@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use crate::constant;
 use crate::sys as ffi;
 
@@ -6,7 +8,6 @@ pub struct DevInfo {
     pub socket_id: u32,
     pub started: bool,
     pub eth_addr: [u8; 6],
-    pub driver_name: String,
     pub(crate) raw: ffi::rte_eth_dev_info,
 }
 
@@ -77,6 +78,16 @@ impl DevInfo {
 
     pub fn default_tx_conf(&self) -> &ffi::rte_eth_txconf {
         &self.raw.default_txconf
+    }
+
+    // The driver name
+    pub fn driver_name(&self) -> String {
+        unsafe {
+            CStr::from_ptr(self.raw.driver_name)
+                .to_str()
+                .unwrap_or("")
+                .to_owned()
+        }
     }
 }
 
@@ -164,7 +175,7 @@ impl Default for RxqConf {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct TxqConf {
     pub nb_tx_desc: u16,
     pub pthresh: u8,

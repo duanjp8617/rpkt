@@ -29,7 +29,7 @@ mod pbuf;
 pub use pbuf::Pbuf;
 
 mod port;
-pub use port::{PortStats, RxQueue, StatsQueryContext, TxQueue};
+pub use port::{PortStats, RxQueue, StatsQuery, TxQueue};
 
 // pub mod utils;
 

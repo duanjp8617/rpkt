@@ -368,7 +368,16 @@ impl DpdkService {
     }
 
     pub fn dev_info(&self, port_id: u16) -> Result<DevInfo> {
-        let _inner = self.try_lock()?;
+        let inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            // For some NIC device, like Huawei's SP670 with hinic3 driver, callilng
+            // rte_eth_dev_info_get on secondary process results in segfault.
+            DpdkError::service_err(
+                "dpdk service disallow calling rte_eth_dev_info_get on secondary process",
+            )
+            .to_err()?
+        }
 
         let mut dev_info: ffi::rte_eth_dev_info = unsafe { std::mem::zeroed() };
         let res = unsafe {
@@ -396,19 +405,11 @@ impl DpdkService {
                 .to_err();
         }
 
-        let driver_name = unsafe {
-            CStr::from_ptr(dev_info.driver_name)
-                .to_str()
-                .unwrap_or("")
-                .to_owned()
-        };
-
         Ok(DevInfo {
             port_id,
             socket_id: socket_id as u32,
             started: false,
             eth_addr: eth_addr.addr_bytes,
-            driver_name,
             raw: dev_info,
         })
     }
@@ -422,6 +423,13 @@ impl DpdkService {
         txq_confs: &Vec<TxqConf>,
     ) -> Result<()> {
         let mut inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            // dpdk disallows configurng and starting eth device on secondary process, we
+            // manually enforce this in dpdk service api.
+            DpdkError::service_err("can not configure and start eth device on secondary process")
+                .to_err()?
+        }
 
         // we can only configure and start the port once.
         if inner.ports.get(&port_id).is_some() {
@@ -532,22 +540,22 @@ impl DpdkService {
         }
 
         // save the port in the internal state
-        let port = Port::new(port_id, rxqs_with_mp, txqs, StatsQueryContext::new(port_id));
+        let port = Port::new(port_id, rxqs_with_mp, txqs, StatsQuery::new(port_id));
         inner.ports.insert(port_id, port);
 
         Ok(())
     }
 
-    pub fn port_close(&self, port_id: u16) -> Result<()> {
+    pub fn dev_stop_and_close(&self, port_id: u16) -> Result<()> {
         let mut inner = self.try_lock()?;
 
         let port = inner
             .ports
             .get(&port_id)
-            .ok_or(DpdkError::service_err("invalid port id"))?;
+            .ok_or(DpdkError::service_err(format!("invalid port id {port_id}")))?;
 
         if !port.can_shutdown() {
-            return DpdkError::service_err("port is in use").to_err();
+            return DpdkError::service_err(format!("port {port_id} is in use")).to_err();
         }
 
         port.stop_port()?;
@@ -574,7 +582,7 @@ impl DpdkService {
         port.tx_queue(qid)
     }
 
-    pub fn stats_query(&self, port_id: u16) -> Result<StatsQueryContext> {
+    pub fn stats_query(&self, port_id: u16) -> Result<StatsQuery> {
         let inner = self.try_lock()?;
         let port = inner
             .ports

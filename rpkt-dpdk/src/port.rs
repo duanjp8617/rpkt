@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::sys as ffi;
 use arrayvec::ArrayVec;
 
-use crate::conf::*;
 use crate::error::*;
 use crate::Mbuf;
 use crate::Mempool;
@@ -12,7 +11,7 @@ pub(crate) struct Port {
     port_id: u16,
     rxq_cts: Vec<(RxQueue, Mempool)>,
     txqs: Vec<TxQueue>,
-    stats_query_ct: StatsQueryContext,
+    stats_query_ct: StatsQuery,
 }
 
 impl Port {
@@ -20,7 +19,7 @@ impl Port {
         port_id: u16,
         rxq_cts: Vec<(RxQueue, Mempool)>,
         txqs: Vec<TxQueue>,
-        stats_query_ct: StatsQueryContext,
+        stats_query_ct: StatsQuery,
     ) -> Self {
         Self {
             port_id,
@@ -48,7 +47,7 @@ impl Port {
         txq.clone_once()
     }
 
-    pub(crate) fn stats_query(&self) -> Result<StatsQueryContext> {
+    pub(crate) fn stats_query(&self) -> Result<StatsQuery> {
         self.stats_query_ct.clone_once()
     }
 
@@ -71,12 +70,20 @@ impl Port {
 
     // Safety: the associated mempools for rxqs should be alive.
     pub(crate) fn stop_port(&self) -> Result<()> {
+        // remember to drain the rx queues
+
         if unsafe { ffi::rte_eth_dev_stop(self.port_id) } != 0 {
-            return Err(DpdkError::service_err("fail to stop the port"));
+            return Err(DpdkError::service_err(format!(
+                "fail to stop the port {}",
+                self.port_id
+            )));
         }
 
         if unsafe { ffi::rte_eth_dev_close(self.port_id) } != 0 {
-            return Err(DpdkError::service_err("fail to close the port"));
+            return Err(DpdkError::service_err(format!(
+                "fail to stop the port {}",
+                self.port_id
+            )));
         }
 
         Ok(())
@@ -250,12 +257,12 @@ impl Default for PortStats {
 
 /// A context to query the stats counters from the port.
 /// This context is reference counted.
-pub struct StatsQueryContext {
+pub struct StatsQuery {
     port_id: u16,
     counter: Arc<()>,
 }
 
-impl StatsQueryContext {
+impl StatsQuery {
     pub fn query(&mut self) -> PortStats {
         unsafe {
             let mut port_stats: ffi::rte_eth_stats = std::mem::zeroed();
@@ -276,7 +283,10 @@ impl StatsQueryContext {
     }
 
     pub(crate) fn new(port_id: u16) -> Self {
-        Self {port_id, counter: Arc::new(())}
+        Self {
+            port_id,
+            counter: Arc::new(()),
+        }
     }
 
     fn clone_once(&self) -> Result<Self> {
