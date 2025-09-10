@@ -399,7 +399,6 @@ impl DpdkService {
 
     pub fn eth_dev_count_avail(&self) -> Result<u16> {
         let _inner = self.try_lock()?;
-
         unsafe { Ok(ffi::rte_eth_dev_count_avail()) }
     }
 
@@ -650,11 +649,7 @@ impl DpdkService {
     pub fn gracefull_cleanup(&self) -> Result<()> {
         let mut inner = self.try_lock()?;
 
-        if !inner.is_primary {
-            // secondary process owns no resources, we can directly shutdown
-            unsafe { ffi::rte_eal_cleanup() };
-            inner.started = false;
-        } else {
+        if inner.is_primary {
             // first, deallocate the ports
             let port_ids: Vec<u16> = inner.ports.keys().map(|id| *id).collect();
             for port_id in port_ids {
@@ -666,10 +661,10 @@ impl DpdkService {
             for name in names {
                 inner.do_mempool_free(&name)?;
             }
-
-            unsafe { ffi::rte_eal_cleanup() };
-            inner.started = false;
         }
+
+        unsafe { ffi::rte_eal_cleanup() };
+        inner.started = false;
 
         Ok(())
     }
