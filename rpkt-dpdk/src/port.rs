@@ -67,27 +67,6 @@ impl Port {
         }
         true
     }
-
-    // Safety: the associated mempools for rxqs should be alive.
-    pub(crate) fn stop_port(&self) -> Result<()> {
-        // remember to drain the rx queues
-
-        if unsafe { ffi::rte_eth_dev_stop(self.port_id) } != 0 {
-            return Err(DpdkError::service_err(format!(
-                "fail to stop the port {}",
-                self.port_id
-            )));
-        }
-
-        if unsafe { ffi::rte_eth_dev_close(self.port_id) } != 0 {
-            return Err(DpdkError::service_err(format!(
-                "fail to stop the port {}",
-                self.port_id
-            )));
-        }
-
-        Ok(())
-    }
 }
 
 pub struct RxQueue {

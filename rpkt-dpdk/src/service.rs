@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::collections::{HashMap, HashSet};
+use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard};
 
@@ -155,6 +155,64 @@ struct ServiceInner {
     ports: HashMap<u16, Port>,
 }
 
+impl ServiceInner {
+    fn do_mempool_free(&mut self, name: &str) -> Result<()> {
+        // dpdk can only deallocate mempool on primary process
+        if !self.is_primary {
+            DpdkError::service_err("can not deallocate memory pool on secondary process")
+                .to_err()?
+        }
+
+        let mp = self
+            .mpools
+            .get_mut(name)
+            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
+
+        if !mp.in_use() && mp.full() {
+            // We are the sole owner of the mempool and here are no allocated mbufs.
+            // We are safe to delete the mempool.
+            let mp = self.mpools.remove(name).unwrap();
+            unsafe {
+                ffi::rte_mempool_free(mp.as_ptr() as *mut ffi::rte_mempool);
+            }
+            Ok(())
+        } else {
+            DpdkError::service_err(format!("mempool {name} is in use")).to_err()
+        }
+    }
+
+    fn do_dev_stop_and_close(&mut self, port_id: u16) -> Result<()> {
+        if !self.is_primary {
+            DpdkError::service_err("can not stop and close device on secondary process").to_err()?
+        }
+
+        let port = self
+            .ports
+            .get(&port_id)
+            .ok_or(DpdkError::service_err(format!("invalid port id {port_id}")))?;
+
+        if !port.can_shutdown() {
+            return DpdkError::service_err(format!("port {port_id} is in use")).to_err();
+        }
+
+        self.ports.remove(&port_id).unwrap();
+
+        if unsafe { ffi::rte_eth_dev_stop(port_id) } != 0 {
+            return Err(DpdkError::service_err(format!(
+                "fail to stop the port {port_id}",
+            )));
+        }
+
+        if unsafe { ffi::rte_eth_dev_close(port_id) } != 0 {
+            return Err(DpdkError::service_err(format!(
+                "fail to close the port {port_id}",
+            )));
+        }
+
+        Ok(())
+    }
+}
+
 /// A global singleton providing all the dpdk services.
 ///
 /// The provided dpdk services include:
@@ -306,29 +364,7 @@ impl DpdkService {
 
     pub fn mempool_free(&self, name: &str) -> Result<()> {
         let mut inner = self.try_lock()?;
-
-        // dpdk can only deallocate mempool on primary process
-        if !inner.is_primary {
-            DpdkError::service_err("can not deallocate memory pool on secondary process")
-                .to_err()?
-        }
-
-        let mp = inner
-            .mpools
-            .get_mut(name)
-            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
-
-        if !mp.in_use() && mp.full() {
-            // We are the sole owner of the mempool and here are no allocated mbufs.
-            // We are safe to delete the mempool.
-            let mp = inner.mpools.remove(name).unwrap();
-            unsafe {
-                ffi::rte_mempool_free(mp.as_ptr() as *mut ffi::rte_mempool);
-            }
-            Ok(())
-        } else {
-            DpdkError::service_err(format!("mempool {name} is in use")).to_err()
-        }
+        inner.do_mempool_free(name)
     }
 
     pub fn mempool(&self, name: &str) -> Result<Mempool> {
@@ -548,24 +584,17 @@ impl DpdkService {
 
     pub fn dev_stop_and_close(&self, port_id: u16) -> Result<()> {
         let mut inner = self.try_lock()?;
-
-        let port = inner
-            .ports
-            .get(&port_id)
-            .ok_or(DpdkError::service_err(format!("invalid port id {port_id}")))?;
-
-        if !port.can_shutdown() {
-            return DpdkError::service_err(format!("port {port_id} is in use")).to_err();
-        }
-
-        port.stop_port()?;
-
-        inner.ports.remove(&port_id).unwrap();
-        Ok(())
+        inner.do_dev_stop_and_close(port_id)
     }
 
     pub fn rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
-        let inner = self.service.lock().unwrap();
+        let inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            DpdkError::service_err("can use safe api to create the rx queue on secondary process")
+                .to_err()?
+        }
+
         let port = inner
             .ports
             .get(&port_id)
@@ -574,7 +603,13 @@ impl DpdkService {
     }
 
     pub fn tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
-        let inner = self.service.lock().unwrap();
+        let inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            DpdkError::service_err("can use safe api to create the tx queue on secondary process")
+                .to_err()?
+        }
+
         let port = inner
             .ports
             .get(&port_id)
@@ -584,6 +619,12 @@ impl DpdkService {
 
     pub fn stats_query(&self, port_id: u16) -> Result<StatsQuery> {
         let inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            DpdkError::service_err("can use safe api for port stats query on secondary process")
+                .to_err()?
+        }
+
         let port = inner
             .ports
             .get(&port_id)
@@ -591,16 +632,43 @@ impl DpdkService {
         port.stats_query()
     }
 
-    pub fn service_close(&self) -> Result<()> {
-        let mut inner = self.service.lock().unwrap();
-        if inner.started {
-            if inner.ports.len() == 0 && inner.mpools.len() == 0 {
-                // ignore the returned error value
-                unsafe { ffi::rte_eal_cleanup() };
-                inner.started = false;
-            } else {
-                return DpdkError::service_err("service is in use").to_err();
+    pub unsafe fn assume_rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
+        let _inner = self.try_lock()?;
+        Ok(RxQueue::new(port_id, qid))
+    }
+
+    pub unsafe fn assume_tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
+        let _inner = self.try_lock()?;
+        Ok(TxQueue::new(port_id, qid))
+    }
+
+    pub unsafe fn assume_stats_query(&self, port_id: u16) -> Result<StatsQuery> {
+        let _inner = self.try_lock()?;
+        Ok(StatsQuery::new(port_id))
+    }
+
+    pub fn gracefull_cleanup(&self) -> Result<()> {
+        let mut inner = self.try_lock()?;
+
+        if !inner.is_primary {
+            // secondary process owns no resources, we can directly shutdown
+            unsafe { ffi::rte_eal_cleanup() };
+            inner.started = false;
+        } else {
+            // first, deallocate the ports
+            let port_ids: Vec<u16> = inner.ports.keys().map(|id| *id).collect();
+            for port_id in port_ids {
+                inner.do_dev_stop_and_close(port_id)?;
             }
+
+            // then check the mpools
+            let names: Vec<String> = inner.mpools.keys().map(|s| s.clone()).collect();
+            for name in names {
+                inner.do_mempool_free(&name)?;
+            }
+
+            unsafe { ffi::rte_eal_cleanup() };
+            inner.started = false;
         }
 
         Ok(())
