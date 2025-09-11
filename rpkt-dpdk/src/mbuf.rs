@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     #[cfg(miri)]
-    fn mbuf_data_append_remove() {
+    fn mbuf_miri_test() {
         let mut mbuf = Mbuf::new(2048, 128);
 
         assert_eq!(mbuf.capacity(), 2048);
