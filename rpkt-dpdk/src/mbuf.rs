@@ -1,3 +1,6 @@
+#[cfg(miri)]
+use std::os::raw::c_void;
+
 use std::ptr::NonNull;
 
 use crate::sys as ffi;
@@ -84,7 +87,7 @@ impl Mbuf {
     }
 
     #[inline]
-    pub fn truncate(&mut self, cnt: usize) {
+    pub fn truncate_to(&mut self, cnt: usize) {
         assert!(cnt <= self.len());
         unsafe {
             self.ptr.as_mut().data_len = cnt as u16;
@@ -166,10 +169,52 @@ impl Mbuf {
     }
 }
 
+#[cfg(not(miri))]
 impl Drop for Mbuf {
     fn drop(&mut self) {
         let raw = self.ptr.as_ptr();
         unsafe { ffi::rte_pktmbuf_free_(raw) };
+    }
+}
+
+#[cfg(miri)]
+impl Mbuf {
+    // A Mbuf allocation method for miri test.
+    pub fn new(data_room: u16, head_room: u16) -> Self {
+        let vec: Vec<u8> = vec![0; (data_room + head_room) as usize];
+        let boxed_array: Box<[u8]> = vec.into_boxed_slice();
+        let buf_addr = Box::into_raw(boxed_array) as *mut u8;
+
+        let mbuf: ffi::rte_mbuf = unsafe { std::mem::zeroed() };
+        let mut boxed_mbuf = Box::new(mbuf);
+        boxed_mbuf.buf_addr = buf_addr as *mut c_void;
+        boxed_mbuf.data_off = head_room;
+        boxed_mbuf.data_len = 0;
+        boxed_mbuf.pkt_len = 0;
+        boxed_mbuf.buf_len = data_room + head_room;
+
+        Self {
+            ptr: NonNull::new(Box::into_raw(boxed_mbuf)).unwrap(),
+        }
+    }
+}
+
+#[cfg(miri)]
+impl Drop for Mbuf {
+    fn drop(&mut self) {
+        // Custom drop for miri test.
+        unsafe {
+            let buf_len = self.ptr.as_mut().buf_len;
+            let buf_addr = self.ptr.as_mut().buf_addr as *mut u8;
+            let slice_ptr: *mut [u8] =
+                std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
+            let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
+        }
+
+        unsafe {
+            let mbuf_addr: *mut ffi::rte_mbuf = self.ptr.as_mut() as *mut ffi::rte_mbuf;
+            let _reconstructed_box: Box<ffi::rte_mbuf> = Box::from_raw(mbuf_addr);
+        }
     }
 }
 
@@ -183,7 +228,6 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
 mod tests {
     use crate::constant::*;
     use crate::*;
-    use crate::sys as ffi;
 
     #[test]
     fn mbuf_data_append_remove() {
@@ -234,7 +278,7 @@ mod tests {
             assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64);
             assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
 
-            mbuf.truncate(512);
+            mbuf.truncate_to(512);
             assert_eq!(mbuf.len(), 512);
             assert_eq!(mbuf.data(), &new_content[..512]);
             assert_eq!(
@@ -256,13 +300,59 @@ mod tests {
     }
 
     #[test]
-    fn mbuf_miri_test() {
-        let real_buf: [u8;2048+128] = [0; 2048+128];
+    #[cfg(miri)]
+    fn mbuf_data_append_remove() {
+        let mut mbuf = Mbuf::new(2048, 128);
 
-        let mut rte_mbuf: ffi::rte_mbuf = unsafe {std::mem::zeroed()};
+        assert_eq!(mbuf.capacity(), 2048);
+        assert_eq!(mbuf.front_capacity(), 128);
 
-        
+        let mut content: [u8; 1024] = [0; 1024];
+        for i in 0..1024 {
+            content[i] = (i % u8::MAX as usize) as u8;
+        }
 
+        mbuf.extend_from_slice(&content[..512]);
+        assert_eq!(mbuf.data(), &content[..512]);
+        assert_eq!(mbuf.len(), 512);
+        assert_eq!(mbuf.capacity(), 2048 - 512);
+
+        unsafe { mbuf.extend(512) };
+        mbuf.data_mut()[512..].copy_from_slice(&content[512..]);
+        assert_eq!(mbuf.data(), content);
+        assert_eq!(mbuf.len(), 1024);
+        assert_eq!(mbuf.capacity(), 2048 - 1024);
+
+        let mut front_content: [u8; 64] = [54; 64];
+        (&mut front_content[..32]).copy_from_slice(&[44; 32][..]);
+        let mut new_content: [u8; 1088] = [0; 1088];
+        new_content[0..64].copy_from_slice(&front_content[..]);
+        new_content[64..].copy_from_slice(&content[..]);
+
+        assert_eq!(mbuf.front_capacity(), 128);
+
+        unsafe { mbuf.extend_front(32) };
+        mbuf.data_mut()[..32].copy_from_slice(&front_content[32..]);
+        assert_eq!(mbuf.data(), &new_content[32..]);
+        assert_eq!(mbuf.len(), 1024 + 32);
+        assert_eq!(mbuf.front_capacity(), 128 - 32);
+        assert_eq!(mbuf.capacity(), 2048 - 1024);
+
+        mbuf.extend_front_from_slice(&front_content[..32]);
+        assert_eq!(mbuf.front_capacity(), 128 - 64);
+        assert_eq!(mbuf.data(), &new_content[..]);
+        assert_eq!(mbuf.len(), 1024 + 64);
+        assert_eq!(mbuf.capacity(), 2048 - 1024);
+
+        mbuf.truncate_to(512);
+        assert_eq!(mbuf.len(), 512);
+        assert_eq!(mbuf.data(), &new_content[..512]);
+        assert_eq!(mbuf.capacity(), 2048 - 1024 + (1024 + 64 - 512));
+
+        mbuf.trim_front(44);
+        assert_eq!(mbuf.len(), 512 - 44);
+        assert_eq!(mbuf.data(), &new_content[44..512]);
+        assert_eq!(mbuf.capacity(), 2048 - 1024 + (1024 + 64 - 512));
+        assert_eq!(mbuf.front_capacity(), 128 - 64 + 44);
     }
-
 }

@@ -1,7 +1,6 @@
 use std::ffi::CStr;
 
 use crate::constant;
-use crate::constant::NB_TX_DESC;
 use crate::sys as ffi;
 
 pub struct DevInfo {
