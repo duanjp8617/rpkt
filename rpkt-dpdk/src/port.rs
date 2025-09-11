@@ -8,7 +8,6 @@ use crate::Mbuf;
 use crate::Mempool;
 
 pub(crate) struct Port {
-    port_id: u16,
     rxq_cts: Vec<(RxQueue, Mempool)>,
     txqs: Vec<TxQueue>,
     stats_query_ct: StatsQuery,
@@ -16,13 +15,11 @@ pub(crate) struct Port {
 
 impl Port {
     pub(crate) fn new(
-        port_id: u16,
         rxq_cts: Vec<(RxQueue, Mempool)>,
         txqs: Vec<TxQueue>,
         stats_query_ct: StatsQuery,
     ) -> Self {
         Self {
-            port_id,
             rxq_cts,
             txqs,
             stats_query_ct,

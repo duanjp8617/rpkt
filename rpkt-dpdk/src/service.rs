@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::sync::{Mutex, MutexGuard};
@@ -444,7 +444,7 @@ impl DpdkService {
             port_id,
             socket_id: socket_id as u32,
             started: false,
-            eth_addr: eth_addr.addr_bytes,
+            mac_addr: eth_addr.addr_bytes,
             raw: dev_info,
         })
     }
@@ -575,7 +575,7 @@ impl DpdkService {
         }
 
         // save the port in the internal state
-        let port = Port::new(port_id, rxqs_with_mp, txqs, StatsQuery::new(port_id));
+        let port = Port::new(rxqs_with_mp, txqs, StatsQuery::new(port_id));
         inner.ports.insert(port_id, port);
 
         Ok(())

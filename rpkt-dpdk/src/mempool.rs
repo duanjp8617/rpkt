@@ -79,10 +79,6 @@ impl Mempool {
         Arc::<()>::strong_count(&self.counter) != 1
     }
 
-    pub(crate) fn ref_counts(&self) -> usize {
-        Arc::<()>::strong_count(&self.counter)
-    }
-
     pub(crate) fn full(&self) -> bool {
         unsafe {
             let raw = self.ptr.as_ptr();

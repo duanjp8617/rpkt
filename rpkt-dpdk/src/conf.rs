@@ -1,13 +1,14 @@
 use std::ffi::CStr;
 
 use crate::constant;
+use crate::constant::NB_TX_DESC;
 use crate::sys as ffi;
 
 pub struct DevInfo {
     pub port_id: u16,
     pub socket_id: u32,
     pub started: bool,
-    pub eth_addr: [u8; 6],
+    pub mac_addr: [u8; 6],
     pub(crate) raw: ffi::rte_eth_dev_info,
 }
 
@@ -165,8 +166,13 @@ pub struct RxqConf {
 }
 
 impl RxqConf {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new<S: Into<String>>(nb_rx_desc: u16, pthresh: u8, socket_id: u32, mp_name: S) -> Self {
+        Self {
+            nb_rx_desc,
+            pthresh,
+            socket_id,
+            mp_name: mp_name.into(),
+        }
     }
 }
 
@@ -189,8 +195,12 @@ pub struct TxqConf {
 }
 
 impl TxqConf {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(nb_tx_desc: u16, pthresh: u8, socket_id: u32) -> Self {
+        Self {
+            nb_tx_desc,
+            pthresh,
+            socket_id,
+        }
     }
 }
 
