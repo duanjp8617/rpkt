@@ -183,6 +183,7 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
 mod tests {
     use crate::constant::*;
     use crate::*;
+    use crate::sys as ffi;
 
     #[test]
     fn mbuf_data_append_remove() {
@@ -253,4 +254,15 @@ mod tests {
 
         service().mempool_free("wtf").unwrap();
     }
+
+    #[test]
+    fn mbuf_miri_test() {
+        let real_buf: [u8;2048+128] = [0; 2048+128];
+
+        let mut rte_mbuf: ffi::rte_mbuf = unsafe {std::mem::zeroed()};
+
+        
+
+    }
+
 }
