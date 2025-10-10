@@ -147,15 +147,17 @@ impl Mbuf {
 
     // modified to pub for netbricks_port
     #[inline]
-    pub unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
+    pub const unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
         Self {
             ptr: NonNull::new_unchecked(ptr),
         }
     }
 
     #[inline]
-    pub unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
-        self.ptr.as_ptr()
+    pub const unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
+        let res = self.ptr.as_ptr();
+        std::mem::forget(self);
+        res
     }
 
     #[inline]
@@ -178,6 +180,25 @@ impl Drop for Mbuf {
 }
 
 #[cfg(miri)]
+impl Drop for Mbuf {
+    fn drop(&mut self) {
+        // Custom drop for miri test.
+        unsafe {
+            let buf_len = self.ptr.as_mut().buf_len;
+            let buf_addr = self.ptr.as_mut().buf_addr as *mut u8;
+            let slice_ptr: *mut [u8] =
+                std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
+            let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
+        }
+
+        unsafe {
+            let mbuf_addr: *mut ffi::rte_mbuf = self.ptr.as_mut() as *mut ffi::rte_mbuf;
+            let _reconstructed_box: Box<ffi::rte_mbuf> = Box::from_raw(mbuf_addr);
+        }
+    }
+}
+
+#[cfg(miri)]
 impl Mbuf {
     // A Mbuf allocation method for miri test.
     pub fn new(data_room: u16, head_room: u16) -> Self {
@@ -195,25 +216,6 @@ impl Mbuf {
 
         Self {
             ptr: NonNull::new(Box::into_raw(boxed_mbuf)).unwrap(),
-        }
-    }
-}
-
-#[cfg(miri)]
-impl Drop for Mbuf {
-    fn drop(&mut self) {
-        // Custom drop for miri test.
-        unsafe {
-            let buf_len = self.ptr.as_mut().buf_len;
-            let buf_addr = self.ptr.as_mut().buf_addr as *mut u8;
-            let slice_ptr: *mut [u8] =
-                std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
-            let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
-        }
-
-        unsafe {
-            let mbuf_addr: *mut ffi::rte_mbuf = self.ptr.as_mut() as *mut ffi::rte_mbuf;
-            let _reconstructed_box: Box<ffi::rte_mbuf> = Box::from_raw(mbuf_addr);
         }
     }
 }

@@ -146,73 +146,6 @@ impl DpdkOption {
     }
 }
 
-// Holds all the internal states of dpdk
-struct ServiceInner {
-    started: bool,
-    is_primary: bool,
-    lcores: LcoreContext,
-    mpools: HashMap<String, Mempool>,
-    ports: HashMap<u16, Port>,
-}
-
-impl ServiceInner {
-    fn do_mempool_free(&mut self, name: &str) -> Result<()> {
-        // dpdk can only deallocate mempool on primary process
-        if !self.is_primary {
-            DpdkError::service_err("can not deallocate memory pool on secondary process")
-                .to_err()?
-        }
-
-        let mp = self
-            .mpools
-            .get_mut(name)
-            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
-
-        if !mp.in_use() && mp.full() {
-            // We are the sole owner of the mempool and here are no allocated mbufs.
-            // We are safe to delete the mempool.
-            let mp = self.mpools.remove(name).unwrap();
-            unsafe {
-                ffi::rte_mempool_free(mp.as_ptr() as *mut ffi::rte_mempool);
-            }
-            Ok(())
-        } else {
-            DpdkError::service_err(format!("mempool {name} is in use")).to_err()
-        }
-    }
-
-    fn do_dev_stop_and_close(&mut self, port_id: u16) -> Result<()> {
-        if !self.is_primary {
-            DpdkError::service_err("can not stop and close device on secondary process").to_err()?
-        }
-
-        let port = self
-            .ports
-            .get(&port_id)
-            .ok_or(DpdkError::service_err(format!("invalid port id {port_id}")))?;
-
-        if !port.can_shutdown() {
-            return DpdkError::service_err(format!("port {port_id} is in use")).to_err();
-        }
-
-        self.ports.remove(&port_id).unwrap();
-
-        if unsafe { ffi::rte_eth_dev_stop(port_id) } != 0 {
-            return Err(DpdkError::service_err(format!(
-                "fail to stop the port {port_id}",
-            )));
-        }
-
-        if unsafe { ffi::rte_eth_dev_close(port_id) } != 0 {
-            return Err(DpdkError::service_err(format!(
-                "fail to close the port {port_id}",
-            )));
-        }
-
-        Ok(())
-    }
-}
-
 /// A global singleton providing all the dpdk services.
 ///
 /// The provided dpdk services include:
@@ -677,6 +610,73 @@ impl DpdkService {
         } else {
             Ok(inner)
         }
+    }
+}
+
+// Holds all the internal states of dpdk
+struct ServiceInner {
+    started: bool,
+    is_primary: bool,
+    lcores: LcoreContext,
+    mpools: HashMap<String, Mempool>,
+    ports: HashMap<u16, Port>,
+}
+
+impl ServiceInner {
+    fn do_mempool_free(&mut self, name: &str) -> Result<()> {
+        // dpdk can only deallocate mempool on primary process
+        if !self.is_primary {
+            DpdkError::service_err("can not deallocate memory pool on secondary process")
+                .to_err()?
+        }
+
+        let mp = self
+            .mpools
+            .get_mut(name)
+            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
+
+        if !mp.in_use() && mp.full() {
+            // We are the sole owner of the mempool and here are no allocated mbufs.
+            // We are safe to delete the mempool.
+            let mp = self.mpools.remove(name).unwrap();
+            unsafe {
+                ffi::rte_mempool_free(mp.as_ptr() as *mut ffi::rte_mempool);
+            }
+            Ok(())
+        } else {
+            DpdkError::service_err(format!("mempool {name} is in use")).to_err()
+        }
+    }
+
+    fn do_dev_stop_and_close(&mut self, port_id: u16) -> Result<()> {
+        if !self.is_primary {
+            DpdkError::service_err("can not stop and close device on secondary process").to_err()?
+        }
+
+        let port = self
+            .ports
+            .get(&port_id)
+            .ok_or(DpdkError::service_err(format!("invalid port id {port_id}")))?;
+
+        if !port.can_shutdown() {
+            return DpdkError::service_err(format!("port {port_id} is in use")).to_err();
+        }
+
+        self.ports.remove(&port_id).unwrap();
+
+        if unsafe { ffi::rte_eth_dev_stop(port_id) } != 0 {
+            return Err(DpdkError::service_err(format!(
+                "fail to stop the port {port_id}",
+            )));
+        }
+
+        if unsafe { ffi::rte_eth_dev_close(port_id) } != 0 {
+            return Err(DpdkError::service_err(format!(
+                "fail to close the port {port_id}",
+            )));
+        }
+
+        Ok(())
     }
 }
 

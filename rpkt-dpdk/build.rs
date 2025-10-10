@@ -211,7 +211,7 @@ fn main() {
         return;
     } else {
         eprintln!("pkg-config can not find installed DPDK library, please build and install DPDK.");
-        eprintln!("If you install DPDK locally, you can build by setting the installation path in PKG_CONFIG_PATH: ");
+        eprintln!("If you install DPDK locally, you can build this crate by setting the installation path in PKG_CONFIG_PATH: ");
         eprintln!("PKG_CONFIG_PATH=<dpdk_installation_path>/lib/<arch>-<os>/pkgconfig cargo build");
         std::process::exit(1);
     }
