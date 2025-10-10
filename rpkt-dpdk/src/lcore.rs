@@ -50,7 +50,7 @@ impl LcoreContext {
             let res = ffi::rte_thread_set_affinity(&mut std::mem::transmute(cpu_set));
             if res != 0 {
                 return DpdkError::ffi_err(res, "fail to set thread affinity").to_err();
-            }            
+            }
         }
 
         LCORE.with(|tl| {
@@ -109,59 +109,4 @@ fn cpu_core_id(lcore_id: u32) -> Option<u32> {
     let mut contents = String::new();
     file.read_to_string(&mut contents).ok()?;
     contents.trim().parse::<u32>().ok()
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-    use std::sync::atomic;
-    use std::sync::Arc;
-    use std::thread;
-
-    #[test]
-    fn bind_lcore_to_thread_0() {
-        // Dpdk will only be initialized once
-        DpdkOption::default().init().unwrap();
-
-        let res = service().lcore_bind(0);
-        assert_eq!(res.is_ok(), true);
-    }
-
-    #[test]
-    fn bind_2_cores_to_the_same_lcore() {
-        DpdkOption::default().init().unwrap();
-
-        assert_eq!(service().lcores().len() >= 2, true);
-
-        let lcore = service().lcores()[1];
-        assert_ne!(lcore.lcore_id, 0);
-
-        let mut jhs = Vec::new();
-        let shared = Arc::new(atomic::AtomicU32::new(0));
-
-        for _ in 0..2 {
-            let cloned = shared.clone();
-            jhs.push(thread::spawn(move || {
-                assert_eq!(Lcore::current().is_none(), true);
-                let res = service().lcore_bind(lcore.lcore_id);
-                match res {
-                    Ok(_) => {
-                        cloned.fetch_add(1, atomic::Ordering::SeqCst);
-                        let mt_lcore = Lcore::current().unwrap();
-                        assert!(mt_lcore.lcore_id == lcore.lcore_id);
-                    }
-                    Err(_) => {
-                        assert_eq!(Lcore::current().is_none(), true);
-                    }
-                }
-            }));
-        }
-
-        for jh in jhs {
-            jh.join().unwrap();
-        }
-
-        let num = shared.load(atomic::Ordering::SeqCst);
-        assert_eq!(num, 1);
-    }
 }

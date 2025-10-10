@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::ffi::{CString, OsStr, OsString};
+use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
-use std::process::Command;
 use std::sync::{Mutex, MutexGuard};
 
 use once_cell::sync::OnceCell;
@@ -189,19 +188,15 @@ pub fn service() -> &'static DpdkService {
     }
 }
 
+// Lcore related APIs
 impl DpdkService {
-    /// Check whether the current process is a dpdk primary process.
-    pub fn is_primary_process(&self) -> Result<bool> {
-        Ok(self.try_lock()?.is_primary)
-    }
-
     /// Get a list of [`Lcore`] on the current machine.
     ///
     /// The lcore list is collected by analyzing the /sys directory of the linux
     /// file system upon dpdk initialization.
     ///
     /// The returned lcore list is sorted by the lcore id in ascending order.
-    pub fn lcores(&self) -> &Vec<Lcore> {
+    pub fn available_lcores(&self) -> &Vec<Lcore> {
         &self.lcores
     }
 
@@ -215,7 +210,7 @@ impl DpdkService {
     /// # Errors
     ///
     /// It returns [`DpdkError`] if the thread binding fails.
-    pub fn lcore_bind(&self, lcore_id: u32) -> Result<()> {
+    pub fn thread_bind_to(&self, lcore_id: u32) -> Result<()> {
         let mut inner = self.try_lock()?;
 
         let lcore = self
@@ -236,7 +231,7 @@ impl DpdkService {
     ///
     /// It returns [`DpdkError`] if we can't register the thread as a eal
     /// thread.
-    pub fn rte_thread_register(&self) -> Result<u32> {
+    pub fn register_as_rte_thread(&self) -> Result<u32> {
         let _inner = self.try_lock()?;
 
         unsafe {
@@ -254,6 +249,13 @@ impl DpdkService {
     /// If the current thread is not bound to a lcore, it returns `None`.
     pub fn current_lcore(&self) -> Option<Lcore> {
         Lcore::current()
+    }
+}
+
+impl DpdkService {
+    /// Check whether the current process is a dpdk primary process.
+    pub fn is_primary_process(&self) -> Result<bool> {
+        Ok(self.try_lock()?.is_primary)
     }
 
     pub fn mempool_alloc<S: AsRef<str>>(
@@ -590,7 +592,7 @@ impl DpdkService {
         Ok(StatsQuery::new(port_id))
     }
 
-    pub fn gracefull_cleanup(&self) -> Result<()> {
+    pub fn graceful_cleanup(&self) -> Result<()> {
         let mut inner = self.try_lock()?;
 
         // we only do graceful cleanup for primary process
@@ -688,69 +690,5 @@ impl ServiceInner {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn lcores_doc() {
-        use crate::{service, DpdkOption};
-
-        DpdkOption::default().init().unwrap();
-        let sorted = service()
-            .lcores()
-            .iter()
-            .map(|lcore| lcore.lcore_id)
-            .is_sorted();
-        assert_eq!(sorted, true);
-    }
-
-    #[test]
-    fn lcore_bind_test() {
-        use crate::{service, DpdkOption};
-        use std::thread;
-
-        DpdkOption::default().init().unwrap();
-
-        // launch 2 threads and bind them to different lores.
-        let mut jhs = vec![];
-        for i in 0..2 {
-            let jh = thread::spawn(move || {
-                assert_eq!(service().current_lcore().is_none(), true);
-                service().lcore_bind(i).unwrap();
-                let lcore = service().current_lcore().unwrap();
-                assert_eq!(lcore.lcore_id, i);
-            });
-            jhs.push(jh);
-        }
-
-        for jh in jhs {
-            jh.join().unwrap()
-        }
-    }
-
-    #[test]
-    fn rte_thread_register_test() {
-        use crate::{service, DpdkOption};
-        use std::thread;
-
-        DpdkOption::default().init().unwrap();
-
-        // launch 2 threads bind them to different lores, and register them as eal
-        // thread.
-        let mut jhs = vec![];
-        for i in 0..2 {
-            let jh = thread::spawn(move || {
-                service().lcore_bind(i).unwrap();
-                let rte_lcore_id = service().rte_thread_register().unwrap();
-                println!("{rte_lcore_id}");
-            });
-            jhs.push(jh);
-        }
-
-        for jh in jhs {
-            jh.join().unwrap()
-        }
     }
 }

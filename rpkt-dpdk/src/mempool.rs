@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn alloc_mbuf_from_multiple_threads() {
         DpdkOption::default().init().unwrap();
-        assert_eq!(service().lcores().len() >= 4, true);
+        assert_eq!(service().available_lcores().len() >= 4, true);
 
         service()
             .mempool_alloc("wtf", 512, 32, MBUF_DATAROOM_SIZE + MBUF_HEADROOM_SIZE, -1)
@@ -187,9 +187,9 @@ mod tests {
 
         let mut jhs = Vec::new();
         for i in 2..4 {
-            let jh = std::thread::spawn(move || {
-                service().lcore_bind(i).unwrap();
-                service().rte_thread_register().unwrap();
+            let jh: std::thread::JoinHandle<()> = std::thread::spawn(move || {
+                service().thread_bind_to(i).unwrap();
+                service().register_as_rte_thread().unwrap();
 
                 let mp = service().mempool("wtf").unwrap();
 

@@ -3,7 +3,8 @@ use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 use rpkt_dpdk::{service, DpdkOption};
 
 fn main() {
-    DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix mempool_primary --proc-type=primary")
+    DpdkOption::new()
+        .args("-l 2 -n 4 --file-prefix mempool_primary --proc-type=primary".split(" "))
         .init()
         .unwrap();
     println!(
