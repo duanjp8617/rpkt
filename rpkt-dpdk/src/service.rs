@@ -1,6 +1,7 @@
 use std::collections::HashMap;
-use std::ffi::CString;
+use std::ffi::{CString, OsStr, OsString};
 use std::os::raw::{c_char, c_int};
+use std::process::Command;
 use std::sync::{Mutex, MutexGuard};
 
 use once_cell::sync::OnceCell;
@@ -26,18 +27,27 @@ pub(crate) static SERVICE: OnceCell<DpdkService> = OnceCell::new();
 /// indicating that eal is initialized with 4 memory channels and as a primary
 /// process.
 pub struct DpdkOption {
-    arg_string: String,
+    args: Vec<CString>,
 }
 
 impl Default for DpdkOption {
     fn default() -> Self {
         Self {
-            arg_string: "-c 1 -n 4 --proc-type primary".into(),
+            args: ["./prefix", "-c", "1", "-n", "4", "--proc-type", "primary"]
+                .iter()
+                .map(|s| CString::new(*s).unwrap())
+                .collect(),
         }
     }
 }
 
 impl DpdkOption {
+    pub fn new() -> Self {
+        Self {
+            args: vec![CString::new("./prefix").unwrap()],
+        }
+    }
+
     /// Create a new `DpdkOption` with use-defined eal argument string.
     ///
     /// # Examples
@@ -48,10 +58,19 @@ impl DpdkOption {
     /// let res = DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix app1").init();
     /// assert_eq!(res.is_ok(), true);
     /// ```
-    pub fn with_eal_arg<S: Into<String>>(arg: S) -> Self {
-        Self {
-            arg_string: arg.into(),
-        }
+    pub fn arg<S: AsRef<str>>(&mut self, arg: S) -> &mut Self {
+        self.args.push(CString::new(arg.as_ref()).unwrap());
+        self
+    }
+
+    pub fn args<S, I>(&mut self, args: I) -> &mut Self
+    where
+        S: AsRef<str>,
+        I: IntoIterator<Item = S>,
+    {
+        args.into_iter()
+            .for_each(|item| self.args.push(CString::new(item.as_ref()).unwrap()));
+        self
     }
 
     /// Initialize dpdk eal using the provided eal argument string.
@@ -72,19 +91,11 @@ impl DpdkOption {
     ///
     /// This function returns [`DpdkError`] if initialization fails due to
     /// various reasons.
-    pub fn init(self) -> Result<()> {
+    pub fn init(&mut self) -> Result<()> {
         SERVICE.get_or_try_init(|| {
-            // eal argument requires a prefix
-            let mut args: Vec<CString> = vec![CString::new("./prefix").unwrap()];
-            // extend `args` with other arguments
-            args.extend(
-                self.arg_string
-                    .split(" ")
-                    .map(|arg| CString::new(arg).unwrap()),
-            );
-
             // initialize dpdk with rte_eal_init
-            let c_args: Vec<_> = args
+            let c_args: Vec<_> = self
+                .args
                 .iter()
                 .map(|arg| arg.as_bytes_with_nul().as_ptr() as *mut c_char)
                 .collect();

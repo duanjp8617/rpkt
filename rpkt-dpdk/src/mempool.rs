@@ -215,7 +215,8 @@ mod tests {
     #[test]
     fn secondary_process_mempool() {
         // run examples/mempool_primary first
-        DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix mempool_primary --proc-type=secondary")
+        DpdkOption::new()
+            .args("-l 2 -n 4 --file-prefix mempool_primary --proc-type=secondary".split(" "))
             .init()
             .unwrap();
         assert_eq!(service().is_primary_process().unwrap(), false);
