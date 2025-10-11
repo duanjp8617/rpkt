@@ -312,31 +312,35 @@ impl DpdkService {
     pub fn mempool(&self, name: &str) -> Result<Mempool> {
         let inner = self.try_lock()?;
 
-        if inner.is_primary {
-            // primary process retrieves mempool from internal state
-            let mp = inner
-                .mpools
-                .get(name)
-                .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
-            Ok(mp.clone())
-        } else {
-            let cname = CString::new(name)
-                .map_err(|_| DpdkError::service_err(format!("invalid mempool name {name}")))?;
-
-            // secondary process queries mempool from dpdk
-            let raw = unsafe {
-                ffi::rte_mempool_lookup(cname.as_bytes_with_nul().as_ptr() as *const c_char)
-            };
-            let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
-                DpdkError::ffi_err(
-                    unsafe { ffi::rte_errno_() },
-                    format!(
-                        "fail to lookup mempool {name}, make sure that primary process has allocated this mempool"
-                    ),
-                )
-            })?;
-            Ok(Mempool::new(ptr))
+        // dpdk can only allocate mempool on primary process
+        if !inner.is_primary {
+            DpdkError::service_err("can not safely get memory pool on secondary process")
+                .to_err()?
         }
+
+        let mp = inner
+            .mpools
+            .get(name)
+            .ok_or(DpdkError::service_err(format!("no mempool named {name}")))?;
+        Ok(mp.clone())
+    }
+
+    pub unsafe fn assume_mempool(&self, name: &str) -> Result<Mempool> {
+        let _inner = self.try_lock()?;
+
+        let cname = CString::new(name)
+            .map_err(|_| DpdkError::service_err(format!("invalid mempool name {name}")))?;
+
+        // secondary process queries mempool from dpdk
+        let raw =
+            unsafe { ffi::rte_mempool_lookup(cname.as_bytes_with_nul().as_ptr() as *const c_char) };
+        let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
+            DpdkError::ffi_err(
+                unsafe { ffi::rte_errno_() },
+                format!("fail to lookup mempool {name}, make sure that it has been allocated"),
+            )
+        })?;
+        Ok(Mempool::new(ptr))
     }
 }
 
