@@ -46,7 +46,7 @@ fn mbuf_alloc_and_size_check() {
             let mbuf = mp.try_alloc().unwrap();
             assert_eq!(mbuf.capacity(), 512 - MBUF_HEADROOM_SIZE as usize);
             assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
-            assert_eq!(mbuf.len(), 0);
+            assert_eq!(mbuf.data_len(), 0);
         }
 
         for _ in 0..(128 / 32) {
@@ -55,7 +55,7 @@ fn mbuf_alloc_and_size_check() {
             for mbuf in batch.iter() {
                 assert_eq!(mbuf.capacity(), 512 - MBUF_HEADROOM_SIZE as usize);
                 assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
-                assert_eq!(mbuf.len(), 0);
+                assert_eq!(mbuf.data_len(), 0);
             }
         }
     }
@@ -92,7 +92,7 @@ fn mbuf_data_unchanged_after_realloc() {
         drop(mbufs);
         for i in 0..128 {
             let mut mbuf = mp.try_alloc().unwrap();
-            unsafe { mbuf.extend(1) };
+            unsafe { mbuf.set_data_len(1) };
             assert_eq!(mbuf.data()[0], i + 1);
         }
     }
@@ -165,7 +165,7 @@ fn secondary_process_mempool() {
             let mbuf = mp.try_alloc().unwrap();
             assert_eq!(mbuf.capacity(), 200 - MBUF_HEADROOM_SIZE as usize);
             assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
-            assert_eq!(mbuf.len(), 0);
+            assert_eq!(mbuf.data_len(), 0);
             mbufs.push(mbuf);
         }
         assert_eq!(mp.try_alloc().is_none(), true);

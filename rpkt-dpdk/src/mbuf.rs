@@ -14,11 +14,13 @@ unsafe impl Send for Mbuf {}
 unsafe impl Sync for Mbuf {}
 
 impl Mbuf {
+    /// Total data length in bytes.
     #[inline]
-    pub fn len(&self) -> usize {
+    pub fn data_len(&self) -> usize {
         unsafe { self.ptr.as_ref().data_len.into() }
     }
 
+    /// Remaining byte length at the back for storing data.
     #[inline]
     pub fn capacity(&self) -> usize {
         unsafe {
@@ -28,11 +30,13 @@ impl Mbuf {
         }
     }
 
+    /// Remaining byte length at the front for storing data.
     #[inline]
     pub fn front_capacity(&self) -> usize {
         unsafe { usize::from(self.ptr.as_ref().data_off) }
     }
 
+    /// Return the current data as a byte slice.
     #[inline]
     pub fn data(&self) -> &[u8] {
         unsafe {
@@ -43,6 +47,7 @@ impl Mbuf {
         }
     }
 
+    /// Return the current data as a mutable byte slice.
     #[inline]
     pub fn data_mut(&mut self) -> &mut [u8] {
         unsafe {
@@ -54,50 +59,45 @@ impl Mbuf {
     }
 
     /// # Panic:
-    /// This function panics if `cnt` exceeds the capacity of the mbuf.
-    #[inline]
-    pub unsafe fn extend(&mut self, cnt: usize) {
-        assert!(self.capacity() >= cnt);
-        self.ptr.as_mut().data_len += cnt as u16;
-        self.ptr.as_mut().pkt_len += cnt as u32;
-    }
-
-    /// # Panic:
     /// This function panics if the length of the slice exceeds the capacity of
     /// the mbuf.
     #[inline]
     pub fn extend_from_slice(&mut self, slice: &[u8]) {
-        let old_len = self.len();
-        unsafe { self.extend(slice.len()) };
+        assert!(self.capacity() >= slice.len());
+        let old_len = self.data_len();
+        unsafe { self.set_data_len(old_len + slice.len()) };
         self.data_mut()[old_len..].copy_from_slice(slice);
     }
 
     #[inline]
-    pub unsafe fn extend_front(&mut self, cnt: usize) {
-        assert!(self.front_capacity() >= cnt);
+    pub fn extend_front_from_slice(&mut self, slice: &[u8]) {
+        assert!(slice.len() <= self.front_capacity());
+        unsafe { self.increase_len_at_front(slice.len()) };
+        self.data_mut()[..slice.len()].copy_from_slice(slice);
+    }
+
+    /// # Panic:
+    /// This function panics if `cnt` exceeds the capacity of the mbuf.
+    #[inline]
+    pub unsafe fn set_data_len(&mut self, new_len: usize) {
+        debug_assert!(
+            new_len <= usize::from(self.ptr.as_ref().buf_len - self.ptr.as_ref().data_off)
+        );
+        self.ptr.as_mut().data_len = new_len as u16;
+        self.ptr.as_mut().pkt_len = new_len as u32;
+    }
+
+    #[inline]
+    pub unsafe fn increase_len_at_front(&mut self, cnt: usize) {
+        debug_assert!(self.front_capacity() >= cnt);
         self.ptr.as_mut().data_len += cnt as u16;
         self.ptr.as_mut().pkt_len += cnt as u32;
         self.ptr.as_mut().data_off -= cnt as u16;
     }
 
     #[inline]
-    pub fn extend_front_from_slice(&mut self, slice: &[u8]) {
-        unsafe { self.extend_front(slice.len()) };
-        self.data_mut()[..slice.len()].copy_from_slice(slice);
-    }
-
-    #[inline]
-    pub fn truncate_to(&mut self, cnt: usize) {
-        assert!(cnt <= self.len());
-        unsafe {
-            self.ptr.as_mut().data_len = cnt as u16;
-            self.ptr.as_mut().pkt_len = cnt as u32;
-        }
-    }
-
-    #[inline]
-    pub fn trim_front(&mut self, cnt: usize) {
-        assert!(cnt <= self.len());
+    pub unsafe fn decrease_len_at_front(&mut self, cnt: usize) {
+        debug_assert!(cnt <= self.data_len());
         unsafe {
             self.ptr.as_mut().data_len -= cnt as u16;
             self.ptr.as_mut().pkt_len -= cnt as u32;
@@ -158,16 +158,6 @@ impl Mbuf {
         let res = self.ptr.as_ptr();
         std::mem::forget(self);
         res
-    }
-
-    #[inline]
-    pub const unsafe fn as_mut_raw<'a>(&mut self) -> &'a mut ffi::rte_mbuf {
-        self.ptr.as_mut()
-    }
-
-    #[inline]
-    pub const unsafe fn as_ref_raw<'a>(&self) -> &'a ffi::rte_mbuf {
-        self.ptr.as_ref()
     }
 }
 
@@ -230,76 +220,6 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
 mod tests {
     use crate::constant::*;
     use crate::*;
-
-    #[test]
-    fn mbuf_data_append_remove() {
-        DpdkOption::default().init().unwrap();
-
-        {
-            let mp = service()
-                .mempool_alloc("wtf", 128, 0, MBUF_DATAROOM_SIZE, -1)
-                .unwrap();
-
-            let mut content: [u8; 1024] = [0; 1024];
-            for i in 0..1024 {
-                content[i] = (i % u8::MAX as usize) as u8;
-            }
-            let mut mbuf = mp.try_alloc().unwrap();
-
-            mbuf.extend_from_slice(&content[..512]);
-            assert_eq!(mbuf.data(), &content[..512]);
-            assert_eq!(mbuf.len(), 512);
-            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 512);
-
-            unsafe { mbuf.extend(512) };
-            mbuf.data_mut()[512..].copy_from_slice(&content[512..]);
-            assert_eq!(mbuf.data(), content);
-            assert_eq!(mbuf.len(), 1024);
-            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
-
-            let mut front_content: [u8; 64] = [54; 64];
-            (&mut front_content[..32]).copy_from_slice(&[44; 32][..]);
-            let mut new_content: [u8; 1088] = [0; 1088];
-            new_content[0..64].copy_from_slice(&front_content[..]);
-            new_content[64..].copy_from_slice(&content[..]);
-
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize);
-
-            unsafe { mbuf.extend_front(32) };
-            mbuf.data_mut()[..32].copy_from_slice(&front_content[32..]);
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 32);
-            assert_eq!(mbuf.data(), &new_content[32..]);
-            assert_eq!(mbuf.len(), 1024 + 32);
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 32);
-            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
-
-            mbuf.extend_front_from_slice(&front_content[..32]);
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64);
-            assert_eq!(mbuf.data(), &new_content[..]);
-            assert_eq!(mbuf.len(), 1024 + 64);
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64);
-            assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize - 1024);
-
-            mbuf.truncate_to(512);
-            assert_eq!(mbuf.len(), 512);
-            assert_eq!(mbuf.data(), &new_content[..512]);
-            assert_eq!(
-                mbuf.capacity(),
-                MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
-            );
-
-            mbuf.trim_front(44);
-            assert_eq!(mbuf.len(), 512 - 44);
-            assert_eq!(mbuf.data(), &new_content[44..512]);
-            assert_eq!(
-                mbuf.capacity(),
-                MBUF_DATAROOM_SIZE as usize - 1024 + (1024 + 64 - 512)
-            );
-            assert_eq!(mbuf.front_capacity(), MBUF_DATAROOM_SIZE as usize - 64 + 44);
-        }
-
-        service().mempool_free("wtf").unwrap();
-    }
 
     #[test]
     #[cfg(miri)]
