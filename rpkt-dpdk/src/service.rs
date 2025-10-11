@@ -252,12 +252,8 @@ impl DpdkService {
     }
 }
 
+// Mempool related APIs
 impl DpdkService {
-    /// Check whether the current process is a dpdk primary process.
-    pub fn is_primary_process(&self) -> Result<bool> {
-        Ok(self.try_lock()?.is_primary)
-    }
-
     pub fn mempool_alloc<S: AsRef<str>>(
         &self,
         name: S,
@@ -341,6 +337,13 @@ impl DpdkService {
             })?;
             Ok(Mempool::new(ptr))
         }
+    }
+}
+
+impl DpdkService {
+    /// Check whether the current process is a dpdk primary process.
+    pub fn is_primary_process(&self) -> Result<bool> {
+        Ok(self.try_lock()?.is_primary)
     }
 
     pub fn eth_dev_count_avail(&self) -> Result<u16> {

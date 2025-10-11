@@ -1,5 +1,6 @@
-use rpkt_dpdk::*;
 use std::sync::{atomic, Arc};
+
+use rpkt_dpdk::*;
 
 #[test]
 fn bind_2_cores() {
