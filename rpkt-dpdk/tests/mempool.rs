@@ -159,7 +159,7 @@ fn secondary_process_mempool() {
     );
 
     {
-        let mp = service().mempool("wtf").unwrap();
+        let mp = unsafe { service().assume_mempool("wtf").unwrap() };
         let mut mbufs = vec![];
         for _ in 0..127 {
             let mbuf = mp.try_alloc().unwrap();
