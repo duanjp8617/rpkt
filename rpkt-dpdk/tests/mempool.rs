@@ -51,7 +51,7 @@ fn mbuf_alloc_and_size_check() {
 
         for _ in 0..(128 / 32) {
             let mut batch = ArrayVec::<_, 32>::new();
-            mp.alloc_in_batch(&mut batch);
+            mp.fill_up_batch(&mut batch);
             for mbuf in batch.iter() {
                 assert_eq!(mbuf.capacity(), 512 - MBUF_HEADROOM_SIZE as usize);
                 assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);
@@ -125,7 +125,7 @@ fn alloc_mbuf_from_multiple_threads() {
 
             let mut batch = ArrayVec::<_, 32>::new();
             for _ in 0..100 {
-                mp.alloc_in_batch(&mut batch);
+                mp.fill_up_batch(&mut batch);
                 for mbuf in batch.drain(..) {
                     assert_eq!(mbuf.capacity(), MBUF_DATAROOM_SIZE as usize);
                     assert_eq!(mbuf.front_capacity(), MBUF_HEADROOM_SIZE as usize);

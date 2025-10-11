@@ -28,7 +28,7 @@ impl Mempool {
     }
 
     #[inline]
-    pub fn alloc_in_batch<const N: usize>(&self, batch: &mut ArrayVec<Mbuf, N>) {
+    pub fn fill_up_batch<const N: usize>(&self, batch: &mut ArrayVec<Mbuf, N>) {
         assert!(N <= usize::from(u16::MAX));
         let batch_len = batch.len();
         unsafe {
