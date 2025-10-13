@@ -17,3 +17,6 @@ cargo test --package rpkt-dpdk --test mempool -- alloc_mbuf_from_multiple_thread
 cargo test --package rpkt-dpdk --test mempool -- secondary_process_mempool --exact
 
 cargo test --package rpkt-dpdk --test mbuf -- tests::mbuf_data_append_remove --exact
+
+cargo test --package rpkt-dpdk --test mbuf_cache -- cache_enabled_batch --exact
+cargo test --package rpkt-dpdk --test mbuf_cache -- set_all_mbufs_in_a_pool --exact
