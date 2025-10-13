@@ -1,6 +1,10 @@
-use bytes::BufMut;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use smoltcp::wire;
+
+
+
+
+use std::net::Ipv4Addr;
 
 static FRAME_BYTES: [u8; 110] = [
     0x00, 0x0b, 0x86, 0x64, 0x8b, 0xa0, 0x00, 0x50, 0x56, 0xae, 0x76, 0xf5, 0x08, 0x00, 0x45, 0x00,
@@ -13,6 +17,8 @@ static FRAME_BYTES: [u8; 110] = [
 ];
 
 fn smol_l2(buf: &[u8]) {
+
+
     let ethpkt = wire::EthernetFrame::new_checked(buf).unwrap();
     assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
     assert!(
@@ -40,23 +46,31 @@ fn smol_l2(buf: &[u8]) {
 }
 
 fn smol_l3(buf: &[u8]) {
+
+
     let ethpkt = wire::EthernetFrame::new_checked(buf).unwrap();
     assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
 
     let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-    assert!(ippkt.protocol() == wire::IpProtocol::Udp);
-    assert!(ippkt.src_addr() == wire::Ipv4Address([192, 168, 29, 58]));
-    assert!(ippkt.dst_addr() == wire::Ipv4Address([192, 168, 29, 160]));
+    assert!(ippkt.next_header() == wire::IpProtocol::Udp);
+    assert!(ippkt.src_addr() == Ipv4Addr::new(192, 168, 29, 58));
+    assert!(ippkt.dst_addr() == Ipv4Addr::new(192, 168, 29, 160));
     assert!(ippkt.checksum() == 0x0000);
     assert!(ippkt.ident() == 0x5c65);
 }
 
 fn smol_l4(buf: &[u8]) {
+
+
     let ethpkt = wire::EthernetFrame::new_checked(buf).unwrap();
     assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
 
     let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-    assert!(ippkt.protocol() == wire::IpProtocol::Udp);
+    assert!(ippkt.next_header() == wire::IpProtocol::Udp);
+    assert!(ippkt.src_addr() == Ipv4Addr::new(192, 168, 29, 58));
+    assert!(ippkt.dst_addr() == Ipv4Addr::new(192, 168, 29, 160));
+    assert!(ippkt.checksum() == 0x0000);
+    assert!(ippkt.ident() == 0x5c65);
 
     let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
     assert!(udppkt.src_port() == 60376);
@@ -66,21 +80,28 @@ fn smol_l4(buf: &[u8]) {
 }
 
 fn smol_app(buf: &[u8]) {
+
+    
     let ethpkt = wire::EthernetFrame::new_checked(buf).unwrap();
     assert!(ethpkt.ethertype() == wire::EthernetProtocol::Ipv4);
 
     let ippkt = wire::Ipv4Packet::new_checked(ethpkt.payload()).unwrap();
-    assert!(ippkt.protocol() == wire::IpProtocol::Udp);
+    assert!(ippkt.next_header() == wire::IpProtocol::Udp);
+    assert!(ippkt.src_addr() == Ipv4Addr::new(192, 168, 29, 58));
+    assert!(ippkt.dst_addr() == Ipv4Addr::new(192, 168, 29, 160));
+    assert!(ippkt.checksum() == 0x0000);
+    assert!(ippkt.ident() == 0x5c65);
 
     let udppkt = wire::UdpPacket::new_checked(ippkt.payload()).unwrap();
     assert!(udppkt.src_port() == 60376);
     assert!(udppkt.dst_port() == 161);
     assert!(udppkt.len() == 74);
+    assert!(udppkt.checksum() == 0xbc86);
 
     let payload = udppkt.payload();
 
     let mut b = [0; 66];
-    (&mut b[..]).put(payload);
+    (&mut b[..]).copy_from_slice(payload);
     assert!(b[0..66] == FRAME_BYTES[42..108]);
 }
 

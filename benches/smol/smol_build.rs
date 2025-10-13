@@ -1,3 +1,5 @@
+use std::net::Ipv4Addr;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use smoltcp::wire;
 
@@ -13,13 +15,12 @@ fn smol_build(buf: &mut [u8], payload_len: usize) {
     ipv4_pkt.set_dscp(0);
     ipv4_pkt.set_ecn(0);
     ipv4_pkt.set_total_len((28 + payload_len) as u16);
-    ipv4_pkt.set_ident(0x5c65);
-    ipv4_pkt.clear_flags();
+    ipv4_pkt.set_ident(0x5c65);    
     ipv4_pkt.set_frag_offset(0);
     ipv4_pkt.set_hop_limit(128);
-    ipv4_pkt.set_protocol(wire::IpProtocol::Udp);
-    ipv4_pkt.set_src_addr(wire::Ipv4Address([192, 168, 29, 58]));
-    ipv4_pkt.set_dst_addr(wire::Ipv4Address([192, 168, 29, 160]));
+    ipv4_pkt.set_next_header(wire::IpProtocol::Udp);
+    ipv4_pkt.set_src_addr(Ipv4Addr::new(192, 168, 29, 58));
+    ipv4_pkt.set_dst_addr(Ipv4Addr::new(192, 168, 29, 160));
     ipv4_pkt.set_checksum(0);
 
     let mut udp_pkt = wire::UdpPacket::new_unchecked(ipv4_pkt.payload_mut());

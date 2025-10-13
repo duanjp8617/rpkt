@@ -1,94 +1,51 @@
 [package]
 name = "benches"
-version = "0.0.0"
-publish = false
-edition = "2018"
+workspace = ".."
+repository.workspace = true
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 
 [dev-dependencies]
-criterion = "0.5.1"
-smoltcp = "0.8.2"
-arrayvec = "0.7.4"
-bytes = "1"
-ctrlc = { version = "3.0", features = ["termination"]}
-rpkt-dpdk = {path = "../rpkt-dpdk", package = "rpkt-dpdk", features = ["multiseg"]}
+criterion = "0.5"
+smoltcp = "0.12"
+arrayvec = "0.7"
+pnet = "0.35"
 rpkt = {path = "../rpkt", package = "rpkt"}
 
 [[bench]]
-name = "pbuf_parse"
-path = "dpdk/pbuf_parse.rs"
-harness = false
-
-[[bench]]
-name = "pbuf_build"
-path = "dpdk/pbuf_build.rs"
-harness = false
-
-[[bench]]
-name = "cursor_parse"
-path = "dpdk/cursor_parse.rs"
-harness = false
-
-[[bench]]
-name = "cursor_parse_unchecked"
-path = "dpdk/cursor_parse_unchecked.rs"
-harness = false
-
-[[bench]]
-name = "cursor_parse_coexist"
-path = "dpdk/cursor_parse_coexist.rs"
-harness = false
-
-[[bench]]
-name = "cursor_new"
-path = "dpdk/cursor_new.rs"
-harness = false
-
-[[bench]]
-name = "cursor_build"
-path = "dpdk/cursor_build.rs"
-harness = false
-
-[[bench]]
 name = "smol_parse"
-path = "dpdk/smol_parse.rs"
+path = "smol/smol_parse.rs"
 harness = false
 
 [[bench]]
 name = "smol_build"
-path = "dpdk/smol_build.rs"
+path = "smol/smol_build.rs"
 harness = false
 
 [[bench]]
-name = "cursor_fwd"
-path = "dpdk/cursor_fwd.rs"
+name = "rpkt_parse"
+path = "rpkt/rpkt_parse.rs"
 harness = false
 
 [[bench]]
-name = "smol_fwd"
-path = "dpdk/smol_fwd.rs"
-harness = false
-
-###################
-
-[[bench]]
-name = "packet_parse"
-path = "packet/packet_parse.rs"
+name = "rpkt_parse_cursor"
+path = "rpkt/rpkt_parse_cursor.rs"
 harness = false
 
 [[bench]]
-name = "smol_parse_method"
-path = "packet/smol_parse.rs"
+name = "rpkt_build"
+path = "rpkt/rpkt_build.rs"
 harness = false
 
 [[bench]]
-name = "packet_build"
-path = "packet/packet_build.rs"
+name = "pnet_parse"
+path = "libpnet/pnet_parse.rs"
 harness = false
 
 [[bench]]
-name = "smol_build_method"
-path = "packet/smol_build.rs"
+name = "pnet_build"
+path = "libpnet/pnet_build.rs"
 harness = false
-
-
-

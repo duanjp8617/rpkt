@@ -2,7 +2,8 @@
 members = [
   "rpkt",
   "pktfmt",
-  "rpkt-dpdk"
+  "rpkt-dpdk",
+  "benches"
 ]
 resolver = "2"
 
