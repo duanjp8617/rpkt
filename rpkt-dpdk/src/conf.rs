@@ -37,14 +37,48 @@ impl DevInfo {
     pub fn max_rx_queues(&self) -> u16 {
         self.raw.max_rx_queues
     }
+
     pub fn max_tx_queues(&self) -> u16 {
         self.raw.max_tx_queues
     }
 
-    // tx/rx offloads
+    /// The rx_offload_capa of different NIC drivers.
+    /// 
+    /// # net_hinic3
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default rx_offload_capa value is
+    /// 664095, which includes the following capabilities:
+    /// 
+    /// bit : rx offload capability name
+    /// 
+    /// - 1 << 0: DEV_RX_OFFLOAD_VLAN_STRIP
+    /// - 1 << 1: DEV_RX_OFFLOAD_IPV4_CKSUM
+    /// - 1 << 2: DEV_RX_OFFLOAD_UDP_CKSUM
+    /// - 1 << 3: DEV_RX_OFFLOAD_TCP_CKSUM
+    /// - 1 << 4: DEV_RX_OFFLOAD_TCP_LRO
+    /// - 1 << 9: DEV_RX_OFFLOAD_VLAN_FILTER
+    /// - 1 << 13: DEV_RX_OFFLOAD_SCATTER
+    /// - 1 << 17: DEV_RX_OFFLOAD_SCTP_CKSUM
+    /// - 1 << 19: DEV_RX_OFFLOAD_RSS_HASH
     pub fn rx_offload_capa(&self) -> u64 {
         self.raw.rx_offload_capa
     }
+
+    /// The tx_offload_capa of different NIC drivers.
+    /// 
+    /// # net_hinic3
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default tx_offload_capa value is
+    /// 32959, which includes the following capabilities:
+    /// 
+    /// bit : tx offload capability name
+    /// 
+    /// - 1 << 0: DEV_TX_OFFLOAD_VLAN_INSERT
+    /// - 1 << 1: DEV_TX_OFFLOAD_IPV4_CKSUM
+    /// - 1 << 2: DEV_TX_OFFLOAD_UDP_CKSUM
+    /// - 1 << 3: DEV_TX_OFFLOAD_TCP_CKSUM
+    /// - 1 << 4: DEV_TX_OFFLOAD_SCTP_CKSUM
+    /// - 1 << 5: DEV_TX_OFFLOAD_TCP_TSO
+    /// - 1 << 7: DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
+    /// - 1 << 15: DEV_TX_OFFLOAD_MULTI_SEGS    
     pub fn tx_offload_capa(&self) -> u64 {
         self.raw.tx_offload_capa
     }
@@ -58,6 +92,24 @@ impl DevInfo {
         self.raw.hash_key_size
     }
 
+    /// The flow_type_rss_offloads of different NIC drivers.
+    /// 
+    /// # net_hinic3
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default flow_type_rss_offloads value is
+    /// 12220, which includes the following flow types:
+    /// 
+    /// bit : flow type
+    /// 
+    /// - 1 << 2: RTE_ETH_RSS_IPV4
+    /// - 1 << 3: RTE_ETH_RSS_FRAG_IPV4
+    /// - 1 << 4: RTE_ETH_RSS_NONFRAG_IPV4_TCP
+    /// - 1 << 5: RTE_ETH_RSS_NONFRAG_IPV4_UDP
+    /// - 1 << 7: RTE_ETH_RSS_NONFRAG_IPV4_OTHER
+    /// - 1 << 8: RTE_ETH_RSS_IPV6
+    /// - 1 << 9: RTE_ETH_RSS_FRAG_IPV6
+    /// - 1 << 10: RTE_ETH_RSS_NONFRAG_IPV6_TCP
+    /// - 1 << 11: RTE_ETH_RSS_NONFRAG_IPV6_UDP
+    /// - 1 << 13: RTE_ETH_RSS_NONFRAG_IPV6_OTHER
     pub fn flow_type_rss_offloads(&self) -> u64 {
         self.raw.flow_type_rss_offloads
     }
@@ -121,6 +173,7 @@ impl EthConf {
         // Yupeng provides this link: https://docs.nvidia.com/networking/display/MFTv4110/Using+mlxconfig
         rx_mode.mtu = self.mtu;
         rx_mode.max_lro_pkt_size = self.max_lro_pkt_size;
+        rx_mode.offloads = self.rx_offloads;     
 
         let mut tx_mode: ffi::rte_eth_txmode = std::mem::zeroed();
         tx_mode.mq_mode = ffi::rte_eth_tx_mq_mode_RTE_ETH_MQ_TX_NONE;

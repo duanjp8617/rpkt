@@ -45,7 +45,7 @@ name = "jumboframe_rx"
 required-features = ["multiseg"]
 
 [[example]]
-name = "test_bin"
+name = "dump_device_info"
 
 [[example]]
 name = "mempool_primary"
