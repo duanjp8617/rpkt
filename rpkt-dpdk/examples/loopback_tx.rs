@@ -14,11 +14,11 @@ use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 8;
+const THREAD_NUM: u32 = 1;
 const START_CORE: usize = 64;
 
 // dpdk batch size
-const BATCH_SIZE: usize = 64;
+const BATCH_SIZE: usize = 32;
 
 // Basic configuration of the mempool
 const MBUF_CACHE: u32 = 256;
@@ -43,7 +43,7 @@ const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 64;
+const PACKET_LEN: usize = 1500;
 
 static IP_ADDRS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
@@ -277,6 +277,7 @@ fn config_port() {
 
 fn main() {
     DpdkOption::new().init().unwrap();
+    println!("using batchsize {BATCH_SIZE}!!!!");
 
     // create mempool
     service()
