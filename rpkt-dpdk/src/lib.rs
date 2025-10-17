@@ -39,3 +39,5 @@ pub mod constant;
 
 mod conf;
 pub use conf::{DevInfo, EthConf, RxqConf, TxqConf};
+
+pub mod rdtsc;
