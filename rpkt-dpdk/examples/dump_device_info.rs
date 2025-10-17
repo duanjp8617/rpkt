@@ -1,5 +1,4 @@
-use rpkt_dpdk::{service, DpdkOption, DpdkService, EthConf, RxqConf, TxqConf};
-use std::ffi::CStr;
+use rpkt_dpdk::{service, DpdkOption, EthConf, RxqConf, TxqConf};
 
 fn main() {
     DpdkOption::new()
@@ -14,7 +13,7 @@ fn main() {
     {
         let count = service().eth_dev_count_avail().unwrap();
         println!("there are {count} devices on the machine");
-        let port_id = 1;        
+        let port_id = 0;
         let dev_info = service().dev_info(port_id).unwrap();
 
         println!("device driver name: {}", dev_info.driver_name());

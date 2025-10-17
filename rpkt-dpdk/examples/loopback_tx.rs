@@ -4,18 +4,17 @@ use arrayvec::ArrayVec;
 use ctrlc;
 use once_cell::sync::OnceCell;
 
-use rpkt_dpdk::offload::MbufTxOffload;
-use rpkt_dpdk::*;
 use rpkt::ether::*;
 use rpkt::ipv4::*;
 use rpkt::udp::*;
 use rpkt::Buf;
 use rpkt::CursorMut;
+use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 4;
-const START_CORE: usize = 33;
+const THREAD_NUM: u32 = 16;
+const START_CORE: usize = 64;
 
 // dpdk batch size
 const BATCH_SIZE: usize = 64;
@@ -28,13 +27,14 @@ const TX_MP: &str = "tx";
 const RX_MP: &str = "rx";
 
 // Basic configuration of the port
-const PORT_ID: u16 = 3;
-const TXQ_DESC_NUM: u16 = 1024;
-const RXQ_DESC_NUM: u16 = 1024;
+const PORT_ID: u16 = 0;
+const MTU: u32 = 1512;
+const Q_DESC_NUM: u16 = 1024;
+const PTHRESH: u8 = 8;
 
 // header info
-const DMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa5, 0xf8];
-const SMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa2, 0xb1];
+const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
+const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
 const DIP: [u8; 4] = [192, 168, 23, 2];
 const SPORT: u16 = 60376;
 const DPORT: u16 = 161;
@@ -42,9 +42,9 @@ const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 60;
+const PACKET_LEN: usize = 64;
 
-static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
+static IP_ADDRS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
 // range 2-251
 // Generate at mot 62500 different IP addresses.
@@ -70,38 +70,48 @@ fn fill_packet_template() {
     let mut v = vec![PAYLOAD_BYTE; PACKET_LEN];
 
     let mut pbuf = CursorMut::new(&mut v[..]);
-    pbuf.advance(ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
+    pbuf.advance(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
 
-    let mut udp_pkt = UdpPacket::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
-    udp_pkt.set_source_port(SPORT);
-    udp_pkt.set_dest_port(DPORT);
+    let mut udp_pkt = Udp::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
+    udp_pkt.set_src_port(SPORT);
+    udp_pkt.set_dst_port(DPORT);
 
-    let mut ipv4_pkt = Ipv4Packet::prepend_header(udp_pkt.release(), &IPV4_HEADER_TEMPLATE);
-    ipv4_pkt.set_source_ip(Ipv4Addr([0, 0, 0, 0]));
-    ipv4_pkt.set_dest_ip(Ipv4Addr(DIP));
+    let mut ipv4_pkt = Ipv4::prepend_header(udp_pkt.release(), &IPV4_HEADER_TEMPLATE);
+    ipv4_pkt.set_src_addr(Ipv4Addr::from_bits(0));
+    ipv4_pkt.set_dst_addr(Ipv4Addr::new(DIP[0], DIP[1], DIP[2], DIP[3]));
     ipv4_pkt.set_protocol(IpProtocol::UDP);
-    ipv4_pkt.set_time_to_live(128);
+    ipv4_pkt.set_ttl(128);
 
-    let mut eth_pkt = EtherPacket::prepend_header(ipv4_pkt.release(), &ETHER_HEADER_TEMPLATE);
-    eth_pkt.set_source_mac(MacAddr(SMAC));
-    eth_pkt.set_dest_mac(MacAddr(DMAC));
+    let mut eth_pkt = EtherFrame::prepend_header(ipv4_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    eth_pkt.set_src_addr(EtherAddr(SMAC));
+    eth_pkt.set_dst_addr(EtherAddr(DMAC));
     eth_pkt.set_ethertype(EtherType::IPV4);
 
-    utils::fill_mempool(TX_MP, &v[..]).unwrap();
+    let mp = service().mempool(TX_MP).unwrap();
+    let mut mbufs = vec![];
+    while let Some(mut mbuf) = mp.try_alloc() {
+        mbuf.extend_from_slice(&v[..]);
+        mbufs.push(mbuf);
+    }
 }
 
 fn entry_func() {
     fill_packet_template();
 
-    IP_ADDRS.get_or_init(|| gen_ip_addrs(192, 168, NUM_FLOWS));
+    IP_ADDRS.get_or_init(|| {
+        let addrs = gen_ip_addrs(172, 74, NUM_FLOWS);
+        addrs
+            .iter()
+            .map(|array| Ipv4Addr::new(array[0], array[1], array[2], array[3]))
+            .collect()
+    });
 
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
@@ -118,7 +128,10 @@ fn entry_func() {
     for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
             let tx_mp = service().mempool(TX_MP).unwrap();
@@ -127,28 +140,24 @@ fn entry_func() {
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
-            let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
-            tx_of_flag.enable_ip_cksum();
-            tx_of_flag.enable_udp_cksum();
-
             let ip_addrs = IP_ADDRS.get().unwrap();
             let mut adder: usize = 0;
 
             while run_clone.load(Ordering::Acquire) {
-                tx_mp.fill_batch(&mut tx_batch);
+                tx_mp.fill_up_batch(&mut tx_batch);
 
                 for mbuf in tx_batch.iter_mut() {
-                    unsafe { mbuf.extend(PACKET_LEN) };
+                    unsafe { mbuf.set_data_len(PACKET_LEN) };
 
                     let mut buf = CursorMut::new(mbuf.data_mut());
-                    buf.advance(ETHER_HEADER_LEN);
+                    buf.advance(ETHER_FRAME_HEADER_LEN);
 
-                    let mut ipv4_pkt = Ipv4Packet::parse_unchecked(buf);
-                    ipv4_pkt.set_source_ip(Ipv4Addr(ip_addrs[adder % NUM_FLOWS]));
+                    let mut ipv4_pkt = Ipv4::parse_unchecked(buf);
+                    ipv4_pkt.set_src_addr(ip_addrs[adder % NUM_FLOWS]);
                     adder += 1;
 
-                    mbuf.set_tx_offload(tx_of_flag);
-                    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+                    mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
+                    mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
                     mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
                 }
                 let _ = txq.tx(&mut tx_batch);
@@ -183,36 +192,95 @@ fn entry_func() {
     }
 }
 
+fn config_port() {
+    let dev_info = service().dev_info(PORT_ID).unwrap();
+    assert!(
+        dev_info.socket_id == WORKING_SOCKET,
+        "WORKING_SOCKET does not match nic socket"
+    );
+
+    // create the eth conf
+    let mut eth_conf = EthConf::new();
+    eth_conf.mtu = MTU;
+    eth_conf.lpbk_mode = 0;
+    eth_conf.max_lro_pkt_size = 0;
+
+    // enable ipv4/udp/tcp checksum and rss hash rx offload
+    assert!(
+        dev_info.rx_offload_capa() & (1 << 1 | 1 << 2 | 1 << 3 | 1 << 19)
+            == 1 << 1 | 1 << 2 | 1 << 3 | 1 << 19,
+        "NIC does not support rx offload"
+    );
+    eth_conf.rx_offloads = 1 << 1 | 1 << 2 | 1 << 3 | 1 << 19;
+
+    // enable ipv4/udp/tcp checksum tx offload
+    assert!(
+        dev_info.tx_offload_capa() & (1 << 1 | 1 << 2 | 1 << 3) == 1 << 1 | 1 << 2 | 1 << 3,
+        "NIC does not support tx offload"
+    );
+    eth_conf.tx_offloads = 1 << 1 | 1 << 2 | 1 << 3;
+
+    // set up ip/udp, ip/tcp rss hash function
+    assert!(
+        dev_info.flow_type_rss_offloads() & (1 << 4 | 1 << 5 | 1 << 10 | 1 << 11)
+            == 1 << 4 | 1 << 5 | 1 << 10 | 1 << 11,
+        "NIC does not support rss hash function"
+    );
+    eth_conf.rss_hf = 1 << 4 | 1 << 5 | 1 << 10 | 1 << 11;
+
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+    eth_conf.enable_promiscuous = true;
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, RX_MP);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(THREAD_NUM as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(THREAD_NUM as usize)
+        .collect();
+
+    // initialize the port
+    service()
+        .dev_configure_and_start(PORT_ID, &eth_conf, &rxq_confs, &txq_confs)
+        .unwrap();
+}
+
 fn main() {
     DpdkOption::new().init().unwrap();
 
     // create mempool
-    utils::init_mempool(TX_MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
-    utils::init_mempool(RX_MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
+    service()
+        .mempool_alloc(
+            TX_MP,
+            MBUF_NUM,
+            MBUF_CACHE,
+            constant::MBUF_DATAROOM_SIZE + constant::MBUF_HEADROOM_SIZE,
+            WORKING_SOCKET as i32,
+        )
+        .unwrap();
 
-    // create the port
-    utils::init_port(
-        PORT_ID,
-        THREAD_NUM as u16,
-        THREAD_NUM as u16,
-        RXQ_DESC_NUM,
-        RX_MP,
-        TXQ_DESC_NUM,
-        WORKING_SOCKET,
-    )
-    .unwrap();
+    service()
+        .mempool_alloc(
+            RX_MP,
+            MBUF_NUM,
+            MBUF_CACHE,
+            constant::MBUF_DATAROOM_SIZE + constant::MBUF_HEADROOM_SIZE,
+            WORKING_SOCKET as i32,
+        )
+        .unwrap();
+
+    config_port();
 
     entry_func();
 
-    // shutdown the port
-    service().port_close(PORT_ID).unwrap();
-
-    // free the mempool
-    service().mempool_free(TX_MP).unwrap();
-    service().mempool_free(RX_MP).unwrap();
-
-    // shutdown the DPDK service
-    service().service_close().unwrap();
-
+    service().graceful_cleanup().unwrap();
     println!("dpdk service shutdown gracefully");
 }

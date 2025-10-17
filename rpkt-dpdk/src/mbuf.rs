@@ -122,7 +122,20 @@ impl Mbuf {
 }
 
 impl Mbuf {
-    // rx offload
+    /// The rx_offload for the mbuf. 
+    /// 
+    /// By reading from the rx_offload field, we obtain the offloading result
+    /// computed by the NIC. Examples include rss hash and ip/l4 checksum offload results.
+    /// 
+    /// rx_offload supports the following bit fields:
+    /// 
+    /// bit value : rx offload name
+    /// 
+    /// - 1 << 1: RTE_MBUF_F_RX_RSS_HASH      
+    /// - 1 << 4: RTE_MBUF_F_RX_IP_CKSUM_BAD
+    /// - 1 << 7: RTE_MBUF_F_RX_IP_CKSUM_GOOD
+    /// - 1 << 3: RTE_MBUF_F_RX_L4_CKSUM_BAD
+    /// - 1 << 8: RTE_MBUF_F_RX_L4_CKSUM_GOOD
     #[inline]
     pub fn rx_offload(&self) -> u64 {
         unsafe { self.ptr.as_ref().ol_flags }
@@ -133,6 +146,22 @@ impl Mbuf {
         unsafe { self.ptr.as_ref().__bindgen_anon_2.hash.rss }
     }
 
+    /// The tx_offload for the mbuf. 
+    /// 
+    /// By setting the tx_offload field, we can enable NIC hardware tx
+    /// offload for this mbuf. Examples include IP/UDP/TCP checksum offload, 
+    /// and TCP segment offloading (TSO).
+    /// 
+    /// tx_offload supports the following bit fields:
+    /// 
+    /// bit value : tx offload name
+    /// 
+    /// - 1 << 54: RTE_MBUF_F_TX_IP_CKSUM
+    /// - 1 << 55: RTE_MBUF_F_TX_IPV4
+    /// - 1 << 56: RTE_MBUF_F_TX_IPV6
+    /// - 3 << 52: RTE_MBUF_F_TX_UDP_CKSUM
+    /// - 1 << 52: RTE_MBUF_F_TX_TCP_CKSUM
+    /// - 1 << 50: RTE_MBUF_F_TX_TCP_SEG
     #[inline]
     pub fn set_tx_offload(&mut self, tx_offload: u64) {
         unsafe {

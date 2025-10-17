@@ -1,4 +1,5 @@
 use std::net::Ipv4Addr;
+use std::str::FromStr;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
@@ -31,37 +32,27 @@ const Q_DESC_NUM: u16 = 1024;
 const PTHRESH: u8 = 8;
 
 // header info
-const DMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa2, 0xb1];
-const SMAC: [u8; 6] = [0x40, 0xa6, 0xb7, 0x60, 0xa5, 0xf8];
-const DIP: [u8; 4] = [192, 168, 22, 2];
-const SPORT: u16 = 60376;
-const DPORT: u16 = 161;
-const NUM_FLOWS: usize = 8192;
-
-static IP_ADDRS: OnceCell<Vec<[u8; 4]>> = OnceCell::new();
-
-// range 2-251
-// Generate at mot 62500 different IP addresses.
-fn gen_ip_addrs(fst: u8, snd: u8, size: usize) -> Vec<[u8; 4]> {
-    assert!(size <= 250 * 250);
-
-    let mut v = Vec::new();
-
-    for i in 0..size / 250 {
-        for j in 2..252 {
-            v.push([fst, snd, 2 + i as u8, j]);
-        }
-    }
-
-    for j in 0..size % 250 {
-        v.push([fst, snd, 2 + (size / 250) as u8, 2 + j as u8]);
-    }
-
-    v
-}
+const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
+const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
+static FORBID_IPS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
 fn entry_func() {
-    IP_ADDRS.get_or_init(|| gen_ip_addrs(192, 168, NUM_FLOWS));
+    FORBID_IPS.get_or_init(|| {
+        let forbid_ips = [
+            "192.168.5.3",
+            "192.168.5.4",
+            "192.168.5.5",
+            "192.168.5.6",
+            "192.168.5.7",
+            "192.168.5.8",
+            "192.168.5.9",
+            "192.168.5.10",
+        ];
+        forbid_ips
+            .iter()
+            .map(|s| Ipv4Addr::from_str(s).unwrap())
+            .collect()
+    });
 
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
@@ -89,51 +80,61 @@ fn entry_func() {
             service()
                 .thread_bind_to(i as u32 + START_CORE as u32)
                 .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
-            let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
+            let mut ibatch = ArrayVec::<_, BATCH_SIZE>::new();
+            let mut obatch = ArrayVec::<_, BATCH_SIZE>::new();
 
-            // let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
-            // tx_of_flag.enable_ip_cksum();
-            // tx_of_flag.enable_udp_cksum();
-
-            let ip_addrs = IP_ADDRS.get().unwrap();
-            let mut adder: usize = 0;
+            let forbid_ips = FORBID_IPS.get().unwrap();
 
             while run_clone.load(Ordering::Acquire) {
-                rxq.rx(&mut batch);
+                rxq.rx(&mut ibatch);
 
-                for mbuf in batch.iter_mut() {
+                for mut mbuf in ibatch.drain(..) {
+                    let rx_offload = mbuf.rx_offload();
                     let buf = CursorMut::new(mbuf.data_mut());
+
+                    // A firewall-like forwarding engine
                     if let Ok(mut ethpkt) = EtherFrame::parse_from_cursor_mut(buf) {
-                        if ethpkt.ethertype() == EtherType::IPV4 {
+                        if ethpkt.ethertype() == EtherType::IPV4 && (rx_offload & (1 << 7) != 0) {
                             if let Ok(mut ippkt) =
                                 Ipv4::parse_from_cursor_mut(ethpkt.payload_as_cursor_mut())
                             {
-                                if ippkt.protocol() == IpProtocol::UDP {
+                                if ippkt.protocol() == IpProtocol::UDP
+                                    && (rx_offload & (1 << 8) != 0)
+                                {
+                                    // Make sure source IP does not come from forbidden address.
+                                    if forbid_ips
+                                        .iter()
+                                        .find(|ip| **ip == ippkt.src_addr())
+                                        .is_some()
+                                    {
+                                        continue;
+                                    }
+
                                     if let Ok(mut udppkt) =
                                         Udp::parse_from_cursor_mut(ippkt.payload_as_cursor_mut())
                                     {
-                                        udppkt.set_dst_port(DPORT);
-                                        udppkt.set_src_port(SPORT);
+                                        // reverse the source/destination addresses for forwarding
+                                        let src_port = udppkt.src_port();
+                                        udppkt.set_src_port(udppkt.dst_port());
+                                        udppkt.set_dst_port(src_port);
 
-                                        ippkt.set_dst_addr(Ipv4Addr::new(
-                                            DIP[0], DIP[1], DIP[2], DIP[3],
-                                        ));
-                                        let src_ip = &ip_addrs[adder % NUM_FLOWS];
-                                        ippkt.set_src_addr(Ipv4Addr::new(
-                                            src_ip[0], src_ip[1], src_ip[2], src_ip[3],
-                                        ));
                                         let ip_hdr_len = ippkt.header_len();
-                                        adder += 1;
+                                        let src_ip = ippkt.src_addr();
+                                        ippkt.set_src_addr(ippkt.dst_addr());
+                                        ippkt.set_dst_addr(src_ip);
 
                                         ethpkt.set_dst_addr(EtherAddr(DMAC));
                                         ethpkt.set_src_addr(EtherAddr(SMAC));
 
-                                        // mbuf.set_tx_offload(tx_of_flag);
-                                        // mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
-                                        // mbuf.set_l3_len(ip_hdr_len as u64);
+                                        mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
+                                        mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
+                                        mbuf.set_l3_len(ip_hdr_len as u64);
+
+                                        obatch.push(mbuf);
                                     }
                                 }
                             }
@@ -141,8 +142,8 @@ fn entry_func() {
                     }
                 }
 
-                txq.tx(&mut batch);
-                Mempool::free_batch(&mut batch);
+                txq.tx(&mut obatch);
+                Mempool::free_batch(&mut obatch);
             }
         });
         jhs.push(jh);
@@ -172,6 +173,10 @@ fn entry_func() {
 
 fn config_port() {
     let dev_info = service().dev_info(PORT_ID).unwrap();
+    assert!(
+        dev_info.socket_id == WORKING_SOCKET,
+        "WORKING_SOCKET does not match nic socket"
+    );
 
     // create the eth conf
     let mut eth_conf = EthConf::new();
@@ -229,12 +234,6 @@ fn config_port() {
 
 fn main() {
     DpdkOption::new().args("-n 6".split(" ")).init().unwrap();
-
-    let dev_info = service().dev_info(PORT_ID).unwrap();
-    assert!(
-        dev_info.socket_id == WORKING_SOCKET,
-        "WORKING_SOCKET does not match nic socket"
-    );
 
     // create mempool
     service()
