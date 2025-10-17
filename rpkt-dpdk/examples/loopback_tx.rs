@@ -1,3 +1,4 @@
+use std::sync::atomic::AtomicU64;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
@@ -42,7 +43,7 @@ const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 64;
+const PACKET_LEN: usize = 1500;
 
 static IP_ADDRS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
@@ -75,12 +76,14 @@ fn fill_packet_template() {
     let mut udp_pkt = Udp::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
     udp_pkt.set_src_port(SPORT);
     udp_pkt.set_dst_port(DPORT);
+    udp_pkt.set_checksum(0);
 
     let mut ipv4_pkt = Ipv4::prepend_header(udp_pkt.release(), &IPV4_HEADER_TEMPLATE);
     ipv4_pkt.set_src_addr(Ipv4Addr::from_bits(0));
     ipv4_pkt.set_dst_addr(Ipv4Addr::new(DIP[0], DIP[1], DIP[2], DIP[3]));
     ipv4_pkt.set_protocol(IpProtocol::UDP);
     ipv4_pkt.set_ttl(128);
+    ipv4_pkt.set_checksum(0);
 
     let mut eth_pkt = EtherFrame::prepend_header(ipv4_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
     eth_pkt.set_src_addr(EtherAddr(SMAC));
@@ -116,6 +119,9 @@ fn entry_func() {
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
 
+    let ip_checksum_error = Arc::new(AtomicU64::new(0));
+    let l4_checksum_error = Arc::new(AtomicU64::new(0));
+
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();
     ctrlc::set_handler(move || {
@@ -127,6 +133,8 @@ fn entry_func() {
 
     for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
+        let ip_cksum_error = ip_checksum_error.clone();
+        let l4_cksum_error = l4_checksum_error.clone();
         let jh = std::thread::spawn(move || {
             service()
                 .thread_bind_to(i as u32 + START_CORE as u32)
@@ -164,6 +172,14 @@ fn entry_func() {
                 Mempool::free_batch(&mut tx_batch);
 
                 rxq.rx(&mut rx_batch);
+                for mbuf in rx_batch.iter() {
+                    if mbuf.rx_offload() & (1 << 7) == 0 {
+                        ip_cksum_error.fetch_add(1, Ordering::SeqCst);
+                    }
+                    if mbuf.rx_offload() & (1 << 8) == 0 {
+                        l4_cksum_error.fetch_add(1, Ordering::SeqCst);
+                    }
+                }
                 Mempool::free_batch(&mut rx_batch);
             }
         });
@@ -183,6 +199,11 @@ fn entry_func() {
             (curr_stats.ipackets() - old_stats.ipackets()) as f64 / 1_000_000.0,
             (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1_000_000_000.0,
         );
+        println!(
+            "ip cksum errors: {}, l4 cksum errors: {}",
+            ip_checksum_error.load(Ordering::SeqCst),
+            l4_checksum_error.load(Ordering::SeqCst),
+        );
 
         old_stats = curr_stats;
     }
@@ -198,6 +219,7 @@ fn config_port() {
         dev_info.socket_id == WORKING_SOCKET,
         "WORKING_SOCKET does not match nic socket"
     );
+    println!("the port mac is: {}", EtherAddr(dev_info.mac_addr));
 
     // create the eth conf
     let mut eth_conf = EthConf::new();

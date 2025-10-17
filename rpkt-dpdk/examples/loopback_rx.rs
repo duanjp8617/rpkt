@@ -14,7 +14,7 @@ use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 2;
+const THREAD_NUM: u32 = 1;
 const START_CORE: usize = 64;
 
 // dpdk batch size
@@ -37,6 +37,8 @@ const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
 static FORBID_IPS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
 fn entry_func() {
+    service().thread_bind_to(0).unwrap();
+
     FORBID_IPS.get_or_init(|| {
         let forbid_ips = [
             "192.168.5.3",
@@ -177,6 +179,7 @@ fn config_port() {
         dev_info.socket_id == WORKING_SOCKET,
         "WORKING_SOCKET does not match nic socket"
     );
+    println!("the port mac is: {}", EtherAddr(dev_info.mac_addr));
 
     // create the eth conf
     let mut eth_conf = EthConf::new();
