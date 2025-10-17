@@ -1,3 +1,4 @@
+use std::net::Ipv4Addr;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
@@ -25,6 +26,13 @@ const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
 const PTHRESH: u8 = 8;
+
+const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
+const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
+const DIP: Ipv4Addr = Ipv4Addr::new(192, 168, 23, 2);
+const SIP: Ipv4Addr = Ipv4Addr::new(174, 55, 11, 2);
+const SPORT: u16 = 60376;
+const DPORT: u16 = 161;
 
 fn entry_func() {
     use rpkt::ether::*;
@@ -71,73 +79,75 @@ fn entry_func() {
 
             while run_clone.load(Ordering::Acquire) {
                 rxq.rx(&mut ibatch);
+                if ibatch.len() > 0 {
+                    let mut ack_pkt_num: u64 = 0;
+                    for mut mbuf in ibatch.drain(..) {
+                        let rx_offload = mbuf.rx_offload();
+                        let buf = CursorMut::new(mbuf.data_mut());
 
-                for mut mbuf in ibatch.drain(..) {
-                    let rx_offload = mbuf.rx_offload();
-                    let buf = CursorMut::new(mbuf.data_mut());
-
-                    // A firewall-like forwarding engine
-                    if let Ok(mut ethpkt) = EtherFrame::parse_from_cursor_mut(buf) {
-                        if ethpkt.ethertype() == EtherType::IPV4 && (rx_offload & (1 << 7) != 0) {
-                            if let Ok(mut ippkt) =
-                                Ipv4::parse_from_cursor_mut(ethpkt.payload_as_cursor_mut())
+                        // A firewall-like forwarding engine
+                        if let Ok(mut ethpkt) = EtherFrame::parse_from_cursor_mut(buf) {
+                            if ethpkt.ethertype() == EtherType::IPV4 && (rx_offload & (1 << 7) != 0)
                             {
-                                if ippkt.protocol() == IpProtocol::UDP
-                                    && (rx_offload & (1 << 8) != 0)
+                                if let Ok(mut ippkt) =
+                                    Ipv4::parse_from_cursor_mut(ethpkt.payload_as_cursor_mut())
                                 {
-                                    if let Ok(mut udppkt) =
-                                        Udp::parse_from_cursor_mut(ippkt.payload_as_cursor_mut())
+                                    if ippkt.protocol() == IpProtocol::UDP
+                                        && (rx_offload & (1 << 8) != 0)
                                     {
-                                        let final_payload = udppkt.payload_as_cursor_mut();
-                                        assert!(final_payload.chunk().len() <= payload_buf.len());
-                                        let final_len = final_payload.chunk().len();
-                                        payload_buf[..final_len]
-                                            .copy_from_slice(final_payload.chunk());
-                                        assert!(payload_buf[0] == 0xae);
-
-                                        let mut mbuf = tx_mp.try_alloc().unwrap();
-
-                                        unsafe { mbuf.set_data_len(14 + 20 + 8 + 8) };
-                                        mbuf.data_mut()[14 + 20 + 8..].fill(0xae);
-                                        let mut pbuf = CursorMut::new(mbuf.data_mut());
-                                        pbuf.advance(14 + 20 + 8);
-
-                                        let mut rep_udp =
-                                            Udp::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
-                                        rep_udp.set_src_port(udppkt.dst_port());
-                                        rep_udp.set_dst_port(udppkt.src_port());
-
-                                        let mut rep_ip = Ipv4::prepend_header(
-                                            rep_udp.release(),
-                                            &IPV4_HEADER_TEMPLATE,
-                                        );
-                                        rep_ip.set_src_addr(ippkt.dst_addr());
-                                        rep_ip.set_dst_addr(ippkt.src_addr());
-                                        rep_ip.set_protocol(IpProtocol::UDP);
-                                        let ip_hdr_len = rep_ip.header_len();
-
-                                        let mut rep_eth = EtherFrame::prepend_header(
-                                            rep_ip.release(),
-                                            &ETHER_FRAME_HEADER_TEMPLATE,
-                                        );
-                                        rep_eth.set_src_addr(ethpkt.dst_addr());
-                                        rep_eth.set_dst_addr(ethpkt.src_addr());
-                                        rep_eth.set_ethertype(EtherType::IPV4);
-
-                                        mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
-                                        mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
-                                        mbuf.set_l3_len(ip_hdr_len as u64);
-
-                                        obatch.push(mbuf);
+                                        if let Ok(mut udppkt) = Udp::parse_from_cursor_mut(
+                                            ippkt.payload_as_cursor_mut(),
+                                        ) {
+                                            let final_payload = udppkt.payload_as_cursor_mut();
+                                            assert!(
+                                                final_payload.chunk().len() <= payload_buf.len()
+                                            );
+                                            let final_len = final_payload.chunk().len();
+                                            payload_buf[..final_len]
+                                                .copy_from_slice(final_payload.chunk());
+                                            assert!(payload_buf[0] == 0xae);
+                                            ack_pkt_num += 1;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                txq.tx(&mut obatch);
-                Mempool::free_batch(&mut obatch);
+                    let mut mbuf = tx_mp.try_alloc().unwrap();
+
+                    unsafe { mbuf.set_data_len(14 + 20 + 8 + 8) };
+                    mbuf.data_mut()[14 + 20 + 8..]
+                        .copy_from_slice(ack_pkt_num.to_be_bytes().as_slice());
+                    let mut pbuf = CursorMut::new(mbuf.data_mut());
+                    pbuf.advance(14 + 20 + 8);
+
+                    let mut rep_udp = Udp::prepend_header(pbuf, &UDP_HEADER_TEMPLATE);
+                    rep_udp.set_src_port(DPORT);
+                    rep_udp.set_dst_port(SPORT);
+
+                    let mut rep_ip = Ipv4::prepend_header(rep_udp.release(), &IPV4_HEADER_TEMPLATE);
+                    rep_ip.set_src_addr(DIP);
+                    rep_ip.set_dst_addr(SIP);
+                    rep_ip.set_protocol(IpProtocol::UDP);
+                    let ip_hdr_len = rep_ip.header_len();
+
+                    let mut rep_eth =
+                        EtherFrame::prepend_header(rep_ip.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+                    rep_eth.set_src_addr(EtherAddr(DMAC));
+                    rep_eth.set_dst_addr(EtherAddr(SMAC));
+                    rep_eth.set_ethertype(EtherType::IPV4);
+
+                    mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
+                    mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
+                    mbuf.set_l3_len(ip_hdr_len as u64);
+
+                    obatch.push(mbuf);
+
+                    while obatch.len() > 0 {
+                        txq.tx(&mut obatch);
+                    }
+                }
             }
         });
         jhs.push(jh);

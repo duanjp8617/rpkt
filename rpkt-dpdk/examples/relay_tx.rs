@@ -101,33 +101,39 @@ fn entry_func() {
                                 {
                                     if let Ok(udppkt) = Udp::parse(ippkt.payload()) {
                                         let payload = udppkt.payload();
-                                        if payload.chunk() == &[0xae; 8][..] {
-                                            // we get a valid response
-                                            response_received += 1;
+                                        if payload.chunk().len() == 8 {
+                                            let ack_pkt_num = u64::from_be_bytes(
+                                                payload.chunk().try_into().unwrap(),
+                                            );
+                                            if ack_pkt_num <= 32 {
+                                                // we get a valid response
+                                                response_received += 1;
 
-                                            let mut mbuf = tx_mp.try_alloc().unwrap();
-                                            unsafe {
-                                                mbuf.set_data_len(
-                                                    PACKET_LEN
-                                                        - (ETHER_FRAME_HEADER_LEN
-                                                            + IPV4_HEADER_LEN
-                                                            + UDP_HEADER_LEN),
-                                                );
+                                                for _ in 0..ack_pkt_num {
+                                                    let mut mbuf = tx_mp.try_alloc().unwrap();
+                                                    unsafe {
+                                                        mbuf.set_data_len(
+                                                            PACKET_LEN
+                                                                - (ETHER_FRAME_HEADER_LEN
+                                                                    + IPV4_HEADER_LEN
+                                                                    + UDP_HEADER_LEN),
+                                                        );
+                                                    }
+                                                    mbuf.data_mut().fill(PAYLOAD_BYTE);
+                                                    format_mbuf_header(&mut mbuf);
+                                                    tx_batch.push(mbuf);
+                                                }
+
+                                                while tx_batch.len() > 0 {
+                                                    txq.tx(&mut tx_batch);
+                                                }
                                             }
-                                            mbuf.data_mut().fill(PAYLOAD_BYTE);
-                                            format_mbuf_header(&mut mbuf);
-                                            tx_batch.push(mbuf);
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-
-                // when we get here, we have already filled tx_batch with packets for sending
-                while tx_batch.len() > 0 {
-                    txq.tx(&mut tx_batch);
                 }
 
                 let curr_rdtsc = rdtsc();
@@ -173,7 +179,7 @@ fn entry_func() {
 }
 
 fn send_trigger_packet(txq: &mut TxQueue, mp: &Mempool) {
-    const TRIGGER_BATCH: usize = 64;
+    const TRIGGER_BATCH: usize = 128;
     let mut obatch = ArrayVec::<_, TRIGGER_BATCH>::new();
 
     for _ in 0..TRIGGER_BATCH {
