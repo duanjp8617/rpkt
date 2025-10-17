@@ -34,7 +34,8 @@ multiseg = ["dep:rpkt"]
 [dev-dependencies]
 rpkt = {path = "../rpkt", package = "rpkt"}
 ctrlc = { version = "3.0", features = ["termination"]}
-smoltcp = "0.8.2"
+smoltcp = "0.12"
+pnet = "0.35"
 
 [[example]]
 name = "jumboframe_tx"

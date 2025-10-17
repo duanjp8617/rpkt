@@ -14,7 +14,7 @@ use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 16;
+const THREAD_NUM: u32 = 8;
 const START_CORE: usize = 64;
 
 // dpdk batch size
@@ -43,7 +43,7 @@ const NUM_FLOWS: usize = 8192;
 
 // payload info
 const PAYLOAD_BYTE: u8 = 0xae;
-const PACKET_LEN: usize = 1500;
+const PACKET_LEN: usize = 64;
 
 static IP_ADDRS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 

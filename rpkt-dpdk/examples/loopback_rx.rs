@@ -6,15 +6,11 @@ use arrayvec::ArrayVec;
 use ctrlc;
 use once_cell::sync::OnceCell;
 
-use rpkt::ether::*;
-use rpkt::ipv4::*;
-use rpkt::udp::*;
-use rpkt::CursorMut;
 use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
-const THREAD_NUM: u32 = 1;
+const THREAD_NUM: u32 = 2;
 const START_CORE: usize = 64;
 
 // dpdk batch size
@@ -36,7 +32,12 @@ const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
 const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
 static FORBID_IPS: OnceCell<Vec<Ipv4Addr>> = OnceCell::new();
 
-fn entry_func() {
+fn entry_func_rpkt() {
+    use rpkt::ether::*;
+    use rpkt::ipv4::*;
+    use rpkt::udp::*;
+    use rpkt::CursorMut;
+
     service().thread_bind_to(0).unwrap();
 
     FORBID_IPS.get_or_init(|| {
@@ -128,6 +129,7 @@ fn entry_func() {
                                         let src_ip = ippkt.src_addr();
                                         ippkt.set_src_addr(ippkt.dst_addr());
                                         ippkt.set_dst_addr(src_ip);
+                                        ippkt.set_ttl(ippkt.ttl() - 1);
 
                                         ethpkt.set_dst_addr(EtherAddr(DMAC));
                                         ethpkt.set_src_addr(EtherAddr(SMAC));
@@ -173,13 +175,304 @@ fn entry_func() {
     }
 }
 
+fn entry_func_smol() {
+    use smoltcp::wire;
+
+    service().thread_bind_to(0).unwrap();
+
+    FORBID_IPS.get_or_init(|| {
+        let forbid_ips = [
+            "192.168.5.3",
+            "192.168.5.4",
+            "192.168.5.5",
+            "192.168.5.6",
+            "192.168.5.7",
+            "192.168.5.8",
+            "192.168.5.9",
+            "192.168.5.10",
+        ];
+        forbid_ips
+            .iter()
+            .map(|s| Ipv4Addr::from_str(s).unwrap())
+            .collect()
+    });
+
+    // make sure that the rx and tx threads are on the correct cores
+    let res = service()
+        .available_lcores()
+        .iter()
+        .filter(|lcore| {
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+        })
+        .all(|lcore| lcore.socket_id == WORKING_SOCKET);
+    assert_eq!(res, true);
+
+    let run = Arc::new(AtomicBool::new(true));
+    let run_clone = run.clone();
+    ctrlc::set_handler(move || {
+        run_clone.store(false, Ordering::Release);
+    })
+    .unwrap();
+
+    let mut jhs = Vec::new();
+
+    for i in 0..THREAD_NUM as usize {
+        let run_clone = run.clone();
+
+        let jh = std::thread::spawn(move || {
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
+
+            let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
+            let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
+            let mut ibatch = ArrayVec::<_, BATCH_SIZE>::new();
+            let mut obatch = ArrayVec::<_, BATCH_SIZE>::new();
+
+            let forbid_ips = FORBID_IPS.get().unwrap();
+
+            while run_clone.load(Ordering::Acquire) {
+                rxq.rx(&mut ibatch);
+
+                for mut mbuf in ibatch.drain(..) {
+                    let rx_offload = mbuf.rx_offload();
+                    let buf = mbuf.data_mut();
+
+                    // A firewall-like forwarding engine
+                    if let Ok(mut ethpkt) = wire::EthernetFrame::new_checked(buf) {
+                        if ethpkt.ethertype() == wire::EthernetProtocol::Ipv4
+                            && (rx_offload & (1 << 7) != 0)
+                        {
+                            if let Ok(mut ippkt) =
+                                wire::Ipv4Packet::new_checked(ethpkt.payload_mut())
+                            {
+                                if ippkt.next_header() == wire::IpProtocol::Udp
+                                    && (rx_offload & (1 << 8) != 0)
+                                {
+                                    // Make sure source IP does not come from forbidden address.
+                                    if forbid_ips
+                                        .iter()
+                                        .find(|ip| **ip == ippkt.src_addr())
+                                        .is_some()
+                                    {
+                                        continue;
+                                    }
+
+                                    if let Ok(mut udppkt) =
+                                        wire::UdpPacket::new_checked(ippkt.payload_mut())
+                                    {
+                                        // reverse the source/destination addresses for forwarding
+                                        let src_port = udppkt.src_port();
+                                        udppkt.set_src_port(udppkt.dst_port());
+                                        udppkt.set_dst_port(src_port);
+
+                                        let ip_hdr_len = ippkt.header_len();
+                                        let src_ip = ippkt.src_addr();
+                                        ippkt.set_src_addr(ippkt.dst_addr());
+                                        ippkt.set_dst_addr(src_ip);
+                                        ippkt.set_hop_limit(ippkt.hop_limit() - 1);
+
+                                        ethpkt.set_dst_addr(wire::EthernetAddress(DMAC));
+                                        ethpkt.set_src_addr(wire::EthernetAddress(SMAC));
+
+                                        mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
+                                        mbuf.set_l2_len(14 as u64);
+                                        mbuf.set_l3_len(ip_hdr_len as u64);
+
+                                        obatch.push(mbuf);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                txq.tx(&mut obatch);
+                Mempool::free_batch(&mut obatch);
+            }
+        });
+        jhs.push(jh);
+    }
+
+    let mut stats_query = service().stats_query(PORT_ID).unwrap();
+    let mut old_stats = stats_query.query();
+    let mut curr_stats = stats_query.query();
+    while run.load(Ordering::Acquire) {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        stats_query.update(&mut curr_stats);
+        println!(
+            "rx: {} Mpps, {} Gbps || tx: {} Mpps, {} Gbps",
+            (curr_stats.ipackets() - old_stats.ipackets()) as f64 / 1_000_000.0,
+            (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1_000_000_000.0,
+            (curr_stats.opackets() - old_stats.opackets()) as f64 / 1_000_000.0,
+            (curr_stats.obytes() - old_stats.obytes()) as f64 * 8.0 / 1_000_000_000.0,
+        );
+
+        old_stats = curr_stats;
+    }
+
+    for jh in jhs {
+        jh.join().unwrap();
+    }
+}
+
+fn entry_func_pnet() {
+    use pnet::{packet::*, util::MacAddr};
+
+    service().thread_bind_to(0).unwrap();
+
+    FORBID_IPS.get_or_init(|| {
+        let forbid_ips = [
+            "192.168.5.3",
+            "192.168.5.4",
+            "192.168.5.5",
+            "192.168.5.6",
+            "192.168.5.7",
+            "192.168.5.8",
+            "192.168.5.9",
+            "192.168.5.10",
+        ];
+        forbid_ips
+            .iter()
+            .map(|s| Ipv4Addr::from_str(s).unwrap())
+            .collect()
+    });
+
+    // make sure that the rx and tx threads are on the correct cores
+    let res = service()
+        .available_lcores()
+        .iter()
+        .filter(|lcore| {
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+        })
+        .all(|lcore| lcore.socket_id == WORKING_SOCKET);
+    assert_eq!(res, true);
+
+    let run = Arc::new(AtomicBool::new(true));
+    let run_clone = run.clone();
+    ctrlc::set_handler(move || {
+        run_clone.store(false, Ordering::Release);
+    })
+    .unwrap();
+
+    let mut jhs = Vec::new();
+
+    for i in 0..THREAD_NUM as usize {
+        let run_clone = run.clone();
+
+        let jh = std::thread::spawn(move || {
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
+
+            let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
+            let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
+            let mut ibatch = ArrayVec::<_, BATCH_SIZE>::new();
+            let mut obatch = ArrayVec::<_, BATCH_SIZE>::new();
+
+            let forbid_ips = FORBID_IPS.get().unwrap();
+
+            while run_clone.load(Ordering::Acquire) {
+                rxq.rx(&mut ibatch);
+
+                for mut mbuf in ibatch.drain(..) {
+                    let rx_offload = mbuf.rx_offload();
+                    let buf = mbuf.data_mut();
+
+                    // A firewall-like forwarding engine
+                    if let Some(mut ethpkt) = ethernet::MutableEthernetPacket::new(buf) {
+                        if ethpkt.get_ethertype() == ethernet::EtherTypes::Ipv4
+                            && (rx_offload & (1 << 7) != 0)
+                        {
+                            if let Some(mut ippkt) =
+                                ipv4::MutableIpv4Packet::new(ethpkt.payload_mut())
+                            {
+                                if ippkt.get_next_level_protocol() == ip::IpNextHeaderProtocols::Udp
+                                    && (rx_offload & (1 << 8) != 0)
+                                {
+                                    // Make sure source IP does not come from forbidden address.
+                                    if forbid_ips
+                                        .iter()
+                                        .find(|ip| **ip == ippkt.get_source())
+                                        .is_some()
+                                    {
+                                        continue;
+                                    }
+
+                                    if let Some(mut udppkt) =
+                                        udp::MutableUdpPacket::new(ippkt.payload_mut())
+                                    {
+                                        // reverse the source/destination addresses for forwarding
+                                        let src_port = udppkt.get_source();
+                                        udppkt.set_source(udppkt.get_destination());
+                                        udppkt.set_destination(src_port);
+
+                                        let ip_hdr_len = ippkt.get_header_length();
+                                        let src_ip = ippkt.get_source();
+                                        ippkt.set_source(ippkt.get_destination());
+                                        ippkt.set_destination(src_ip);
+                                        ippkt.set_ttl(ippkt.get_ttl() - 1);
+
+                                        ethpkt.set_destination(MacAddr(
+                                            DMAC[0], DMAC[1], DMAC[2], DMAC[3], DMAC[4], DMAC[5],
+                                        ));
+                                        ethpkt.set_source(MacAddr(
+                                            SMAC[0], SMAC[1], SMAC[2], SMAC[3], SMAC[4], SMAC[5],
+                                        ));
+
+                                        mbuf.set_tx_offload(1 << 54 | 1 << 55 | 3 << 52);
+                                        mbuf.set_l2_len(14 as u64);
+                                        mbuf.set_l3_len((ip_hdr_len * 4) as u64);
+
+                                        obatch.push(mbuf);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                txq.tx(&mut obatch);
+                Mempool::free_batch(&mut obatch);
+            }
+        });
+        jhs.push(jh);
+    }
+
+    let mut stats_query = service().stats_query(PORT_ID).unwrap();
+    let mut old_stats = stats_query.query();
+    let mut curr_stats = stats_query.query();
+    while run.load(Ordering::Acquire) {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        stats_query.update(&mut curr_stats);
+        println!(
+            "rx: {} Mpps, {} Gbps || tx: {} Mpps, {} Gbps",
+            (curr_stats.ipackets() - old_stats.ipackets()) as f64 / 1_000_000.0,
+            (curr_stats.ibytes() - old_stats.ibytes()) as f64 * 8.0 / 1_000_000_000.0,
+            (curr_stats.opackets() - old_stats.opackets()) as f64 / 1_000_000.0,
+            (curr_stats.obytes() - old_stats.obytes()) as f64 * 8.0 / 1_000_000_000.0,
+        );
+
+        old_stats = curr_stats;
+    }
+
+    for jh in jhs {
+        jh.join().unwrap();
+    }
+}
+
 fn config_port() {
     let dev_info = service().dev_info(PORT_ID).unwrap();
     assert!(
         dev_info.socket_id == WORKING_SOCKET,
         "WORKING_SOCKET does not match nic socket"
     );
-    println!("the port mac is: {}", EtherAddr(dev_info.mac_addr));
+    println!(
+        "the port mac is: {}",
+        rpkt::ether::EtherAddr(dev_info.mac_addr)
+    );
 
     // create the eth conf
     let mut eth_conf = EthConf::new();
@@ -236,6 +529,9 @@ fn config_port() {
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    assert!(args.len() == 2);
+
     DpdkOption::new().args("-n 6".split(" ")).init().unwrap();
 
     // create mempool
@@ -251,7 +547,12 @@ fn main() {
 
     config_port();
 
-    entry_func();
+    match &args[1][..] {
+        "smol" => entry_func_smol(),
+        "rpkt" => entry_func_rpkt(),
+        "pnet" => entry_func_pnet(),
+        _ => (),
+    }
 
     service().graceful_cleanup().unwrap();
     println!("dpdk service shutdown gracefully");
