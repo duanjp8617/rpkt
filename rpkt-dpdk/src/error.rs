@@ -11,22 +11,26 @@ pub struct DpdkError {
 }
 
 impl DpdkError {
-    pub fn service_err<S: Into<String>>(msg: S) -> Self {
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+
+    pub fn msg(&self) -> &str {
+        &self.msg
+    }
+
+    pub(crate) fn service_err<S: Into<String>>(msg: S) -> Self {
         Self {
             kind: ErrorKind::ServiceError,
             msg: msg.into(),
         }
     }
 
-    pub fn ffi_err<S: Into<String>>(errno: i32, msg: S) -> Self {
+    pub(crate) fn ffi_err<S: Into<String>>(errno: i32, msg: S) -> Self {
         Self {
             kind: ErrorKind::FFIError(errno),
             msg: msg.into(),
         }
-    }
-
-    pub fn kind(&self) -> ErrorKind {
-        self.kind
     }
 
     pub(crate) fn to_err<T>(self) -> Result<T> {
