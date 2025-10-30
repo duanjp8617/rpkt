@@ -1,5 +1,3 @@
-use std::thread::current;
-
 use rpkt_dpdk::*;
 
 use arrayvec::ArrayVec;
@@ -44,7 +42,7 @@ fn cache_enabled_batch() {
     for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
         mp.fill_up_batch(&mut batch);
         for mbuf in batch.iter_mut() {
-            unsafe { mbuf.set_data_len(1) };
+            unsafe { mbuf.extend(1) };
             mbuf.data_mut()[0] = 99;
         }
         batch.drain(..);
@@ -56,7 +54,7 @@ fn cache_enabled_batch() {
     for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
         mp.fill_up_batch(&mut batch);
         for mbuf in batch.iter_mut() {
-            unsafe { mbuf.set_data_len(1) };
+            unsafe { mbuf.extend(1) };
             assert_eq!(mbuf.data()[0], 99);
         }
         batch.drain(..);
@@ -80,7 +78,7 @@ fn cache_enabled_batch() {
             for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
                 mp.fill_up_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
-                    unsafe { mbuf.set_data_len(1) };
+                    unsafe { mbuf.extend(1) };
                     assert_ne!(mbuf.data()[0], 99);
                 }
                 batch.drain(..);
@@ -132,7 +130,7 @@ fn set_all_mbufs_in_a_pool() {
     // On the current rte thread, try to alloc `nb_mbufs` batches,
     // fill in test data and store all the mbufs in a vector.
     while let Some(mut mbuf) = mp.try_alloc() {
-        unsafe { mbuf.set_data_len(1) };
+        unsafe { mbuf.extend(1) };
         mbuf.data_mut()[0] = 99;
         v.push(mbuf);
     }
@@ -153,7 +151,7 @@ fn set_all_mbufs_in_a_pool() {
             for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
                 mp.fill_up_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
-                    unsafe { mbuf.set_data_len(1) };
+                    unsafe { mbuf.extend(1) };
                     assert_eq!(mbuf.data()[0], 99);
                 }
                 Mempool::free_batch(&mut batch);

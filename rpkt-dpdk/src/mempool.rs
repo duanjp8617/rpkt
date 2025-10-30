@@ -63,16 +63,16 @@ impl Mempool {
         unsafe { ffi::rte_mempool_avail_count(self.as_ptr()) }
     }
 
-    // modified to pub for netbricks_port
-    pub fn as_ptr(&self) -> *const ffi::rte_mempool {
-        self.ptr.as_ptr()
-    }
-
     pub(crate) fn new(ptr: NonNull<ffi::rte_mempool>) -> Self {
         Self {
             ptr,
             counter: Arc::new(()),
         }
+    }
+    
+    // modified to pub for netbricks_port
+    pub(crate) fn as_ptr(&self) -> *const ffi::rte_mempool {
+        self.ptr.as_ptr()
     }
 
     pub(crate) fn in_use(&self) -> bool {

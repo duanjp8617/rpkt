@@ -20,17 +20,13 @@ impl Mbuf {
         unsafe { self.ptr.as_ref().data_len.into() }
     }
 
-    /// Remaining byte length at the back for storing data.
+    /// Total bytes available for storing data.
     #[inline]
     pub fn capacity(&self) -> usize {
-        unsafe {
-            usize::from(
-                self.ptr.as_ref().buf_len - self.ptr.as_ref().data_off - self.ptr.as_ref().data_len,
-            )
-        }
+        unsafe { usize::from(self.ptr.as_ref().buf_len - self.ptr.as_ref().data_off) }
     }
 
-    /// Remaining byte length at the front for storing data.
+    /// Total bytes available at the front for storing data.
     #[inline]
     pub fn front_capacity(&self) -> usize {
         unsafe { usize::from(self.ptr.as_ref().data_off) }
@@ -63,40 +59,51 @@ impl Mbuf {
     /// the mbuf.
     #[inline]
     pub fn extend_from_slice(&mut self, slice: &[u8]) {
-        assert!(self.capacity() >= slice.len());
+        assert!(slice.len() <= self.capacity() - self.data_len());
         let old_len = self.data_len();
-        unsafe { self.set_data_len(old_len + slice.len()) };
+        unsafe { self.extend(slice.len()) };
         self.data_mut()[old_len..].copy_from_slice(slice);
     }
 
     #[inline]
     pub fn extend_front_from_slice(&mut self, slice: &[u8]) {
         assert!(slice.len() <= self.front_capacity());
-        unsafe { self.increase_len_at_front(slice.len()) };
+        unsafe { self.extend_front(slice.len()) };
         self.data_mut()[..slice.len()].copy_from_slice(slice);
     }
 
-    /// # Panic:
-    /// This function panics if `cnt` exceeds the capacity of the mbuf.
+    /// Increase buffer length by `cnt` bytes.
     #[inline]
-    pub unsafe fn set_data_len(&mut self, new_len: usize) {
-        debug_assert!(
-            new_len <= usize::from(self.ptr.as_ref().buf_len - self.ptr.as_ref().data_off)
-        );
-        self.ptr.as_mut().data_len = new_len as u16;
-        self.ptr.as_mut().pkt_len = new_len as u32;
+    pub unsafe fn extend(&mut self, cnt: usize) {
+        debug_assert!(cnt <= self.capacity() - self.data_len());
+        self.ptr.as_mut().data_len += cnt as u16;
+        self.ptr.as_mut().pkt_len += cnt as u32;
     }
 
+    /// Decrease buffer length by `cnt` bytes.
     #[inline]
-    pub unsafe fn increase_len_at_front(&mut self, cnt: usize) {
-        debug_assert!(self.front_capacity() >= cnt);
+    pub unsafe fn shrink(&mut self, cnt: usize) {
+        debug_assert!(cnt <= self.data_len());
+        self.ptr.as_mut().data_len -= cnt as u16;
+        self.ptr.as_mut().pkt_len -= cnt as u32;
+    }
+
+    /// Increase the buffer length at the front.
+    ///
+    /// This also increases the total capacity.
+    #[inline]
+    pub unsafe fn extend_front(&mut self, cnt: usize) {
+        debug_assert!(cnt <= self.front_capacity());
         self.ptr.as_mut().data_len += cnt as u16;
         self.ptr.as_mut().pkt_len += cnt as u32;
         self.ptr.as_mut().data_off -= cnt as u16;
     }
 
+    /// Decrease the buffer length at the front.
+    ///
+    /// This also decreases the total capacity.
     #[inline]
-    pub unsafe fn decrease_len_at_front(&mut self, cnt: usize) {
+    pub unsafe fn shrink_front(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.data_len());
         unsafe {
             self.ptr.as_mut().data_len -= cnt as u16;
@@ -122,15 +129,15 @@ impl Mbuf {
 }
 
 impl Mbuf {
-    /// The rx_offload for the mbuf. 
-    /// 
+    /// The rx_offload for the mbuf.
+    ///
     /// By reading from the rx_offload field, we obtain the offloading result
     /// computed by the NIC. Examples include rss hash and ip/l4 checksum offload results.
-    /// 
+    ///
     /// rx_offload supports the following bit fields:
-    /// 
+    ///
     /// bit value : rx offload name
-    /// 
+    ///
     /// - 1 << 1: RTE_MBUF_F_RX_RSS_HASH      
     /// - 1 << 4: RTE_MBUF_F_RX_IP_CKSUM_BAD
     /// - 1 << 7: RTE_MBUF_F_RX_IP_CKSUM_GOOD
@@ -146,16 +153,16 @@ impl Mbuf {
         unsafe { self.ptr.as_ref().__bindgen_anon_2.hash.rss }
     }
 
-    /// The tx_offload for the mbuf. 
-    /// 
+    /// The tx_offload for the mbuf.
+    ///
     /// By setting the tx_offload field, we can enable NIC hardware tx
-    /// offload for this mbuf. Examples include IP/UDP/TCP checksum offload, 
+    /// offload for this mbuf. Examples include IP/UDP/TCP checksum offload,
     /// and TCP segment offloading (TSO).
-    /// 
+    ///
     /// tx_offload supports the following bit fields:
-    /// 
+    ///
     /// bit value : tx offload name
-    /// 
+    ///
     /// - 1 << 54: RTE_MBUF_F_TX_IP_CKSUM
     /// - 1 << 55: RTE_MBUF_F_TX_IPV4
     /// - 1 << 56: RTE_MBUF_F_TX_IPV6

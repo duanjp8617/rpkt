@@ -92,7 +92,7 @@ fn mbuf_data_unchanged_after_realloc() {
         drop(mbufs);
         for i in 0..128 {
             let mut mbuf = mp.try_alloc().unwrap();
-            unsafe { mbuf.set_data_len(1) };
+            unsafe { mbuf.extend(1) };
             assert_eq!(mbuf.data()[0], i + 1);
         }
     }
