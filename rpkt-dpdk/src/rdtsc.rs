@@ -56,7 +56,7 @@ fn measure_rdtsc_in_hz_once() -> u64 {
     let freq_hz = (rdtsc_cycles as f64) / duration.as_secs_f64();
     assert!(
         freq_hz > 10000000.0 && freq_hz < 10000000000.0,
-        "rdtsc does not fall between 10MHz to 10GHz"
+        "rdtsc frequency {freq_hz} does not fall between 10MHz to 10GHz"
     );
 
     freq_hz.round() as u64
