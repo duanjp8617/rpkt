@@ -17,6 +17,9 @@ pub use mempool::Mempool;
 mod mbuf;
 pub use mbuf::Mbuf;
 
+mod pbuf;
+pub use pbuf::Pbuf;
+
 // #[cfg(feature = "multiseg")]
 // mod multiseg;
 // #[cfg(feature = "multiseg")]

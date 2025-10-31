@@ -130,6 +130,11 @@ impl Mbuf {
         std::mem::forget(self);
         res
     }
+
+    #[inline]
+    pub(crate) const unsafe fn as_mut_ptr(&mut self) -> *mut ffi::rte_mbuf {
+        self.ptr.as_ptr()
+    }
 }
 
 impl Mbuf {
@@ -467,7 +472,7 @@ impl Drop for Mbuf {
 }
 
 #[inline]
-unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
+pub(crate) unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
     let data_off = usize::from(mbuf.data_off);
     (mbuf.buf_addr as *mut u8).add(data_off)
 }
