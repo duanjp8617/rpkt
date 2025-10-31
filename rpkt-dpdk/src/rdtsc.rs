@@ -28,7 +28,7 @@ pub fn rdtsc() -> u64 {
             options(nomem, nostack, preserves_flags)
         );
     }
-    ((rdx << 32) | rax)
+    (rdx << 32) | rax
 }
 
 #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]

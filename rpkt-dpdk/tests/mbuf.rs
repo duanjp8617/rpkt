@@ -67,7 +67,10 @@ mod tests {
             unsafe { mbuf.shrink_front(44) };
             assert_eq!(mbuf.data_len(), 512 - 44);
             assert_eq!(mbuf.data(), &new_content[44..512]);
-            assert_eq!(mbuf.capacity() - mbuf.data_len(), 2048 - 1024 + (1024 + 64 - 512));
+            assert_eq!(
+                mbuf.capacity() - mbuf.data_len(),
+                2048 - 1024 + (1024 + 64 - 512)
+            );
             assert_eq!(mbuf.front_capacity(), 128 - 64 + 44);
         }
 
@@ -95,13 +98,13 @@ mod miri_tests {
         mbuf.extend_from_slice(&content[..512]);
         assert_eq!(mbuf.data(), &content[..512]);
         assert_eq!(mbuf.data_len(), 512);
-        assert_eq!(mbuf.capacity(), 2048 - 512);
+        assert_eq!(mbuf.capacity() - mbuf.data_len(), 2048 - 512);
 
-        unsafe { mbuf.set_data_len(mbuf.data_len() + 512) };
+        unsafe { mbuf.extend(512) };
         mbuf.data_mut()[512..].copy_from_slice(&content[512..]);
         assert_eq!(mbuf.data(), content);
         assert_eq!(mbuf.data_len(), 1024);
-        assert_eq!(mbuf.capacity(), 2048 - 1024);
+        assert_eq!(mbuf.capacity() - mbuf.data_len(), 2048 - 1024);
 
         let mut front_content: [u8; 64] = [54; 64];
         (&mut front_content[..32]).copy_from_slice(&[44; 32][..]);
@@ -111,28 +114,34 @@ mod miri_tests {
 
         assert_eq!(mbuf.front_capacity(), 128);
 
-        unsafe { mbuf.increase_len_at_front(32) };
+        unsafe { mbuf.extend_front(32) };
         mbuf.data_mut()[..32].copy_from_slice(&front_content[32..]);
         assert_eq!(mbuf.data(), &new_content[32..]);
         assert_eq!(mbuf.data_len(), 1024 + 32);
         assert_eq!(mbuf.front_capacity(), 128 - 32);
-        assert_eq!(mbuf.capacity(), 2048 - 1024);
+        assert_eq!(mbuf.capacity() - mbuf.data_len(), 2048 - 1024);
 
         mbuf.extend_front_from_slice(&front_content[..32]);
         assert_eq!(mbuf.front_capacity(), 128 - 64);
         assert_eq!(mbuf.data(), &new_content[..]);
         assert_eq!(mbuf.data_len(), 1024 + 64);
-        assert_eq!(mbuf.capacity(), 2048 - 1024);
+        assert_eq!(mbuf.capacity() - mbuf.data_len(), 2048 - 1024);
 
-        unsafe { mbuf.set_data_len(512) };
+        unsafe { mbuf.shrink(mbuf.data_len() - 512) };
         assert_eq!(mbuf.data_len(), 512);
         assert_eq!(mbuf.data(), &new_content[..512]);
-        assert_eq!(mbuf.capacity(), 2048 - 1024 + (1024 + 64 - 512));
+        assert_eq!(
+            mbuf.capacity() - mbuf.data_len(),
+            2048 - 1024 + (1024 + 64 - 512)
+        );
 
-        unsafe { mbuf.decrease_len_at_front(44) };
+        unsafe { mbuf.shrink_front(44) };
         assert_eq!(mbuf.data_len(), 512 - 44);
         assert_eq!(mbuf.data(), &new_content[44..512]);
-        assert_eq!(mbuf.capacity(), 2048 - 1024 + (1024 + 64 - 512));
+        assert_eq!(
+            mbuf.capacity() - mbuf.data_len(),
+            2048 - 1024 + (1024 + 64 - 512)
+        );
         assert_eq!(mbuf.front_capacity(), 128 - 64 + 44);
     }
 }
