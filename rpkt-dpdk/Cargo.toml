@@ -26,11 +26,6 @@ cc = "1"
 [profile.release]
 lto = "fat"
 
-[features]
-# `multiseg` feature enables non-contiguous `Mbuf` and `Pbuf`
-# default = ["multiseg"]
-multiseg = ["dep:rpkt"]
-
 [dev-dependencies]
 rpkt = {path = "../rpkt", package = "rpkt"}
 ctrlc = { version = "3.0", features = ["termination"]}

@@ -1,16 +1,11 @@
 #[cfg(miri)]
 use std::os::raw::c_void;
 
-use std::ptr::NonNull;
-
-#[cfg(feature = "multiseg")]
 use std::marker::PhantomData;
-use std::ptr::null_mut;
+use std::ptr::{null_mut, NonNull};
 
-use crate::sys as ffi;
-
-#[cfg(feature = "multiseg")]
 use crate::mempool::Mempool;
+use crate::sys as ffi;
 
 #[derive(Debug)]
 pub struct Mbuf {
@@ -206,7 +201,6 @@ impl Mbuf {
     }
 }
 
-#[cfg(feature = "multiseg")]
 impl Mbuf {
     /// Return the total packet length stored on the mbuf.
     ///
@@ -388,13 +382,11 @@ impl Mbuf {
 ///
 /// Each `Item` returned by this iterator corresponds to immutable
 /// byte slice covering the active data area of a single mbuf segment.
-#[cfg(feature = "multiseg")]
 pub struct SegIter<'a> {
     cur_seg: Option<NonNull<ffi::rte_mbuf>>,
     _data: PhantomData<&'a Mbuf>,
 }
 
-#[cfg(feature = "multiseg")]
 impl<'a> Iterator for SegIter<'a> {
     type Item = &'a [u8];
 
@@ -415,13 +407,11 @@ impl<'a> Iterator for SegIter<'a> {
 ///
 /// Each `Item` returned by this iterator corresponds to mutable
 /// byte slice covering the active data area of a single mbuf segment.
-#[cfg(feature = "multiseg")]
 pub struct SegIterMut<'a> {
     cur_seg: Option<NonNull<ffi::rte_mbuf>>,
     _data: PhantomData<&'a mut Mbuf>,
 }
 
-#[cfg(feature = "multiseg")]
 impl<'a> Iterator for SegIterMut<'a> {
     type Item = &'a mut [u8];
 
@@ -438,13 +428,11 @@ impl<'a> Iterator for SegIterMut<'a> {
     }
 }
 
-#[cfg(feature = "multiseg")]
 pub struct Appender<'a> {
     buf: &'a mut Mbuf,
     last_seg: NonNull<ffi::rte_mbuf>,
 }
 
-#[cfg(feature = "multiseg")]
 impl<'a> Appender<'a> {
     pub fn append_single_seg(&mut self, other: Mbuf) {
         // Make sure that `other` is a single-segment `Mbuf`.
@@ -481,7 +469,6 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
     let data_off = usize::from(mbuf.data_off);
     (mbuf.buf_addr as *mut u8).add(data_off)
 }
-
 
 #[cfg(miri)]
 impl Drop for Mbuf {
@@ -523,4 +510,3 @@ impl Mbuf {
         }
     }
 }
-
