@@ -75,6 +75,187 @@ mod tests {
         }
 
         service().mempool_free("wtf").unwrap();
+        service().graceful_cleanup().unwrap();
+    }
+
+    #[test]
+    fn create_multiseg_mbuf_from_chainer() {
+        DpdkOption::new()
+            .args("--file-prefix mbuf".split(" "))
+            .init()
+            .unwrap();
+
+        assert_eq!(constant::MBUF_HEADROOM_SIZE, 128);
+        {
+            let mp = service()
+                .mempool_alloc("wtf", 128, 0, 2048 + 128, -1)
+                .unwrap();
+            let mut mbuf = mp.try_alloc().unwrap();
+
+            mbuf.extend_from_slice(&[0; 2048][..]);
+            let mut chainer = mbuf.appender();
+
+            let mut new_mbuf = mp.try_alloc().unwrap();
+            new_mbuf.extend_from_slice(&[1; 2048][..]);
+            chainer.append_single_seg(new_mbuf);
+
+            let mut new_mbuf = mp.try_alloc().unwrap();
+            new_mbuf.extend_from_slice(&[2; 2048][..]);
+            chainer.append_single_seg(new_mbuf);
+
+            let mut new_mbuf = mp.try_alloc().unwrap();
+            new_mbuf.extend_from_slice(&[3; 2048][..]);
+            chainer.append_single_seg(new_mbuf);
+
+            for (i, seg) in mbuf.seg_iter().enumerate() {
+                let mut v: Vec<u8> = Vec::new();
+                for _ in 0..2048 {
+                    v.push(i as u8);
+                }
+                assert_eq!(seg, &v[..]);
+            }
+
+            assert_eq!(mbuf.num_segs(), 4);
+            assert_eq!(mbuf.pkt_len(), 2048 * 4);
+            assert_eq!(mbuf.front_capacity(), 128);
+            assert_eq!(mbuf.capacity(), 2048);
+        }
+
+        service().mempool_free("wtf").unwrap();
+        service().graceful_cleanup().unwrap();
+    }
+
+    #[test]
+    fn create_multiseg_mbuf_from_slice() {
+        DpdkOption::new()
+            .args("--file-prefix mbuf".split(" "))
+            .init()
+            .unwrap();
+
+        let mut buf: [u8; 11235] = [0xac; 11235];
+        for i in 0..11235 {
+            buf[i] = (i % u8::MAX as usize) as u8;
+        }
+
+        assert_eq!(constant::MBUF_HEADROOM_SIZE, 128);
+        {
+            let mp = service()
+                .mempool_alloc("wtf", 128, 0, 2048 + 128, -1)
+                .unwrap();
+
+            for i in 0..buf.len() + 1 {
+                let mbuf = Mbuf::from_slice(&buf[..i], &mp).unwrap();
+
+                let mut nb_segs = match i % 2048 {
+                    0 => i / 2048,
+                    _ => i / 2048 + 1,
+                };
+                if i == 0 {
+                    nb_segs = 1;
+                }
+
+                assert_eq!(mbuf.num_segs(), nb_segs);
+
+                let mut buf_copy = &buf[..i];
+                for seg in mbuf.seg_iter() {
+                    assert_eq!(seg, &buf_copy[..seg.len()]);
+                    buf_copy = &buf_copy[seg.len()..];
+                }
+            }
+        }
+
+        service().mempool_free("wtf").unwrap();
+        service().graceful_cleanup().unwrap();
+    }
+
+    #[test]
+    fn truncate_multiseg_mbuf() {
+        DpdkOption::new()
+            .args("--file-prefix mbuf".split(" "))
+            .init()
+            .unwrap();
+
+        let mut buf: [u8; 11235] = [0xac; 11235];
+        for i in 0..11235 {
+            buf[i] = (i % u8::MAX as usize) as u8;
+        }
+
+        assert_eq!(constant::MBUF_HEADROOM_SIZE, 128);
+        {
+            let mp = service()
+                .mempool_alloc("wtf", 128, 0, 2048 + 128, -1)
+                .unwrap();
+
+            for cnt in 0..buf.len() + 1 {
+                let mut mbuf = Mbuf::from_slice(&buf[..], &mp).unwrap();
+
+                let mut new_segs = match cnt % 2048 {
+                    0 => cnt / 2048,
+                    _ => cnt / 2048 + 1,
+                };
+                if cnt == 0 {
+                    new_segs = 1;
+                }
+
+                mbuf.truncate_to(cnt);
+
+                assert_eq!(mbuf.pkt_len(), cnt);
+                assert_eq!(mbuf.num_segs(), new_segs);
+
+                let mut buf_copy = &buf[..cnt];
+                for seg in mbuf.seg_iter() {
+                    assert_eq!(seg, &buf_copy[..seg.len()]);
+                    buf_copy = &buf_copy[seg.len()..];
+                }
+            }
+        }
+
+        service().mempool_free("wtf").unwrap();
+        service().graceful_cleanup().unwrap();
+    }
+
+    #[test]
+    fn chain_mbuf_into_multiseg_mbuf() {
+        DpdkOption::new()
+            .args("--file-prefix mbuf".split(" "))
+            .init()
+            .unwrap();
+
+        let mut buf: [u8; 25465] = [0xac; 25465];
+        for i in 0..25465 {
+            buf[i] = (i % u8::MAX as usize) as u8;
+        }
+
+        assert_eq!(constant::MBUF_HEADROOM_SIZE, 128);
+        {
+            let mp = service()
+                .mempool_alloc("wtf", 128, 0, 2048 + 128, -1)
+                .unwrap();
+
+            for fst_mbuf_len in 1..buf.len() {
+                let mut fst_mbuf = Mbuf::from_slice(&buf[..fst_mbuf_len], &mp).unwrap();
+                let len_fst = fst_mbuf.pkt_len();
+                let seg_num_fst = fst_mbuf.num_segs();
+
+                let snd_mbuf = Mbuf::from_slice(&buf[fst_mbuf_len..], &mp).unwrap();
+                let len_snd = snd_mbuf.pkt_len();
+                let seg_num_snd = snd_mbuf.num_segs();
+
+                fst_mbuf.concat(snd_mbuf);
+
+                assert_eq!(fst_mbuf.pkt_len(), len_fst + len_snd);
+                assert_eq!(fst_mbuf.num_segs(), seg_num_fst + seg_num_snd);
+
+                let mut buf_copy = &buf[..];
+                for seg in fst_mbuf.seg_iter() {
+                    assert_eq!(seg, &buf_copy[..seg.len()]);
+                    buf_copy = &buf_copy[seg.len()..];
+                }
+            }
+        }
+
+        service().mempool_free("wtf").unwrap();
+        service().graceful_cleanup().unwrap();
     }
 }
 

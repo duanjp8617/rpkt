@@ -1,8 +1,10 @@
 #[cfg(miri)]
 use std::os::raw::c_void;
 
-use std::ptr::NonNull;
+use std::marker::PhantomData;
+use std::ptr::{null_mut, NonNull};
 
+use crate::mempool::Mempool;
 use crate::sys as ffi;
 
 #[derive(Debug)]
@@ -199,12 +201,273 @@ impl Mbuf {
     }
 }
 
+impl Mbuf {
+    /// Return the total packet length stored on the mbuf.
+    ///
+    /// Note this is different from `data_len`, which only indicates the
+    /// data length of a single mbuf segment.
+    ///
+    /// Sincle multiple single-seg mbufs can be concatenated together into
+    /// a chained mbuf, `pkt_len` is the sum of all the data length of
+    /// all the chained mbufs.
+    #[inline]
+    pub fn pkt_len(&self) -> usize {
+        (unsafe { self.ptr.as_ref().pkt_len }) as usize
+    }
+
+    /// The total number of mbuf segments chained together.
+    #[inline]
+    pub fn num_segs(&self) -> usize {
+        usize::from(unsafe { self.ptr.as_ref().nb_segs })
+    }
+
+    #[cfg(not(miri))]
+    fn from_slice_slow(
+        mut source: &[u8],
+        mempool: &Mempool,
+        mut fst_seg: Mbuf,
+        chunk_cap: usize,
+    ) -> Option<Self> {
+        // Safety: source.len() > 0, chunk_cap is fixed
+        let source_len = source.len();
+        let total_remaining_segs = (source.len() - 1) / usize::from(chunk_cap) + 1;
+        if total_remaining_segs > (ffi::RTE_MBUF_MAX_NB_SEGS - 1) as usize {
+            return None;
+        }
+
+        let mut cur_seg = fst_seg.ptr;
+        for _ in 0..total_remaining_segs - 1 {
+            let mut mbuf = mempool.try_alloc()?;
+            mbuf.extend_from_slice(&source[..chunk_cap]);
+            source = &source[chunk_cap..];
+
+            unsafe {
+                cur_seg.as_mut().next = mbuf.into_raw();
+                cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
+            }
+        }
+
+        let mut mbuf = mempool.try_alloc()?;
+        mbuf.extend_from_slice(source);
+        unsafe {
+            cur_seg.as_mut().next = mbuf.into_raw();
+
+            fst_seg.ptr.as_mut().pkt_len += source_len as u32;
+            fst_seg.ptr.as_mut().nb_segs += total_remaining_segs as u16;
+        }
+
+        Some(fst_seg)
+    }
+
+    /// Construct a mbuf from a `source` byte slice and a mempool.
+    #[cfg(not(miri))]
+    #[inline]
+    pub fn from_slice(source: &[u8], mempool: &Mempool) -> Option<Self> {
+        // create the first segment
+        let mut fst_seg = mempool.try_alloc()?;
+        let cap = fst_seg.capacity();
+        if cap >= source.len() {
+            fst_seg.extend_from_slice(source);
+            Some(fst_seg)
+        } else {
+            fst_seg.extend_from_slice(&source[..cap]);
+            Self::from_slice_slow(&source[cap..], mempool, fst_seg, cap)
+        }
+    }
+
+    /// Concatenate the current mbuf with another mbuf.
+    #[inline]
+    pub fn concat(&mut self, other: Mbuf) {
+        assert!(self.num_segs() + other.num_segs() <= (ffi::RTE_MBUF_MAX_NB_SEGS) as usize);
+
+        let mut other_ptr = other.ptr;
+        std::mem::forget(other);
+
+        // find out the current linklist tail
+        let mut cur_tail = self.ptr;
+        unsafe {
+            while !cur_tail.as_ref().next.is_null() {
+                cur_tail = NonNull::new_unchecked(cur_tail.as_ref().next);
+            }
+        }
+
+        unsafe {
+            // chain 'other' to the old tail
+            cur_tail.as_mut().next = other_ptr.as_ptr();
+
+            // accumulate number of segments and total length
+            self.ptr.as_mut().nb_segs += other_ptr.as_ref().nb_segs;
+            self.ptr.as_mut().pkt_len += other_ptr.as_ref().pkt_len;
+
+            // pkt_len is only set in the head
+            other_ptr.as_mut().pkt_len = other_ptr.as_ref().data_len as u32;
+            other_ptr.as_mut().nb_segs = 1;
+        }
+    }
+
+    /// Truncate the packet length of mbuf to `new_size` bytes.
+    #[cfg(not(miri))]
+    pub fn truncate_to(&mut self, new_size: usize) {
+        assert!(new_size <= self.pkt_len());
+
+        let mut cur_seg = self.ptr;
+        let mut remaining = new_size;
+        let mut nb_segs = 1;
+
+        // SAFETY: safety holds, see comments.
+        unsafe {
+            // Iterate through the `rte_mbuf` link list.
+            // After the iteration, `cur_seg` will point to the last segment after truncating
+            // the original `rte_mbuf` to `new_size` bytes.
+            while usize::from(cur_seg.as_ref().data_len) < remaining {
+                remaining -= usize::from(cur_seg.as_ref().data_len);
+                nb_segs += 1;
+                cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
+            }
+
+            if !cur_seg.as_ref().next.is_null() {
+                // The trailing segements of `cur_seg` should be deleted.
+                // The deletion task is delegated to dpdk library, which
+                // can safely free a link list of segments.
+                ffi::rte_pktmbuf_free_(cur_seg.as_ref().next);
+
+                // After deleting the trailing segments, `cur_seg` becomes
+                // the last segment.
+                cur_seg.as_mut().next = null_mut();
+                // Adjust the `nb_segs` at the first segment as well.
+                self.ptr.as_mut().nb_segs = nb_segs;
+            }
+
+            // `remaining` now equals to the length of the last segment.
+            cur_seg.as_mut().data_len = remaining as u16;
+            // The packet length is truncated to `cnt`.
+            self.ptr.as_mut().pkt_len = new_size as u32;
+        }
+    }
+
+    /// Return a imutable iterator to all the segment data of the mbuf.
+    #[inline]
+    pub fn seg_iter<'a>(&'a self) -> SegIter<'a> {
+        SegIter {
+            cur_seg: Some(self.ptr),
+            _data: PhantomData,
+        }
+    }
+
+    /// Return a mutable iterator to all the segment data of the mbuf.
+    #[inline]
+    pub fn seg_iter_mut<'a>(&'a mut self) -> SegIterMut<'a> {
+        SegIterMut {
+            cur_seg: Some(self.ptr),
+            _data: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub fn appender<'a>(&'a mut self) -> Appender<'a> {
+        let mut last_seg = self.ptr;
+        unsafe {
+            while !last_seg.as_ref().next.is_null() {
+                last_seg = NonNull::new_unchecked(last_seg.as_ref().next);
+            }
+        }
+        Appender {
+            buf: self,
+            last_seg,
+        }
+    }
+}
+
+/// The immutable iterator to all the segment data of the mbuf.
+///
+/// Each `Item` returned by this iterator corresponds to immutable
+/// byte slice covering the active data area of a single mbuf segment.
+pub struct SegIter<'a> {
+    cur_seg: Option<NonNull<ffi::rte_mbuf>>,
+    _data: PhantomData<&'a Mbuf>,
+}
+
+impl<'a> Iterator for SegIter<'a> {
+    type Item = &'a [u8];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cur_seg.map(|cur_seg| unsafe {
+            let res = std::slice::from_raw_parts(
+                data_addr(cur_seg.as_ref()),
+                cur_seg.as_ref().data_len as usize,
+            );
+            self.cur_seg = NonNull::new(cur_seg.as_ref().next);
+            res
+        })
+    }
+}
+
+/// The mutable iterator to all the segment data of the mbuf.
+///
+/// Each `Item` returned by this iterator corresponds to mutable
+/// byte slice covering the active data area of a single mbuf segment.
+pub struct SegIterMut<'a> {
+    cur_seg: Option<NonNull<ffi::rte_mbuf>>,
+    _data: PhantomData<&'a mut Mbuf>,
+}
+
+impl<'a> Iterator for SegIterMut<'a> {
+    type Item = &'a mut [u8];
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cur_seg.map(|cur_seg| unsafe {
+            let res = std::slice::from_raw_parts_mut(
+                data_addr(cur_seg.as_ref()),
+                cur_seg.as_ref().data_len as usize,
+            );
+            self.cur_seg = NonNull::new(cur_seg.as_ref().next);
+            res
+        })
+    }
+}
+
+pub struct Appender<'a> {
+    buf: &'a mut Mbuf,
+    last_seg: NonNull<ffi::rte_mbuf>,
+}
+
+impl<'a> Appender<'a> {
+    pub fn append_single_seg(&mut self, other: Mbuf) {
+        // Make sure that `other` is a single-segment `Mbuf`.
+        assert!(other.num_segs() == 1);
+        assert!(self.buf.num_segs() <= (ffi::RTE_MBUF_MAX_NB_SEGS - 1) as usize);
+
+        let other_ptr = other.ptr;
+        std::mem::forget(other);
+
+        unsafe {
+            // chain 'tail' onto the old tail
+            self.last_seg.as_mut().next = other_ptr.as_ptr();
+
+            // accumulate number of segments and total length
+            self.buf.ptr.as_mut().nb_segs += 1;
+            self.buf.ptr.as_mut().pkt_len += other_ptr.as_ref().pkt_len;
+
+            // update the last_seg
+            self.last_seg = other_ptr;
+        }
+    }
+}
+
 #[cfg(not(miri))]
 impl Drop for Mbuf {
     fn drop(&mut self) {
         let raw = self.ptr.as_ptr();
         unsafe { ffi::rte_pktmbuf_free_(raw) };
     }
+}
+
+#[inline]
+unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
+    let data_off = usize::from(mbuf.data_off);
+    (mbuf.buf_addr as *mut u8).add(data_off)
 }
 
 #[cfg(miri)]
@@ -246,10 +509,4 @@ impl Mbuf {
             ptr: NonNull::new(Box::into_raw(boxed_mbuf)).unwrap(),
         }
     }
-}
-
-#[inline]
-unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
-    let data_off = usize::from(mbuf.data_off);
-    (mbuf.buf_addr as *mut u8).add(data_off)
 }
