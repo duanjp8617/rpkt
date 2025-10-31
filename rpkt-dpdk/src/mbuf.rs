@@ -4,7 +4,9 @@ use std::os::raw::c_void;
 use std::marker::PhantomData;
 use std::ptr::{null_mut, NonNull};
 
+#[cfg(not(miri))]
 use crate::mempool::Mempool;
+
 use crate::sys as ffi;
 
 #[derive(Debug)]
@@ -471,20 +473,30 @@ unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
 }
 
 #[cfg(miri)]
+unsafe fn deallocate_rte_mbuf(ptr: *mut ffi::rte_mbuf) {
+    unsafe {
+        let buf_len = (*ptr).buf_len;
+        let buf_addr = (*ptr).buf_addr as *mut u8;
+        let slice_ptr: *mut [u8] = std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
+        let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
+    }
+
+    unsafe {
+        let _reconstructed_box: Box<ffi::rte_mbuf> = Box::from_raw(ptr);
+    }
+}
+
+#[cfg(miri)]
 impl Drop for Mbuf {
     fn drop(&mut self) {
-        // Custom drop for miri test.
-        unsafe {
-            let buf_len = self.ptr.as_mut().buf_len;
-            let buf_addr = self.ptr.as_mut().buf_addr as *mut u8;
-            let slice_ptr: *mut [u8] =
-                std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
-            let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
-        }
+        let mut curr = unsafe { self.ptr.as_mut() as *mut ffi::rte_mbuf };
 
-        unsafe {
-            let mbuf_addr: *mut ffi::rte_mbuf = self.ptr.as_mut() as *mut ffi::rte_mbuf;
-            let _reconstructed_box: Box<ffi::rte_mbuf> = Box::from_raw(mbuf_addr);
+        while !curr.is_null() {
+            unsafe {
+                let next = (*curr).next;
+                deallocate_rte_mbuf(curr);
+                curr = next;
+            }
         }
     }
 }
@@ -504,9 +516,107 @@ impl Mbuf {
         boxed_mbuf.data_len = 0;
         boxed_mbuf.pkt_len = 0;
         boxed_mbuf.buf_len = data_room + head_room;
+        boxed_mbuf.next = null_mut();
+        boxed_mbuf.nb_segs = 1;
 
         Self {
             ptr: NonNull::new(Box::into_raw(boxed_mbuf)).unwrap(),
+        }
+    }
+
+    fn from_slice_slow(
+        mut source: &[u8],
+        data_room: u16,
+        head_room: u16,
+        mut fst_seg: Mbuf,
+        chunk_cap: usize,
+    ) -> Option<Self> {
+        // Safety: source.len() > 0, chunk_cap is fixed
+        let source_len = source.len();
+        let total_remaining_segs = (source.len() - 1) / usize::from(chunk_cap) + 1;
+        if total_remaining_segs > (ffi::RTE_MBUF_MAX_NB_SEGS - 1) as usize {
+            return None;
+        }
+
+        let mut cur_seg = fst_seg.ptr;
+        for _ in 0..total_remaining_segs - 1 {
+            let mut mbuf = Mbuf::new(data_room, head_room);
+            mbuf.extend_from_slice(&source[..chunk_cap]);
+            source = &source[chunk_cap..];
+
+            unsafe {
+                cur_seg.as_mut().next = mbuf.into_raw();
+                cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
+            }
+        }
+
+        let mut mbuf = Mbuf::new(data_room, head_room);
+        mbuf.extend_from_slice(source);
+        unsafe {
+            cur_seg.as_mut().next = mbuf.into_raw();
+
+            fst_seg.ptr.as_mut().pkt_len += source_len as u32;
+            fst_seg.ptr.as_mut().nb_segs += total_remaining_segs as u16;
+        }
+
+        Some(fst_seg)
+    }
+
+    #[inline]
+    pub fn from_slice(source: &[u8], data_room: u16, head_room: u16) -> Option<Self> {
+        // create the first segment
+        let mut fst_seg = Mbuf::new(data_room, head_room);
+        let cap = fst_seg.capacity();
+        if cap >= source.len() {
+            fst_seg.extend_from_slice(source);
+            Some(fst_seg)
+        } else {
+            fst_seg.extend_from_slice(&source[..cap]);
+            Self::from_slice_slow(&source[cap..], data_room, head_room, fst_seg, cap)
+        }
+    }
+
+    pub fn truncate_to(&mut self, new_size: usize) {
+        assert!(new_size <= self.pkt_len());
+
+        let mut cur_seg = self.ptr;
+        let mut remaining = new_size;
+        let mut nb_segs = 1;
+
+        // SAFETY: safety holds, see comments.
+        unsafe {
+            // Iterate through the `rte_mbuf` link list.
+            // After the iteration, `cur_seg` will point to the last segment after truncating
+            // the original `rte_mbuf` to `new_size` bytes.
+            while usize::from(cur_seg.as_ref().data_len) < remaining {
+                remaining -= usize::from(cur_seg.as_ref().data_len);
+                nb_segs += 1;
+                cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
+            }
+
+            if !cur_seg.as_ref().next.is_null() {
+                // The trailing segements of `cur_seg` should be deleted.
+                {
+                    let mut curr = cur_seg.as_ref().next;
+
+                    while !curr.is_null() {
+                        let next = (*curr).next;
+                        deallocate_rte_mbuf(curr);
+                        curr = next;
+                    }
+                }
+
+                // After deleting the trailing segments, `cur_seg` becomes
+                // the last segment.
+                cur_seg.as_mut().next = null_mut();
+                // Adjust the `nb_segs` at the first segment as well.
+                self.ptr.as_mut().nb_segs = nb_segs;
+            }
+
+            // `remaining` now equals to the length of the last segment.
+            cur_seg.as_mut().data_len = remaining as u16;
+            // The packet length is truncated to `cnt`.
+            self.ptr.as_mut().pkt_len = new_size as u32;
         }
     }
 }
