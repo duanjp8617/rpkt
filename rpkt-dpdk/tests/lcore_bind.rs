@@ -43,11 +43,11 @@ fn register_rte_thread() {
         let jh = std::thread::spawn(move || {
             service().thread_bind_to(i).unwrap();
 
-            let rte_thread_id = unsafe { sys::rte_lcore_id_() };
+            let rte_thread_id = unsafe { ffi::rte_lcore_id_() };
             assert_eq!(rte_thread_id, u32::MAX);
 
             let rte_lcore_id = service().register_as_rte_thread().unwrap();
-            assert_eq!(rte_lcore_id, unsafe { sys::rte_lcore_id_() });
+            assert_eq!(rte_lcore_id, unsafe { ffi::rte_lcore_id_() });
         });
         jhs.push(jh);
     }

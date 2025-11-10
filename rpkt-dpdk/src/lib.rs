@@ -20,21 +20,10 @@ pub use mbuf::Mbuf;
 mod pbuf;
 pub use pbuf::Pbuf;
 
-// #[cfg(feature = "multiseg")]
-// mod multiseg;
-// #[cfg(feature = "multiseg")]
-// pub use multiseg::Mbuf;
-// #[cfg(feature = "multiseg")]
-// mod pbuf;
-// #[cfg(feature = "multiseg")]
-// pub use pbuf::Pbuf;
-
 mod port;
 pub use port::{PortStats, RxQueue, StatsQuery, TxQueue};
 
-// pub mod utils;
-
-pub mod sys;
+pub mod ffi;
 
 pub mod constant;
 

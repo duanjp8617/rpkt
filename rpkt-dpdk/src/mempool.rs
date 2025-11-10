@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 
-use crate::sys as ffi;
+use crate::ffi;
 use crate::Mbuf;
 
 #[derive(Clone)]

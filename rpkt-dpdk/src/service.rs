@@ -6,7 +6,7 @@ use std::sync::{Mutex, MutexGuard};
 use once_cell::sync::OnceCell;
 
 use crate::conf::*;
-use crate::sys as ffi;
+use crate::ffi;
 
 use super::error::*;
 use super::lcore::{self, *};

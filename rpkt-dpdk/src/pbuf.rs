@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rpkt::{Buf, PktBuf, PktBufMut};
 
 use crate::mbuf::{data_addr, Mbuf};
-use crate::sys::rte_mbuf;
+use crate::ffi::rte_mbuf;
 
 #[derive(Debug)]
 pub struct Pbuf<'a> {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::sys as ffi;
+use crate::ffi;
 use arrayvec::ArrayVec;
 
 use crate::error::*;

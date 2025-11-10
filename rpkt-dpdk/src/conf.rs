@@ -1,7 +1,7 @@
 use std::ffi::CStr;
 
 use crate::constant;
-use crate::sys as ffi;
+use crate::ffi;
 
 pub struct DevInfo {
     pub port_id: u16,
@@ -43,13 +43,13 @@ impl DevInfo {
     }
 
     /// The rx_offload_capa of different NIC drivers.
-    /// 
+    ///
     /// # net_hinic3
     /// Huawei SP670 NIC uses net_hinic3 driver. THe default rx_offload_capa value is
     /// 664095, which includes the following capabilities:
-    /// 
+    ///
     /// bit : rx offload capability name
-    /// 
+    ///
     /// - 1 << 0: DEV_RX_OFFLOAD_VLAN_STRIP
     /// - 1 << 1: DEV_RX_OFFLOAD_IPV4_CKSUM
     /// - 1 << 2: DEV_RX_OFFLOAD_UDP_CKSUM
@@ -64,13 +64,13 @@ impl DevInfo {
     }
 
     /// The tx_offload_capa of different NIC drivers.
-    /// 
+    ///
     /// # net_hinic3
     /// Huawei SP670 NIC uses net_hinic3 driver. THe default tx_offload_capa value is
     /// 32959, which includes the following capabilities:
-    /// 
+    ///
     /// bit : tx offload capability name
-    /// 
+    ///
     /// - 1 << 0: DEV_TX_OFFLOAD_VLAN_INSERT
     /// - 1 << 1: DEV_TX_OFFLOAD_IPV4_CKSUM
     /// - 1 << 2: DEV_TX_OFFLOAD_UDP_CKSUM
@@ -93,13 +93,13 @@ impl DevInfo {
     }
 
     /// The flow_type_rss_offloads of different NIC drivers.
-    /// 
+    ///
     /// # net_hinic3
     /// Huawei SP670 NIC uses net_hinic3 driver. THe default flow_type_rss_offloads value is
     /// 12220, which includes the following flow types:
-    /// 
+    ///
     /// bit : flow type
-    /// 
+    ///
     /// - 1 << 2: RTE_ETH_RSS_IPV4
     /// - 1 << 3: RTE_ETH_RSS_FRAG_IPV4
     /// - 1 << 4: RTE_ETH_RSS_NONFRAG_IPV4_TCP
@@ -173,7 +173,7 @@ impl EthConf {
         // Yupeng provides this link: https://docs.nvidia.com/networking/display/MFTv4110/Using+mlxconfig
         rx_mode.mtu = self.mtu;
         rx_mode.max_lro_pkt_size = self.max_lro_pkt_size;
-        rx_mode.offloads = self.rx_offloads;     
+        rx_mode.offloads = self.rx_offloads;
 
         let mut tx_mode: ffi::rte_eth_txmode = std::mem::zeroed();
         tx_mode.mq_mode = ffi::rte_eth_tx_mq_mode_RTE_ETH_MQ_TX_NONE;

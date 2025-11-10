@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
-use crate::sys as ffi;
+use crate::ffi;
 
 use crate::error::*;
 

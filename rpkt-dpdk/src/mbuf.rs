@@ -7,7 +7,7 @@ use std::ptr::{null_mut, NonNull};
 #[cfg(not(miri))]
 use crate::mempool::Mempool;
 
-use crate::sys as ffi;
+use crate::ffi;
 
 #[derive(Debug)]
 pub struct Mbuf {
