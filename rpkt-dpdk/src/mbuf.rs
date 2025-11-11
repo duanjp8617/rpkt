@@ -206,6 +206,28 @@ impl Mbuf {
                 .set_l3_len(val);
         }
     }
+
+    #[inline]
+    pub fn set_l4_len(&mut self, val: u64) {
+        unsafe {
+            self.ptr
+                .as_mut()
+                .__bindgen_anon_3
+                .__bindgen_anon_1
+                .set_l4_len(val);
+        }
+    }
+
+    #[inline]
+    pub fn set_tso_segsz(&mut self, val: u64) {
+        unsafe {
+            self.ptr
+                .as_mut()
+                .__bindgen_anon_3
+                .__bindgen_anon_1
+                .set_tso_segsz(val);
+        }
+    }
 }
 
 impl Mbuf {

@@ -38,28 +38,31 @@ pub fn rdtsc() -> u64 {
 }
 
 fn measure_rdtsc_in_hz_once() -> u64 {
-    let start = time::Instant::now();
-    let rdtsc_start = rdtsc();
+    loop {
+        let start = time::Instant::now();
+        let rdtsc_start = rdtsc();
 
-    let mut sum: u64 = 5;
-    for i in 0u64..1000000 {
-        sum = sum.wrapping_add(i.wrapping_add((sum.wrapping_add(i)).wrapping_mul(i % sum)));
+        let mut sum: u64 = 5;
+        for i in 0u64..1000000 {
+            sum = sum.wrapping_add(i.wrapping_add((sum.wrapping_add(i)).wrapping_mul(i % sum)));
+        }
+        assert!(
+            sum == 13580802877818827968,
+            "error in rdtsc freq measurement"
+        );
+
+        let duration = time::Instant::now() - start;
+        let rdtsc_cycles = rdtsc() - rdtsc_start;
+
+        let freq_hz = (rdtsc_cycles as f64) / duration.as_secs_f64();
+        if freq_hz <= 10000000.0 || freq_hz >= 10000000000.0 {
+            // if the measured frequency does not fall between 10MHz to 10GHz,
+            // we just measure again
+            continue;
+        }
+
+        return freq_hz.round() as u64;
     }
-    assert!(
-        sum == 13580802877818827968,
-        "error in rdtsc freq measurement"
-    );
-
-    let duration = time::Instant::now() - start;
-    let rdtsc_cycles = rdtsc() - rdtsc_start;
-
-    let freq_hz = (rdtsc_cycles as f64) / duration.as_secs_f64();
-    assert!(
-        freq_hz > 10000000.0 && freq_hz < 10000000000.0,
-        "rdtsc frequency {freq_hz} does not fall between 10MHz to 10GHz"
-    );
-
-    freq_hz.round() as u64
 }
 
 fn base_freq_in_hz() -> u64 {
