@@ -13,13 +13,16 @@ use super::lcore::{self, *};
 use super::mempool::*;
 use super::port::*;
 
+/// The `DpdkService` singleton.
 pub(crate) static SERVICE: OnceCell<DpdkService> = OnceCell::new();
 
-/// `DpdkOption` contains an eal argument string for initializing dpdk.
+/// Command line arguments that are used to initialize dpdk eal.
+///
+/// For detailed eal arguments, please refer to https://doc.dpdk.org/guides/linux_gsg/linux_eal_parameters.html.
 ///
 /// # Default
 ///
-/// By default, `DpdkOption` contains the following argument string:
+/// The [`Default`] implementation of `DpdkOption` contains the following argument string:
 ///
 /// "-n 4 --proc-type primary"
 ///
@@ -41,27 +44,48 @@ impl Default for DpdkOption {
 }
 
 impl DpdkOption {
+    /// Create a new `DpdkOption` with no eal arguments.
     pub fn new() -> Self {
         Self {
             args: vec![CString::new("./prefix").unwrap()],
         }
     }
 
-    /// Create a new `DpdkOption` with use-defined eal argument string.
+    /// Pass a single eal argument to `DpdkOption`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use rpkt_dpdk::DpdkOption;
-    ///
-    /// let res = DpdkOption::with_eal_arg("-l 2 -n 4 --file-prefix app1").init();
+    /// use rpkt_dpdk::{service, DpdkOption};
+    /// // initialize dpdk with 4 memory channels and use "app" as the
+    /// // process prefix.
+    /// let res = DpdkOption::new()
+    ///     .arg("-n")
+    ///     .arg("4")
+    ///     .arg("--file-prefix")
+    ///     .arg("app")
+    ///     .init();
     /// assert_eq!(res.is_ok(), true);
+    /// service().graceful_cleanup().unwrap();
     /// ```
     pub fn arg<S: AsRef<str>>(&mut self, arg: S) -> &mut Self {
         self.args.push(CString::new(arg.as_ref()).unwrap());
         self
     }
 
+    /// Pass an iterator containing a list of eal arguments to `DpdkOption`.    
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{service, DpdkOption};
+    /// // initialize dpdk with 4 memory channels and use "app" as the
+    /// // prefix for the dpdk primary process.
+    /// let res = DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init();
+    /// assert_eq!(res.is_ok(), true);
+    /// service().graceful_cleanup().unwrap();
+    /// ```
     pub fn args<S, I>(&mut self, args: I) -> &mut Self
     where
         S: AsRef<str>,
@@ -72,18 +96,22 @@ impl DpdkOption {
         self
     }
 
-    /// Initialize dpdk eal using the provided eal argument string.
+    /// Initialize dpdk eal using the provided eal arguments.
     ///
-    /// After initialization, the global singleton [`DpdkService`] can be
-    /// accessed.
+    /// After a successful initialization, the global singleton [`DpdkService`] can be
+    /// accessed without panicing.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use rpkt_dpdk::DpdkOption;
-    ///
-    /// let res = DpdkOption::default().init();
+    /// use rpkt_dpdk::{service, DpdkOption};
+    /// // initialize dpdk with 4 memory channels and use "app" as the
+    /// // prefix for the dpdk primary process.
+    /// let res = DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init();
     /// assert_eq!(res.is_ok(), true);
+    /// service().graceful_cleanup().unwrap();
     /// ```
     ///
     /// # Errors
@@ -156,16 +184,19 @@ impl DpdkOption {
     }
 }
 
-/// A global singleton providing all the dpdk services.
+/// A global singleton providing public APIs to different dpdk functions.
 ///
-/// The provided dpdk services include:
-/// -
+/// The provided APIs include:
+/// - Check lcores on the CPUs and bind threads to lcores.
+/// - Create and delete dpdk mempools.
+/// - Configure, start and close dpdk ports.
+/// - Miscellaneous APIs, including checking primary process, shuttding down DPDK eal, etc.
 pub struct DpdkService {
     service: Mutex<ServiceInner>,
     lcores: Vec<Lcore>,
 }
 
-/// Try to acquire a reference to the [`DpdkService`].
+/// Try to acquire a static reference to the [`DpdkService`].
 ///
 /// # Errors
 ///
@@ -180,7 +211,7 @@ pub fn try_service() -> Result<&'static DpdkService> {
 ///
 /// # Panics
 ///
-/// This function panics if  [`DpdkService`] is not correctly initialized.
+/// This function panics if  [`DpdkService`] is not initialized.
 pub fn service() -> &'static DpdkService {
     match SERVICE.get() {
         Some(handle) => handle,
@@ -190,22 +221,67 @@ pub fn service() -> &'static DpdkService {
 
 // Lcore related APIs
 impl DpdkService {
-    /// Get a list of [`Lcore`] on the current machine.
+    /// Get a reference to the ['Lcore'] list of the current machine.
     ///
     /// The lcore list is collected by analyzing the /sys directory of the linux
     /// file system upon dpdk initialization.
     ///
     /// The returned lcore list is sorted by the lcore id in ascending order.
+    ///
+    /// Under most common cases, the `Lcore` with index `i` from the returned `Lcore` list
+    /// corresponds to `Lcore` with `lcore_id` 0.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// let lcores = service().available_lcores();
+    /// println!(
+    ///     "The first lcore has lcore_id: {}, cpu_id: {}, socket_id: {}",
+    ///     lcores[0].lcore_id, lcores[0].cpu_id, lcores[0].socket_id
+    /// );
+    /// service().graceful_cleanup().unwrap();
+
+    /// ```
     pub fn available_lcores(&self) -> &Vec<Lcore> {
         &self.lcores
     }
 
-    /// Bind the current thread to the lcore indicated by `lcore_id`].
+    /// Bind the current thread to the lcore indicated by `lcore_id`.
+    ///
+    /// After thread binding, the thread will only be scheduled to run on the CPU
+    /// core with `lcore_id`.
+    ///
+    /// Thread binding is perhaps the most important optimization for all the user-space
+    /// packet processing programs.
     ///
     /// [`DpdkService`] manages thread binding in its internal state. It
     /// enforces the following invariants:
     /// - Each lcore can only be globally bound once.
     /// - Each thread can only be bound to a single lcore.
+    ///
+    /// Violating these invariants causes [`DpdkError`] to be returned.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// let jh = std::thread::spawn(|| {
+    ///     // Before thread binding, `current_lcore` returns None.
+    ///     assert_eq!(service().current_lcore().is_none(), true);
+    ///     service().thread_bind_to(0).unwrap();
+    ///     // After thread binding, `current_lcore` records the lcore_id.
+    ///     assert_eq!(service().current_lcore().unwrap().lcore_id, 0);        
+    /// });
+    /// jh.join().unwrap();
+    /// service().graceful_cleanup().unwrap();
+    /// ```
     ///
     /// # Errors
     ///
@@ -226,6 +302,29 @@ impl DpdkService {
     ///
     /// After the registration, the thread can access some internal eal states,
     /// like the caches of the memory pool.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{ffi, service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// let jh = std::thread::spawn(move || {
+    ///     service().thread_bind_to(0).unwrap();
+    ///     // Before rte thread registration, rte_thread_id is an invalid
+    ///     // value, which is u32::MAX.
+    ///     let rte_thread_id = unsafe { ffi::rte_lcore_id_() };
+    ///     assert_eq!(rte_thread_id, u32::MAX);
+    ///     // After rte thread registration, rte_thread_id is a value that
+    ///     // is smaller than u32::MAX.
+    ///     let rte_thread_id = service().register_as_rte_thread().unwrap();
+    ///     assert_eq!(rte_thread_id, unsafe { ffi::rte_lcore_id_() });
+    ///     assert_eq!(rte_thread_id < u32::MAX, true);
+    /// });
+    /// jh.join().unwrap();
+    /// service().graceful_cleanup().unwrap();
+    /// ```
     ///
     /// # Errors
     ///
@@ -344,12 +443,8 @@ impl DpdkService {
     }
 }
 
+// Port related APIs
 impl DpdkService {
-    /// Check whether the current process is a dpdk primary process.
-    pub fn is_primary_process(&self) -> Result<bool> {
-        Ok(self.try_lock()?.is_primary)
-    }
-
     pub fn eth_dev_count_avail(&self) -> Result<u16> {
         let _inner = self.try_lock()?;
         unsafe { Ok(ffi::rte_eth_dev_count_avail()) }
@@ -583,20 +678,12 @@ impl DpdkService {
             .ok_or(DpdkError::service_err("invalid port id"))?;
         port.stats_query()
     }
+}
 
-    pub unsafe fn assume_rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
-        let _inner = self.try_lock()?;
-        Ok(RxQueue::new(port_id, qid))
-    }
-
-    pub unsafe fn assume_tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
-        let _inner = self.try_lock()?;
-        Ok(TxQueue::new(port_id, qid))
-    }
-
-    pub unsafe fn assume_stats_query(&self, port_id: u16) -> Result<StatsQuery> {
-        let _inner = self.try_lock()?;
-        Ok(StatsQuery::new(port_id))
+impl DpdkService {
+    /// Check whether the current process is a dpdk primary process.
+    pub fn is_primary_process(&self) -> Result<bool> {
+        Ok(self.try_lock()?.is_primary)
     }
 
     pub fn graceful_cleanup(&self) -> Result<()> {
@@ -621,6 +708,21 @@ impl DpdkService {
         inner.started = false;
 
         Ok(())
+    }
+
+    pub unsafe fn assume_rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
+        let _inner = self.try_lock()?;
+        Ok(RxQueue::new(port_id, qid))
+    }
+
+    pub unsafe fn assume_tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
+        let _inner = self.try_lock()?;
+        Ok(TxQueue::new(port_id, qid))
+    }
+
+    pub unsafe fn assume_stats_query(&self, port_id: u16) -> Result<StatsQuery> {
+        let _inner = self.try_lock()?;
+        Ok(StatsQuery::new(port_id))
     }
 
     fn try_lock(&self) -> Result<MutexGuard<'_, ServiceInner>> {
