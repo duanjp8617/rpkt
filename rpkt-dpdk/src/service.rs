@@ -353,6 +353,38 @@ impl DpdkService {
 
 // Mempool related APIs
 impl DpdkService {
+    /// Allocate a new dpdk mempool.
+    ///
+    /// The input parameters are:
+    /// - `name`: name of the mempool, must be unique, duplicated mempool name cause allocation failure.
+    /// - `n`: the total number of mbufs that this mempool contains.
+    /// - `cache_size`: the total number of mbufs that the thread-local cache contains. To use the thread-local mempool cache, the thread must be registered as a eal thread ([`DpdkService::register_as_rte_thread`]).
+    /// - `data_room_size`: the total number of bytes allocated to each mbuf for storing data. Note that the initial usable byte length of each newly-allocated mbuf will be [`crate::constant::MBUF_HEADROOM_SIZE`] bytes shorter than `data_room_size`. Because dpdk mempool automatically consumes [`crate::constant::MBUF_HEADROOM_SIZE`] bytes at the start of each mbuf upon allocation. These consumed bytes can be used to prepend protocol headers to the mbuf.
+    /// - `socket_id`: indicate the socket that the mempool is allocated on. If `socket_id` is set to `-1`, it means that numa is ignored and dpdk will select a default socket id.
+    ///
+    /// This method is a safe wrapper for [`crate::ffi::rte_pktmbuf_pool_create`], which takes an additional parameter `priv_size`. We just ignore `priv_size` by setting it to 0.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// {
+    ///     let mp = service()
+    ///         .mempool_alloc("mp", 128, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///         .unwrap();
+    ///     let mbuf = mp.try_alloc().unwrap();
+    ///     assert_eq!(mbuf.capacity(), 2048);
+    ///     assert_eq!(mbuf.front_capacity(), constant::MBUF_HEADROOM_SIZE as usize);
+    /// }
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if the mempool allocation fails.
     pub fn mempool_alloc<S: AsRef<str>>(
         &self,
         name: S,
@@ -403,11 +435,36 @@ impl DpdkService {
         Ok(mempool)
     }
 
-    pub fn mempool_free(&self, name: &str) -> Result<()> {
-        let mut inner = self.try_lock()?;
-        inner.do_mempool_free(name)
-    }
-
+    /// Try to acquire an instance of the mempool with name `name`.
+    ///
+    /// [`Mempool`] is modeled as an atomic shared pointer, so mempool itself
+    /// can be copied across different thread. The `DpdkService` always kept
+    /// a copy of each allocated mempool. So we can also acquire the mempool
+    /// instance from the `DpdkService`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// service()
+    ///     .mempool_alloc("mp", 128, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    /// let jh = std::thread::spawn(|| {
+    ///     let mp = service().mempool("mp").unwrap();
+    ///     let mbuf = mp.try_alloc().unwrap();
+    ///     assert_eq!(mbuf.capacity(), 2048);
+    ///     assert_eq!(mbuf.front_capacity(), constant::MBUF_HEADROOM_SIZE as usize);
+    /// });
+    /// jh.join().unwrap();
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can acquire the mempool instance.
     pub fn mempool(&self, name: &str) -> Result<Mempool> {
         let inner = self.try_lock()?;
 
@@ -424,22 +481,53 @@ impl DpdkService {
         Ok(mp.clone())
     }
 
-    pub unsafe fn assume_mempool(&self, name: &str) -> Result<Mempool> {
-        let _inner = self.try_lock()?;
-
-        let cname = CString::new(name)
-            .map_err(|_| DpdkError::service_err(format!("invalid mempool name {name}")))?;
-
-        // secondary process queries mempool from dpdk
-        let raw =
-            unsafe { ffi::rte_mempool_lookup(cname.as_bytes_with_nul().as_ptr() as *const c_char) };
-        let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
-            DpdkError::ffi_err(
-                unsafe { ffi::rte_errno_() },
-                format!("fail to lookup mempool {name}, make sure that it has been allocated"),
-            )
-        })?;
-        Ok(Mempool::new(ptr))
+    /// Deallocate the mempool with name `name`.
+    ///
+    /// This method is a safe wrapper for [`crate::ffi::rte_mempool_free`].
+    ///
+    /// However, in order for the deallocation to succeed, the caller must ensure
+    /// that the mempool is not in use.
+    ///
+    /// `rpkt_dpdk` relies on reference counting to track the availability of different
+    /// kinds of resources. In terms of mempool, we must ensure the following 2 conditions
+    /// are met:
+    /// - All the [`Mempool`] instances have been dropped, leaving the internal atomic value to
+    /// be 1 (`DpdkService` kept an internal mempool instance). Also note that each [`crate::port::RxQueue`] of the initialized dpdk port also holds an internal mempool instance. So make sure to close these ports prior to deallocating the mempool.
+    /// - All the mbufs allocated from this mempool have been dropped and mempool is full.
+    ///  Mempool keeps an internal counter about the available number of mbufs, 
+    /// we check this value to determine whether the mempool is full.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    /// let mbuf;
+    /// {
+    ///     let mp = service()
+    ///         .mempool_alloc("mp", 128, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///         .unwrap();
+    ///     // Can't deallocate mempool "mp", because the `mp` instance is still alive.
+    ///     assert_eq!(service().mempool_free("mp").is_err(), true);
+    ///     mbuf = mp.try_alloc().unwrap();
+    /// }
+    /// // Can't deallocate mempool "mp", because `mbuf` is alive, so the mempool is not full.
+    /// assert_eq!(service().mempool_free("mp").is_err(), true);
+    /// drop(mbuf);
+    /// // The mbuf is not in use, we can succefully drop this mempool.
+    /// assert_eq!(service().mempool_free("mp").is_ok(), true);
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    /// 
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can not deallocate the mempool, i.e. the mempool is still
+    /// in use.
+    pub fn mempool_free(&self, name: &str) -> Result<()> {
+        let mut inner = self.try_lock()?;
+        inner.do_mempool_free(name)
     }
 }
 
@@ -708,6 +796,24 @@ impl DpdkService {
         inner.started = false;
 
         Ok(())
+    }
+
+    pub unsafe fn assume_mempool(&self, name: &str) -> Result<Mempool> {
+        let _inner = self.try_lock()?;
+
+        let cname = CString::new(name)
+            .map_err(|_| DpdkError::service_err(format!("invalid mempool name {name}")))?;
+
+        // secondary process queries mempool from dpdk
+        let raw =
+            unsafe { ffi::rte_mempool_lookup(cname.as_bytes_with_nul().as_ptr() as *const c_char) };
+        let ptr = std::ptr::NonNull::new(raw).ok_or_else(|| {
+            DpdkError::ffi_err(
+                unsafe { ffi::rte_errno_() },
+                format!("fail to lookup mempool {name}, make sure that it has been allocated"),
+            )
+        })?;
+        Ok(Mempool::new(ptr))
     }
 
     pub unsafe fn assume_rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
