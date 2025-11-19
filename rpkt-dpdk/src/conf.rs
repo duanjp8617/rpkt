@@ -45,8 +45,8 @@ impl DevInfo {
     /// The rx_offload_capa of different NIC drivers.
     ///
     /// # net_hinic3
-    /// Huawei SP670 NIC uses net_hinic3 driver. THe default rx_offload_capa value is
-    /// 664095, which includes the following capabilities:
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default rx_offload_capa
+    /// value is 664095, which includes the following capabilities:
     ///
     /// bit : rx offload capability name
     ///
@@ -66,8 +66,8 @@ impl DevInfo {
     /// The tx_offload_capa of different NIC drivers.
     ///
     /// # net_hinic3
-    /// Huawei SP670 NIC uses net_hinic3 driver. THe default tx_offload_capa value is
-    /// 32959, which includes the following capabilities:
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default tx_offload_capa
+    /// value is 32959, which includes the following capabilities:
     ///
     /// bit : tx offload capability name
     ///
@@ -78,7 +78,7 @@ impl DevInfo {
     /// - 1 << 4: DEV_TX_OFFLOAD_SCTP_CKSUM
     /// - 1 << 5: DEV_TX_OFFLOAD_TCP_TSO
     /// - 1 << 7: DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM
-    /// - 1 << 15: DEV_TX_OFFLOAD_MULTI_SEGS    
+    /// - 1 << 15: DEV_TX_OFFLOAD_MULTI_SEGS
     pub fn tx_offload_capa(&self) -> u64 {
         self.raw.tx_offload_capa
     }
@@ -95,8 +95,9 @@ impl DevInfo {
     /// The flow_type_rss_offloads of different NIC drivers.
     ///
     /// # net_hinic3
-    /// Huawei SP670 NIC uses net_hinic3 driver. THe default flow_type_rss_offloads value is
-    /// 12220, which includes the following flow types:
+    /// Huawei SP670 NIC uses net_hinic3 driver. THe default
+    /// flow_type_rss_offloads value is 12220, which includes the following
+    /// flow types:
     ///
     /// bit : flow type
     ///
@@ -212,16 +213,14 @@ impl Default for EthConf {
 #[derive(Clone, Debug)]
 pub struct RxqConf {
     pub nb_rx_desc: u16,
-    pub pthresh: u8,
     pub socket_id: u32,
     pub mp_name: String,
 }
 
 impl RxqConf {
-    pub fn new<S: Into<String>>(nb_rx_desc: u16, pthresh: u8, socket_id: u32, mp_name: S) -> Self {
+    pub fn new<S: Into<String>>(nb_rx_desc: u16, socket_id: u32, mp_name: S) -> Self {
         Self {
             nb_rx_desc,
-            pthresh,
             socket_id,
             mp_name: mp_name.into(),
         }
@@ -232,7 +231,6 @@ impl Default for RxqConf {
     fn default() -> Self {
         Self {
             nb_rx_desc: constant::NB_RX_DESC,
-            pthresh: 8,
             socket_id: 0,
             mp_name: "".to_string(),
         }
@@ -242,15 +240,13 @@ impl Default for RxqConf {
 #[derive(Clone, Copy, Debug)]
 pub struct TxqConf {
     pub nb_tx_desc: u16,
-    pub pthresh: u8,
     pub socket_id: u32,
 }
 
 impl TxqConf {
-    pub fn new(nb_tx_desc: u16, pthresh: u8, socket_id: u32) -> Self {
+    pub fn new(nb_tx_desc: u16, socket_id: u32) -> Self {
         Self {
             nb_tx_desc,
-            pthresh,
             socket_id,
         }
     }
@@ -260,7 +256,6 @@ impl Default for TxqConf {
     fn default() -> Self {
         Self {
             nb_tx_desc: constant::NB_TX_DESC,
-            pthresh: 32,
             socket_id: 0,
         }
     }

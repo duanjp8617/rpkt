@@ -22,7 +22,8 @@ pub(crate) static SERVICE: OnceCell<DpdkService> = OnceCell::new();
 ///
 /// # Default
 ///
-/// The [`Default`] implementation of `DpdkOption` contains the following argument string:
+/// The [`Default`] implementation of `DpdkOption` contains the following
+/// argument string:
 ///
 /// "-n 4 --proc-type primary"
 ///
@@ -98,8 +99,8 @@ impl DpdkOption {
 
     /// Initialize dpdk eal using the provided eal arguments.
     ///
-    /// After a successful initialization, the global singleton [`DpdkService`] can be
-    /// accessed without panicing.
+    /// After a successful initialization, the global singleton [`DpdkService`]
+    /// can be accessed without panicing.
     ///
     /// # Examples
     ///
@@ -190,7 +191,8 @@ impl DpdkOption {
 /// - Check lcores on the CPUs and bind threads to lcores.
 /// - Create and delete dpdk mempools.
 /// - Configure, start and close dpdk ports.
-/// - Miscellaneous APIs, including checking primary process, shuttding down DPDK eal, etc.
+/// - Miscellaneous APIs, including checking primary process, shuttding down
+///   DPDK eal, etc.
 pub struct DpdkService {
     service: Mutex<ServiceInner>,
     lcores: Vec<Lcore>,
@@ -221,15 +223,15 @@ pub fn service() -> &'static DpdkService {
 
 // Lcore related APIs
 impl DpdkService {
-    /// Get a reference to the ['Lcore'] list of the current machine.
+    /// Get a reference to the [`Lcore`] list of the current machine.
     ///
     /// The lcore list is collected by analyzing the /sys directory of the linux
     /// file system upon dpdk initialization.
     ///
     /// The returned lcore list is sorted by the lcore id in ascending order.
     ///
-    /// Under most common cases, the `Lcore` with index `i` from the returned `Lcore` list
-    /// corresponds to `Lcore` with `lcore_id` 0.
+    /// Under most common cases, the `Lcore` with index `i` from the returned
+    /// `Lcore` list corresponds to `Lcore` with `lcore_id` 0.
     ///
     /// # Examples
     /// ```rust
@@ -252,11 +254,11 @@ impl DpdkService {
 
     /// Bind the current thread to the lcore indicated by `lcore_id`.
     ///
-    /// After thread binding, the thread will only be scheduled to run on the CPU
-    /// core with `lcore_id`.
+    /// After thread binding, the thread will only be scheduled to run on the
+    /// CPU core with `lcore_id`.
     ///
-    /// Thread binding is perhaps the most important optimization for all the user-space
-    /// packet processing programs.
+    /// Thread binding is perhaps the most important optimization for all the
+    /// user-space packet processing programs.
     ///
     /// [`DpdkService`] manages thread binding in its internal state. It
     /// enforces the following invariants:
@@ -356,13 +358,26 @@ impl DpdkService {
     /// Allocate a new dpdk mempool.
     ///
     /// The input parameters are:
-    /// - `name`: name of the mempool, must be unique, duplicated mempool name cause allocation failure.
+    /// - `name`: name of the mempool, must be unique, duplicated mempool name
+    ///   cause allocation failure.
     /// - `n`: the total number of mbufs that this mempool contains.
-    /// - `cache_size`: the total number of mbufs that the thread-local cache contains. To use the thread-local mempool cache, the thread must be registered as a eal thread ([`DpdkService::register_as_rte_thread`]).
-    /// - `data_room_size`: the total number of bytes allocated to each mbuf for storing data. Note that the initial usable byte length of each newly-allocated mbuf will be [`crate::constant::MBUF_HEADROOM_SIZE`] bytes shorter than `data_room_size`. Because dpdk mempool automatically consumes [`crate::constant::MBUF_HEADROOM_SIZE`] bytes at the start of each mbuf upon allocation. These consumed bytes can be used to prepend protocol headers to the mbuf.
-    /// - `socket_id`: indicate the socket that the mempool is allocated on. If `socket_id` is set to `-1`, it means that numa is ignored and dpdk will select a default socket id.
+    /// - `cache_size`: the total number of mbufs that the thread-local cache
+    ///   contains. To use the thread-local mempool cache, the thread must be
+    ///   registered as a eal thread ([`DpdkService::register_as_rte_thread`]).
+    /// - `data_room_size`: the total number of bytes allocated to each mbuf for
+    ///   storing data. Note that the initial usable byte length of each
+    ///   newly-allocated mbuf will be [`crate::constant::MBUF_HEADROOM_SIZE`]
+    ///   bytes shorter than `data_room_size`. Because dpdk mempool
+    ///   automatically consumes [`crate::constant::MBUF_HEADROOM_SIZE`] bytes
+    ///   at the start of each mbuf upon allocation. These consumed bytes can be
+    ///   used to prepend protocol headers to the mbuf.
+    /// - `socket_id`: indicate the socket that the mempool is allocated on. If
+    ///   `socket_id` is set to `-1`, it means that numa is ignored and dpdk
+    ///   will select a default socket id.
     ///
-    /// This method is a safe wrapper for [`crate::ffi::rte_pktmbuf_pool_create`], which takes an additional parameter `priv_size`. We just ignore `priv_size` by setting it to 0.
+    /// This method is a safe wrapper for
+    /// [`ffi::rte_pktmbuf_pool_create`], which takes an additional
+    /// parameter `priv_size`. We just ignore `priv_size` by setting it to 0.
     ///
     /// # Examples
     /// ```rust
@@ -483,19 +498,22 @@ impl DpdkService {
 
     /// Deallocate the mempool with name `name`.
     ///
-    /// This method is a safe wrapper for [`crate::ffi::rte_mempool_free`].
+    /// This method is a safe wrapper for [`ffi::rte_mempool_free`].
     ///
-    /// However, in order for the deallocation to succeed, the caller must ensure
-    /// that the mempool is not in use.
+    /// However, in order for the deallocation to succeed, the caller must
+    /// ensure that the mempool is not in use.
     ///
-    /// `rpkt_dpdk` relies on reference counting to track the availability of different
-    /// kinds of resources. In terms of mempool, we must ensure the following 2 conditions
-    /// are met:
-    /// - All the [`Mempool`] instances have been dropped, leaving the internal atomic value to
-    /// be 1 (`DpdkService` kept an internal mempool instance). Also note that each [`crate::port::RxQueue`] of the initialized dpdk port also holds an internal mempool instance. So make sure to close these ports prior to deallocating the mempool.
-    /// - All the mbufs allocated from this mempool have been dropped and mempool is full.
-    ///  Mempool keeps an internal counter about the available number of mbufs, 
-    /// we check this value to determine whether the mempool is full.
+    /// `rpkt_dpdk` relies on reference counting to track the availability of
+    /// different kinds of resources. In terms of mempool, we must ensure
+    /// the following 2 conditions are met:
+    /// - All the [`Mempool`] instances have been dropped, leaving the internal
+    ///   atomic value to be 1 (`DpdkService` keeps an internal mempool
+    ///   instance). Also note that each [`RxQueue`] of the
+    ///   initialized dpdk port also holds an internal mempool instance. So make
+    ///   sure to close these ports prior to deallocating the mempool.
+    /// - All the mbufs allocated from this mempool have been dropped and
+    ///   mempool is full. Dpdk mempool tracks the number of unallocated mbufs,
+    ///   we can check this value to determine whether the mempool is full.
     ///
     /// # Examples
     /// ```rust
@@ -520,11 +538,11 @@ impl DpdkService {
     /// assert_eq!(service().mempool_free("mp").is_ok(), true);
     /// service().graceful_cleanup().unwrap();
     /// ```
-    /// 
+    ///
     /// # Errors
     ///
-    /// It returns [`DpdkError`] if we can not deallocate the mempool, i.e. the mempool is still
-    /// in use.
+    /// It returns [`DpdkError`] if we can not deallocate the mempool, i.e. the
+    /// mempool is still in use.
     pub fn mempool_free(&self, name: &str) -> Result<()> {
         let mut inner = self.try_lock()?;
         inner.do_mempool_free(name)
@@ -533,16 +551,31 @@ impl DpdkService {
 
 // Port related APIs
 impl DpdkService {
+    /// Get the total number of available ports on the current machine.
+    ///
+    /// This is a wrapper for [`ffi::rte_eth_dev_count_avail`].
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if the query fails.
     pub fn eth_dev_count_avail(&self) -> Result<u16> {
         let _inner = self.try_lock()?;
         unsafe { Ok(ffi::rte_eth_dev_count_avail()) }
     }
 
+    /// Get the device info of the corresponding port with `port_id`.
+    ///
+    /// Dpdk's `rte_eth_dev_info` contains a lot of information, we just extract
+    /// useful information and store it in the returned [`DevInfo`].
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't get the device info with `port_id`.
     pub fn dev_info(&self, port_id: u16) -> Result<DevInfo> {
         let inner = self.try_lock()?;
 
         if !inner.is_primary {
-            // For some NIC device, like Huawei's SP670 with hinic3 driver, callilng
+            // For some NIC device, like Huawei's SP670 with hinic3 driver, calling
             // rte_eth_dev_info_get on secondary process results in segfault.
             DpdkError::service_err(
                 "dpdk service disallow calling rte_eth_dev_info_get on secondary process",
@@ -585,7 +618,30 @@ impl DpdkService {
         })
     }
 
-    // rte_eth_dev_configure
+    /// Configure and start the port with `port_id`.
+    ///
+    /// The input parameters are:
+    /// - `port_id`: the port to initialize
+    /// - `eth_conf`: configuration paramter for the port. [`EthConf`] is a
+    ///   simplified version of [`ffi::rte_eth_conf`].
+    /// - `rxq_confs`: configuration parameters for rx queues. Each [`RxqConf`]
+    ///   in the list with index `i` is used to initialize rx queue `i`.
+    /// - `txq_confs`: configuration parameters for tx queues. Each [`TxqConf`]
+    ///   in the list with index `i` is used to initialize tx queue `i`.
+    ///
+    /// This method fuses 5 standard steps to initialize the dpdk port into a
+    /// single function call:
+    /// - calling [`ffi::rte_eth_dev_configure`] to configure the port. This
+    ///   will configure the number of tx/rx queues and apply an initial port
+    ///   configuration ([`ffi::rte_eth_conf`]), which contains basic hardware
+    ///   offloading functionalities.
+    /// - calling [`ffi::rte_eth_rx_queue_setup`] to setup each rx queue. This
+    ///   will setup the descriptor number, socket id and the receiving mempool
+    ///   for the rxq.
+    /// - calling [`ffi::rte_eth_tx_queue_setup`] to setup each tx queue. This
+    ///   will setup the descriptor number, socket id for the txq.
+    /// - enabling device promiscuous depending on the configuration
+    /// - starting the port with [`ffi::rte_eth_dev_start`].
     pub fn dev_configure_and_start(
         &self,
         port_id: u16,
@@ -647,9 +703,6 @@ impl DpdkService {
             .iter()
             .enumerate()
             .map(|(rx_queue_id, rxq_conf)| unsafe {
-                let mut rxconf: ffi::rte_eth_rxconf = std::mem::zeroed();
-                rxconf.rx_thresh.pthresh = rxq_conf.pthresh;
-
                 let mp = inner.mpools.get(&rxq_conf.mp_name).unwrap();
 
                 // Safety: rxq lives as long as mp
@@ -658,7 +711,10 @@ impl DpdkService {
                     rx_queue_id as u16,
                     rxq_conf.nb_rx_desc,
                     rxq_conf.socket_id,
-                    &mut rxconf as *mut ffi::rte_eth_rxconf,
+                    // here, use nullptr for rte_eth_rx_conf
+                    // dpdk will apply the default rte_eth_rxconf of
+                    // the device.
+                    std::ptr::null(),
                     mp.as_ptr() as *mut ffi::rte_mempool,
                 );
 
@@ -676,15 +732,14 @@ impl DpdkService {
             .iter()
             .enumerate()
             .map(|(tx_queue_id, txq_conf)| unsafe {
-                let mut txconf: ffi::rte_eth_txconf = std::mem::zeroed();
-                txconf.tx_thresh.pthresh = txq_conf.pthresh;
-
                 let res = ffi::rte_eth_tx_queue_setup(
                     port_id,
                     tx_queue_id as u16,
                     txq_conf.nb_tx_desc,
                     txq_conf.socket_id,
-                    &mut txconf as *mut ffi::rte_eth_txconf,
+                    // same as the rxq, we pass nullptr to let
+                    // the dpdk use the default rte_eth_txconf.
+                    std::ptr::null(),
                 );
 
                 if res != 0 {
