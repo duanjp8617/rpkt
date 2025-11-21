@@ -52,7 +52,7 @@ fn measure_rdtsc_in_hz_once() -> u64 {
         );
 
         let duration = time::Instant::now() - start;
-        let rdtsc_cycles = rdtsc() - rdtsc_start;
+        let rdtsc_cycles = rdtsc().checked_sub(rdtsc_start).unwrap_or(10);
 
         let freq_hz = (rdtsc_cycles as f64) / duration.as_secs_f64();
         if freq_hz <= 10000000.0 || freq_hz >= 10000000000.0 {
@@ -70,7 +70,7 @@ fn base_freq_in_hz() -> u64 {
     let delta = 0.05;
 
     let mut prev_freq_hz = measure_rdtsc_in_hz_once();
-    for _ in 0..10000000 {
+    for _ in 0..1000000 {
         let curr_freq_hz = measure_rdtsc_in_hz_once();
         let diff = ((curr_freq_hz as f64) - (prev_freq_hz as f64)).abs() / (prev_freq_hz as f64);
         if diff <= delta {
