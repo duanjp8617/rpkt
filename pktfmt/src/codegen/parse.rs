@@ -49,13 +49,12 @@ let container = Self{{ {buf_name} }};
             }
             (header_len_field, LengthField::None, LengthField::None) => {
                 // We have a single header definition here
+                // prepare the header_len variable
+                write!(output, "let header_len = container.header_len() as usize;").unwrap();
                 match header_len_field {
                     LengthField::Undefined => {
-                        guards.push(format!(
-                            "(container.header_len() as usize)<{}",
-                            self.header.header_len_in_bytes()
-                        ));
-                        guards.push(format!("(container.header_len() as usize)>remaining_len"));
+                        guards.push(format!("header_len<{}", self.header.header_len_in_bytes()));
+                        guards.push(format!("header_len>remaining_len"));
                     }
                     LengthField::Expr { expr } => {
                         let (field, _) = self.header.field(expr.field_name()).unwrap();
@@ -65,22 +64,18 @@ let container = Self{{ {buf_name} }};
                                 _ => panic!(),
                             };
                             let fixed_header_len = expr.exec(default_val).unwrap();
-                            guards.push(format!(
-                                "(container.header_len() as usize)!={fixed_header_len}"
-                            ));
+                            guards.push(format!("header_len!={fixed_header_len}"));
                             if default_val > self.header.header_len_in_bytes() as u64 {
-                                guards.push(format!("(container.header_len() as usize)>remaining_len"));
+                                guards.push(format!("header_len>remaining_len"));
                             }
                         } else {
-                            guards.push(format!(
-                                "(container.header_len() as usize)<{}",
-                                self.header.header_len_in_bytes()
-                            ));
-                            guards.push(format!("(container.header_len() as usize)>remaining_len"));
+                            guards
+                                .push(format!("header_len<{}", self.header.header_len_in_bytes()));
+                            guards.push(format!("header_len>remaining_len"));
                         }
                     }
                     _ => panic!(),
-                };                
+                };
             }
             (LengthField::None, _, LengthField::None)
             | (_, _, LengthField::None)
@@ -90,11 +85,8 @@ let container = Self{{ {buf_name} }};
                 let header_len_var = match &self.length[0] {
                     LengthField::None => &format!("{}", self.header.header_len_in_bytes()),
                     LengthField::Undefined => {
-                        guards.push(format!(
-                            "(container.header_len() as usize)<{}",
-                            self.header.header_len_in_bytes()
-                        ));
-                        "(container.header_len() as usize)"
+                        guards.push(format!("header_len<{}", self.header.header_len_in_bytes()));
+                        "header_len"
                     }
                     LengthField::Expr { expr } => {
                         let (field, _) = self.header.field(expr.field_name()).unwrap();
@@ -104,27 +96,33 @@ let container = Self{{ {buf_name} }};
                                 _ => panic!(),
                             };
                             let fixed_header_len = expr.exec(default_val).unwrap();
-                            guards.push(format!(
-                                "(container.header_len() as usize)!={fixed_header_len}"
-                            ));
+                            guards.push(format!("header_len!={fixed_header_len}"));
                         } else {
-                            guards.push(format!(
-                                "(container.header_len() as usize)<{}",
-                                self.header.header_len_in_bytes()
-                            ));
+                            guards
+                                .push(format!("header_len<{}", self.header.header_len_in_bytes()));
                         }
-                        "(container.header_len() as usize)"
+                        "header_len"
                     }
                 };
+
+                if header_len_var == "header_len" {
+                    // prepare the header_len variable
+                    write!(output, "let header_len = container.header_len() as usize;").unwrap();
+                }
+
                 if self.length[1].appear() {
-                    guards.push(format!(
-                        "(container.payload_len() as usize)+{header_len_var}>remaining_len"
-                    ));
+                    // prepare the payload_len variable
+                    write!(
+                        output,
+                        "let payload_len = container.payload_len() as usize;"
+                    )
+                    .unwrap();
+                    guards.push(format!("payload_len+{header_len_var}>remaining_len"));
                 } else {
-                    guards.push(format!(
-                        "(container.packet_len() as usize)<{header_len_var}"
-                    ));
-                    guards.push(format!("(container.packet_len() as usize)>remaining_len"));
+                    // prepare the packet_len variable
+                    write!(output, "let packet_len = container.packet_len() as usize;").unwrap();
+                    guards.push(format!("packet_len<{header_len_var}"));
+                    guards.push(format!("packet_len>remaining_len"));
                 }
             }
             _ => {
@@ -175,12 +173,9 @@ let container = Self{{ {buf_name} }};
         let header_len_var = match &self.length[0] {
             LengthField::None => &format!("{}", self.header.header_len_in_bytes()),
             LengthField::Undefined => {
-                guards.push(format!(
-                    "(container.header_len() as usize)<{}",
-                    self.header.header_len_in_bytes()
-                ));
-                guards.push(format!("(container.header_len() as usize)>chunk_len"));
-                "(container.header_len() as usize)"
+                guards.push(format!("header_len<{}", self.header.header_len_in_bytes()));
+                guards.push(format!("header_len>chunk_len"));
+                "header_len"
             }
             LengthField::Expr { expr } => {
                 let (field, _) = self.header.field(expr.field_name()).unwrap();
@@ -190,30 +185,42 @@ let container = Self{{ {buf_name} }};
                         _ => panic!(),
                     };
                     let fixed_header_len = expr.exec(default_val).unwrap();
-                    guards.push(format!(
-                        "(container.header_len() as usize)!={fixed_header_len}"
-                    ));
+                    guards.push(format!("header_len!={fixed_header_len}"));
+                    if default_val > self.header.header_len_in_bytes() as u64 {
+                        guards.push(format!("header_len>chunk_len"));
+                    }
                 } else {
-                    guards.push(format!(
-                        "(container.header_len() as usize)<{}",
-                        self.header.header_len_in_bytes()
-                    ));
+                    guards.push(format!("header_len<{}", self.header.header_len_in_bytes()));
+                    guards.push(format!("header_len>chunk_len"));
                 }
-                guards.push(format!("(container.header_len() as usize)>chunk_len"));
-                "(container.header_len() as usize)"
+
+                "header_len"
             }
         };
 
+        if header_len_var == "header_len" {
+            // prepare the header_len variable
+            write!(output, "let header_len = container.header_len() as usize;").unwrap();
+        }
+
         if self.length[1].appear() {
+            // prepare the payload_len variable
+            write!(
+                output,
+                "let payload_len = container.payload_len() as usize;"
+            )
+            .unwrap();
             guards.push(format!(
-                "(container.payload_len() as usize)+{header_len_var}>container.{buf_name}.remaining()"
+                "payload_len+{header_len_var}>container.{buf_name}.remaining()"
             ));
         } else if self.length[2].appear() {
+            // prepare the packet_len variable
+            write!(output, "let packet_len = container.packet_len() as usize;").unwrap();
             guards.push(format!(
-                "(container.packet_len() as usize)<{header_len_var}"
+                "packet_len<{header_len_var}"
             ));
             guards.push(format!(
-                "(container.packet_len() as usize)>container.{buf_name}.remaining()"
+                "packet_len>container.{buf_name}.remaining()"
             ));
         } else {
             // Do nothing
