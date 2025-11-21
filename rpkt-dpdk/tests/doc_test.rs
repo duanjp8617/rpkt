@@ -504,3 +504,66 @@ fn dpdkservice_is_primary_process() {
 
     service().graceful_cleanup().unwrap();
 }
+
+#[test]
+fn dpdkservice_graceful_cleanup() {
+    use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    fn entry_function() {
+        // create a mempool
+        service()
+            .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+            .unwrap();
+
+        // create the eth conf
+        let dev_info = service().dev_info(0).unwrap();
+        let mut eth_conf = EthConf::new();
+        // enable all rx_offloads
+        eth_conf.rx_offloads = dev_info.rx_offload_capa();
+        // enable all tx_offloads
+        eth_conf.tx_offloads = dev_info.tx_offload_capa();
+        // setup the rss hash function
+        eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+        // setup rss_hash_key
+        if dev_info.hash_key_size() == 40 {
+            eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+        } else if dev_info.hash_key_size() == 52 {
+            eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+        } else {
+            panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+        };
+
+        // create rxq conf and txq conf
+        let rxq_conf = RxqConf::new(512, 0, "mp");
+        let txq_conf = TxqConf::new(512, 0);
+        // create 2 rx/tx queues
+        let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+            .take(2 as usize)
+            .collect();
+        let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+            .take(2 as usize)
+            .collect();
+
+        // initialize the port
+        let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+        assert_eq!(res.is_ok(), true);
+
+        let _txq = service().tx_queue(0, 1);
+        let _rxq = service().rx_queue(0, 1);
+        let _stats_query = service().stats_query(0);
+    }
+
+    entry_function();
+
+    let res = service().graceful_cleanup();
+    assert_eq!(res.is_ok(), true);
+
+    // after we shutdown the dpdk service, all the public methods of `DpdkService`
+    // will fail.
+    let res = service().mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1);
+    assert_eq!(res.is_err(), true);
+}

@@ -1301,6 +1301,100 @@ impl DpdkService {
         Ok(self.try_lock()?.is_primary)
     }
 
+    /// Deallocate all the dpdk resources and shutdown the dpdk service in a
+    /// graceful way.
+    ///
+    /// This method will first try to deallocate all the dpdk resources,
+    /// including mempools, ports. Then this method will call
+    /// [`ffi::rte_eal_cleanup`] to shutdown the dpdk service.
+    ///
+    /// If `graceful_cleanup` succeeds, then all subsequent API calls of
+    /// `DpdkService` will return [`DpdkError`].
+    ///
+    /// Since `DpdkService` relies on reference counting to track the whether
+    /// different resources are still being used. It is important to make
+    /// sure all the resource instances are dropped prior to invoking this
+    /// call.
+    ///
+    /// Therefore, a neat way to use `graceful_cleanup` is by placing
+    /// `graceful_cleanup` after an entry function, which does the core packet
+    /// processing logic. Once the entry function returns, we can make sure that
+    /// all the resource instances are dropped.
+    ///
+    /// While `rpkt_dpdk` provides methods to deallocate mempools and shutdown
+    /// ports, users don't really have to call them, as `graceful_cleanup` will
+    /// do all the deallocation work in a managed way.
+    ///
+    /// If you are invoke this method on the secondary process, it will only
+    /// shutdown dpdk without deallocating any resources.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// fn entry_function() {
+    ///     // create a mempool
+    ///     service()
+    ///         .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///         .unwrap();
+    ///
+    ///     // create the eth conf
+    ///     let dev_info = service().dev_info(0).unwrap();
+    ///     let mut eth_conf = EthConf::new();
+    ///     // enable all rx_offloads
+    ///     eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    ///     // enable all tx_offloads
+    ///     eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    ///     // setup the rss hash function
+    ///     eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    ///     // setup rss_hash_key
+    ///     if dev_info.hash_key_size() == 40 {
+    ///         eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    ///     } else if dev_info.hash_key_size() == 52 {
+    ///         eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    ///     } else {
+    ///         panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    ///     };
+    ///
+    ///     // create rxq conf and txq conf
+    ///     let rxq_conf = RxqConf::new(512, 0, "mp");
+    ///     let txq_conf = TxqConf::new(512, 0);
+    ///     // create 2 rx/tx queues
+    ///     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///         .take(2 as usize)
+    ///         .collect();
+    ///     let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///         .take(2 as usize)
+    ///         .collect();
+    ///
+    ///     // initialize the port
+    ///     let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    ///     assert_eq!(res.is_ok(), true);
+    ///
+    ///     let _txq = service().tx_queue(0, 1);
+    ///     let _rxq = service().rx_queue(0, 1);
+    ///     let _stats_query = service().stats_query(0);
+    /// }
+    ///
+    /// entry_function();
+    ///
+    /// let res = service().graceful_cleanup();
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// // after we shutdown the dpdk service, all the public methods of `DpdkService`
+    /// // will fail.
+    /// let res = service().mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1);
+    /// assert_eq!(res.is_err(), true);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if the we can't shutdown the dpdk service, i.e.
+    /// some resource instances are still alive.
     pub fn graceful_cleanup(&self) -> Result<()> {
         let mut inner = self.try_lock()?;
 
@@ -1325,6 +1419,24 @@ impl DpdkService {
         Ok(())
     }
 
+    /// Lookup an existing mempool using the [`ffi::rte_mempool_lookup`] API.
+    ///
+    /// This method lookups the pointer to an exisitng mempool, and then wraps
+    /// the mempool pointer inside a [`Mempool`] instance. The return
+    /// [`Mempool`] is not tracked by the `DpdkService`.
+    ///
+    /// This is usually used by the secondary process to acquire a mempool
+    /// allocated from the primary process.
+    ///
+    /// # Safety
+    ///
+    /// Make sure that the mempool has already been allocated, and
+    /// [`ffi::rte_mempool_lookup`] can successfully return a valid mempool
+    /// pointer.
+    ///
+    /// If you are calling this method on secondary process, do not attempt
+    /// deallocate the mempool by any form, as it is managed by the primary
+    /// process.
     pub unsafe fn assume_mempool(&self, name: &str) -> Result<Mempool> {
         let _inner = self.try_lock()?;
 
@@ -1343,16 +1455,50 @@ impl DpdkService {
         Ok(Mempool::new(ptr))
     }
 
+    /// Construct an [`RxQueue`] instance for port `port_id` with rx queue id
+    /// `qid`.
+    ///
+    /// This method should be used under two circumstances:
+    ///
+    /// - On the secondary process, the port has already been initialized by the
+    ///   primary process. We can use this method to acquire a [`RxQueue`]
+    ///   instance to receive packets.
+    ///
+    /// - You are not satisfied with the
+    ///   [`DpdkService::dev_configure_and_start`] API and wish to initialize
+    ///   the port using the unsafe [`ffi`]. Then you can use this method to
+    ///   receive packets after the port has been initialized.
+    ///
+    /// # Safety
+    ///
+    /// Make sure that the port has been initialized, and adhere to the
+    /// singleton model of the [`RxQueue`]. Otherwise it will cause undefined
+    /// behavior.     
+    ///
+    /// Also, if you are on a primary process, remember to manually shutdown the
+    /// port before shutting down the dpdk service.
     pub unsafe fn assume_rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
         let _inner = self.try_lock()?;
         Ok(RxQueue::new(port_id, qid))
     }
 
+    /// Construct an [`RxQueue`] instance for port `port_id` with rx queue id
+    /// `qid`.
+    ///
+    /// It works in the same way as [`DpdkService::assume_rx_queue`], but
+    /// returns a tx queue. Refer to the doc of
+    /// [`DpdkService::assume_rx_queue`].
     pub unsafe fn assume_tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
         let _inner = self.try_lock()?;
         Ok(TxQueue::new(port_id, qid))
     }
 
+    /// Construct an [`StatsQuery`] instance for port `port_id` with rx queue id
+    /// `qid`.
+    ///
+    /// It works in the same way as [`DpdkService::assume_rx_queue`], but
+    /// returns a stats query instance. Refer to the doc of
+    /// [`DpdkService::assume_rx_queue`].
     pub unsafe fn assume_stats_query(&self, port_id: u16) -> Result<StatsQuery> {
         let _inner = self.try_lock()?;
         Ok(StatsQuery::new(port_id))
