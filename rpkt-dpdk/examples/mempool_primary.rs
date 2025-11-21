@@ -12,7 +12,9 @@ fn main() {
         service().is_primary_process().unwrap()
     );
 
-    service().mempool_alloc("wtf", 127, 0, 200, -1).unwrap();
+    service()
+        .mempool_alloc("mp_on_primary", 127, 0, 200, -1)
+        .unwrap();
 
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();
@@ -23,5 +25,6 @@ fn main() {
 
     while run.load(Ordering::Acquire) {}
 
-    service().mempool_free("wtf").unwrap();
+    service().mempool_free("mp_on_primary").unwrap();
+    service().graceful_cleanup().unwrap();
 }

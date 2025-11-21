@@ -477,3 +477,30 @@ fn dpdkservice_dev_stop_and_close() {
 
     service().graceful_cleanup().unwrap();
 }
+
+#[test]
+fn dpdkservice_is_primary_process() {
+    use rpkt_dpdk::{service, DpdkOption};
+
+    // Launch examples/mempool_primary.rs first.
+    // Create a secondary dpdk process and attach to the
+    // primary process launched from the example.
+    DpdkOption::new()
+        .args("-n 4 --file-prefix mempool_primary --proc-type=secondary".split(" "))
+        .init()
+        .unwrap();
+
+    // This process is a secondary process
+    assert_eq!(service().is_primary_process().unwrap(), false);
+    {
+        // On the secondary process, we can't allocate important resources
+        let res = service().mempool_alloc("mp", 127, 0, 200, -1);
+        assert_eq!(res.is_err(), true);
+
+        // However, we can obtain the mempool allocated by the primary process
+        let res = unsafe { service().assume_mempool("mp_on_primary") };
+        assert_eq!(res.is_ok(), true);
+    }
+
+    service().graceful_cleanup().unwrap();
+}

@@ -1247,6 +1247,56 @@ impl DpdkService {
 
 impl DpdkService {
     /// Check whether the current process is a dpdk primary process.
+    ///
+    /// Dpdk has primary process and secondary process. The primary process
+    /// allocates and maintains all the resources on the shared memory.
+    /// The secondary process will be attached to a primary process, and uses
+    /// the fd descriptor exposed by the primary process to acquire important
+    /// memory addresses that the primary process allocates on the shared
+    /// memory.
+    ///
+    /// In theory, the secondary process can not allocate any resources, it can
+    /// only acquire the resources pre-allocated from the primary process.
+    ///
+    /// Users can configure any eal arguments using [`DpdkOption`]. So they can
+    /// create a secondary dpdk processs using `rpkt_dpdk`. However, most of
+    /// the public methods of `DpdkService` will fail on the secondary dpdk
+    /// process.
+    ///
+    /// `is_primary_process` provides a way for the user to query whether the
+    /// current process is a secondary dpdk process.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{service, DpdkOption};
+    ///
+    /// // Launch examples/mempool_primary.rs first.
+    /// // Create a secondary dpdk process and attach to the
+    /// // primary process launched from the example.
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix mempool_primary --proc-type=secondary".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // This process is a secondary process
+    /// assert_eq!(service().is_primary_process().unwrap(), false);
+    /// {
+    ///     // On the secondary process, we can't allocate important resources
+    ///     let res = service().mempool_alloc("mp", 127, 0, 200, -1);
+    ///     assert_eq!(res.is_err(), true);
+    ///
+    ///     // However, we can obtain the mempool allocated by the primary process
+    ///     let res = unsafe { service().assume_mempool("mp_on_primary") };
+    ///     assert_eq!(res.is_ok(), true);
+    /// }
+    ///
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if the `DpdkService` has been shutdown by
+    /// [`DpdkService::graceful_cleanup`].
     pub fn is_primary_process(&self) -> Result<bool> {
         Ok(self.try_lock()?.is_primary)
     }
