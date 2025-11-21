@@ -147,10 +147,333 @@ fn dpdkservice_mempool_free() {
         assert_eq!(service().mempool_free("mp").is_err(), true);
         mbuf = mp.try_alloc().unwrap();
     }
-    // Can't deallocate mempool "mp", because `mbuf` is alive, so the mempool is not full.
+    // Can't deallocate mempool "mp", because `mbuf` is alive, so the mempool is not
+    // full.
     assert_eq!(service().mempool_free("mp").is_err(), true);
     drop(mbuf);
     // The mbuf is not in use, we can succefully drop this mempool.
     assert_eq!(service().mempool_free("mp").is_ok(), true);
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn dpdkservice_dev_configure_and_start() {
+    use arrayvec::ArrayVec;
+    use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    // create a mempool
+    service()
+        .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+        .unwrap();
+
+    // create the eth conf
+    let dev_info = service().dev_info(0).unwrap();
+    let mut eth_conf = EthConf::new();
+    // enable all rx_offloads
+    eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    // enable all tx_offloads
+    eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    // setup the rss hash function
+    eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    // setup rss_hash_key
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(512, 0, "mp");
+    let txq_conf = TxqConf::new(512, 0);
+    // create 2 rx/tx queues
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(2 as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(2 as usize)
+        .collect();
+
+    // initialize the port
+    let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    assert_eq!(res.is_ok(), true);
+
+    {
+        // receive and send packets
+        let mut rxq = service().rx_queue(0, 1).unwrap();
+        let mut txq = service().tx_queue(0, 1).unwrap();
+        let mut ibatch = ArrayVec::<_, 32>::new();
+        rxq.rx(&mut ibatch);
+        txq.tx(&mut ibatch);
+    }
+
+    // deallocate all the resources and shutdown dpdk
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn dpdkservice_rx_queue() {
+    use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    // create a mempool
+    service()
+        .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+        .unwrap();
+
+    // create the eth conf
+    let dev_info = service().dev_info(0).unwrap();
+    let mut eth_conf = EthConf::new();
+    // enable all rx_offloads
+    eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    // enable all tx_offloads
+    eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    // setup the rss hash function
+    eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    // setup rss_hash_key
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(512, 0, "mp");
+    let txq_conf = TxqConf::new(512, 0);
+    // create 2 rx/tx queues
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(2 as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(2 as usize)
+        .collect();
+
+    // initialize the port
+    let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    assert_eq!(res.is_ok(), true);
+
+    let jh = std::thread::spawn(|| {
+        let res = service().rx_queue(0, 1);
+        assert_eq!(res.is_ok(), true);
+
+        // we can only acquire a single rx queue
+        let res = service().rx_queue(0, 1);
+        assert_eq!(res.is_ok(), false);
+    });
+    jh.join().unwrap();
+
+    // deallocate all the resources and shutdown dpdk
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn dpdkservice_tx_queue() {
+    use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    // create a mempool
+    service()
+        .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+        .unwrap();
+
+    // create the eth conf
+    let dev_info = service().dev_info(0).unwrap();
+    let mut eth_conf = EthConf::new();
+    // enable all rx_offloads
+    eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    // enable all tx_offloads
+    eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    // setup the rss hash function
+    eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    // setup rss_hash_key
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(512, 0, "mp");
+    let txq_conf = TxqConf::new(512, 0);
+    // create 2 rx/tx queues
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(2 as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(2 as usize)
+        .collect();
+
+    // initialize the port
+    let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    assert_eq!(res.is_ok(), true);
+
+    let jh = std::thread::spawn(|| {
+        let res = service().tx_queue(0, 1);
+        assert_eq!(res.is_ok(), true);
+
+        // we can only acquire a single rx queue
+        let res = service().tx_queue(0, 1);
+        assert_eq!(res.is_ok(), false);
+    });
+    jh.join().unwrap();
+
+    // deallocate all the resources and shutdown dpdk
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn dpdkservice_stats_query() {
+    use rpkt_dpdk::{constant, rdtsc, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    // create a mempool
+    service()
+        .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+        .unwrap();
+
+    // create the eth conf
+    let dev_info = service().dev_info(0).unwrap();
+    let mut eth_conf = EthConf::new();
+    // enable all rx_offloads
+    eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    // enable all tx_offloads
+    eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    // setup the rss hash function
+    eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    // setup rss_hash_key
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(512, 0, "mp");
+    let txq_conf = TxqConf::new(512, 0);
+    // create 2 rx/tx queues
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(2 as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(2 as usize)
+        .collect();
+
+    // initialize the port
+    let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    assert_eq!(res.is_ok(), true);
+
+    {
+        let mut stat_query = service().stats_query(0).unwrap();
+
+        // test the basic cpu frequecy for the rdtsc counter
+        let base_freq = rdtsc::BaseFreq::new();
+        // get the current dpdk port stats
+        let curr_stats = stat_query.query();
+        // wait for 1s using rdtsc
+        let tick_in_1s = rdtsc::rdtsc() + base_freq.sec_to_cycles(1.0);
+        while rdtsc::rdtsc() < tick_in_1s {}
+        // get the new stats after 1s
+        let new_stats = stat_query.query();
+        println!("{} pps", new_stats.ipackets() - curr_stats.ipackets());
+    }
+
+    // deallocate all the resources and shutdown dpdk
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn dpdkservice_dev_stop_and_close() {
+    use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+
+    // create a mempool
+    service()
+        .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+        .unwrap();
+
+    // create the eth conf
+    let dev_info = service().dev_info(0).unwrap();
+    let mut eth_conf = EthConf::new();
+    // enable all rx_offloads
+    eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    // enable all tx_offloads
+    eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    // setup the rss hash function
+    eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    // setup rss_hash_key
+    if dev_info.hash_key_size() == 40 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    } else if dev_info.hash_key_size() == 52 {
+        eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    } else {
+        panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    };
+
+    // create rxq conf and txq conf
+    let rxq_conf = RxqConf::new(512, 0, "mp");
+    let txq_conf = TxqConf::new(512, 0);
+    // create 2 rx/tx queues
+    let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+        .take(2 as usize)
+        .collect();
+    let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+        .take(2 as usize)
+        .collect();
+
+    // initialize the port
+    let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    assert_eq!(res.is_ok(), true);
+
+    {
+        let _txq = service().tx_queue(0, 1).unwrap();
+        // txq is alive, we can't close the port
+        let res = service().dev_stop_and_close(0);
+        assert_eq!(res.is_err(), true);
+    }
+
+    {
+        let _rxq = service().rx_queue(0, 1).unwrap();
+        // rxq is alive, we can't close the port
+        let res = service().dev_stop_and_close(0);
+        assert_eq!(res.is_err(), true);
+    }
+
+    {
+        let _stats_query = service().stats_query(0).unwrap();
+        // rxq is alive, we can't close the port
+        let res = service().dev_stop_and_close(0);
+        assert_eq!(res.is_err(), true);
+    }
+
+    // txq/rxq/stats_query are all dropped, we can successfully shutdown the port.
+    let res = service().dev_stop_and_close(0);
+    assert_eq!(res.is_ok(), true);
+
     service().graceful_cleanup().unwrap();
 }

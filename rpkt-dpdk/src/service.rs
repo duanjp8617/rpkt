@@ -188,11 +188,34 @@ impl DpdkOption {
 /// A global singleton providing public APIs to different dpdk functions.
 ///
 /// The provided APIs include:
+///
 /// - Check lcores on the CPUs and bind threads to lcores.
+///
 /// - Create and delete dpdk mempools.
+///
 /// - Configure, start and close dpdk ports.
+///
 /// - Miscellaneous APIs, including checking primary process, shuttding down
 ///   DPDK eal, etc.
+///
+/// The API calls provided `DpdkService` should be safe wrapper functions for
+/// corresponding dpdk ffi APIs. So `DpdkService` uses a mutex to protect all
+/// these API calls. In this way, we ensure that there are no multi-thread
+/// contentions when invoking important dpdk ffi APIs.
+///
+/// While this is a little-bit conservative, as some dpdk ffis may tolerate
+/// multi-thread contentions, we believe that it is still a worth-while choice.
+///
+/// The public APIs provided by `DpdkService` are the so-called control-plane
+/// APIs, meaning that they are only used to allocate important resources to the
+/// library users, including mempools, port tx/rx queues, etc.
+///
+/// These control-plane APIs are not frequently invoked. They are most-likely to
+/// be used during program initiliazation phase.
+///
+/// After the users acquire the desired resources, like mempools, they are free
+/// to use the resources in multi-thread environments. Because dpdk itself
+/// provides atomic guarantees for these resources.
 pub struct DpdkService {
     service: Mutex<ServiceInner>,
     lcores: Vec<Lcore>,
@@ -262,7 +285,9 @@ impl DpdkService {
     ///
     /// [`DpdkService`] manages thread binding in its internal state. It
     /// enforces the following invariants:
+    ///
     /// - Each lcore can only be globally bound once.
+    ///
     /// - Each thread can only be bound to a single lcore.
     ///
     /// Violating these invariants causes [`DpdkError`] to be returned.
@@ -358,12 +383,16 @@ impl DpdkService {
     /// Allocate a new dpdk mempool.
     ///
     /// The input parameters are:
+    ///
     /// - `name`: name of the mempool, must be unique, duplicated mempool name
     ///   cause allocation failure.
+    ///
     /// - `n`: the total number of mbufs that this mempool contains.
+    ///
     /// - `cache_size`: the total number of mbufs that the thread-local cache
     ///   contains. To use the thread-local mempool cache, the thread must be
     ///   registered as a eal thread ([`DpdkService::register_as_rte_thread`]).
+    ///
     /// - `data_room_size`: the total number of bytes allocated to each mbuf for
     ///   storing data. Note that the initial usable byte length of each
     ///   newly-allocated mbuf will be [`crate::constant::MBUF_HEADROOM_SIZE`]
@@ -371,6 +400,7 @@ impl DpdkService {
     ///   automatically consumes [`crate::constant::MBUF_HEADROOM_SIZE`] bytes
     ///   at the start of each mbuf upon allocation. These consumed bytes can be
     ///   used to prepend protocol headers to the mbuf.
+    ///
     /// - `socket_id`: indicate the socket that the mempool is allocated on. If
     ///   `socket_id` is set to `-1`, it means that numa is ignored and dpdk
     ///   will select a default socket id.
@@ -506,11 +536,13 @@ impl DpdkService {
     /// `rpkt_dpdk` relies on reference counting to track the availability of
     /// different kinds of resources. In terms of mempool, we must ensure
     /// the following 2 conditions are met:
+    ///
     /// - All the [`Mempool`] instances have been dropped, leaving the internal
     ///   atomic value to be 1 (`DpdkService` keeps an internal mempool
-    ///   instance). Also note that each [`RxQueue`] of the
-    ///   initialized dpdk port also holds an internal mempool instance. So make
-    ///   sure to close these ports prior to deallocating the mempool.
+    ///   instance). Also note that each [`RxQueue`] of the initialized dpdk
+    ///   port also holds an internal mempool instance. So make sure to close
+    ///   these ports prior to deallocating the mempool.
+    ///
     /// - All the mbufs allocated from this mempool have been dropped and
     ///   mempool is full. Dpdk mempool tracks the number of unallocated mbufs,
     ///   we can check this value to determine whether the mempool is full.
@@ -621,27 +653,101 @@ impl DpdkService {
     /// Configure and start the port with `port_id`.
     ///
     /// The input parameters are:
+    ///
     /// - `port_id`: the port to initialize
+    ///
     /// - `eth_conf`: configuration paramter for the port. [`EthConf`] is a
     ///   simplified version of [`ffi::rte_eth_conf`].
+    ///
     /// - `rxq_confs`: configuration parameters for rx queues. Each [`RxqConf`]
     ///   in the list with index `i` is used to initialize rx queue `i`.
+    ///
     /// - `txq_confs`: configuration parameters for tx queues. Each [`TxqConf`]
     ///   in the list with index `i` is used to initialize tx queue `i`.
     ///
     /// This method fuses 5 standard steps to initialize the dpdk port into a
     /// single function call:
+    ///
     /// - calling [`ffi::rte_eth_dev_configure`] to configure the port. This
     ///   will configure the number of tx/rx queues and apply an initial port
     ///   configuration ([`ffi::rte_eth_conf`]), which contains basic hardware
     ///   offloading functionalities.
+    ///
     /// - calling [`ffi::rte_eth_rx_queue_setup`] to setup each rx queue. This
     ///   will setup the descriptor number, socket id and the receiving mempool
     ///   for the rxq.
+    ///
     /// - calling [`ffi::rte_eth_tx_queue_setup`] to setup each tx queue. This
     ///   will setup the descriptor number, socket id for the txq.
+    ///
     /// - enabling device promiscuous depending on the configuration
+    ///
     /// - starting the port with [`ffi::rte_eth_dev_start`].
+    ///
+    /// # Examples
+    /// ```rust
+    /// use arrayvec::ArrayVec;
+    /// use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    ///
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // create a mempool
+    /// service()
+    ///     .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    ///
+    /// // create the eth conf
+    /// let dev_info = service().dev_info(0).unwrap();
+    /// let mut eth_conf = EthConf::new();
+    /// // enable all rx_offloads
+    /// eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    /// // enable all tx_offloads
+    /// eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    /// // setup the rss hash function
+    /// eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    /// // setup rss_hash_key
+    /// if dev_info.hash_key_size() == 40 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    /// } else if dev_info.hash_key_size() == 52 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    /// } else {
+    ///     panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    /// };
+    ///
+    /// // create rxq conf and txq conf
+    /// let rxq_conf = RxqConf::new(512, 0, "mp");
+    /// let txq_conf = TxqConf::new(512, 0);
+    /// // create 2 rx/tx queues
+    /// let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    /// let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    ///
+    /// // initialize the port
+    /// let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// {
+    ///     // receive and send packets
+    ///     let mut rxq = service().rx_queue(0, 1).unwrap();
+    ///     let mut txq = service().tx_queue(0, 1).unwrap();
+    ///     let mut ibatch = ArrayVec::<_, 32>::new();
+    ///     rxq.rx(&mut ibatch);
+    ///     txq.tx(&mut ibatch);
+    /// }
+    ///
+    /// // deallocate all the resources and shutdown dpdk
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't start port `port_id`.
     pub fn dev_configure_and_start(
         &self,
         port_id: u16,
@@ -772,11 +878,84 @@ impl DpdkService {
         Ok(())
     }
 
-    pub fn dev_stop_and_close(&self, port_id: u16) -> Result<()> {
-        let mut inner = self.try_lock()?;
-        inner.do_dev_stop_and_close(port_id)
-    }
-
+    /// Try to acquire an instance of the rx queue with queue id `qid` for port
+    /// `port_id`.
+    ///
+    /// [`RxQueue`] is modeled as a singleton, indicating that there can only be
+    /// one rx queue for a given `qid`. This is because it is highly possible
+    /// that dpdk provides no multi-thread concurrency control for accessing the
+    /// same rx queue.
+    ///
+    /// `DpdkService` ensures this using atomic reference counting.
+    /// `DpdkService` maintains a atomic shared pointer to the rx queue
+    /// instance. Whenever `rx_queue` is called, it checks whether the reference
+    /// count of the requested rx queue. If it is larger than 1, then `rx_queue`
+    /// returns an error.
+    ///
+    /// # Examples    
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    ///
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // create a mempool
+    /// service()
+    ///     .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    ///
+    /// // create the eth conf
+    /// let dev_info = service().dev_info(0).unwrap();
+    /// let mut eth_conf = EthConf::new();
+    /// // enable all rx_offloads
+    /// eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    /// // enable all tx_offloads
+    /// eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    /// // setup the rss hash function
+    /// eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    /// // setup rss_hash_key
+    /// if dev_info.hash_key_size() == 40 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    /// } else if dev_info.hash_key_size() == 52 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    /// } else {
+    ///     panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    /// };
+    ///
+    /// // create rxq conf and txq conf
+    /// let rxq_conf = RxqConf::new(512, 0, "mp");
+    /// let txq_conf = TxqConf::new(512, 0);
+    /// // create 2 rx/tx queues
+    /// let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    /// let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    ///
+    /// // initialize the port
+    /// let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// let jh = std::thread::spawn(|| {
+    ///     let res = service().rx_queue(0, 1);
+    ///     assert_eq!(res.is_ok(), true);
+    ///
+    ///     // we can only acquire a single rx queue
+    ///     let res = service().rx_queue(0, 1);
+    ///     assert_eq!(res.is_ok(), false);
+    /// });
+    /// jh.join().unwrap();
+    ///
+    /// // deallocate all the resources and shutdown dpdk
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't acquire the rx queue.
     pub fn rx_queue(&self, port_id: u16, qid: u16) -> Result<RxQueue> {
         let inner = self.try_lock()?;
 
@@ -792,6 +971,76 @@ impl DpdkService {
         port.rx_queue(qid)
     }
 
+    /// Try to acquire an instance of the tx queue with queue id `qid` for port
+    /// `port_id`.
+    ///
+    /// [`TxQueue`] is modeled similar as [`RxQueue`]. Refer to the doc of
+    /// [`RxQueue`] for details.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    ///
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // create a mempool
+    /// service()
+    ///     .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    ///
+    /// // create the eth conf
+    /// let dev_info = service().dev_info(0).unwrap();
+    /// let mut eth_conf = EthConf::new();
+    /// // enable all rx_offloads
+    /// eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    /// // enable all tx_offloads
+    /// eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    /// // setup the rss hash function
+    /// eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    /// // setup rss_hash_key
+    /// if dev_info.hash_key_size() == 40 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    /// } else if dev_info.hash_key_size() == 52 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    /// } else {
+    ///     panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    /// };
+    ///
+    /// // create rxq conf and txq conf
+    /// let rxq_conf = RxqConf::new(512, 0, "mp");
+    /// let txq_conf = TxqConf::new(512, 0);
+    /// // create 2 rx/tx queues
+    /// let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    /// let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    ///
+    /// // initialize the port
+    /// let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// let jh = std::thread::spawn(|| {
+    ///     let res = service().tx_queue(0, 1);
+    ///     assert_eq!(res.is_ok(), true);
+    ///
+    ///     // we can only acquire a single rx queue
+    ///     let res = service().tx_queue(0, 1);
+    ///     assert_eq!(res.is_ok(), false);
+    /// });
+    /// jh.join().unwrap();
+    ///
+    /// // deallocate all the resources and shutdown dpdk
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't acquire the rx queue.
     pub fn tx_queue(&self, port_id: u16, qid: u16) -> Result<TxQueue> {
         let inner = self.try_lock()?;
 
@@ -807,6 +1056,82 @@ impl DpdkService {
         port.tx_queue(qid)
     }
 
+    /// Try to acquire an instance of [`StatsQuery`], with which we can query
+    /// the statistics of port `port_id`.
+    ///
+    /// [`StatsQuery`] is modeled similaly as [`RxQueue`]. Refer to the doc of
+    /// [`RxQueue`] for details.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, rdtsc, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    ///
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // create a mempool
+    /// service()
+    ///     .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    ///
+    /// // create the eth conf
+    /// let dev_info = service().dev_info(0).unwrap();
+    /// let mut eth_conf = EthConf::new();
+    /// // enable all rx_offloads
+    /// eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    /// // enable all tx_offloads
+    /// eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    /// // setup the rss hash function
+    /// eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    /// // setup rss_hash_key
+    /// if dev_info.hash_key_size() == 40 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    /// } else if dev_info.hash_key_size() == 52 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    /// } else {
+    ///     panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    /// };
+    ///
+    /// // create rxq conf and txq conf
+    /// let rxq_conf = RxqConf::new(512, 0, "mp");
+    /// let txq_conf = TxqConf::new(512, 0);
+    /// // create 2 rx/tx queues
+    /// let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    /// let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    ///
+    /// // initialize the port
+    /// let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// {
+    ///     let mut stat_query = service().stats_query(0).unwrap();
+    ///
+    ///     // test the basic cpu frequecy for the rdtsc counter
+    ///     let base_freq = rdtsc::BaseFreq::new();
+    ///     // get the current dpdk port stats
+    ///     let curr_stats = stat_query.query();
+    ///     // wait for 1s using rdtsc
+    ///     let tick_in_1s = rdtsc::rdtsc() + base_freq.sec_to_cycles(1.0);
+    ///     while rdtsc::rdtsc() < tick_in_1s {}
+    ///     // get the new stats after 1s
+    ///     let new_stats = stat_query.query();
+    ///     println!("{} pps", new_stats.ipackets() - curr_stats.ipackets());
+    /// }
+    ///
+    /// // deallocate all the resources and shutdown dpdk
+    /// service().graceful_cleanup().unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we can't acquire the query instance for port
+    /// `port_id`.
     pub fn stats_query(&self, port_id: u16) -> Result<StatsQuery> {
         let inner = self.try_lock()?;
 
@@ -820,6 +1145,103 @@ impl DpdkService {
             .get(&port_id)
             .ok_or(DpdkError::service_err("invalid port id"))?;
         port.stats_query()
+    }
+
+    /// Stop and close the port with `port_id`.
+    ///
+    /// This method fuses [`ffi::rte_eth_dev_stop`] and
+    /// [`ffi::rte_eth_dev_close`] together, causing a complete shutdown of the
+    /// port.
+    ///
+    /// However, in order to successfully shutdown the port, the caller must
+    /// ensure that the port is no longer in use.
+    ///
+    /// Similar to [`Mempool`], the port is also managed via reference counting.
+    /// `DpdkService` keeps reference count for all the rx/tx queues and the
+    /// stats query. The caller must ensure that there are no instances of
+    /// [`RxQueue`], [`TxQueue`] and [`StatsQuery`] alive.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use rpkt_dpdk::{constant, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    /// DpdkOption::new()
+    ///     .args("-n 4 --file-prefix app".split(" "))
+    ///     .init()
+    ///     .unwrap();
+    ///
+    /// // create a mempool
+    /// service()
+    ///     .mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+    ///     .unwrap();
+    ///
+    /// // create the eth conf
+    /// let dev_info = service().dev_info(0).unwrap();
+    /// let mut eth_conf = EthConf::new();
+    /// // enable all rx_offloads
+    /// eth_conf.rx_offloads = dev_info.rx_offload_capa();
+    /// // enable all tx_offloads
+    /// eth_conf.tx_offloads = dev_info.tx_offload_capa();
+    /// // setup the rss hash function
+    /// eth_conf.rss_hf = dev_info.flow_type_rss_offloads();
+    /// // setup rss_hash_key
+    /// if dev_info.hash_key_size() == 40 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_40B.into();
+    /// } else if dev_info.hash_key_size() == 52 {
+    ///     eth_conf.rss_hash_key = constant::DEFAULT_RSS_KEY_52B.into();
+    /// } else {
+    ///     panic!("unsupported hash key size: {}", dev_info.hash_key_size())
+    /// };
+    ///
+    /// // create rxq conf and txq conf
+    /// let rxq_conf = RxqConf::new(512, 0, "mp");
+    /// let txq_conf = TxqConf::new(512, 0);
+    /// // create 2 rx/tx queues
+    /// let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    /// let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
+    ///     .take(2 as usize)
+    ///     .collect();
+    ///
+    /// // initialize the port
+    /// let res = service().dev_configure_and_start(0, &eth_conf, &rxq_confs, &txq_confs);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// {
+    ///     let _txq = service().tx_queue(0, 1).unwrap();
+    ///     // txq is alive, we can't close the port
+    ///     let res = service().dev_stop_and_close(0);
+    ///     assert_eq!(res.is_err(), true);
+    /// }
+    ///
+    /// {
+    ///     let _rxq = service().rx_queue(0, 1).unwrap();
+    ///     // rxq is alive, we can't close the port
+    ///     let res = service().dev_stop_and_close(0);
+    ///     assert_eq!(res.is_err(), true);
+    /// }
+    ///
+    /// {
+    ///     let _stats_query = service().stats_query(0).unwrap();
+    ///     // rxq is alive, we can't close the port
+    ///     let res = service().dev_stop_and_close(0);
+    ///     assert_eq!(res.is_err(), true);
+    /// }
+    ///
+    /// // txq/rxq/stats_query are all dropped, we can successfully shutdown the port.
+    /// let res = service().dev_stop_and_close(0);
+    /// assert_eq!(res.is_ok(), true);
+    ///
+    /// service().graceful_cleanup().unwrap();
+
+    /// ```
+    /// 
+    /// # Errors
+    ///
+    /// It returns [`DpdkError`] if we fail to shutdown port `port_id`.
+    pub fn dev_stop_and_close(&self, port_id: u16) -> Result<()> {
+        let mut inner = self.try_lock()?;
+        inner.do_dev_stop_and_close(port_id)
     }
 }
 
