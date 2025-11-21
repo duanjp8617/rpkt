@@ -66,6 +66,63 @@ fn tcp_packet_with_options_parse() {
 }
 
 #[test]
+fn tcp_packet_with_options_cursor_parse() {
+    let pkt = file_to_packet("TcpPacketWithOptions.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+    let ipv4_header_len = ipv4.header_len();
+
+    let tcp = Tcp::parse_from_cursor(ipv4.payload_as_cursor()).unwrap();
+    assert_eq!(tcp.src_port(), 44147);
+    assert_eq!(tcp.dst_port(), 80);
+    assert_eq!(tcp.seq_num(), 777047406);
+    assert_eq!(tcp.ack_num(), 3761117865);
+    assert_eq!(tcp.header_len() - 20, 12);
+    assert_eq!(tcp.cwr(), false);
+    assert_eq!(tcp.ece(), false);
+    assert_eq!(tcp.urg(), false);
+    assert_eq!(tcp.ack(), true);
+    assert_eq!(tcp.psh(), true);
+    assert_eq!(tcp.rst(), false);
+    assert_eq!(tcp.syn(), false);
+    assert_eq!(tcp.fin(), false);
+    assert_eq!(tcp.window_size(), 913);
+    assert_eq!(tcp.checksum(), 0xac20);
+    assert_eq!(tcp.urgent_pointer(), 0);
+    let tcp_header_len = tcp.header_len();
+
+    let mut tcp_opts = TcpOptionsIter::from_slice(tcp.var_header_slice());
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let ts = match tcp_opts.next().unwrap() {
+        TcpOptions::Timestamp_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(ts.ts(), 195102);
+    assert_eq!(ts.ts_echo(), 3555729271);
+
+    let payload = tcp.payload_as_cursor();
+    assert_eq!(
+        payload.chunk(),
+        &pkt[(14 + ipv4_header_len + tcp_header_len) as usize..]
+    );
+}
+
+#[test]
 fn tcp_packet_with_options_build() {
     let pkt = file_to_packet("TcpPacketWithOptions.dat");
 
@@ -183,6 +240,74 @@ fn tcp_packet_with_options2_parse() {
 
     let payload = tcp.payload();
     assert_eq!(payload.chunk(), &pkt[pkt.len() - payload.chunk().len()..]);
+}
+
+#[test]
+fn tcp_packet_with_options2_cursor_parse() {
+    let pkt = file_to_packet("TcpPacketWithOptions2.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+    let ipv4_header_len = ipv4.header_len();
+
+    let tcp = Tcp::parse_from_cursor(ipv4.payload_as_cursor()).unwrap();
+    assert_eq!(tcp.src_port(), 80);
+    assert_eq!(tcp.dst_port(), 44160);
+    assert_eq!(tcp.seq_num(), 3089746840);
+    assert_eq!(tcp.ack_num(), 3916895622);
+    assert_eq!(tcp.header_len() - 20, 16);
+    assert_eq!(tcp.cwr(), false);
+    assert_eq!(tcp.ece(), false);
+    assert_eq!(tcp.urg(), false);
+    assert_eq!(tcp.ack(), true);
+    assert_eq!(tcp.psh(), true);
+    assert_eq!(tcp.rst(), false);
+    assert_eq!(tcp.syn(), false);
+    assert_eq!(tcp.fin(), false);
+    assert_eq!(tcp.window_size(), 20178);
+    assert_eq!(tcp.checksum(), 0xdea1);
+    assert_eq!(tcp.urgent_pointer(), 0);
+    let tcp_header_len = tcp.header_len();
+
+    let mut tcp_opts = TcpOptionsIter::from_slice(tcp.var_header_slice());
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let ts = match tcp_opts.next().unwrap() {
+        TcpOptions::Timestamp_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(ts.ts(), 3555735960);
+    assert_eq!(ts.ts_echo(), 196757);
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let ws = match tcp_opts.next().unwrap() {
+        TcpOptions::WindowScale_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(ws.shift_count(), 2);
+
+    let payload = tcp.payload_as_cursor();
+    assert_eq!(
+        payload.chunk(),
+        &pkt[(14 + ipv4_header_len + tcp_header_len) as usize..]
+    );
 }
 
 #[test]
@@ -306,6 +431,69 @@ fn tcp_packet_with_mss_sackperm_parse() {
 }
 
 #[test]
+fn tcp_packet_with_mss_sackperm_cursor_parse() {
+    let pkt = file_to_packet("TcpPacketWithMssSackperm.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+    let ipv4_header_len = ipv4.header_len();
+
+    let tcp = Tcp::parse_from_cursor(ipv4.payload_as_cursor()).unwrap();
+    assert_eq!(tcp.src_port(), 2000);
+    assert_eq!(tcp.dst_port(), 6712);
+    assert_eq!(tcp.seq_num(), 191135221);
+    assert_eq!(tcp.ack_num(), 4211666100);
+    assert_eq!(tcp.header_len() - 20, 8);
+    assert_eq!(tcp.cwr(), false);
+    assert_eq!(tcp.ece(), false);
+    assert_eq!(tcp.urg(), false);
+    assert_eq!(tcp.ack(), true);
+    assert_eq!(tcp.psh(), false);
+    assert_eq!(tcp.rst(), false);
+    assert_eq!(tcp.syn(), true);
+    assert_eq!(tcp.fin(), false);
+    assert_eq!(tcp.window_size(), 64240);
+    assert_eq!(tcp.checksum(), 0xe310);
+    assert_eq!(tcp.urgent_pointer(), 0);
+    let tcp_header_len = tcp.header_len();
+
+    let mut tcp_opts = TcpOptionsIter::from_slice(tcp.var_header_slice());
+
+    let mss = match tcp_opts.next().unwrap() {
+        TcpOptions::Mss_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(mss.mss(), 1460);
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _ = match tcp_opts.next().unwrap() {
+        TcpOptions::SackPermitted_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    assert_eq!(tcp_opts.next().is_none(), true);
+
+    let payload = tcp.payload_as_cursor();
+    assert_eq!(
+        payload.chunk(),
+        &pkt[(14 + ipv4_header_len + tcp_header_len) as usize..]
+    );
+}
+
+#[test]
 fn tcp_packet_with_mss_sackperm_build() {
     let pkt = file_to_packet("TcpPacketWithMssSackperm.dat");
 
@@ -417,6 +605,71 @@ fn tcp_packet_with_sack_parse() {
 
     let payload = tcp.payload();
     assert_eq!(payload.chunk(), &pkt[pkt.len() - payload.chunk().len()..]);
+}
+
+#[test]
+fn tcp_packet_with_sack_cursor_parse() {
+    let pkt = file_to_packet("TcpPacketWithSack.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+    let ipv4_header_len = ipv4.header_len();
+
+    let tcp = Tcp::parse_from_cursor(ipv4.payload_as_cursor()).unwrap();
+    assert_eq!(tcp.src_port(), 54436);
+    assert_eq!(tcp.dst_port(), 80);
+    assert_eq!(tcp.seq_num(), 3714426508);
+    assert_eq!(tcp.ack_num(), 2530491013);
+    assert_eq!(tcp.header_len() - 20, 12);
+    assert_eq!(tcp.cwr(), false);
+    assert_eq!(tcp.ece(), false);
+    assert_eq!(tcp.urg(), false);
+    assert_eq!(tcp.ack(), true);
+    assert_eq!(tcp.psh(), false);
+    assert_eq!(tcp.rst(), false);
+    assert_eq!(tcp.syn(), false);
+    assert_eq!(tcp.fin(), false);
+    assert_eq!(tcp.window_size(), 4380);
+    assert_eq!(tcp.checksum(), 0x8497);
+    assert_eq!(tcp.urgent_pointer(), 0);
+    let tcp_header_len = tcp.header_len();
+
+    let mut tcp_opts = TcpOptionsIter::from_slice(tcp.var_header_slice());
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let _nop = match tcp_opts.next().unwrap() {
+        TcpOptions::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let sack = match tcp_opts.next().unwrap() {
+        TcpOptions::Sack_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(
+        u32::from_be_bytes(sack.var_header_slice()[..4].try_into().unwrap()) - tcp.ack_num() + 1,
+        13141
+    );
+    assert_eq!(
+        u32::from_be_bytes(sack.var_header_slice()[4..8].try_into().unwrap()) - tcp.ack_num() + 1,
+        14601
+    );
+
+    assert_eq!(tcp_opts.next().is_none(), true);
+
+    let payload = tcp.payload_as_cursor();
+    assert_eq!(
+        payload.chunk(),
+        &pkt[(14 + ipv4_header_len + tcp_header_len) as usize..]
+    );
 }
 
 #[test]

@@ -36,9 +36,8 @@ impl<T: Buf> Gre<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -167,9 +166,8 @@ impl<'a> Gre<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -198,9 +196,8 @@ impl<'a> Gre<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -377,10 +374,11 @@ impl<T: Buf> GreForPPTP<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 8)
-            || ((container.header_len() as usize) > chunk_len)
-            || ((container.payload_len() as usize) + (container.header_len() as usize)
-                > container.buf.remaining())
+        let header_len = container.header_len() as usize;
+        let payload_len = container.payload_len() as usize;
+        if (header_len < 8)
+            || (header_len > chunk_len)
+            || (payload_len + header_len > container.buf.remaining())
         {
             return Err(container.buf);
         }
@@ -550,10 +548,9 @@ impl<'a> GreForPPTP<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 8)
-            || ((container.payload_len() as usize) + (container.header_len() as usize)
-                > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        let payload_len = container.payload_len() as usize;
+        if (header_len < 8) || (payload_len + header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -583,10 +580,9 @@ impl<'a> GreForPPTP<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 8)
-            || ((container.payload_len() as usize) + (container.header_len() as usize)
-                > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        let payload_len = container.payload_len() as usize;
+        if (header_len < 8) || (payload_len + header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)

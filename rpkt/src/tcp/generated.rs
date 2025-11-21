@@ -36,9 +36,8 @@ impl<T: Buf> Tcp<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 20)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 20) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -231,9 +230,8 @@ impl<'a> Tcp<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 20)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 20) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -262,9 +260,8 @@ impl<'a> Tcp<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 20)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 20) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -529,9 +526,8 @@ impl<T: Buf> Mss<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) != 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if header_len != 4 {
             return Err(container.buf);
         }
         Ok(container)
@@ -594,7 +590,8 @@ impl<'a> Mss<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 4 {
+        let header_len = container.header_len() as usize;
+        if header_len != 4 {
             return Err(container.buf);
         }
         Ok(container)
@@ -623,7 +620,8 @@ impl<'a> Mss<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 4 {
+        let header_len = container.header_len() as usize;
+        if header_len != 4 {
             return Err(container.buf);
         }
         Ok(container)
@@ -670,9 +668,8 @@ impl<T: Buf> WindowScale<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) != 3)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if header_len != 3 {
             return Err(container.buf);
         }
         Ok(container)
@@ -735,7 +732,8 @@ impl<'a> WindowScale<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 3 {
+        let header_len = container.header_len() as usize;
+        if header_len != 3 {
             return Err(container.buf);
         }
         Ok(container)
@@ -764,7 +762,8 @@ impl<'a> WindowScale<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 3 {
+        let header_len = container.header_len() as usize;
+        if header_len != 3 {
             return Err(container.buf);
         }
         Ok(container)
@@ -811,9 +810,8 @@ impl<T: Buf> SackPermitted<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) != 2)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if header_len != 2 {
             return Err(container.buf);
         }
         Ok(container)
@@ -868,7 +866,8 @@ impl<'a> SackPermitted<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 2 {
+        let header_len = container.header_len() as usize;
+        if header_len != 2 {
             return Err(container.buf);
         }
         Ok(container)
@@ -897,7 +896,8 @@ impl<'a> SackPermitted<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 2 {
+        let header_len = container.header_len() as usize;
+        if header_len != 2 {
             return Err(container.buf);
         }
         Ok(container)
@@ -944,9 +944,8 @@ impl<T: Buf> Sack<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1010,9 +1009,8 @@ impl<'a> Sack<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1041,9 +1039,8 @@ impl<'a> Sack<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1091,9 +1088,8 @@ impl<T: Buf> Timestamp<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) != 10)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if header_len != 10 {
             return Err(container.buf);
         }
         Ok(container)
@@ -1164,7 +1160,8 @@ impl<'a> Timestamp<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 10 {
+        let header_len = container.header_len() as usize;
+        if header_len != 10 {
             return Err(container.buf);
         }
         Ok(container)
@@ -1193,7 +1190,8 @@ impl<'a> Timestamp<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.header_len() as usize) != 10 {
+        let header_len = container.header_len() as usize;
+        if header_len != 10 {
             return Err(container.buf);
         }
         Ok(container)
@@ -1240,9 +1238,8 @@ impl<T: Buf> FastOpen<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1306,9 +1303,8 @@ impl<'a> FastOpen<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1337,9 +1333,8 @@ impl<'a> FastOpen<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 2)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 2) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)

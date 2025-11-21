@@ -164,7 +164,8 @@ impl<T: Buf> EtherDot3Frame<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 14 > container.buf.remaining() {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 14 > container.buf.remaining() {
             return Err(container.buf);
         }
         Ok(container)
@@ -232,7 +233,8 @@ impl<'a> EtherDot3Frame<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 14 > remaining_len {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 14 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
@@ -261,7 +263,8 @@ impl<'a> EtherDot3Frame<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 14 > remaining_len {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 14 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)

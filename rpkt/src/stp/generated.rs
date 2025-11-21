@@ -789,9 +789,8 @@ impl<T: Buf> MstpConfBpdu<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 102)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 102) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1010,9 +1009,8 @@ impl<'a> MstpConfBpdu<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 102)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 102) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -1041,9 +1039,8 @@ impl<'a> MstpConfBpdu<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 102)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 102) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)

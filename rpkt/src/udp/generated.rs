@@ -33,9 +33,8 @@ impl<T: Buf> Udp<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > container.buf.remaining())
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > container.buf.remaining()) {
             return Err(container.buf);
         }
         Ok(container)
@@ -111,9 +110,8 @@ impl<'a> Udp<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -142,9 +140,8 @@ impl<'a> Udp<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)

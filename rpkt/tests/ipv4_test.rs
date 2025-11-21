@@ -64,6 +64,57 @@ fn ipv4_option1_parse() {
 }
 
 #[test]
+fn ipv4_option1_cursor_parse() {
+    let pkt = file_to_packet("IPv4Option1.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 44);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.ident(), 30775);
+    assert_eq!(ipv4.packet_len(), 108);
+    assert_eq!(ipv4.dont_frag(), false);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+    assert_eq!(ipv4.checksum(), 0x752d);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("127.0.0.1").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("127.0.0.1").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::CommercialSecurity_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 22);
+    assert_eq!(op1.doi(), 2);
+    let tag = CommercialSecurityTag::parse(op1.var_header_slice()).unwrap();
+    assert_eq!(tag.header_len(), 16);
+    assert_eq!(tag.tag_type(), 2);
+    assert_eq!(tag.sensitivity_level(), 2);
+    assert_eq!(
+        tag.var_header_slice(),
+        &[0, 0, 0, 2, 0, 4, 0, 5, 0, 6, 0, 0xef][..]
+    );
+
+    let op2 = match option_iter.next().unwrap() {
+        Ipv4Options::Eol_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op2.type_(), 0);
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(&pkt[(14 + ipv4_header_len) as usize..], payload.chunk());
+}
+
+#[test]
 fn ipv4_option1_build() {
     let pkt = file_to_packet("IPv4Option1.dat");
     let mut buf = [0; 1600];
@@ -158,6 +209,54 @@ fn ipv4_option2_parse() {
 }
 
 #[test]
+fn ipv4_option2_cursor_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option2.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 60);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 124);
+    assert_eq!(ipv4.ident(), 33505);
+    assert_eq!(ipv4.dont_frag(), true);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+    assert_eq!(ipv4.checksum(), 0x0d44);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.6").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::Timestamp_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 40);
+    assert_eq!(op1.pointer(), 9);
+    assert_eq!(op1.oflw(), 0);
+    assert_eq!(op1.flg(), 0);
+    for i in 0..9 {
+        let val = read_4_bytes(&op1.var_header_slice()[4 * i..4 * i + 4]);
+        if i == 0 {
+            assert_eq!(val, 82524601);
+        } else {
+            assert_eq!(val, 0);
+        }
+    }
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(&pkt[(14 + ipv4_header_len) as usize..], payload.chunk());
+}
+
+#[test]
 fn ipv4_option2_build() {
     let pkt = file_to_packet("IPv4Option2.dat");
     let mut buf = [0; 1600];
@@ -244,6 +343,47 @@ fn ipv4_option3_parse() {
 
     assert_eq!(
         &pkt[payload.cursor()..(payload.cursor() + 12)],
+        payload.chunk()
+    );
+}
+
+#[test]
+fn ipv4_option3_cursor_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option3.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 24);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 36);
+    assert_eq!(ipv4.ident(), 0);
+    assert_eq!(ipv4.dont_frag(), true);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 1);
+    assert_eq!(ipv4.protocol(), IpProtocol::IGMP);
+    assert_eq!(ipv4.checksum(), 0xfa48);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("224.0.0.1").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::RouteAlert_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 4);
+    assert_eq!(op1.data(), 0);
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(
+        &pkt[(14 + ipv4_header_len) as usize..(14 + ipv4_header_len + 12) as usize],
         payload.chunk()
     );
 }
@@ -357,6 +497,73 @@ fn ipv4_option4_parse() {
 }
 
 #[test]
+fn ipv4_option4_cursor_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option4.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 60);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 80);
+    assert_eq!(ipv4.ident(), 0);
+    assert_eq!(ipv4.dont_frag(), true);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::TCP);
+    assert_eq!(ipv4.checksum(), 0xead8);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("10.0.0.6").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::RecordRoute_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 39);
+    assert_eq!(op1.pointer(), 16);
+
+    {
+        assert_eq!(
+            u32::from_be_bytes(op1.var_header_slice()[0..4].try_into().unwrap()),
+            Ipv4Addr::new(1, 2, 3, 4).to_bits()
+        );
+
+        assert_eq!(
+            u32::from_be_bytes(op1.var_header_slice()[4..8].try_into().unwrap()),
+            Ipv4Addr::new(10, 0, 0, 138).to_bits()
+        );
+
+        assert_eq!(
+            u32::from_be_bytes(op1.var_header_slice()[8..12].try_into().unwrap()),
+            Ipv4Addr::new(10, 0, 0, 138).to_bits()
+        );
+
+        for i in 3..9 {
+            assert_eq!(
+                u32::from_be_bytes(op1.var_header_slice()[4 * i..4 * i + 4].try_into().unwrap()),
+                Ipv4Addr::new(0, 0, 0, 0).to_bits()
+            );
+        }
+    }
+
+    let _ = match option_iter.next().unwrap() {
+        Ipv4Options::Eol_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(&pkt[(14 + ipv4_header_len) as usize..], payload.chunk());
+}
+
+#[test]
 fn ipv4_option4_build() {
     let pkt = file_to_packet("IPv4Option4.dat");
     let mut buf = [0; 1600];
@@ -458,6 +665,50 @@ fn ipv4_option6_parse() {
 }
 
 #[test]
+fn ipv4_option6_cursor_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option6.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 28);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 36);
+    assert_eq!(ipv4.ident(), 13132);
+    assert_eq!(ipv4.dont_frag(), false);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+    assert_eq!(ipv4.checksum(), 0x2871);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.6").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let _ = match option_iter.next().unwrap() {
+        Ipv4Options::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::StrictSourceRoute_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 7);
+    assert_eq!(op1.pointer(), 4);
+    assert_eq!(op1.dest_addr(), Ipv4Addr::new(0, 0, 0, 0));
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(&pkt[(14 + ipv4_header_len) as usize..], payload.chunk());
+}
+
+#[test]
 fn ipv4_option6_build() {
     let pkt = file_to_packet("IPv4Option6.dat");
     let mut buf = [0; 1600];
@@ -542,6 +793,50 @@ fn ipv4_option7_parse() {
     let payload = ipv4.payload();
 
     assert_eq!(&pkt[payload.cursor()..], payload.chunk());
+}
+
+#[test]
+fn ipv4_option7_cursor_parse() {
+    // to_hex_dump("IPv4Option2.dat");
+    let pkt = file_to_packet("IPv4Option7.dat");
+    let pbuf = Cursor::new(&pkt);
+
+    let eth = EtherFrame::parse_from_cursor(pbuf).unwrap();
+    assert_eq!(eth.ethertype(), EtherType::IPV4);
+
+    let ipv4 = Ipv4::parse_from_cursor(eth.payload_as_cursor()).unwrap();
+    assert_eq!(ipv4.header_len(), 28);
+    assert_eq!(ipv4.dscp(), 0);
+    assert_eq!(ipv4.ecn(), 0);
+    assert_eq!(ipv4.packet_len(), 36);
+    assert_eq!(ipv4.ident(), 18339);
+    assert_eq!(ipv4.dont_frag(), false);
+    assert_eq!(ipv4.more_frag(), false);
+    assert_eq!(ipv4.ttl(), 64);
+    assert_eq!(ipv4.protocol(), IpProtocol::ICMP);
+    assert_eq!(ipv4.checksum(), 0x1420);
+    assert_eq!(ipv4.src_addr(), Ipv4Addr::from_str("10.0.0.6").unwrap());
+    assert_eq!(ipv4.dst_addr(), Ipv4Addr::from_str("10.0.0.138").unwrap());
+    let ipv4_header_len = ipv4.header_len();
+
+    let mut option_iter = Ipv4OptionsIter::from_slice(ipv4.var_header_slice());
+
+    let _ = match option_iter.next().unwrap() {
+        Ipv4Options::Nop_(pkt) => pkt,
+        _ => panic!(),
+    };
+
+    let op1 = match option_iter.next().unwrap() {
+        Ipv4Options::LooseSourceRoute_(pkt) => pkt,
+        _ => panic!(),
+    };
+    assert_eq!(op1.header_len(), 7);
+    assert_eq!(op1.pointer(), 4);
+    assert_eq!(op1.dest_addr(), Ipv4Addr::new(0, 0, 0, 0));
+
+    let payload = ipv4.payload_as_cursor();
+
+    assert_eq!(&pkt[(14 + ipv4_header_len) as usize..], payload.chunk());
 }
 
 #[test]

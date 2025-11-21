@@ -172,7 +172,8 @@ impl<T: Buf> VlanDot3Frame<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 4 > container.buf.remaining() {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 4 > container.buf.remaining() {
             return Err(container.buf);
         }
         Ok(container)
@@ -252,7 +253,8 @@ impl<'a> VlanDot3Frame<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 4 > remaining_len {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 4 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)
@@ -281,7 +283,8 @@ impl<'a> VlanDot3Frame<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if (container.payload_len() as usize) + 4 > remaining_len {
+        let payload_len = container.payload_len() as usize;
+        if payload_len + 4 > remaining_len {
             return Err(container.buf);
         }
         Ok(container)

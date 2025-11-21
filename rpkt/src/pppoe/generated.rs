@@ -36,9 +36,8 @@ impl<T: Buf> PppoeSession<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > container.buf.remaining())
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > container.buf.remaining()) {
             return Err(container.buf);
         }
         Ok(container)
@@ -135,9 +134,8 @@ impl<'a> PppoeSession<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -166,9 +164,8 @@ impl<'a> PppoeSession<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 8)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 8) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -215,9 +212,8 @@ impl<T: Buf> PppoeDiscovery<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 6)
-            || ((container.packet_len() as usize) > container.buf.remaining())
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 6) || (packet_len > container.buf.remaining()) {
             return Err(container.buf);
         }
         Ok(container)
@@ -304,9 +300,8 @@ impl<'a> PppoeDiscovery<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 6)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 6) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -335,9 +330,8 @@ impl<'a> PppoeDiscovery<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.packet_len() as usize) < 6)
-            || ((container.packet_len() as usize) > remaining_len)
-        {
+        let packet_len = container.packet_len() as usize;
+        if (packet_len < 6) || (packet_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -403,9 +397,8 @@ impl<T: Buf> PppoeTag<T> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > chunk_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > chunk_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -471,9 +464,8 @@ impl<'a> PppoeTag<Cursor<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
@@ -502,9 +494,8 @@ impl<'a> PppoeTag<CursorMut<'a>> {
             return Err(buf);
         }
         let container = Self { buf };
-        if ((container.header_len() as usize) < 4)
-            || ((container.header_len() as usize) > remaining_len)
-        {
+        let header_len = container.header_len() as usize;
+        if (header_len < 4) || (header_len > remaining_len) {
             return Err(container.buf);
         }
         Ok(container)
