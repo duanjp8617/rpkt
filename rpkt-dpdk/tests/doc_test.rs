@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 #[test]
 fn dpdkoption_arg() {
     use rpkt_dpdk::{service, DpdkOption};
@@ -566,4 +568,32 @@ fn dpdkservice_graceful_cleanup() {
     // will fail.
     let res = service().mempool_alloc("mp", 2048, 16, constant::MBUF_HEADROOM_SIZE + 2048, -1);
     assert_eq!(res.is_err(), true);
+}
+
+#[test]
+fn basefreq() {
+    use rpkt_dpdk::rdtsc;
+    use std::time;
+
+    // prepare the base frequency
+    let base_freq = rdtsc::BaseFreq::new();
+    // prepare the current time value using std
+    let curr_time = time::Instant::now();
+    // calculate the current rdtsc value.
+    let curr_rdtsc = rdtsc::rdtsc();
+    // wait for 1s.
+    let tick_in_1s = curr_rdtsc + base_freq.sec_to_cycles(1.0);
+    while rdtsc::rdtsc() < tick_in_1s {}
+    // calculate the ending rdtsc value
+    let end_rdtsc = rdtsc::rdtsc();
+    // calculate the ending time instant.
+    let end_time = time::Instant::now();
+
+    let measured_time_in_std = (end_time - curr_time).as_secs() as f64;
+    let mesured_time_in_rdtsc = base_freq.cycles_to_sec(end_rdtsc.checked_sub(curr_rdtsc).unwrap());
+
+    assert_eq!(
+        mesured_time_in_rdtsc.sub(measured_time_in_std).abs() / measured_time_in_std < 0.005,
+        true
+    );
 }
