@@ -597,3 +597,93 @@ fn basefreq() {
         true
     );
 }
+
+#[test]
+fn mempool_try_alloc() {
+    use rpkt_dpdk::{constant, service, DpdkOption};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+    {
+        let mp = service()
+            .mempool_alloc("mp", 8, 0, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+            .unwrap();
+        let mut mbufs = vec![];
+        for _ in 0..8 {
+            // The first 8 allocations are guaranteed to succeed.
+            let res = mp.try_alloc();
+            assert_eq!(res.is_some(), true);
+            mbufs.push(res.unwrap());
+        }
+        // no more mbufs in the mempool, the allocation fails.
+        let res = mp.try_alloc();
+        assert_eq!(res.is_some(), false);
+    }
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn mempool_fill_up_batch() {
+    use arrayvec::ArrayVec;
+    use rpkt_dpdk::{constant, service, DpdkOption};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+    {
+        let mp = service()
+            .mempool_alloc("mp", 32, 0, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+            .unwrap();
+
+        let mut batch = ArrayVec::<_, 32>::new();
+        // allocate a single mbuf to the batch
+        batch.push(mp.try_alloc().unwrap());
+        // we can fill up the remaining 31 slots of the batch
+        let alloc = mp.fill_up_batch(&mut batch);
+        assert_eq!(alloc, 31);
+        // mempool is empty, no more allocation can be made
+        let alloc = mp.fill_up_batch(&mut batch);
+        assert_eq!(alloc, 0);
+        let mut new_batch = ArrayVec::<_, 32>::new();
+        let alloc = mp.fill_up_batch(&mut new_batch);
+        assert_eq!(alloc, 0);
+    }
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
+fn mempool_free_batch() {
+    use arrayvec::ArrayVec;
+    use rpkt_dpdk::{constant, service, DpdkOption, Mempool};
+    DpdkOption::new()
+        .args("-n 4 --file-prefix app".split(" "))
+        .init()
+        .unwrap();
+    {
+        let mp1 = service()
+            .mempool_alloc("mp1", 32, 0, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+            .unwrap();
+        let mp2 = service()
+            .mempool_alloc("mp2", 32, 0, constant::MBUF_HEADROOM_SIZE + 2048, -1)
+            .unwrap();
+
+        let mut batch = ArrayVec::<_, 32>::new();
+        // fill up the batch by allocating 16 mbufs from mp1 and 16 mbufs from mp2.
+        for _ in 0..16 {
+            batch.push(mp1.try_alloc().unwrap());
+        }
+        for _ in 0..16 {
+            batch.push(mp2.try_alloc().unwrap());
+        }
+        assert_eq!(mp1.nb_mbufs(), 16);
+        assert_eq!(mp2.nb_mbufs(), 16);
+        assert_eq!(batch.len(), 32);
+        // quickly free the batch
+        Mempool::free_batch(&mut batch);
+        assert_eq!(batch.len(), 0);
+        assert_eq!(mp1.nb_mbufs(), 32);
+        assert_eq!(mp2.nb_mbufs(), 32);
+    }
+    service().graceful_cleanup().unwrap();
+}
