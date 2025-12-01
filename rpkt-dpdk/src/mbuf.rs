@@ -132,6 +132,13 @@ impl Mbuf {
     }
 
     #[inline]
+    #[cfg(feature = "rpkt-eval")]
+    pub const unsafe fn as_mut_ptr(&mut self) -> *mut ffi::rte_mbuf {
+        self.ptr.as_ptr()
+    }
+
+    #[inline]
+    #[cfg(not(feature = "rpkt-eval"))]
     pub(crate) const unsafe fn as_mut_ptr(&mut self) -> *mut ffi::rte_mbuf {
         self.ptr.as_ptr()
     }
