@@ -18,6 +18,10 @@ arrayvec = "0.7.4"
 once_cell = "1.9.0"
 rpkt = {path = "../rpkt", package = "rpkt"}
 
+[features]
+default = []
+rpkt-eval = []
+
 [build-dependencies]
 version-compare = "0.1.1"
 bindgen = "0.69.4"
