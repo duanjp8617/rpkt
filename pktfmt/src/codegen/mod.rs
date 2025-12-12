@@ -341,7 +341,7 @@ impl<'a> PktGen<'a> {
 
             // Specialized payload for Cursor.
             let f = |writer: &mut dyn Write, s: &str| {
-                let mut ht_writer = HeadTailWriter::new(writer, "Cursor::new(", ")\n");
+                let mut ht_writer = HeadTailWriter::new(writer, "", "\n");
                 write!(ht_writer.get_writer(), "{s}").unwrap();
             };
             payload.code_gen_for_contiguous_buffer(
@@ -349,7 +349,7 @@ impl<'a> PktGen<'a> {
                 "&",
                 "buf",
                 "Cursor<'_>",
-                "chunk()",
+                "index_",
                 f,
                 impl_block.get_writer(),
             );
@@ -394,7 +394,7 @@ pub fn from_header_array(header_array: &'a [u8; {}]) -> Self {{
 
             // Specialized payload for CursorMut.
             let f = |writer: &mut dyn Write, s: &str| {
-                let mut ht_writer = HeadTailWriter::new(writer, "CursorMut::new(", ")\n");
+                let mut ht_writer = HeadTailWriter::new(writer, "", "\n");
                 write!(ht_writer.get_writer(), "{s}").unwrap();
             };
             payload.code_gen_for_contiguous_buffer(
@@ -402,7 +402,7 @@ pub fn from_header_array(header_array: &'a [u8; {}]) -> Self {{
                 "&mut ",
                 "buf",
                 "CursorMut<'_>",
-                "chunk_mut()",
+                "index_mut_",
                 f,
                 impl_block.get_writer(),
             );

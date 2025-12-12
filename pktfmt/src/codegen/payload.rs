@@ -137,7 +137,7 @@ pub fn {method_name}({mutable_op}self)->{buf_type}{{
 
         writer_fn(
             output,
-            &format!("{mutable_op}self.{buf_name}.{buf_access}[{start_index}..{end_index}]"),
+            &format!("self.{buf_name}.{buf_access}({start_index}..{end_index})"),
         );
 
         write!(output, "}}\n").unwrap();
