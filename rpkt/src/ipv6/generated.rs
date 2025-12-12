@@ -194,12 +194,12 @@ impl<T: Buf> Ipv6<T> {
     #[inline]
     pub fn src_addr(&self) -> Ipv6Addr {
         let b: [u8; 16] = (self.buf.chunk()[8..24].try_into().unwrap());
-        b.into()
+        Ipv6Addr::from_octets(b)
     }
     #[inline]
     pub fn dst_addr(&self) -> Ipv6Addr {
         let b: [u8; 16] = (self.buf.chunk()[24..40].try_into().unwrap());
-        b.into()
+        Ipv6Addr::from_octets(b)
     }
 }
 
