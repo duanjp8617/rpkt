@@ -2,10 +2,10 @@
 #![allow(unused_parens)]
 #![allow(unreachable_patterns)]
 
+use super::{PppoeCode, PppoeTagType};
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
-
-use super::{PppoeCode, PppoeTagType};
 
 /// A constant that defines the fixed byte length of the PppoeSession protocol header.
 pub const PPPOE_SESSION_HEADER_LEN: usize = 8;
@@ -143,7 +143,7 @@ impl<'a> PppoeSession<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[8..packet_len])
+        self.buf.index_(8..packet_len)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -173,7 +173,7 @@ impl<'a> PppoeSession<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[8..packet_len])
+        self.buf.index_mut_(8..packet_len)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
@@ -309,7 +309,7 @@ impl<'a> PppoeDiscovery<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[6..packet_len])
+        self.buf.index_(6..packet_len)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -339,7 +339,7 @@ impl<'a> PppoeDiscovery<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[6..packet_len])
+        self.buf.index_mut_(6..packet_len)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
@@ -473,7 +473,7 @@ impl<'a> PppoeTag<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -503,7 +503,7 @@ impl<'a> PppoeTag<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {

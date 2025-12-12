@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
@@ -106,7 +107,7 @@ impl<'a> Mpls<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[4..])
+        self.buf.index_(4..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -131,7 +132,7 @@ impl<'a> Mpls<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[4..])
+        self.buf.index_mut_(4..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {

@@ -175,7 +175,7 @@ impl<'a> Gre<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -205,7 +205,7 @@ impl<'a> Gre<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -559,7 +559,7 @@ impl<'a> GreForPPTP<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
         let payload_len = self.payload_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..(header_len + payload_len)])
+        self.buf.index_(header_len..(header_len + payload_len))
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -591,7 +591,7 @@ impl<'a> GreForPPTP<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         let payload_len = self.payload_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..(header_len + payload_len)])
+        self.buf.index_mut_(header_len..(header_len + payload_len))
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
@@ -756,7 +756,7 @@ impl<'a> PPTP<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[4..])
+        self.buf.index_(4..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -781,7 +781,7 @@ impl<'a> PPTP<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[4..])
+        self.buf.index_mut_(4..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {

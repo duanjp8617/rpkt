@@ -5,6 +5,7 @@
 use crate::traits::*;
 use crate::cursors::*;
 use crate::ether::EtherAddr;
+use crate::cursors::{CursorIndex, CursorIndexMut};
 
 use super::{StpType, StpVersion};
 %%

@@ -5,7 +5,7 @@
 
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
-
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use super::{PppoeCode, PppoeTagType};
 %%
 

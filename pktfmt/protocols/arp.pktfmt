@@ -5,6 +5,7 @@ use crate::ether::{EtherAddr, EtherType};
 use crate::ipv4::Ipv4Addr;
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
+use crate::cursors::{CursorIndex, CursorIndexMut};
 
 use super::{Hardware, Operation};
 %%

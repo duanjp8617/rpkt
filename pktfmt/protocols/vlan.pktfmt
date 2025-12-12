@@ -5,6 +5,7 @@
 use crate::ether::EtherType;
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
+use crate::cursors::{CursorIndex, CursorIndexMut};
 %%
 
 packet VlanFrame {

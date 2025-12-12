@@ -4,6 +4,7 @@
 
 use std::net::Ipv6Addr;
 
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;
 use crate::{Buf, PktBuf, PktBufMut};
@@ -150,7 +151,7 @@ impl<'a> Ipv6<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let payload_len = self.payload_len() as usize;
-        Cursor::new(&self.buf.chunk()[40..(40 + payload_len)])
+        self.buf.index_(40..(40 + payload_len))
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 40]) -> Self {
@@ -180,7 +181,7 @@ impl<'a> Ipv6<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let payload_len = self.payload_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[40..(40 + payload_len)])
+        self.buf.index_mut_(40..(40 + payload_len))
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 40]) -> Self {
@@ -317,7 +318,7 @@ impl<'a> DestOptions<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
@@ -347,7 +348,7 @@ impl<'a> DestOptions<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
@@ -460,7 +461,7 @@ impl<'a> HopByHopOption<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
@@ -490,7 +491,7 @@ impl<'a> HopByHopOption<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
@@ -628,7 +629,7 @@ impl<'a> RoutingHeader<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -658,7 +659,7 @@ impl<'a> RoutingHeader<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
@@ -786,7 +787,7 @@ impl<'a> FragmentHeader<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[8..])
+        self.buf.index_(8..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -811,7 +812,7 @@ impl<'a> FragmentHeader<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[8..])
+        self.buf.index_mut_(8..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {
@@ -950,7 +951,7 @@ impl<'a> AuthenticationHeader<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 12]) -> Self {
@@ -980,7 +981,7 @@ impl<'a> AuthenticationHeader<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 12]) -> Self {
@@ -1093,7 +1094,7 @@ impl<'a> Generic<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
@@ -1123,7 +1124,7 @@ impl<'a> Generic<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
@@ -1235,7 +1236,7 @@ impl<'a> RouterAlert<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -1265,7 +1266,7 @@ impl<'a> RouterAlert<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -1379,7 +1380,7 @@ impl<'a> Padn<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 2]) -> Self {
@@ -1409,7 +1410,7 @@ impl<'a> Padn<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 2]) -> Self {
@@ -1493,7 +1494,7 @@ impl<'a> Pad0<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[1..])
+        self.buf.index_(1..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 1]) -> Self {
@@ -1518,7 +1519,7 @@ impl<'a> Pad0<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[1..])
+        self.buf.index_mut_(1..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 1]) -> Self {

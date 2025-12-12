@@ -6,6 +6,7 @@ use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 use std::net::Ipv6Addr;
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
+use crate::cursors::{CursorIndex, CursorIndexMut};
 %%
 
 // ICMPv6 Destination Unreachable (Type 1)

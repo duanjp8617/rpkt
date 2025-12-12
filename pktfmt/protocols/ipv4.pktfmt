@@ -5,6 +5,7 @@
 use super::{IpProtocol, Ipv4Addr};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
+use crate::cursors::{CursorIndex, CursorIndexMut};
 %%
 
 packet Ipv4 {

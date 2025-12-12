@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
@@ -119,7 +120,7 @@ impl<'a> Udp<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[8..packet_len])
+        self.buf.index_(8..packet_len)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 8]) -> Self {
@@ -149,7 +150,7 @@ impl<'a> Udp<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[8..packet_len])
+        self.buf.index_mut_(8..packet_len)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 8]) -> Self {

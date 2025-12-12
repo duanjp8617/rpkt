@@ -169,7 +169,7 @@ impl<'a> Gtpv2<Cursor<'a>> {
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
         let packet_len = self.packet_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..packet_len])
+        self.buf.index_(header_len..packet_len)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -201,7 +201,7 @@ impl<'a> Gtpv2<CursorMut<'a>> {
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
         let packet_len = self.packet_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..packet_len])
+        self.buf.index_mut_(header_len..packet_len)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -469,7 +469,7 @@ impl<'a> InternationalMobileSubscriberIdIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -499,7 +499,7 @@ impl<'a> InternationalMobileSubscriberIdIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -631,7 +631,7 @@ impl<'a> RecoveryIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -661,7 +661,7 @@ impl<'a> RecoveryIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -790,7 +790,7 @@ impl<'a> AggregateMaxBitRateIE<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[12..])
+        self.buf.index_(12..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 12]) -> Self {
@@ -815,7 +815,7 @@ impl<'a> AggregateMaxBitRateIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[12..])
+        self.buf.index_mut_(12..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 12]) -> Self {
@@ -944,7 +944,7 @@ impl<'a> EpsBearerIdIE<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        self.buf.index_(5..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
@@ -969,7 +969,7 @@ impl<'a> EpsBearerIdIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        self.buf.index_mut_(5..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
@@ -1101,7 +1101,7 @@ impl<'a> MobileEquipmentIdIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -1131,7 +1131,7 @@ impl<'a> MobileEquipmentIdIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -1250,7 +1250,7 @@ impl<'a> RatTypeIE<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        self.buf.index_(5..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
@@ -1275,7 +1275,7 @@ impl<'a> RatTypeIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        self.buf.index_mut_(5..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
@@ -1440,7 +1440,7 @@ impl<'a> ServingNetworkIE<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[7..])
+        self.buf.index_(7..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -1465,7 +1465,7 @@ impl<'a> ServingNetworkIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+        self.buf.index_mut_(7..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -1669,7 +1669,7 @@ impl<'a> UserLocationInfoIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
@@ -1699,7 +1699,7 @@ impl<'a> UserLocationInfoIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
@@ -1844,7 +1844,7 @@ impl<'a> UliCgi<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[7..])
+        self.buf.index_(7..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -1869,7 +1869,7 @@ impl<'a> UliCgi<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+        self.buf.index_mut_(7..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -2014,7 +2014,7 @@ impl<'a> UliSai<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[7..])
+        self.buf.index_(7..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -2039,7 +2039,7 @@ impl<'a> UliSai<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+        self.buf.index_mut_(7..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -2184,7 +2184,7 @@ impl<'a> UliRai<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[7..])
+        self.buf.index_(7..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -2209,7 +2209,7 @@ impl<'a> UliRai<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+        self.buf.index_mut_(7..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -2346,7 +2346,7 @@ impl<'a> UliTai<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        self.buf.index_(5..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
@@ -2371,7 +2371,7 @@ impl<'a> UliTai<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        self.buf.index_mut_(5..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
@@ -2519,7 +2519,7 @@ impl<'a> UliEcgi<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[7..])
+        self.buf.index_(7..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 7]) -> Self {
@@ -2544,7 +2544,7 @@ impl<'a> UliEcgi<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[7..])
+        self.buf.index_mut_(7..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 7]) -> Self {
@@ -2681,7 +2681,7 @@ impl<'a> UliLai<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[5..])
+        self.buf.index_(5..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 5]) -> Self {
@@ -2706,7 +2706,7 @@ impl<'a> UliLai<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[5..])
+        self.buf.index_mut_(5..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 5]) -> Self {
@@ -2854,7 +2854,7 @@ impl<'a> UliMacroEnodebIdField<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[6..])
+        self.buf.index_(6..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -2879,7 +2879,7 @@ impl<'a> UliMacroEnodebIdField<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+        self.buf.index_mut_(6..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
@@ -3037,7 +3037,7 @@ impl<'a> UliExtendedMacroEnodebIdField<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[6..])
+        self.buf.index_(6..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -3062,7 +3062,7 @@ impl<'a> UliExtendedMacroEnodebIdField<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+        self.buf.index_mut_(6..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {
@@ -3230,7 +3230,7 @@ impl<'a> FullyQualifiedTeidIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 9]) -> Self {
@@ -3260,7 +3260,7 @@ impl<'a> FullyQualifiedTeidIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 9]) -> Self {
@@ -3392,7 +3392,7 @@ impl<'a> BearerContextIE<Cursor<'a>> {
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
         let header_len = self.header_len() as usize;
-        Cursor::new(&self.buf.chunk()[header_len..])
+        self.buf.index_(header_len..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 4]) -> Self {
@@ -3422,7 +3422,7 @@ impl<'a> BearerContextIE<CursorMut<'a>> {
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
         let header_len = self.header_len() as usize;
-        CursorMut::new(&mut self.buf.chunk_mut()[header_len..])
+        self.buf.index_mut_(header_len..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 4]) -> Self {
@@ -3559,7 +3559,7 @@ impl<'a> UeTimeZoneIE<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[6..])
+        self.buf.index_(6..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 6]) -> Self {
@@ -3584,7 +3584,7 @@ impl<'a> UeTimeZoneIE<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[6..])
+        self.buf.index_mut_(6..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 6]) -> Self {

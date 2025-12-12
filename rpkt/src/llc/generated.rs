@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 #![allow(unused_parens)]
 
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::{Buf, PktBuf, PktBufMut};
 use crate::{Cursor, CursorMut};
 
@@ -93,7 +94,7 @@ impl<'a> Llc<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[3..])
+        self.buf.index_(3..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 3]) -> Self {
@@ -118,7 +119,7 @@ impl<'a> Llc<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[3..])
+        self.buf.index_mut_(3..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 3]) -> Self {

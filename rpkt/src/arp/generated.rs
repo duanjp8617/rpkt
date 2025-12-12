@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::ether::{EtherAddr, EtherType};
 use crate::ipv4::Ipv4Addr;
 use crate::{Buf, PktBuf, PktBufMut};
@@ -163,7 +164,7 @@ impl<'a> Arp<Cursor<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor(&self) -> Cursor<'_> {
-        Cursor::new(&self.buf.chunk()[28..])
+        self.buf.index_(28..)
     }
     #[inline]
     pub fn from_header_array(header_array: &'a [u8; 28]) -> Self {
@@ -188,7 +189,7 @@ impl<'a> Arp<CursorMut<'a>> {
     }
     #[inline]
     pub fn payload_as_cursor_mut(&mut self) -> CursorMut<'_> {
-        CursorMut::new(&mut self.buf.chunk_mut()[28..])
+        self.buf.index_mut_(28..)
     }
     #[inline]
     pub fn from_header_array_mut(header_array: &'a mut [u8; 28]) -> Self {
