@@ -5,30 +5,6 @@ use bytes::Buf;
 
 use crate::{PktBuf, PktBufMut};
 
-// A specialized index trait for cursor.
-// It is used to simulate the std index behavior, but
-// return a owned Cursor instead of a reference.
-pub(crate) trait CursorIndex<Idx: ?Sized> {
-    /// Performs the indexing (`container[index]`) operation.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the index is out of bounds.
-    fn index_(&self, index: Idx) -> Cursor<'_>;
-}
-
-// A specialized mutable index trait for cursor.
-// It is used to simulate the std mutable index behavior, but
-// return a owned Cursor instead of a reference.
-pub(crate) trait CursorIndexMut<Idx: ?Sized> {
-    /// Performs the mutable indexing (`container[index]`) operation.
-    ///
-    /// # Panics
-    ///
-    /// May panic if the index is out of bounds.
-    fn index_mut_(&mut self, index: Idx) -> CursorMut<'_>;
-}
-
 /// A container type that turns a byte slice into `PktBuf`.
 #[derive(Debug, Clone, Copy)]
 pub struct Cursor<'a> {
@@ -95,47 +71,6 @@ impl<'a> PktBuf for Cursor<'a> {
     fn trim_off(&mut self, cnt: usize) {
         assert!(cnt <= self.chunk.len());
         self.chunk = &self.chunk[..(self.chunk.len() - cnt)];
-    }
-}
-
-// Implement `CursorIndex` trait for Cursor
-impl<'a> CursorIndex<Range<usize>> for Cursor<'a> {
-    #[inline]
-    fn index_(&self, idx: Range<usize>) -> Cursor<'a> {
-        Cursor {
-            chunk: &self.chunk[idx],
-            start_addr: self.start_addr,
-        }
-    }
-}
-
-impl<'a> CursorIndex<RangeFrom<usize>> for Cursor<'a> {
-    #[inline]
-    fn index_(&self, idx: RangeFrom<usize>) -> Cursor<'a> {
-        Cursor {
-            chunk: &self.chunk[idx],
-            start_addr: self.start_addr,
-        }
-    }
-}
-
-impl<'a> CursorIndex<RangeTo<usize>> for Cursor<'a> {
-    #[inline]
-    fn index_(&self, idx: RangeTo<usize>) -> Cursor<'a> {
-        Cursor {
-            chunk: &self.chunk[idx],
-            start_addr: self.start_addr,
-        }
-    }
-}
-
-impl<'a> CursorIndex<RangeFull> for Cursor<'a> {
-    #[inline]
-    fn index_(&self, idx: RangeFull) -> Cursor<'a> {
-        Cursor {
-            chunk: &self.chunk[idx],
-            start_addr: self.start_addr,
-        }
     }
 }
 
@@ -227,6 +162,71 @@ impl<'a> PktBufMut for CursorMut<'a> {
     fn chunk_headroom(&self) -> usize {
         self.cursor()
     }
+}
+
+// A specialized index trait for cursor.
+// It is used to simulate the std index behavior, but
+// return a owned Cursor instead of a reference.
+pub(crate) trait CursorIndex<Idx: ?Sized> {
+    /// Performs the indexing (`container[index]`) operation.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the index is out of bounds.
+    fn index_(&self, index: Idx) -> Cursor<'_>;
+}
+
+// Implement `CursorIndex` trait for Cursor
+impl<'a> CursorIndex<Range<usize>> for Cursor<'a> {
+    #[inline]
+    fn index_(&self, idx: Range<usize>) -> Cursor<'a> {
+        Cursor {
+            chunk: &self.chunk[idx],
+            start_addr: self.start_addr,
+        }
+    }
+}
+
+impl<'a> CursorIndex<RangeFrom<usize>> for Cursor<'a> {
+    #[inline]
+    fn index_(&self, idx: RangeFrom<usize>) -> Cursor<'a> {
+        Cursor {
+            chunk: &self.chunk[idx],
+            start_addr: self.start_addr,
+        }
+    }
+}
+
+impl<'a> CursorIndex<RangeTo<usize>> for Cursor<'a> {
+    #[inline]
+    fn index_(&self, idx: RangeTo<usize>) -> Cursor<'a> {
+        Cursor {
+            chunk: &self.chunk[idx],
+            start_addr: self.start_addr,
+        }
+    }
+}
+
+impl<'a> CursorIndex<RangeFull> for Cursor<'a> {
+    #[inline]
+    fn index_(&self, idx: RangeFull) -> Cursor<'a> {
+        Cursor {
+            chunk: &self.chunk[idx],
+            start_addr: self.start_addr,
+        }
+    }
+}
+
+// A specialized mutable index trait for cursor.
+// It is used to simulate the std mutable index behavior, but
+// return a owned Cursor instead of a reference.
+pub(crate) trait CursorIndexMut<Idx: ?Sized> {
+    /// Performs the mutable indexing (`container[index]`) operation.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the index is out of bounds.
+    fn index_mut_(&mut self, index: Idx) -> CursorMut<'_>;
 }
 
 // Implement `CursorMutIndex` trait for CursorMut
