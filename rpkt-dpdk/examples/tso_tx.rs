@@ -8,7 +8,7 @@ use rpkt::ether::*;
 use rpkt::ipv4::*;
 use rpkt::tcp::{Tcp, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 use rpkt::Buf;
-use rpkt_dpdk::rdtsc::{rdtsc, BaseFreq};
+use rpkt_dpdk::time::TscClockSource;
 use rpkt_dpdk::*;
 
 // The socket to work on
@@ -30,7 +30,6 @@ const RX_MP: &str = "rx";
 const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
-const PTHRESH: u8 = 8;
 
 // header info
 const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
@@ -90,7 +89,6 @@ fn entry_func() {
 
     let ip_checksum_error = Arc::new(AtomicU64::new(0));
     let l4_checksum_error = Arc::new(AtomicU64::new(0));
-    let base_freq = BaseFreq::new();
 
     let run = Arc::new(AtomicBool::new(true));
     let run_clone = run.clone();
@@ -112,17 +110,18 @@ fn entry_func() {
                 .unwrap();
             service().register_as_rte_thread().unwrap();
 
+            let clock_source = TscClockSource::create().unwrap();
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
             let tx_mp = service().mempool(TX_MP).unwrap();
             let mut tx_batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut rx_batch = ArrayVec::<_, BATCH_SIZE>::new();
-            let mut old_tic = rdtsc();
-            let one_sec = base_freq.sec_to_cycles(1.0);
+            let mut old_tic = clock_source.get_tsc();
+            let one_sec = clock_source.freq().sec_to_cycles(1.0);
 
             while run_clone.load(Ordering::Acquire) {
-                let curr_tic = rdtsc();
+                let curr_tic = clock_source.get_tsc();
                 if old_tic + one_sec < curr_tic {
                     // for each second
                     let mut mbuf = build_tcp_packet(&tx_mp);
@@ -232,8 +231,8 @@ fn config_port() {
     eth_conf.enable_promiscuous = true;
 
     // create rxq conf and txq conf
-    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, RX_MP);
-    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, WORKING_SOCKET, RX_MP);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, WORKING_SOCKET);
     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
         .take(THREAD_NUM as usize)
         .collect();
