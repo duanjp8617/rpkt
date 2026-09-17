@@ -31,31 +31,33 @@
 //!
 //! ```rust
 //! use rpkt::gre::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse a GRE packet
-//! let packet_data = [/* GRE packet bytes */];
+//! let packet_data = GRE_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
 //!
 //! // Try parsing as a GRE group (handles multiple variants)
-//! let gre_group = GreGroup::parse(cursor)?;
+//! let gre_group = match GreGroup::group_parse(cursor) {
+//!     Ok(gre) => gre,
+//!     Err(_) => panic!("invalid or unsupported GRE packet"),
+//! };
 //! match gre_group {
-//!     GreGroup::Gre(gre) => {
+//!     GreGroup::Gre_(gre) => {
 //!         println!("Standard GRE packet");
-//!         println!("Protocol type: 0x{:04x}", gre.protocol_type());
+//!         println!("Protocol type: 0x{:04x}", gre.protocol_type().raw());
 //!         if gre.checksum_present() {
-//!             println!("Checksum: 0x{:04x}", gre.checksum().unwrap());
+//!             println!("Checksum: 0x{:04x}", gre.checksum());
 //!         }
 //!         if gre.key_present() {
-//!             println!("Key: 0x{:08x}", gre.key().unwrap());
+//!             println!("Key: 0x{:08x}", gre.key());
 //!         }
 //!     }
-//!     GreGroup::GreForPPTP(gre_pptp) => {
+//!     GreGroup::GreForPPTP_(gre_pptp) => {
 //!         println!("GRE for PPTP");
-//!         println!("Call ID: {}", gre_pptp.call_id());
+//!         println!("Call ID: {}", gre_pptp.key_call_id());
 //!     }
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

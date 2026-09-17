@@ -38,33 +38,36 @@
 //!
 //! ```rust
 //! use rpkt::stp::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //! use rpkt::ether::EtherAddr;
 //!
 //! // Parse an STP BPDU
-//! let packet_data = [/* STP BPDU bytes */];
+//! let packet_data = STP_CONF_BPDU_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
 //!
 //! // Parse STP group to handle different BPDU types
-//! let stp_group = StpGroup::parse(cursor)?;
+//! let stp_group = match StpGroup::group_parse(cursor) {
+//!     Ok(stp) => stp,
+//!     Err(_) => panic!("invalid or unsupported STP BPDU"),
+//! };
 //! match stp_group {
-//!     StpGroup::StpConfBpdu(stp_conf) => {
+//!     StpGroup::StpConfBpdu_(stp_conf) => {
 //!         println!("STP Configuration BPDU");
-//!         println!("Root ID Priority: {}", stp_conf.root_id().priority());
-//!         println!("Root ID MAC: {}", stp_conf.root_id().mac_addr());
-//!         println!("Root Path Cost: {}", stp_conf.root_path_cost());
+//!         println!("Root ID Priority: {}", stp_conf.root_priority());
+//!         println!("Root ID MAC: {}", stp_conf.root_mac_addr());
+//!         println!("Root Path Cost: {}", stp_conf.path_cost());
 //!         println!("Bridge ID: {:?}", stp_conf.bridge_id());
 //!     }
-//!     StpGroup::StpTcnBpdu(_tcn) => {
+//!     StpGroup::StpTcnBpdu_(_tcn) => {
 //!         println!("STP Topology Change Notification");
 //!     }
-//!     StpGroup::RstpConfBpdu(rstp_conf) => {
+//!     StpGroup::RstpConfBpdu_(rstp_conf) => {
 //!         println!("RSTP Configuration BPDU");
 //!         println!("Version: {:?}", rstp_conf.version());
 //!     }
-//!     StpGroup::MstpConfBpdu(mstp_conf) => {
+//!     StpGroup::MstpConfBpdu_(mstp_conf) => {
 //!         println!("MSTP Configuration BPDU");
-//!         println!("Version 3 Length: {}", mstp_conf.version_3_len());
+//!         println!("Version 3 Length: {}", mstp_conf.version3_len());
 //!         // Access MSTI configurations
 //!     }
 //! }
@@ -78,7 +81,6 @@
 //! println!("Priority: {}", bridge_id.priority());
 //! println!("System ID Ext: {}", bridge_id.sys_id_ext());
 //! println!("MAC Address: {}", bridge_id.mac_addr());
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

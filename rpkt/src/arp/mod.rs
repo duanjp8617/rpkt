@@ -20,19 +20,21 @@
 //!
 //! ```rust
 //! use rpkt::arp::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse an ARP packet
-//! let packet_data = [/* ARP packet bytes */];
+//! let packet_data = ARP_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let arp = Arp::parse(cursor)?;
+//! let arp = match Arp::parse(cursor) {
+//!     Ok(arp) => arp,
+//!     Err(_) => panic!("invalid ARP packet"),
+//! };
 //!
 //! match arp.operation() {
 //!     Operation::REQUEST => println!("ARP Request"),
 //!     Operation::REPLY => println!("ARP Reply"),
 //!     _ => println!("Unknown operation"),
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

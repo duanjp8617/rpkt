@@ -17,6 +17,20 @@ use rpkt::PktBufMut;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
+fn generated_cross_byte_setters_preserve_adjacent_bits() {
+    let mut header = IPV6_HEADER_TEMPLATE;
+    let mut ipv6 = Ipv6::from_header_array_mut(&mut header);
+
+    ipv6.set_flow_label(0xabcde);
+    ipv6.set_traffic_class(0xff);
+
+    assert_eq!(ipv6.version(), 6);
+    assert_eq!(ipv6.traffic_class(), 0xff);
+    assert_eq!(ipv6.flow_label(), 0xabcde);
+    assert_eq!(&ipv6.fix_header_slice()[..4], &[0x6f, 0xfa, 0xbc, 0xde]);
+}
+
+#[test]
 fn ipv6_options_destination_parse() {
     let pkt = file_to_packet("ipv6_options_destination.dat");
     let pbuf = Cursor::new(&pkt);

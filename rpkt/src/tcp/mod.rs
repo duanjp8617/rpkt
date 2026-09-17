@@ -28,12 +28,15 @@
 //!
 //! ```rust
 //! use rpkt::tcp::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse a TCP segment
-//! let packet_data = [/* TCP segment bytes */];
+//! let packet_data = TCP_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let tcp = Tcp::parse(cursor)?;
+//! let tcp = match Tcp::parse(cursor) {
+//!     Ok(tcp) => tcp,
+//!     Err(_) => panic!("invalid TCP segment"),
+//! };
 //!
 //! println!("Source port: {}", tcp.src_port());
 //! println!("Destination port: {}", tcp.dst_port());
@@ -41,16 +44,13 @@
 //! println!("SYN flag: {}", tcp.syn());
 //!
 //! // Access TCP options
-//! if let Some(options) = tcp.options() {
-//!     for option in options.iter() {
-//!         match option {
-//!             options::Mss(mss) => println!("MSS: {}", mss.mss()),
-//!             options::Sack(sack) => println!("SACK blocks: {:?}", sack),
-//!             _ => println!("Other option"),
-//!         }
+//! for option in options::TcpOptionsIter::from_slice(tcp.var_header_slice()) {
+//!     match option {
+//!         options::TcpOptions::Mss_(mss) => println!("MSS: {}", mss.mss()),
+//!         options::TcpOptions::Sack_(sack) => println!("SACK blocks: {:?}", sack),
+//!         _ => println!("Other option"),
 //!     }
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

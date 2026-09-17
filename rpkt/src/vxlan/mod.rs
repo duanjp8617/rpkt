@@ -41,19 +41,22 @@
 //!
 //! ```rust
 //! use rpkt::vxlan::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse a VXLAN packet
-//! let packet_data = [/* VXLAN packet bytes */];
+//! let packet_data = VXLAN_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let vxlan = Vxlan::parse(cursor)?;
+//! let vxlan = match Vxlan::parse(cursor) {
+//!     Ok(vxlan) => vxlan,
+//!     Err(_) => panic!("invalid VXLAN packet"),
+//! };
 //!
 //! // Extract VXLAN information
-//! println!("VXLAN Flags: 0x{:02x}", vxlan.flags());
+//! println!("VNI present: {}", vxlan.vni_present());
 //! println!("VNI: {}", vxlan.vni());
 //!
 //! // Validate VXLAN header
-//! if vxlan.flags() & 0x08 != 0 {
+//! if vxlan.vni_present() {
 //!     println!("Valid VXLAN packet with VNI: {}", vxlan.vni());
 //!     
 //!     // Access inner Ethernet frame
@@ -63,7 +66,6 @@
 //! } else {
 //!     println!("Invalid VXLAN packet - VNI flag not set");
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

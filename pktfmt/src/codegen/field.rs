@@ -860,7 +860,7 @@ mod tests {
         );
 
         do_test_field_codegen!(
-            "Field {bit = 1, arg = bool, default = false}",
+            "Field {bit = 1, arg = bool, default = 0}",
             FieldGetMethod,
             read_as_arg,
             "self.buf.as_ref()[13]&0x80 != 0",
@@ -972,7 +972,7 @@ mod tests {
             "Field {bit  = 3}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value<<7) as u16)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x7f) as u16);
+            "let write_value=((value as u16)<<7)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x7f) as u16);
 (&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_mut()",
@@ -983,7 +983,7 @@ mod tests {
             "Field {bit  = 8}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value<<2) as u16)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x3) as u16);
+            "let write_value=((value as u16)<<2)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x3) as u16);
 (&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_mut()",
@@ -1081,14 +1081,11 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
         );
 
         do_test_field_codegen!(
-            "Field {bit = 1, arg = bool, default = false}",
+            "Field {bit = 1, arg = bool, default = 0}",
             FieldSetMethod,
             write_as_arg,
-            "if value {
-self.buf.as_mut()[13]=self.buf.as_mut()[13]|0x80
-} else {
-self.buf.as_mut()[13]=self.buf.as_mut()[13]&0x7f
-}",
+            "let value = if value { 1 } else { 0 };
+self.buf.as_mut()[13]=(self.buf.as_mut()[13]&0x7f)|(value<<7);",
             BitPos::new(13 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1113,7 +1110,7 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..8],write_value);",
             "Field {bit  = 16}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value<<7) as u64)|(((self.buf.as_mut()[0]&0x80) as u64) << 16)|((self.buf.as_mut()[2]&0x7f) as u64);
+            "let write_value=((value as u64)<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 16)|((self.buf.as_mut()[2]&0x7f) as u64);
 write_uint_as_be_bytes(&mut self.buf.as_mut()[0..3],write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
@@ -1135,7 +1132,7 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..3],write_value);",
             "Field {bit  = 32}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value<<7) as u64)|(((self.buf.as_mut()[0]&0x80) as u64) << 32)|((self.buf.as_mut()[4]&0x7f) as u64);
+            "let write_value=((value as u64)<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 32)|((self.buf.as_mut()[4]&0x7f) as u64);
 write_uint_as_be_bytes(&mut self.buf.as_mut()[0..5],write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",

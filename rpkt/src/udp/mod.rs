@@ -15,17 +15,19 @@
 //!
 //! ```rust
 //! use rpkt::udp::*;
-//! use rpkt::{Cursor, CursorMut, Buf};
+//! use rpkt::Cursor;
 //!
 //! // Parse a UDP packet
-//! let packet_data = [/* UDP packet bytes */];
+//! let packet_data = UDP_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let udp = Udp::parse(cursor)?;
+//! let udp = match Udp::parse(cursor) {
+//!     Ok(udp) => udp,
+//!     Err(_) => panic!("invalid UDP packet"),
+//! };
 //!
 //! println!("Source port: {}", udp.src_port());
 //! println!("Destination port: {}", udp.dst_port());
-//! println!("Length: {}", udp.length());
-//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! println!("Length: {}", udp.packet_len());
 //! ```
 
 mod generated;

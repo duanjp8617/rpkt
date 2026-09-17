@@ -41,22 +41,28 @@
 //!
 //! ```rust
 //! use rpkt::mpls::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse an MPLS packet with label stack
-//! let packet_data = [/* MPLS packet bytes */];
-//! let mut cursor = Cursor::new(&packet_data);
+//! let packet_data = [0, 0, 0, 0, 0, 0, 1, 0];
+//! let cursor = Cursor::new(&packet_data);
 //!
 //! // Parse first MPLS label
-//! let mpls1 = Mpls::parse(cursor)?;
+//! let mpls1 = match Mpls::parse(cursor) {
+//!     Ok(mpls) => mpls,
+//!     Err(_) => panic!("invalid MPLS label"),
+//! };
 //! println!("Label: {}", mpls1.label());
-//! println!("Traffic Class: {}", mpls1.traffic_class());
+//! println!("Traffic Class: {}", mpls1.experimental_bits());
 //! println!("TTL: {}", mpls1.ttl());
 //!
 //! if !mpls1.bottom_of_stack() {
 //!     // More labels in the stack
-//!     let mut cursor = mpls1.payload();
-//!     let mpls2 = Mpls::parse(cursor)?;
+//!     let cursor = mpls1.payload();
+//!     let mpls2 = match Mpls::parse(cursor) {
+//!         Ok(mpls) => mpls,
+//!         Err(_) => panic!("invalid second MPLS label"),
+//!     };
 //!     println!("Second label: {}", mpls2.label());
 //!     
 //!     if mpls2.bottom_of_stack() {
@@ -68,7 +74,6 @@
 //!     // Single label, process payload
 //!     let payload = mpls1.payload();
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

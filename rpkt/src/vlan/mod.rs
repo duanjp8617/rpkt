@@ -32,29 +32,31 @@
 //! ```rust
 //! use rpkt::vlan::*;
 //! use rpkt::ether::EtherType;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse a VLAN-tagged frame
-//! let packet_data = [/* VLAN frame bytes */];
+//! let packet_data = VLAN_FRAME_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
 //!
 //! // Try parsing as a VLAN group (handles multiple frame types)
-//! let vlan_group = VlanGroup::parse(cursor)?;
+//! let vlan_group = match VlanGroup::group_parse(cursor) {
+//!     Ok(vlan) => vlan,
+//!     Err(_) => panic!("invalid or unsupported VLAN frame"),
+//! };
 //! match vlan_group {
-//!     VlanGroup::VlanFrame(vlan) => {
+//!     VlanGroup::VlanFrame_(vlan) => {
 //!         println!("VLAN Ethernet II frame");
-//!         println!("VLAN ID: {}", vlan.vid());
-//!         println!("Priority: {}", vlan.pcp());
-//!         println!("DEI: {}", vlan.dei());
-//!         println!("EtherType: 0x{:04x}", vlan.ethertype().0);
+//!         println!("VLAN ID: {}", vlan.vlan_id());
+//!         println!("Priority: {}", vlan.priority());
+//!         println!("DEI: {}", vlan.dei_flag());
+//!         println!("EtherType: 0x{:04x}", vlan.ethertype().raw());
 //!     }
-//!     VlanGroup::VlanDot3Frame(vlan_dot3) => {
+//!     VlanGroup::VlanDot3Frame_(vlan_dot3) => {
 //!         println!("VLAN 802.3 frame");
-//!         println!("VLAN ID: {}", vlan_dot3.vid());
-//!         println!("Length: {}", vlan_dot3.length());
+//!         println!("VLAN ID: {}", vlan_dot3.vlan_id());
+//!         println!("Length: {}", vlan_dot3.payload_len());
 //!     }
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

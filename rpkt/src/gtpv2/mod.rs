@@ -44,44 +44,41 @@
 //! ```rust
 //! use rpkt::gtpv2::*;
 //! use rpkt::gtpv2::gtpv2_information_elements::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::{Buf, Cursor};
 //!
 //! // Parse a GTPv2 message
-//! let packet_data = [/* GTPv2 packet bytes */];
+//! let packet_data = [0x40, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00];
 //! let cursor = Cursor::new(&packet_data);
-//! let gtpv2 = Gtpv2::parse(cursor)?;
+//! let gtpv2 = match Gtpv2::parse(cursor) {
+//!     Ok(gtpv2) => gtpv2,
+//!     Err(_) => panic!("invalid GTPv2 message"),
+//! };
 //!
 //! println!("Message Type: {}", gtpv2.message_type());
-//! println!("Message Length: {}", gtpv2.message_length());
+//! println!("Message Length: {}", gtpv2.packet_len());
 //!
-//! if gtpv2.teid_flag() {
-//!     println!("TEID: 0x{:08x}", gtpv2.teid().unwrap_or(0));
+//! if gtpv2.teid_present() {
+//!     println!("TEID: 0x{:08x}", gtpv2.teid());
 //! }
 //!
-//! println!("Sequence Number: {}", gtpv2.sequence_number());
+//! println!("Sequence Number: {}", gtpv2.seq_number());
 //!
 //! // Parse Information Elements
-//! if let Some(ie_group) = gtpv2.information_elements() {
-//!     for ie in ie_group.iter() {
-//!         match ie {
-//!             Gtpv2IEGroup::BearerContextIE(bearer_ctx) => {
-//!                 println!("Bearer Context IE found");
-//!                 println!("Length: {}", bearer_ctx.length());
-//!             }
-//!             Gtpv2IEGroup::FullyQualifiedTeidIE(fq_teid) => {
-//!                 println!("F-TEID IE found");
-//!                 if fq_teid.ipv4_flag() {
-//!                     println!("IPv4 Address: {:?}", fq_teid.ipv4_addr());
-//!                 }
-//!             }
-//!             Gtpv2IEGroup::InternationalMobileSubscriberIdIE(imsi) => {
-//!                 println!("IMSI IE found, length: {}", imsi.length());
-//!             }
-//!             _ => println!("Other IE type"),
+//! let payload = gtpv2.payload();
+//! for ie in Gtpv2IEGroupIter::from_slice(payload.chunk()) {
+//!     match ie {
+//!         Gtpv2IEGroup::BearerContextIE_(bearer_ctx) => {
+//!             println!("Bearer Context IE length: {}", bearer_ctx.header_len());
 //!         }
+//!         Gtpv2IEGroup::FullyQualifiedTeidIE_(fq_teid) => {
+//!             println!("F-TEID IE, IPv4 present: {}", fq_teid.v4());
+//!         }
+//!         Gtpv2IEGroup::InternationalMobileSubscriberIdIE_(imsi) => {
+//!             println!("IMSI IE length: {}", imsi.header_len());
+//!         }
+//!         _ => println!("Other IE type"),
 //!     }
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;
