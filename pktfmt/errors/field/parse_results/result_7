@@ -8,4 +8,4 @@ at ./error_7.pktfmt 6:18-10:9
 10 |         },
      ^^^^^^^^^
 field error 7:
-default can not be fixed for bool value and byte array
+default can not be fixed for byte array

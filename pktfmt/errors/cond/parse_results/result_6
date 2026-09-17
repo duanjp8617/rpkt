@@ -1,6 +1,9 @@
 ast error
-at ./error_6.pktfmt 16:5-41
-16 |     cond = (field_1 == 1)||(field_1 == 1)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-conditional error 6:
-the compared value 1 has appeared
+at ./error_6.pktfmt 34:5-36:61
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+34 |     cond = (field_1 == 1) && (field_2 == 1) && (field_3 == 1) &&
+35 |            (field_4 == 1) && (field_5 == 1) && (field_6 == 1) &&
+36 |            (field_7 == 1) && (field_8 == 1) && (field_9 == 1)
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 8:
+too many distinctive cond fields

@@ -648,6 +648,7 @@ fn rust_var_as_repr(var_name: &str, repr: BuiltinTypes) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::erasing_op, clippy::identity_op)]
 mod tests {
     use crate::ast::BitPos;
     use crate::token::Tokenizer;

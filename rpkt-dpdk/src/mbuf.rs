@@ -9,6 +9,100 @@ use crate::mempool::Mempool;
 
 use crate::ffi;
 
+// DPDK 24.11 groups the hot mbuf fields into anonymous unions. Keep the
+// layout-dependent paths here so the rest of the wrapper remains independent
+// of the generated bindgen representation.
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_data_off {
+    ($mbuf:expr) => {
+        ($mbuf).data_off
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_data_off {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_1.__bindgen_anon_1.data_off
+    };
+}
+
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_nb_segs {
+    ($mbuf:expr) => {
+        ($mbuf).nb_segs
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_nb_segs {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_1.__bindgen_anon_1.nb_segs
+    };
+}
+
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_buf_len {
+    ($mbuf:expr) => {
+        ($mbuf).buf_len
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_buf_len {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_2.__bindgen_anon_1.buf_len
+    };
+}
+
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_data_len {
+    ($mbuf:expr) => {
+        ($mbuf).data_len
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_data_len {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_2.__bindgen_anon_1.data_len
+    };
+}
+
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_pkt_len {
+    ($mbuf:expr) => {
+        ($mbuf).pkt_len
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_pkt_len {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_2.__bindgen_anon_1.pkt_len
+    };
+}
+
+#[cfg(not(dpdk_24_11))]
+macro_rules! mbuf_rss {
+    ($mbuf:expr) => {
+        ($mbuf).__bindgen_anon_2.hash.rss
+    };
+}
+
+#[cfg(dpdk_24_11)]
+macro_rules! mbuf_rss {
+    ($mbuf:expr) => {
+        ($mbuf)
+            .__bindgen_anon_2
+            .__bindgen_anon_1
+            .__bindgen_anon_2
+            .hash
+            .rss
+    };
+}
+
+pub(crate) use mbuf_data_len;
+
 #[derive(Debug)]
 pub struct Mbuf {
     ptr: NonNull<ffi::rte_mbuf>,
@@ -21,19 +115,19 @@ impl Mbuf {
     /// Total data length in bytes.
     #[inline]
     pub fn data_len(&self) -> usize {
-        unsafe { self.ptr.as_ref().data_len.into() }
+        unsafe { mbuf_data_len!(self.ptr.as_ref()).into() }
     }
 
     /// Total bytes available for storing data.
     #[inline]
     pub fn capacity(&self) -> usize {
-        unsafe { usize::from(self.ptr.as_ref().buf_len - self.ptr.as_ref().data_off) }
+        unsafe { usize::from(mbuf_buf_len!(self.ptr.as_ref()) - mbuf_data_off!(self.ptr.as_ref())) }
     }
 
     /// Total bytes available at the front for storing data.
     #[inline]
     pub fn front_capacity(&self) -> usize {
-        unsafe { usize::from(self.ptr.as_ref().data_off) }
+        unsafe { usize::from(mbuf_data_off!(self.ptr.as_ref())) }
     }
 
     /// Return the current data as a byte slice.
@@ -42,7 +136,7 @@ impl Mbuf {
         unsafe {
             std::slice::from_raw_parts(
                 data_addr(self.ptr.as_ref()),
-                usize::from(self.ptr.as_ref().data_len),
+                usize::from(mbuf_data_len!(self.ptr.as_ref())),
             )
         }
     }
@@ -53,7 +147,7 @@ impl Mbuf {
         unsafe {
             std::slice::from_raw_parts_mut(
                 data_addr(self.ptr.as_ref()),
-                usize::from(self.ptr.as_ref().data_len),
+                usize::from(mbuf_data_len!(self.ptr.as_ref())),
             )
         }
     }
@@ -80,16 +174,16 @@ impl Mbuf {
     #[inline]
     pub unsafe fn extend(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.capacity() - self.data_len());
-        self.ptr.as_mut().data_len += cnt as u16;
-        self.ptr.as_mut().pkt_len += cnt as u32;
+        mbuf_data_len!(self.ptr.as_mut()) += cnt as u16;
+        mbuf_pkt_len!(self.ptr.as_mut()) += cnt as u32;
     }
 
     /// Decrease buffer length by `cnt` bytes.
     #[inline]
     pub unsafe fn shrink(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.data_len());
-        self.ptr.as_mut().data_len -= cnt as u16;
-        self.ptr.as_mut().pkt_len -= cnt as u32;
+        mbuf_data_len!(self.ptr.as_mut()) -= cnt as u16;
+        mbuf_pkt_len!(self.ptr.as_mut()) -= cnt as u32;
     }
 
     /// Increase the buffer length at the front.
@@ -98,9 +192,9 @@ impl Mbuf {
     #[inline]
     pub unsafe fn extend_front(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.front_capacity());
-        self.ptr.as_mut().data_len += cnt as u16;
-        self.ptr.as_mut().pkt_len += cnt as u32;
-        self.ptr.as_mut().data_off -= cnt as u16;
+        mbuf_data_len!(self.ptr.as_mut()) += cnt as u16;
+        mbuf_pkt_len!(self.ptr.as_mut()) += cnt as u32;
+        mbuf_data_off!(self.ptr.as_mut()) -= cnt as u16;
     }
 
     /// Decrease the buffer length at the front.
@@ -110,9 +204,9 @@ impl Mbuf {
     pub unsafe fn shrink_front(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.data_len());
         unsafe {
-            self.ptr.as_mut().data_len -= cnt as u16;
-            self.ptr.as_mut().pkt_len -= cnt as u32;
-            self.ptr.as_mut().data_off += cnt as u16;
+            mbuf_data_len!(self.ptr.as_mut()) -= cnt as u16;
+            mbuf_pkt_len!(self.ptr.as_mut()) -= cnt as u32;
+            mbuf_data_off!(self.ptr.as_mut()) += cnt as u16;
         }
     }
 
@@ -166,7 +260,7 @@ impl Mbuf {
 
     #[inline]
     pub fn rss(&self) -> u32 {
-        unsafe { self.ptr.as_ref().__bindgen_anon_2.hash.rss }
+        unsafe { mbuf_rss!(self.ptr.as_ref()) }
     }
 
     /// The tx_offload for the mbuf.
@@ -248,13 +342,13 @@ impl Mbuf {
     /// all the chained mbufs.
     #[inline]
     pub fn pkt_len(&self) -> usize {
-        (unsafe { self.ptr.as_ref().pkt_len }) as usize
+        (unsafe { mbuf_pkt_len!(self.ptr.as_ref()) }) as usize
     }
 
     /// The total number of mbuf segments chained together.
     #[inline]
     pub fn num_segs(&self) -> usize {
-        usize::from(unsafe { self.ptr.as_ref().nb_segs })
+        usize::from(unsafe { mbuf_nb_segs!(self.ptr.as_ref()) })
     }
 
     #[cfg(not(miri))]
@@ -288,8 +382,8 @@ impl Mbuf {
         unsafe {
             cur_seg.as_mut().next = mbuf.into_raw();
 
-            fst_seg.ptr.as_mut().pkt_len += source_len as u32;
-            fst_seg.ptr.as_mut().nb_segs += total_remaining_segs as u16;
+            mbuf_pkt_len!(fst_seg.ptr.as_mut()) += source_len as u32;
+            mbuf_nb_segs!(fst_seg.ptr.as_mut()) += total_remaining_segs as u16;
         }
 
         Some(fst_seg)
@@ -332,12 +426,12 @@ impl Mbuf {
             cur_tail.as_mut().next = other_ptr.as_ptr();
 
             // accumulate number of segments and total length
-            self.ptr.as_mut().nb_segs += other_ptr.as_ref().nb_segs;
-            self.ptr.as_mut().pkt_len += other_ptr.as_ref().pkt_len;
+            mbuf_nb_segs!(self.ptr.as_mut()) += mbuf_nb_segs!(other_ptr.as_ref());
+            mbuf_pkt_len!(self.ptr.as_mut()) += mbuf_pkt_len!(other_ptr.as_ref());
 
             // pkt_len is only set in the head
-            other_ptr.as_mut().pkt_len = other_ptr.as_ref().data_len as u32;
-            other_ptr.as_mut().nb_segs = 1;
+            mbuf_pkt_len!(other_ptr.as_mut()) = mbuf_data_len!(other_ptr.as_ref()) as u32;
+            mbuf_nb_segs!(other_ptr.as_mut()) = 1;
         }
     }
 
@@ -355,8 +449,8 @@ impl Mbuf {
             // Iterate through the `rte_mbuf` link list.
             // After the iteration, `cur_seg` will point to the last segment after truncating
             // the original `rte_mbuf` to `new_size` bytes.
-            while usize::from(cur_seg.as_ref().data_len) < remaining {
-                remaining -= usize::from(cur_seg.as_ref().data_len);
+            while usize::from(mbuf_data_len!(cur_seg.as_ref())) < remaining {
+                remaining -= usize::from(mbuf_data_len!(cur_seg.as_ref()));
                 nb_segs += 1;
                 cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
             }
@@ -371,13 +465,13 @@ impl Mbuf {
                 // the last segment.
                 cur_seg.as_mut().next = null_mut();
                 // Adjust the `nb_segs` at the first segment as well.
-                self.ptr.as_mut().nb_segs = nb_segs;
+                mbuf_nb_segs!(self.ptr.as_mut()) = nb_segs;
             }
 
             // `remaining` now equals to the length of the last segment.
-            cur_seg.as_mut().data_len = remaining as u16;
+            mbuf_data_len!(cur_seg.as_mut()) = remaining as u16;
             // The packet length is truncated to `cnt`.
-            self.ptr.as_mut().pkt_len = new_size as u32;
+            mbuf_pkt_len!(self.ptr.as_mut()) = new_size as u32;
         }
     }
 
@@ -431,7 +525,7 @@ impl<'a> Iterator for SegIter<'a> {
         self.cur_seg.map(|cur_seg| unsafe {
             let res = std::slice::from_raw_parts(
                 data_addr(cur_seg.as_ref()),
-                cur_seg.as_ref().data_len as usize,
+                mbuf_data_len!(cur_seg.as_ref()) as usize,
             );
             self.cur_seg = NonNull::new(cur_seg.as_ref().next);
             res
@@ -456,7 +550,7 @@ impl<'a> Iterator for SegIterMut<'a> {
         self.cur_seg.map(|cur_seg| unsafe {
             let res = std::slice::from_raw_parts_mut(
                 data_addr(cur_seg.as_ref()),
-                cur_seg.as_ref().data_len as usize,
+                mbuf_data_len!(cur_seg.as_ref()) as usize,
             );
             self.cur_seg = NonNull::new(cur_seg.as_ref().next);
             res
@@ -483,8 +577,8 @@ impl<'a> Appender<'a> {
             self.last_seg.as_mut().next = other_ptr.as_ptr();
 
             // accumulate number of segments and total length
-            self.buf.ptr.as_mut().nb_segs += 1;
-            self.buf.ptr.as_mut().pkt_len += other_ptr.as_ref().pkt_len;
+            mbuf_nb_segs!(self.buf.ptr.as_mut()) += 1;
+            mbuf_pkt_len!(self.buf.ptr.as_mut()) += mbuf_pkt_len!(other_ptr.as_ref());
 
             // update the last_seg
             self.last_seg = other_ptr;
@@ -502,14 +596,14 @@ impl Drop for Mbuf {
 
 #[inline]
 pub(crate) unsafe fn data_addr(mbuf: &ffi::rte_mbuf) -> *mut u8 {
-    let data_off = usize::from(mbuf.data_off);
+    let data_off = usize::from(mbuf_data_off!(mbuf));
     (mbuf.buf_addr as *mut u8).add(data_off)
 }
 
 #[cfg(miri)]
 unsafe fn deallocate_rte_mbuf(ptr: *mut ffi::rte_mbuf) {
     unsafe {
-        let buf_len = (*ptr).buf_len;
+        let buf_len = mbuf_buf_len!(*ptr);
         let buf_addr = (*ptr).buf_addr as *mut u8;
         let slice_ptr: *mut [u8] = std::ptr::slice_from_raw_parts_mut(buf_addr, buf_len as usize);
         let _reconstructed_box: Box<[u8]> = Box::from_raw(slice_ptr);
@@ -546,12 +640,12 @@ impl Mbuf {
         let mbuf: ffi::rte_mbuf = unsafe { std::mem::zeroed() };
         let mut boxed_mbuf = Box::new(mbuf);
         boxed_mbuf.buf_addr = buf_addr as *mut c_void;
-        boxed_mbuf.data_off = head_room;
-        boxed_mbuf.data_len = 0;
-        boxed_mbuf.pkt_len = 0;
-        boxed_mbuf.buf_len = data_room + head_room;
+        mbuf_data_off!(boxed_mbuf) = head_room;
+        mbuf_data_len!(boxed_mbuf) = 0;
+        mbuf_pkt_len!(boxed_mbuf) = 0;
+        mbuf_buf_len!(boxed_mbuf) = data_room + head_room;
         boxed_mbuf.next = null_mut();
-        boxed_mbuf.nb_segs = 1;
+        mbuf_nb_segs!(boxed_mbuf) = 1;
 
         Self {
             ptr: NonNull::new(Box::into_raw(boxed_mbuf)).unwrap(),
@@ -589,8 +683,8 @@ impl Mbuf {
         unsafe {
             cur_seg.as_mut().next = mbuf.into_raw();
 
-            fst_seg.ptr.as_mut().pkt_len += source_len as u32;
-            fst_seg.ptr.as_mut().nb_segs += total_remaining_segs as u16;
+            mbuf_pkt_len!(fst_seg.ptr.as_mut()) += source_len as u32;
+            mbuf_nb_segs!(fst_seg.ptr.as_mut()) += total_remaining_segs as u16;
         }
 
         Some(fst_seg)
@@ -622,8 +716,8 @@ impl Mbuf {
             // Iterate through the `rte_mbuf` link list.
             // After the iteration, `cur_seg` will point to the last segment after truncating
             // the original `rte_mbuf` to `new_size` bytes.
-            while usize::from(cur_seg.as_ref().data_len) < remaining {
-                remaining -= usize::from(cur_seg.as_ref().data_len);
+            while usize::from(mbuf_data_len!(cur_seg.as_ref())) < remaining {
+                remaining -= usize::from(mbuf_data_len!(cur_seg.as_ref()));
                 nb_segs += 1;
                 cur_seg = NonNull::new_unchecked(cur_seg.as_ref().next);
             }
@@ -644,13 +738,13 @@ impl Mbuf {
                 // the last segment.
                 cur_seg.as_mut().next = null_mut();
                 // Adjust the `nb_segs` at the first segment as well.
-                self.ptr.as_mut().nb_segs = nb_segs;
+                mbuf_nb_segs!(self.ptr.as_mut()) = nb_segs;
             }
 
             // `remaining` now equals to the length of the last segment.
-            cur_seg.as_mut().data_len = remaining as u16;
+            mbuf_data_len!(cur_seg.as_mut()) = remaining as u16;
             // The packet length is truncated to `cnt`.
-            self.ptr.as_mut().pkt_len = new_size as u32;
+            mbuf_pkt_len!(self.ptr.as_mut()) = new_size as u32;
         }
     }
 }

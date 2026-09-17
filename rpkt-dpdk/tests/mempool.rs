@@ -5,7 +5,7 @@ use rpkt_dpdk::*;
 #[test]
 fn create_mempool_with_same_name() {
     DpdkOption::new()
-        .args("--file-prefix mempool".split(" "))
+        .args("-l 0 --file-prefix mempool".split(" "))
         .init()
         .unwrap();
 
@@ -30,7 +30,7 @@ fn create_mempool_with_same_name() {
 #[test]
 fn mbuf_alloc_and_size_check() {
     DpdkOption::new()
-        .args("--file-prefix mempool".split(" "))
+        .args("-l 0 --file-prefix mempool".split(" "))
         .init()
         .unwrap();
 
@@ -68,7 +68,7 @@ fn mbuf_alloc_and_size_check() {
 #[test]
 fn mbuf_data_unchanged_after_realloc() {
     DpdkOption::new()
-        .args("--file-prefix mempool".split(" "))
+        .args("-l 0 --file-prefix mempool".split(" "))
         .init()
         .unwrap();
 
@@ -105,7 +105,7 @@ fn mbuf_data_unchanged_after_realloc() {
 #[test]
 fn alloc_mbuf_from_multiple_threads() {
     DpdkOption::new()
-        .args("--file-prefix mempool".split(" "))
+        .args("-l 0 --file-prefix mempool".split(" "))
         .init()
         .unwrap();
 
@@ -159,7 +159,7 @@ fn secondary_process_mempool() {
     );
 
     {
-        let mp = unsafe { service().assume_mempool("wtf").unwrap() };
+        let mp = unsafe { service().assume_mempool("mp_on_primary").unwrap() };
         let mut mbufs = vec![];
         for _ in 0..127 {
             let mbuf = mp.try_alloc().unwrap();

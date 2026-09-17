@@ -1,6 +1,6 @@
 ast error
-at ./error_3.pktfmt 16:5-43
-16 |     cond = (field_1 == 700)||(field_1 == 2)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-conditional error 3:
-compared value 700 is too large
+at ./error_3.pktfmt 16:5-27
+16 |     cond = (field_1 == 700)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 4:
+range 700 is invalid for field field_1

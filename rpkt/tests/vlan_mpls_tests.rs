@@ -80,7 +80,8 @@ fn vlan_parse_and_creation() {
         arp_pkt.set_target_ether_addr(EtherAddr::parse_from("00:00:00:00:00:00").unwrap());
         arp_pkt.set_target_ipv4_addr(Ipv4Addr::new(192, 168, 2, 254));
 
-        let mut vlan_pkt = VlanFrame::prepend_header(arp_pkt.release(), &VLAN_FRAME_HEADER_TEMPLATE);
+        let mut vlan_pkt =
+            VlanFrame::prepend_header(arp_pkt.release(), &VLAN_FRAME_HEADER_TEMPLATE);
         vlan_pkt.set_priority(2);
         assert_eq!(vlan_pkt.dei_flag(), false);
         vlan_pkt.set_vlan_id(200);
@@ -311,7 +312,8 @@ fn vxlan_parsing_and_creation_test() {
         ip_pkt.set_src_addr(Ipv4Addr::new(192, 168, 203, 1));
         ip_pkt.set_dst_addr(Ipv4Addr::new(192, 168, 202, 1));
 
-        let mut eth_pkt = EtherFrame::prepend_header(ip_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+        let mut eth_pkt =
+            EtherFrame::prepend_header(ip_pkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
         eth_pkt.set_dst_addr(EtherAddr([0x00, 0x16, 0x3e, 0x08, 0x71, 0xcf]));
         eth_pkt.set_src_addr(EtherAddr([0x36, 0xdc, 0x85, 0x1e, 0xb3, 0x40]));
         eth_pkt.set_ethertype(EtherType::IPV4);

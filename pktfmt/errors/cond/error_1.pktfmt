@@ -1,7 +1,7 @@
 %%
 %%
 
-message FakeProto {
+packet FakeProto {
     header = [
         field_1 = Field {
             bit = 8
@@ -13,6 +13,5 @@ message FakeProto {
             bit = 8, 
         }
     ],
-    cond = (type_ == 1)||(field_1 == 2)
+    cond = (type_ == 1 || 2)
 }
-

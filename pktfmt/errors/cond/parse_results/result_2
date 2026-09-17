@@ -1,6 +1,6 @@
 ast error
-at ./error_2.pktfmt 17:5-41
-17 |     cond = (field_1 == 1)||(field_1 == 2)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+at ./error_2.pktfmt 17:5-30
+17 |     cond = (field_1 == 1 || 2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 conditional error 2:
-field repr can not be a byte slice
+repr of field field_1 is a byte slice

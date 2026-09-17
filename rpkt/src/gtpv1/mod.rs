@@ -1,5 +1,5 @@
 //! GTPv1 Protocol Implementation
-//! 
+//!
 //! This module provides comprehensive support for GTPv1 (GPRS Tunneling Protocol version 1)
 //! protocol parsing and construction, including extensions, information elements, and
 //! specialized handling for PDU sessions and NR user plane protocols.
@@ -18,7 +18,7 @@ pub use generated::GTPV1_HEADER_TEMPLATE;
 
 pub mod gtpv1_extentions {
     //! GTPv1 Extensions according to TS 129 281
-    //! 
+    //!
     //! This module contains all the extensions available in the GTPv1 protocol,
     //! providing types for parsing and constructing various extension headers.
 
@@ -60,7 +60,7 @@ pub mod gtpv1_extentions {
 
 pub mod pdu_session_up {
     //! PDU Session User Plane as defined in TS 138 415
-    //! 
+    //!
     //! This module merges the ExtContainer with inner protocol for quickly handling
     //! PDU session messages in the user plane.
 
@@ -84,7 +84,7 @@ pub mod pdu_session_up {
 
 pub mod nr_up {
     //! NR User Plane as defined in TS 138 425
-    //! 
+    //!
     //! This module merges the ExtContainer with inner protocol for quickly handling
     //! NR (New Radio) user plane messages.
 
@@ -115,7 +115,7 @@ pub mod nr_up {
 
 pub mod gtpv1_information_elements {
     //! GTPv1 Information Elements according to TS 29.281 and 29.060
-    //! 
+    //!
     //! This module contains all the information elements available in GTPv1 protocol,
     //! providing comprehensive support for GTP-U/C information element parsing and construction.
 
@@ -192,7 +192,7 @@ pub mod gtpv1_information_elements {
 
 enum_sim! {
     /// GTPv1 Message Type enumeration
-    /// 
+    ///
     /// Defines the various message types supported by the GTPv1 protocol
     /// as specified in the relevant 3GPP specifications.
     pub struct Gtpv1MsgType (u8) {
@@ -217,7 +217,7 @@ enum_sim! {
 
 enum_sim! {
     /// GTPv1 Next Extension Type enumeration
-    /// 
+    ///
     /// Defines the extension header types that can follow in the GTPv1 extension header chain.
     /// Each extension header contains a "Next Extension Header Type" field that indicates
     /// the type of the following extension header.

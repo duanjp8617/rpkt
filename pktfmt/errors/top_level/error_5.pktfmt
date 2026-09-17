@@ -12,7 +12,7 @@ packet Proto1 {
     ]
 }
 
-message Proto2 {
+packet Proto2 {
     header = [
         field_name1 = Field {
             bit = 8, 
@@ -24,19 +24,19 @@ message Proto2 {
     cond=(field_name1==3)
 }
 
-message Proto3 {
+packet Proto3 {
     header = [
         field_name1 = Field {
-            bit = 8, 
+            bit = 16,
         },
         field_name2 = Field {
             bit = 8, 
         }
     ],
-    cond=(field_name2==3)
+    cond=(field_name1==3)
 }
 
-message Proto4 {
+packet Proto4 {
     header = [
         field_name1 = Field {
             bit = 8, 
@@ -48,7 +48,9 @@ message Proto4 {
     cond=(field_name1==5)
 }
 
-message_group G1 = [
-    Proto2,    
-    Proto3,
-]
+group G1 = {
+    members = [
+        Proto2,
+        Proto3,
+    ]
+}

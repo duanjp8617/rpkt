@@ -1,11 +1,13 @@
 ast error
-at ./error_3.pktfmt 51:1-55:1
-     ~~~~~~~~~~~~~~~~~~~~
-51 | message_group G1 = [
-52 |     Proto1,
-53 |     Proto2,
-54 |     Proto3,
-55 | ]
+at ./error_3.pktfmt 51:1-57:1
+     ~~~~~~~~~~~~
+51 | group G1 = {
+52 |     members = [
+53 |         MissingProto,
+......
+55 |         Proto3,
+56 |     ]
+57 | }
      ^
-top level error 3:
-message Proto1 is not defined
+top level error 11:
+packet MissingProto is not defined
