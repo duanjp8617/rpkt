@@ -54,6 +54,9 @@ jobs:
   dpdk-build:
     name: DPDK build
     runs-on: ubuntu-22.04
+    env:
+      LIBCLANG_PATH: /usr/lib/llvm-14/lib
+      BINDGEN_EXTRA_CLANG_ARGS: -resource-dir /usr/lib/llvm-14/lib/clang/14.0.0
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust 1.98
@@ -63,7 +66,7 @@ jobs:
       - name: Install DPDK build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential clang libclang-dev libdpdk-dev pkg-config
+          sudo apt-get install --yes build-essential clang-14 libclang-14-dev libdpdk-dev pkg-config
       - name: Compile DPDK tests
         run: cargo test --package rpkt-dpdk --tests --no-run
 
