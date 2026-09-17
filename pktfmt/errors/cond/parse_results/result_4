@@ -1,6 +1,6 @@
 ast error
-at ./error_4.pktfmt 17:5-41
-17 |     cond = (field_1 == 3)||(field_1 == 2)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-conditional error 4:
-field gen must be true
+at ./error_4.pktfmt 16:5-38
+16 |     cond = (field_1 == 1..=3 || 3..=5)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+conditional error 6:
+field field_1 has intersected ranges

@@ -88,22 +88,18 @@ fn cpu_detected(lcore_id: u32) -> bool {
 }
 
 fn cpu_socket_id(lcore_id: u32) -> Option<u32> {
-    for socket_id in 0..ffi::RTE_MAX_NUMA_NODES {
-        let sys_file = PathBuf::from("/sys/devices/system/node")
-            .join(&format!("node{}", socket_id))
-            .join(&format!("cpu{}", lcore_id));
-
-        if sys_file.exists() {
-            return Some(socket_id);
-        }
-    }
-    None
+    cpu_topology_id(lcore_id, "physical_package_id")
 }
 
 fn cpu_core_id(lcore_id: u32) -> Option<u32> {
+    cpu_topology_id(lcore_id, "core_id")
+}
+
+fn cpu_topology_id(lcore_id: u32, name: &str) -> Option<u32> {
     let sys_file = PathBuf::from("/sys/devices/system/cpu")
         .join(&format!("cpu{}", lcore_id))
-        .join("topology/core_id");
+        .join("topology")
+        .join(name);
 
     let mut file = File::open(sys_file).ok()?;
     let mut contents = String::new();

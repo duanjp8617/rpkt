@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 
 use rpkt::{Buf, PktBuf, PktBufMut};
 
-use crate::mbuf::{data_addr, Mbuf};
 use crate::ffi::rte_mbuf;
+use crate::mbuf::{data_addr, mbuf_data_len, Mbuf};
 
 #[derive(Debug)]
 pub struct Pbuf<'a> {
@@ -20,7 +20,7 @@ impl<'a> Pbuf<'a> {
     pub fn new(mbuf: &'a mut Mbuf) -> Self {
         unsafe {
             let mbuf_cur = mbuf.as_mut_ptr();
-            let chunk_len = usize::from((*mbuf_cur).data_len);
+            let chunk_len = usize::from(mbuf_data_len!(*mbuf_cur));
 
             Self {
                 mbuf_head: mbuf as *mut Mbuf,
@@ -49,12 +49,12 @@ impl<'a> Pbuf<'a> {
     unsafe fn advance_common(&mut self, target_cursor: usize) {
         while self.segs_len <= target_cursor && !(*self.mbuf_cur).next.is_null() {
             self.mbuf_cur = (*self.mbuf_cur).next;
-            self.segs_len += usize::from((*self.mbuf_cur).data_len);
+            self.segs_len += usize::from(mbuf_data_len!(*self.mbuf_cur));
         }
 
         self.chunk_len = self.segs_len - target_cursor;
-        self.chunk_start =
-            data_addr(&*self.mbuf_cur).add(usize::from((*self.mbuf_cur).data_len) - self.chunk_len);
+        self.chunk_start = data_addr(&*self.mbuf_cur)
+            .add(usize::from(mbuf_data_len!(*self.mbuf_cur)) - self.chunk_len);
     }
 
     fn advance_slow(&mut self, cnt: usize) {
@@ -72,7 +72,7 @@ impl<'a> Pbuf<'a> {
         unsafe {
             // reset the `cur_seg` to the first segment
             self.mbuf_cur = (*self.mbuf_head).as_mut_ptr();
-            self.segs_len = usize::from((*self.mbuf_cur).data_len);
+            self.segs_len = usize::from(mbuf_data_len!(*self.mbuf_cur));
 
             self.advance_common(target_cursor);
         }
@@ -126,7 +126,7 @@ impl<'a> PktBuf for Pbuf<'a> {
                 (*self.mbuf_head).truncate_to(new_len);
 
                 self.mbuf_cur = (*self.mbuf_head).as_mut_ptr();
-                self.segs_len = usize::from((*self.mbuf_cur).data_len);
+                self.segs_len = usize::from(mbuf_data_len!(*self.mbuf_cur));
 
                 self.advance_common(cursor);
             }
@@ -145,7 +145,7 @@ impl<'a> PktBuf for Pbuf<'a> {
 impl<'a> PktBufMut for Pbuf<'a> {
     #[inline]
     fn chunk_headroom(&self) -> usize {
-        unsafe { usize::from((*self.mbuf_cur).data_len) - self.chunk_len }
+        unsafe { usize::from(mbuf_data_len!(*self.mbuf_cur)) - self.chunk_len }
     }
 
     #[inline]

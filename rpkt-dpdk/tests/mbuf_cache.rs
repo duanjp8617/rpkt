@@ -7,7 +7,7 @@ const BATCH_SIZE: usize = 128;
 #[test]
 fn cache_enabled_batch() {
     DpdkOption::new()
-        .args("--file-prefix mbuf_cache".split(" "))
+        .args("-l 0 --file-prefix mbuf_cache".split(" "))
         .init()
         .unwrap();
     service().thread_bind_to(0).unwrap();
@@ -103,7 +103,7 @@ fn cache_enabled_batch() {
 #[test]
 fn set_all_mbufs_in_a_pool() {
     DpdkOption::new()
-        .args("--file-prefix mbuf_cache".split(" "))
+        .args("-l 0 --file-prefix mbuf_cache".split(" "))
         .init()
         .unwrap();
     service().thread_bind_to(0).unwrap();

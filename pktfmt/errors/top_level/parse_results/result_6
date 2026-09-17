@@ -1,10 +1,11 @@
 ast error
-at ./error_6.pktfmt 51:1-54:1
-     ~~~~~~~~~~~~~~~~~~~~
-51 | message_group G1 = [
-52 |     Proto2,    
-53 |     Proto3,
-54 | ]
+at ./error_6.pktfmt 51:1-55:1
+     ~~~~~~~~~~~~
+51 | group G1 = {
+52 |     members = [
+53 |         Proto2,
+54 |     ]
+55 | }
      ^
-top level error 6:
-cond value 3 appears twice
+top level error 10:
+group definition requires at least 2 member packets

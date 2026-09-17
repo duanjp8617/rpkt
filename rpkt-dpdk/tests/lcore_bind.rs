@@ -5,7 +5,7 @@ use rpkt_dpdk::*;
 #[test]
 fn bind_2_cores() {
     DpdkOption::new()
-        .args("--file-prefix lcore_bind".split(" "))
+        .args("-l 0 --file-prefix lcore_bind".split(" "))
         .init()
         .unwrap();
 
@@ -32,7 +32,7 @@ fn bind_2_cores() {
 #[test]
 fn register_rte_thread() {
     DpdkOption::new()
-        .args("--file-prefix lcore_bind".split(" "))
+        .args("-l 0 --file-prefix lcore_bind".split(" "))
         .init()
         .unwrap();
 
@@ -63,7 +63,7 @@ fn register_rte_thread() {
 #[test]
 fn bind_2_threads_to_the_same_lcore() {
     DpdkOption::new()
-        .args("--file-prefix lcore_bind".split(" "))
+        .args("-l 0 --file-prefix lcore_bind".split(" "))
         .init()
         .unwrap();
 

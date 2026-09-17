@@ -207,12 +207,12 @@ mod tests {
 
     #[test]
     fn bounds_empty() {
-        assert_eq!(CondBounds::from_range(0..=0).is_empty(), false);
-        assert_eq!(CondBounds::from_range(..0).is_empty(), true);
-        assert_eq!(CondBounds::from_range(u64::MAX..).is_empty(), true);
-        assert_eq!(CondBounds::from_range(3..3).is_empty(), true);
-        assert_eq!(CondBounds::from_range(3..=3).is_empty(), false);
-        assert_eq!(CondBounds::from_range(5..=3).is_empty(), true);
+        assert!(!CondBounds::from_range(0..=0).is_empty());
+        assert!(CondBounds::from_range(..0).is_empty());
+        assert!(CondBounds::from_range(u64::MAX..).is_empty());
+        assert!(CondBounds::from_range(3..3).is_empty());
+        assert!(!CondBounds::from_range(3..=3).is_empty());
+        assert!(CondBounds::from_range(std::ops::RangeInclusive::new(5, 3)).is_empty());
     }
 
     #[test]

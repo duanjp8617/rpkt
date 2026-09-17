@@ -216,12 +216,8 @@ let container = Self{{ {buf_name} }};
         } else if self.length[2].appear() {
             // prepare the packet_len variable
             write!(output, "let packet_len = container.packet_len() as usize;").unwrap();
-            guards.push(format!(
-                "packet_len<{header_len_var}"
-            ));
-            guards.push(format!(
-                "packet_len>container.{buf_name}.remaining()"
-            ));
+            guards.push(format!("packet_len<{header_len_var}"));
+            guards.push(format!("packet_len>container.{buf_name}.remaining()"));
         } else {
             // Do nothing
         }

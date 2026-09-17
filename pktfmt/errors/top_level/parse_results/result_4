@@ -1,10 +1,12 @@
 ast error
-at ./error_4.pktfmt 50:1-53:1
-     ~~~~~~~~~~~~~~~~~~~~
-50 | message_group G1 = [
-51 |     Proto2,    
-52 |     Proto3,
-53 | ]
+at ./error_4.pktfmt 50:1-55:1
+     ~~~~~~~~~~~~
+50 | group G1 = {
+51 |     members = [
+52 |         Proto2,
+53 |         Proto3,
+54 |     ]
+55 | }
      ^
-top level error 4:
-cond of message Proto3 is not defined
+top level error 13:
+packet Proto3 does not define cond

@@ -84,7 +84,7 @@ fn build_dpdk_ffi() {
         .allowlist_var("RTE_MAX_NUMA_NODES")
         .allowlist_var("RTE_MBUF_MAX_NB_SEGS")
         .allowlist_var("RTE_MBUF_DEFAULT_DATAROOM")
-        .allowlist_var("RTE_PKTMBUF_HEADROOM")        
+        .allowlist_var("RTE_PKTMBUF_HEADROOM")
         .allowlist_var("RTE_ETHDEV_QUEUE_STAT_CNTRS")
         .header("csrc/header.h");
     for cflag in cflags_iter {
@@ -136,6 +136,8 @@ fn build_dpdk_ffi() {
 }
 
 fn main() {
+    println!("cargo:rustc-check-cfg=cfg(dpdk_24_11)");
+
     // Only support recent LTS versions.
     let raw_supported_versions = [
         ("21.11.00", "22.00.00"),
@@ -197,6 +199,10 @@ fn main() {
                 eprintln!("  >= {} and < {}", start, end);
             }
             std::process::exit(1);
+        }
+
+        if version >= supported_versions[3].0 && version < supported_versions[3].1 {
+            println!("cargo:rustc-cfg=dpdk_24_11");
         }
 
         // Found a installed dpdk library.

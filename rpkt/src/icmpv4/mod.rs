@@ -1,8 +1,8 @@
 //! ICMPv4 (Internet Control Message Protocol for IPv4) Implementation
 //!
-//! This module provides comprehensive support for parsing and constructing ICMPv4 messages as 
+//! This module provides comprehensive support for parsing and constructing ICMPv4 messages as
 //! defined in RFC 792 and related standards. ICMPv4 is used for error reporting and diagnostic
-//! functions in IPv4 networks, providing essential feedback about network conditions and 
+//! functions in IPv4 networks, providing essential feedback about network conditions and
 //! packet delivery issues.
 //!
 //! # Features
@@ -70,11 +70,11 @@
 //! // Parse an ICMPv4 packet
 //! let packet_data = [/* ICMPv4 packet bytes */];
 //! let cursor = Cursor::new(&packet_data);
-//! 
+//!
 //! // Parse as ICMP group to handle different message types
 //! match Icmpv4::group_parse(cursor) {
 //!     Ok(Icmpv4::EchoRequest_(echo_req)) => {
-//!         println!("Ping request - ID: {}, Seq: {}", 
+//!         println!("Ping request - ID: {}, Seq: {}",
 //!                  echo_req.identifier(), echo_req.sequence());
 //!         
 //!         // Access payload data
@@ -105,7 +105,7 @@
 //! let mut echo_req = EchoRequest::from_header_array_mut(&mut header);
 //! echo_req.set_identifier(0x1234);
 //! echo_req.set_sequence(1);
-//! 
+//!
 //! // Calculate and set checksum
 //! let checksum = calculate_icmp_checksum(echo_req.fix_header_slice());
 //! echo_req.set_checksum(checksum);

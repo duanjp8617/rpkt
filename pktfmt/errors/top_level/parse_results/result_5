@@ -1,10 +1,12 @@
 ast error
-at ./error_5.pktfmt 51:1-54:1
-     ~~~~~~~~~~~~~~~~~~~~
-51 | message_group G1 = [
-52 |     Proto2,    
-53 |     Proto3,
-54 | ]
+at ./error_5.pktfmt 51:1-56:1
+     ~~~~~~~~~~~~
+51 | group G1 = {
+52 |     members = [
+53 |         Proto2,
+54 |         Proto3,
+55 |     ]
+56 | }
      ^
-top level error 5:
-the cond field of message Proto3 is not the same as that of message Proto2
+top level error 12:
+invalid cond field field_name1 in packet Proto3

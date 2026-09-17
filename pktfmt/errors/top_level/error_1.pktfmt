@@ -12,7 +12,7 @@ packet Proto1 {
     ]
 }
 
-message Proto1 {
+packet Proto1 {
     header = [
         field_name1 = Field {
             bit = 8, 
