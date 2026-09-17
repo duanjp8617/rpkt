@@ -33,25 +33,27 @@
 //!
 //! ```rust
 //! use rpkt::ipv6::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse an IPv6 packet
-//! let packet_data = [/* IPv6 packet bytes */];
+//! let packet_data = IPV6_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let ipv6 = Ipv6::parse(cursor)?;
+//! let ipv6 = match Ipv6::parse(cursor) {
+//!     Ok(ipv6) => ipv6,
+//!     Err(_) => panic!("invalid IPv6 packet"),
+//! };
 //!
 //! println!("Source: {:?}", ipv6.src_addr());
 //! println!("Destination: {:?}", ipv6.dst_addr());
-//! println!("Next header: {}", ipv6.next_header());
+//! println!("Next header: {}", ipv6.next_header().raw());
 //! println!("Hop limit: {}", ipv6.hop_limit());
-//! println!("Payload length: {}", ipv6.payload_length());
+//! println!("Payload length: {}", ipv6.payload_len());
 //!
 //! // Process extension headers if present
-//! let mut next_header = ipv6.next_header();
-//! let mut payload = ipv6.payload();
+//! let next_header = ipv6.next_header();
+//! let payload = ipv6.payload();
 //!
 //! // Extension header processing would continue here
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

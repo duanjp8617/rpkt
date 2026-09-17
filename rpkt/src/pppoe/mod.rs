@@ -42,16 +42,19 @@
 //!
 //! ```rust
 //! use rpkt::pppoe::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::{Buf, Cursor};
 //!
 //! // Parse a PPPoE packet
-//! let packet_data = [/* PPPoE packet bytes */];
+//! let packet_data = PPPOE_DISCOVERY_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
 //!
 //! // Try parsing as a PPPoE group (handles both discovery and session)
-//! let pppoe_group = PppoeGroup::parse(cursor)?;
+//! let pppoe_group = match PppoeGroup::group_parse(cursor) {
+//!     Ok(pppoe) => pppoe,
+//!     Err(_) => panic!("invalid or unsupported PPPoE packet"),
+//! };
 //! match pppoe_group {
-//!     PppoeGroup::PppoeDiscovery(discovery) => {
+//!     PppoeGroup::PppoeDiscovery_(discovery) => {
 //!         println!("PPPoE Discovery packet");
 //!         match discovery.code() {
 //!             PppoeCode::PADI => println!("PADI - Discovery Initiation"),
@@ -63,26 +66,24 @@
 //!         }
 //!
 //!         // Process PPPoE tags
-//!         if let Some(tags) = discovery.tags() {
-//!             for tag in tags.iter() {
-//!                 match tag.tag_type() {
-//!                     PppoeTagType::SVC_NAME => println!("Service Name tag"),
-//!                     PppoeTagType::AC_NAME => println!("AC Name tag"),
-//!                     PppoeTagType::HOST_UNIQ => println!("Host Unique tag"),
-//!                     _ => println!("Other tag: {:?}", tag.tag_type()),
-//!                 }
+//!         let payload = discovery.payload();
+//!         for tag in PppoeTagIter::from_slice(payload.chunk()) {
+//!             match tag.type_() {
+//!                 PppoeTagType::SVC_NAME => println!("Service Name tag"),
+//!                 PppoeTagType::AC_NAME => println!("AC Name tag"),
+//!                 PppoeTagType::HOST_UNIQ => println!("Host Unique tag"),
+//!                 _ => println!("Other tag: {:?}", tag.type_()),
 //!             }
 //!         }
 //!     }
-//!     PppoeGroup::PppoeSession(session) => {
+//!     PppoeGroup::PppoeSession_(session) => {
 //!         println!("PPPoE Session packet");
 //!         println!("Session ID: 0x{:04x}", session.session_id());
-//!         println!("Length: {}", session.length());
+//!         println!("Length: {}", session.packet_len());
 //!         // Process PPP payload
 //!         let ppp_payload = session.payload();
 //!     }
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

@@ -35,19 +35,21 @@
 //!
 //! ```rust
 //! use rpkt::ipv4::*;
-//! use rpkt::{Cursor, CursorMut};
-//! use std::net::Ipv4Addr;
+//! use rpkt::Cursor;
 //!
 //! // Parse an IPv4 packet
-//! let packet_data = [/* IPv4 packet bytes */];
+//! let packet_data = IPV4_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let ipv4 = Ipv4::parse(cursor)?;
+//! let ipv4 = match Ipv4::parse(cursor) {
+//!     Ok(ipv4) => ipv4,
+//!     Err(_) => panic!("invalid IPv4 packet"),
+//! };
 //!
 //! println!("Source: {}", ipv4.src_addr());
 //! println!("Destination: {}", ipv4.dst_addr());
 //! println!("Protocol: {:?}", ipv4.protocol());
 //! println!("TTL: {}", ipv4.ttl());
-//! println!("Fragment offset: {}", ipv4.fragment_offset());
+//! println!("Fragment offset: {}", ipv4.frag_offset());
 //!
 //! // Check for specific protocols
 //! match ipv4.protocol() {
@@ -58,12 +60,9 @@
 //! }
 //!
 //! // Access IPv4 options if present
-//! if let Some(options) = ipv4.options() {
-//!     for option in options.iter() {
-//!         // Process IPv4 options
-//!     }
+//! for option in options::Ipv4OptionsIter::from_slice(ipv4.var_header_slice()) {
+//!     // Process IPv4 options
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

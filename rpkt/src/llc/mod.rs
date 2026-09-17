@@ -29,12 +29,15 @@
 //!
 //! ```rust
 //! use rpkt::llc::*;
-//! use rpkt::{Cursor, CursorMut};
+//! use rpkt::Cursor;
 //!
 //! // Parse an LLC header
-//! let packet_data = [/* LLC frame bytes */];
+//! let packet_data = LLC_HEADER_TEMPLATE;
 //! let cursor = Cursor::new(&packet_data);
-//! let llc = Llc::parse(cursor)?;
+//! let llc = match Llc::parse(cursor) {
+//!     Ok(llc) => llc,
+//!     Err(_) => panic!("invalid LLC header"),
+//! };
 //!
 //! println!("DSAP: 0x{:02x}", llc.dsap());
 //! println!("SSAP: 0x{:02x}", llc.ssap());
@@ -46,7 +49,6 @@
 //!     // Parse STP BPDU from payload
 //!     let stp_payload = llc.payload();
 //! }
-//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 mod generated;

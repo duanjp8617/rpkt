@@ -12,6 +12,19 @@ use rpkt::Buf;
 use rpkt::{Cursor, CursorMut};
 
 #[test]
+fn generated_narrow_setter_widens_before_cross_byte_shift() {
+    let mut header = VXLAN_HEADER_TEMPLATE;
+    header[0] = 0x88;
+    header[1] = 0x47;
+    let mut vxlan = Vxlan::from_header_array_mut(&mut header);
+
+    vxlan.set_reserved_1(0xf);
+
+    assert_eq!(vxlan.reserved_1(), 0xf);
+    assert_eq!(&vxlan.fix_header_slice()[..2], &[0x8f, 0xc7]);
+}
+
+#[test]
 fn vlan_parse_and_creation() {
     let packet = file_to_packet("ArpRequestWithVlan.dat");
 
