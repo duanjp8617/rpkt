@@ -25,7 +25,6 @@ const MP_NAME: &str = "wtf";
 const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
-const PTHRESH: u8 = 8;
 
 // header info
 const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
@@ -513,8 +512,8 @@ fn config_port() {
     eth_conf.enable_promiscuous = true;
 
     // create rxq conf and txq conf
-    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, MP_NAME);
-    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, WORKING_SOCKET, MP_NAME);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, WORKING_SOCKET);
     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
         .take(THREAD_NUM as usize)
         .collect();

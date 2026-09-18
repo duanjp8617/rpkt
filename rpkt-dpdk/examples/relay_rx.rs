@@ -25,7 +25,6 @@ const TX_MP: &str = "tx";
 const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
-const PTHRESH: u8 = 8;
 
 const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
 const SMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xca, 0x86];
@@ -116,7 +115,7 @@ fn entry_func() {
 
                     let mut mbuf = tx_mp.try_alloc().unwrap();
 
-                    unsafe { mbuf.set_data_len(14 + 20 + 8 + 8) };
+                    unsafe { mbuf.extend(14 + 20 + 8 + 8) };
                     mbuf.data_mut()[14 + 20 + 8..]
                         .copy_from_slice(ack_pkt_num.to_be_bytes().as_slice());
                     let mut pbuf = CursorMut::new(mbuf.data_mut());
@@ -225,8 +224,8 @@ fn config_port() {
     eth_conf.enable_promiscuous = true;
 
     // create rxq conf and txq conf
-    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, MP_NAME);
-    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, WORKING_SOCKET, MP_NAME);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, WORKING_SOCKET);
     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
         .take(THREAD_NUM as usize)
         .collect();

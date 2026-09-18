@@ -81,6 +81,8 @@ jobs:
           sudo apt-get install --yes build-essential clang-14 libclang-14-dev libdpdk-dev pkg-config
       - name: Compile DPDK tests
         run: cargo test --package rpkt-dpdk --tests --no-run
+      - name: Compile supported DPDK examples
+        run: cargo check --package rpkt-dpdk --examples --all-features
 
   dpdk-hardware:
     name: DPDK hardware tests

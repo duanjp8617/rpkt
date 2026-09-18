@@ -27,9 +27,6 @@ version-compare = "0.1.1"
 bindgen = "0.69.4"
 cc = "1"
 
-[profile.release]
-lto = "fat"
-
 [dev-dependencies]
 rpkt = {path = "../rpkt", package = "rpkt"}
 ctrlc = { version = "3.0", features = ["termination"]}
@@ -38,11 +35,9 @@ pnet = "0.35"
 
 [[example]]
 name = "jumboframe_tx"
-required-features = ["multiseg"]
 
 [[example]]
 name = "jumboframe_rx"
-required-features = ["multiseg"]
 
 [[example]]
 name = "dump_device_info"

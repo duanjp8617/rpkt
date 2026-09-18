@@ -30,7 +30,6 @@ const RX_MP: &str = "rx";
 const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
-const PTHRESH: u8 = 8;
 
 // header info
 const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
@@ -132,7 +131,6 @@ fn entry_func() {
                     mbuf.set_l4_len(TCP_HEADER_LEN as u64);
                     mbuf.set_tso_segsz(1024);
 
-
                     tx_batch.push(mbuf);
                     let _ = txq.tx(&mut tx_batch);
                     Mempool::free_batch(&mut tx_batch);
@@ -232,8 +230,8 @@ fn config_port() {
     eth_conf.enable_promiscuous = true;
 
     // create rxq conf and txq conf
-    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, RX_MP);
-    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, WORKING_SOCKET, RX_MP);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, WORKING_SOCKET);
     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
         .take(THREAD_NUM as usize)
         .collect();
