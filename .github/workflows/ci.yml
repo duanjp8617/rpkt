@@ -40,6 +40,8 @@ jobs:
           bash pktfmt/errors/check_errors.sh "$PWD/target/debug/pktfmt"
       - name: Run Clippy
         run: cargo clippy --package rpkt --package pktfmt --all-targets
+      - name: Check generated protocols
+        run: bash gen_cmds.sh --check
 
   supported-rust:
     name: Rust 1.98 compatibility
