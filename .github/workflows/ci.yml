@@ -45,7 +45,9 @@ jobs:
       - name: Check generated protocols
         run: bash gen_cmds.sh --check
       - name: Compile benchmark matrix
-        run: cargo check --locked -p benches --bench matrix --all-features
+        run: cargo check --locked -p benches --bench matrix --bench protocols --all-features
+      - name: Check cross-library protocol benchmark equivalence
+        run: cargo bench --locked -p benches --bench protocols -- --test
 
   supported-rust:
     name: Rust 1.98 compatibility
