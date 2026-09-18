@@ -8,6 +8,13 @@ unsigned rte_lcore_id_()
     return rte_lcore_id();
 }
 
+int rte_eth_link_up_(uint16_t port_id)
+{
+    struct rte_eth_link link = {0};
+    int result = rte_eth_link_get_nowait(port_id, &link);
+    return result < 0 ? result : link.link_status;
+}
+
 int rte_mempool_full_(const struct rte_mempool *mp)
 {
     return rte_mempool_full(mp);

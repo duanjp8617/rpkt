@@ -59,6 +59,7 @@ fn build_dpdk_ffi() {
         .allowlist_function("rte_thread_set_affinity")
         .allowlist_function("rte_thread_register")
         .allowlist_function("rte_thread_unregister")
+        .allowlist_function("rte_lcore_to_socket_id")
         .allowlist_function("rte_pktmbuf_pool_create")
         .allowlist_function("rte_mempool_free")
         .allowlist_function("rte_mempool_lookup")
@@ -92,6 +93,7 @@ fn build_dpdk_ffi() {
         // generate useful dpdk macros defined in rte_build_config.h.
         .allowlist_var("RTE_MAX_LCORE")
         .allowlist_var("RTE_MAX_NUMA_NODES")
+        .allowlist_var("RPKT_(RX|TX)_CHECKSUM_OFFLOADS")
         .allowlist_var("RTE_MBUF_MAX_NB_SEGS")
         .allowlist_var("RTE_MBUF_DEFAULT_DATAROOM")
         .allowlist_var("RTE_PKTMBUF_HEADROOM")

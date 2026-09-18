@@ -3,6 +3,25 @@ use std::sync::{atomic, Arc};
 use rpkt_dpdk::*;
 
 #[test]
+fn numa_matches_dpdk() {
+    DpdkOption::new()
+        .args("-l 0 --file-prefix lcore_numa".split_whitespace())
+        .init()
+        .unwrap();
+    // DPDK records the NUMA node for detected CPUs, including non-EAL workers.
+    // Physical package IDs are not equivalent on sub-NUMA-cluster machines.
+    for lcore in service().available_lcores() {
+        assert_eq!(
+            lcore.socket_id,
+            unsafe { ffi::rte_lcore_to_socket_id(lcore.lcore_id) },
+            "CPU {}",
+            lcore.lcore_id
+        );
+    }
+    service().graceful_cleanup().unwrap();
+}
+
+#[test]
 fn bind_2_cores() {
     DpdkOption::new()
         .args("-l 0 --file-prefix lcore_bind".split(" "))

@@ -89,6 +89,10 @@ impl RxQueue {
     /// the received [`Mbuf`] in the non-occupied area of [`ArrayVec`]. The
     /// return value indicates the total number of the received packets,
     /// with maximum value being `N-batch.len()`.
+    /// Some PMD vector paths require a minimum/multiple burst size (mlx5
+    /// vector RX needs at least four spare slots). Select the PMD's scalar RX
+    /// mode when using smaller batches; an unsupported request may return zero
+    /// even while packets are available.
     #[inline]
     pub fn rx<const N: usize>(&mut self, batch: &mut ArrayVec<Mbuf, N>) -> usize {
         assert!(N <= usize::from(u16::MAX));

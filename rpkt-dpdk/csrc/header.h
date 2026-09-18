@@ -3,6 +3,13 @@
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 
+// Bindgen cannot evaluate all RTE_BIT64 macro expansions. Enum initializers
+// are evaluated by Clang and keep these masks tied to the installed headers.
+enum {
+    RPKT_RX_CHECKSUM_OFFLOADS = RTE_ETH_RX_OFFLOAD_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM,
+    RPKT_TX_CHECKSUM_OFFLOADS = RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | RTE_ETH_TX_OFFLOAD_UDP_CKSUM
+};
+
 // Add wrapper definitions for functions that bindgen can not generate.
 //
 // For instance, static inline functions defined in c headers can not be
@@ -19,6 +26,9 @@
 // }
 
 unsigned rte_lcore_id_();
+
+// Returns 0/1 for down/up, or a negative DPDK error.
+int rte_eth_link_up_(uint16_t port_id);
 
 int rte_mempool_full_(const struct rte_mempool *mp);
 

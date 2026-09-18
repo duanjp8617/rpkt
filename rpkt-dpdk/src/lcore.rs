@@ -17,6 +17,8 @@ thread_local! {
 pub struct Lcore {
     pub lcore_id: u32,
     pub cpu_id: u32,
+    /// DPDK socket ID: the Linux NUMA node, which can differ from the physical
+    /// CPU package. DPDK builds with NUMA disabled use zero for every CPU.
     pub socket_id: u32,
 }
 
@@ -88,7 +90,24 @@ fn cpu_detected(lcore_id: u32) -> bool {
 }
 
 fn cpu_socket_id(lcore_id: u32) -> Option<u32> {
-    cpu_topology_id(lcore_id, "physical_package_id")
+    if ffi::RTE_MAX_NUMA_NODES == 1 {
+        return Some(0);
+    }
+    let cpu_dir = PathBuf::from("/sys/devices/system/cpu").join(format!("cpu{lcore_id}"));
+    for entry in std::fs::read_dir(cpu_dir).ok()? {
+        let name = entry.ok()?.file_name();
+        if let Some(node) = name.to_str()?.strip_prefix("node") {
+            if let Ok(node) = node.parse::<u32>() {
+                return Some(node);
+            }
+        }
+    }
+    // Kernels built without NUMA expose no node hierarchy; DPDK uses node 0.
+    if !PathBuf::from("/sys/devices/system/node").exists() {
+        Some(0)
+    } else {
+        None
+    }
 }
 
 fn cpu_core_id(lcore_id: u32) -> Option<u32> {
