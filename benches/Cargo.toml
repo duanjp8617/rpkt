@@ -20,6 +20,11 @@ pnet = "0.35"
 rpkt = {path = "../rpkt", package = "rpkt"}
 
 [[bench]]
+name = "protocols"
+path = "protocols.rs"
+harness = false
+
+[[bench]]
 name = "matrix"
 path = "matrix.rs"
 harness = false
