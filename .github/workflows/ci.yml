@@ -103,6 +103,8 @@ jobs:
         run: cargo test --package rpkt-dpdk --tests --no-run
       - name: Compile supported DPDK examples
         run: cargo check --package rpkt-dpdk --examples --all-features
+      - name: Test two-port packet validation without devices
+        run: cargo test --locked -p rpkt-dpdk --example two_port
 
   dpdk-hardware:
     name: DPDK hardware tests

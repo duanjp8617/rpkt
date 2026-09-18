@@ -82,6 +82,8 @@ NUMA node. Stop examples with Ctrl-C and allow their cleanup to finish.
 - `relay_tx`, `relay_rx`: request/reply traffic.
 - `rss_rx`: count flows distributed across RX queues.
 - `traffic_fwd`: smoltcp forwarding edits.
+- `two_port`: bounded, single-worker two-link generator/forwarder with JSON
+  throughput, loss, partial-TX and sampled RTT counters; see below.
 - `checksum_offload_tx`, `checksum_offload_rx`: compare software and NIC checksum
   results. TX mode 0/1 is UDP software/offload, 2/3 is TCP software/offload;
   4/5 deliberately append bytes beyond the UDP length. Such layouts may have
@@ -113,3 +115,62 @@ interface MTU after the experiment. The frame length excludes the Ethernet FCS.
 Offload metadata is valid only when the packet layout, configured capabilities,
 L2/L3 lengths and pseudo-header seed agree. Never use a pending offload checksum
 as the starting point for an incremental software update.
+
+### Bounded two-port loopback
+
+Build with `cargo build --locked -p rpkt-dpdk --example two_port --profile performance`.
+The command accepts:
+
+```text
+two_port <gen|fwd> CORE RX_PORT TX_PORT SECONDS FRAME_BYTES BURST <software|offload> -- EAL_ARGS
+```
+
+Use two dedicated, directly connected links. Start the forwarder first and wait
+for `READY: both links up` before starting the generator. Pick CPUs on the same
+NUMA node as both local NICs. `Lcore::socket_id` means NUMA node, not physical CPU
+package (DPDK builds with NUMA disabled report zero for all CPUs). The harness
+checks placement and link state, creates node-local pools
+and queues, and cleans up after its bounded run. A 10-second link timeout is
+outside the requested traffic duration. Both ports must be distinct.
+
+For the verified lab wiring (port IDs assume only these two allowlisted devices):
+
+```sh
+# duanjp, RX from tg's first link and TX over the second:
+sudo target/performance/examples/two_port fwd 60 1 0 15 64 32 software -- \
+  -l 60 -n 4 -a 0000:b8:00.0,rx_vec_en=0 -a 0000:b8:00.1,rx_vec_en=0 \
+  --file-prefix rpkt_two_port
+# tg, after the forwarder's READY message:
+sudo target/performance/examples/two_port gen 2 1 0 3 64 32 software -- \
+  -l 2 -n 4 -a 0000:17:00.0,rx_vec_en=0 -a 0000:25:00.1,rx_vec_en=0 \
+  --file-prefix rpkt_two_port
+```
+
+Burst sizes are 1/4/8/16/32/64. For mlx5, `rx_vec_en=0` is required on **both**
+ports for burst 1: vector RX otherwise returns no packets. Use the same RX mode
+for all sizes in a comparison. Other PMDs can have their own minimum/multiple
+burst requirements. Frame sizes 64..9014 include Ethernet but not FCS; configure
+peer MTUs for jumbo cases and restore them afterward. The measured lab cases
+use 64 and 1500, so no MTU changes are needed.
+
+The generator initializes every transmitted byte, copies a prepared header,
+patches identification/sequence/timestamp, and either computes software
+checksums or requests supported IPv4/UDP TX offloads. Unsupported offloads
+fall back to software and are reported in JSON. Offload mode omits the software
+payload checksum; IP checksum is zero and UDP carries the pseudo-header seed.
+The forwarder verifies the incoming IPv4 checksum before decrementing TTL and
+updating it incrementally. The generator verifies both returned checksums in
+software. This is a controlled UDP workload, not a general router.
+
+Each worker owns its counters. RX, processing, allocation/free and TX retain
+bursts; available partial bursts are processed immediately. TX transfers only
+the accepted prefix, and the application frees unsent packets without retrying
+forever. The generator drains RX for 200 ms after sending stops. `unreturned`
+is accepted TX minus returned marked packets, not a precise per-device drop
+attribution; unrelated frames are counted as invalid. No deduplication is done.
+Rates use the requested duration; forwarder rates include its idle waiting time
+and are **not** a standalone forwarding-capacity measurement. RTT is measured
+on the generator's clock for every 1024th sequence, capped at 65536 samples;
+zero percentiles mean no samples. It includes queueing, both links and polling.
+Record both endpoint JSON objects, not just the peak rate. See the checked-in
+[lab report](../benches/results/2026-09-18-two-port.md) for results and limits.
