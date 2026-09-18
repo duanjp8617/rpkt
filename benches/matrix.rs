@@ -3,6 +3,7 @@ use rpkt::{checksum, ether::*, ipv4::*, udp::*, Buf, Cursor, CursorMut};
 use std::{hint::black_box, time::Duration};
 #[cfg(feature = "batch")]
 mod batch_matrix;
+mod initializer_matrix;
 #[path = "../rpkt/tests/support/template_reference.rs"]
 mod template_reference;
 
@@ -160,6 +161,7 @@ fn dataset(len: usize, count: usize, align: usize, mixed: bool) -> Vec<Vec<u8>> 
 }
 
 fn matrix(c: &mut Criterion) {
+    initializer_matrix::run(c);
     #[cfg(feature = "batch")]
     batch_matrix::run(c);
     let flow = template_reference::flow();
@@ -176,7 +178,8 @@ fn matrix(c: &mut Criterion) {
         let mut ident = 0u16;
         group.bench_function("template", |b| {
             b.iter(|| {
-                black_box(template.write(black_box(&mut prepared), black_box(&payload), ident));
+                let _ =
+                    black_box(template.write(black_box(&mut prepared), black_box(&payload), ident));
                 ident = ident.wrapping_add(1);
                 black_box(&prepared);
             })

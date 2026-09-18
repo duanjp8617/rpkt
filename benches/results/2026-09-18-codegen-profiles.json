@@ -1,0 +1,434 @@
+[
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.1278,
+    "estimate_ns": 4.1773,
+    "high_ns": 4.2141
+  },
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0405,
+    "estimate_ns": 4.0759,
+    "high_ns": 4.1269
+  },
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "prepared_build/64/template",
+    "low_ns": 9.0079,
+    "estimate_ns": 9.2808,
+    "high_ns": 9.4935
+  },
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "prepared_build/64/general",
+    "low_ns": 27.575,
+    "estimate_ns": 27.769,
+    "high_ns": 28.019
+  },
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 213.29,
+    "estimate_ns": 215.18,
+    "high_ns": 217.34
+  },
+  {
+    "profile": "normal",
+    "run": 1,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 160.36,
+    "estimate_ns": 162.57,
+    "high_ns": 164.52
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.1348,
+    "estimate_ns": 4.1881,
+    "high_ns": 4.2424
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0222,
+    "estimate_ns": 4.0607,
+    "high_ns": 4.0964
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.6584,
+    "estimate_ns": 8.9097,
+    "high_ns": 9.2103
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "prepared_build/64/general",
+    "low_ns": 27.087,
+    "estimate_ns": 27.475,
+    "high_ns": 27.913
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 211.67,
+    "estimate_ns": 213.62,
+    "high_ns": 215.96
+  },
+  {
+    "profile": "normal",
+    "run": 2,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 158.18,
+    "estimate_ns": 161.53,
+    "high_ns": 166.86
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.1149,
+    "estimate_ns": 4.1969,
+    "high_ns": 4.2926
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0215,
+    "estimate_ns": 4.0561,
+    "high_ns": 4.0989
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.9679,
+    "estimate_ns": 9.2274,
+    "high_ns": 9.4333
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "prepared_build/64/general",
+    "low_ns": 27.333,
+    "estimate_ns": 27.542,
+    "high_ns": 27.797
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 213.07,
+    "estimate_ns": 215.21,
+    "high_ns": 217.64
+  },
+  {
+    "profile": "normal",
+    "run": 3,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 157.41,
+    "estimate_ns": 158.41,
+    "high_ns": 159.39
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.1825,
+    "estimate_ns": 4.3068,
+    "high_ns": 4.4326
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0265,
+    "estimate_ns": 4.0601,
+    "high_ns": 4.0932
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.6974,
+    "estimate_ns": 8.8275,
+    "high_ns": 8.9508
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "prepared_build/64/general",
+    "low_ns": 27.2,
+    "estimate_ns": 27.439,
+    "high_ns": 27.662
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 214.02,
+    "estimate_ns": 215.95,
+    "high_ns": 218.7
+  },
+  {
+    "profile": "single",
+    "run": 1,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 160.49,
+    "estimate_ns": 163.04,
+    "high_ns": 165.43
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.0979,
+    "estimate_ns": 4.1871,
+    "high_ns": 4.3269
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.1033,
+    "estimate_ns": 4.1846,
+    "high_ns": 4.2673
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.7995,
+    "estimate_ns": 8.9821,
+    "high_ns": 9.1182
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "prepared_build/64/general",
+    "low_ns": 28.166,
+    "estimate_ns": 28.471,
+    "high_ns": 28.799
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 241.9,
+    "estimate_ns": 247.29,
+    "high_ns": 252.69
+  },
+  {
+    "profile": "single",
+    "run": 2,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 224.33,
+    "estimate_ns": 228.16,
+    "high_ns": 232.4
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.515,
+    "estimate_ns": 4.644,
+    "high_ns": 4.7669
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.138,
+    "estimate_ns": 4.218,
+    "high_ns": 4.3211
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "prepared_build/64/template",
+    "low_ns": 9.138,
+    "estimate_ns": 9.4832,
+    "high_ns": 9.7866
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "prepared_build/64/general",
+    "low_ns": 30.621,
+    "estimate_ns": 33.894,
+    "high_ns": 36.82
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 216.33,
+    "estimate_ns": 218.79,
+    "high_ns": 221.57
+  },
+  {
+    "profile": "single",
+    "run": 3,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 163.74,
+    "estimate_ns": 166.63,
+    "high_ns": 170.31
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "field_initialization/setters",
+    "low_ns": 3.9993,
+    "estimate_ns": 4.0223,
+    "high_ns": 4.0518
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0094,
+    "estimate_ns": 4.0351,
+    "high_ns": 4.0592
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.5427,
+    "estimate_ns": 8.6676,
+    "high_ns": 8.7796
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "prepared_build/64/general",
+    "low_ns": 23.578,
+    "estimate_ns": 23.774,
+    "high_ns": 23.992
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 230.15,
+    "estimate_ns": 244.52,
+    "high_ns": 256.3
+  },
+  {
+    "profile": "fat",
+    "run": 1,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 168.35,
+    "estimate_ns": 170.09,
+    "high_ns": 171.92
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.0272,
+    "estimate_ns": 4.0718,
+    "high_ns": 4.1098
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0112,
+    "estimate_ns": 4.0354,
+    "high_ns": 4.0621
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.6007,
+    "estimate_ns": 8.7493,
+    "high_ns": 8.8925
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "prepared_build/64/general",
+    "low_ns": 23.94,
+    "estimate_ns": 24.237,
+    "high_ns": 24.586
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 214.5,
+    "estimate_ns": 219.39,
+    "high_ns": 224.28
+  },
+  {
+    "profile": "fat",
+    "run": 2,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 156.46,
+    "estimate_ns": 158.07,
+    "high_ns": 160.5
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "field_initialization/setters",
+    "low_ns": 4.0426,
+    "estimate_ns": 4.0787,
+    "high_ns": 4.1111
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "field_initialization/full_fields",
+    "low_ns": 4.0123,
+    "estimate_ns": 4.0566,
+    "high_ns": 4.1039
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "prepared_build/64/template",
+    "low_ns": 8.5511,
+    "estimate_ns": 8.7685,
+    "high_ns": 9.0646
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "prepared_build/64/general",
+    "low_ns": 23.696,
+    "estimate_ns": 23.906,
+    "high_ns": 24.125
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "parse/warm/mixedfalse/64/rpkt_generic/32",
+    "low_ns": 228.61,
+    "estimate_ns": 231.33,
+    "high_ns": 235.31
+  },
+  {
+    "profile": "fat",
+    "run": 3,
+    "workload": "parse/warm/mixedtrue/64/rpkt_generic/32",
+    "low_ns": 167.8,
+    "estimate_ns": 169.39,
+    "high_ns": 171.01
+  }
+]
