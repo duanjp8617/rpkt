@@ -1,17 +1,17 @@
+#[path = "common/mod.rs"]
+mod utils;
 use std::env;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
 
-use rpkt_dpdk::error::{Error, Result};
-use rpkt_dpdk::offload::MbufTxOffload;
-use rpkt_dpdk::*;
 use rpkt::ether::*;
 use rpkt::ipv4::*;
 use rpkt::tcp::*;
 use rpkt::udp::*;
 use rpkt::Buf;
+use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 0;
@@ -64,31 +64,33 @@ fn build_udp_manual(mp: &Mempool) -> Mbuf {
     let v = vec![PAYLOAD_BYTE; PACKET_LEN];
     let mut mbuf = Mbuf::from_slice(&v[..], mp).unwrap();
 
-    let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
+    let total_header_len = ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
     let mut pkt = Pbuf::new(&mut mbuf);
     pkt.advance(total_header_len);
 
-    let mut udppkt = UdpPacket::prepend_header(pkt, &UDP_HEADER_TEMPLATE);
-    udppkt.set_source_port(SPORT);
-    udppkt.set_dest_port(DPORT);
+    let mut udppkt = Udp::prepend_header(pkt, &UDP_HEADER_TEMPLATE);
+    udppkt.set_src_port(SPORT);
+    udppkt.set_dst_port(DPORT);
     // For UDP, both 0 and correctly calculated checksum are correct for mlx5 NIC.
     // udppkt.set_checksum(0);
-    udppkt.adjust_ipv4_checksum(Ipv4Addr(SIP), Ipv4Addr(DIP));
+    udppkt = utils::adjust_udp(udppkt, Ipv4Addr::from(SIP), Ipv4Addr::from(DIP));
     // however, mlx5 nic reports invalid udp checksum for arbitrary set udp checksum
     // udppkt.set_checksum(512);
 
-    let mut ippkt = Ipv4Packet::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
+    let mut ippkt = Ipv4::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
     ippkt.set_ident(0x5c65);
-    ippkt.clear_flags();
-    ippkt.set_time_to_live(128);
-    ippkt.set_source_ip(Ipv4Addr(SIP));
-    ippkt.set_dest_ip(Ipv4Addr(DIP));
+    ippkt.set_ttl(128);
+    ippkt.set_src_addr(Ipv4Addr::from(SIP));
+    ippkt.set_dst_addr(Ipv4Addr::from(DIP));
     ippkt.set_protocol(IpProtocol::UDP);
-    ippkt.adjust_checksum();
+    ippkt.set_checksum(0);
+    ippkt.set_checksum(!rpkt::checksum::from_slice(
+        &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+    ));
 
-    let mut ethpkt = EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
-    ethpkt.set_source_mac(MacAddr(SMAC));
-    ethpkt.set_dest_mac(MacAddr(DMAC));
+    let mut ethpkt = EtherFrame::prepend_header(ippkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    ethpkt.set_src_addr(EtherAddr(SMAC));
+    ethpkt.set_dst_addr(EtherAddr(DMAC));
     ethpkt.set_ethertype(EtherType::IPV4);
 
     mbuf
@@ -98,33 +100,35 @@ fn build_udp_offload(mp: &Mempool) -> Mbuf {
     let v = vec![PAYLOAD_BYTE; PACKET_LEN];
     let mut mbuf = Mbuf::from_slice(&v[..], mp).unwrap();
 
-    let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
+    let total_header_len = ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN;
     let mut pkt = Pbuf::new(&mut mbuf);
     pkt.advance(total_header_len);
 
-    let mut udppkt = UdpPacket::prepend_header(pkt, &UDP_HEADER_TEMPLATE);
-    udppkt.set_source_port(SPORT);
-    udppkt.set_dest_port(DPORT);
-    udppkt.set_checksum(155);
+    let mut udppkt = Udp::prepend_header(pkt, &UDP_HEADER_TEMPLATE);
+    udppkt.set_src_port(SPORT);
+    udppkt.set_dst_port(DPORT);
+    udppkt.set_checksum(utils::pseudo_sum(
+        Ipv4Addr::from(SIP),
+        Ipv4Addr::from(DIP),
+        17,
+        udppkt.packet_len() as usize,
+    ));
 
-    let mut ippkt = Ipv4Packet::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
+    let mut ippkt = Ipv4::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
     ippkt.set_ident(0x5c65);
-    ippkt.clear_flags();
-    ippkt.set_time_to_live(128);
-    ippkt.set_source_ip(Ipv4Addr(SIP));
-    ippkt.set_dest_ip(Ipv4Addr(DIP));
+    ippkt.set_ttl(128);
+    ippkt.set_src_addr(Ipv4Addr::from(SIP));
+    ippkt.set_dst_addr(Ipv4Addr::from(DIP));
     ippkt.set_protocol(IpProtocol::UDP);
     ippkt.set_checksum(0);
 
-    let mut ethpkt = EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
-    ethpkt.set_dest_mac(MacAddr(DMAC));
-    ethpkt.set_source_mac(MacAddr(SMAC));
+    let mut ethpkt = EtherFrame::prepend_header(ippkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    ethpkt.set_dst_addr(EtherAddr(DMAC));
+    ethpkt.set_src_addr(EtherAddr(SMAC));
     ethpkt.set_ethertype(EtherType::IPV4);
 
-    let mut of_flag = MbufTxOffload::ALL_DISABLED;
-    of_flag.enable_ip_cksum();
-    of_flag.enable_udp_cksum();
-    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+    let of_flag: u64 = (1 << 54) | (1 << 55) | (3 << 52);
+    mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
     mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
     mbuf.set_tx_offload(of_flag);
 
@@ -135,19 +139,19 @@ fn build_tcp_manual(mp: &Mempool) -> Mbuf {
     let v = vec![PAYLOAD_BYTE; PACKET_LEN];
     let mut mbuf = Mbuf::from_slice(&v[..], mp).unwrap();
 
-    let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12;
+    let total_header_len = ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12;
     let mut pkt = Pbuf::new(&mut mbuf);
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    tcpheader.set_header_len((TCP_HEADER_LEN + 12) as u8);
-    let mut tcppkt = TcpPacket::prepend_header(pkt, &tcpheader);
+    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
+        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);
-    tcppkt.set_seq_number(0x8e501902);
-    tcppkt.set_ack_number(0xc7529d89);
-    tcppkt.adjust_reserved();
-    tcppkt.set_ns(false);
+    tcppkt.set_seq_num(0x8e501902);
+    tcppkt.set_ack_num(0xc7529d89);
+    tcppkt.set_reserved(0);
     tcppkt.set_cwr(false);
     tcppkt.set_ece(false);
     tcppkt.set_urg(false);
@@ -157,26 +161,28 @@ fn build_tcp_manual(mp: &Mempool) -> Mbuf {
     tcppkt.set_syn(false);
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
-    tcppkt.set_urgent_ptr(0);
-    tcppkt.option_bytes_mut().copy_from_slice(
-        &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
-            ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
+    tcppkt.set_urgent_pointer(0);
+    tcppkt.var_header_slice_mut().copy_from_slice(
+        &FRAME_BYTES[ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
+            ..(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
     // tcppkt.set_checksum(0);
-    tcppkt.adjust_ipv4_checksum(Ipv4Addr(SIP), Ipv4Addr(DIP));
+    tcppkt = utils::adjust_tcp(tcppkt, Ipv4Addr::from(SIP), Ipv4Addr::from(DIP));
 
-    let mut ippkt = Ipv4Packet::prepend_header(tcppkt.release(), &IPV4_HEADER_TEMPLATE);
+    let mut ippkt = Ipv4::prepend_header(tcppkt.release(), &IPV4_HEADER_TEMPLATE);
     ippkt.set_ident(0x5c65);
-    ippkt.clear_flags();
-    ippkt.set_time_to_live(128);
-    ippkt.set_source_ip(Ipv4Addr(SIP));
-    ippkt.set_dest_ip(Ipv4Addr(DIP));
+    ippkt.set_ttl(128);
+    ippkt.set_src_addr(Ipv4Addr::from(SIP));
+    ippkt.set_dst_addr(Ipv4Addr::from(DIP));
     ippkt.set_protocol(IpProtocol::TCP);
-    ippkt.adjust_checksum();
+    ippkt.set_checksum(0);
+    ippkt.set_checksum(!rpkt::checksum::from_slice(
+        &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+    ));
 
-    let mut ethpkt = EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
-    ethpkt.set_dest_mac(MacAddr(DMAC));
-    ethpkt.set_source_mac(MacAddr(SMAC));
+    let mut ethpkt = EtherFrame::prepend_header(ippkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    ethpkt.set_dst_addr(EtherAddr(DMAC));
+    ethpkt.set_src_addr(EtherAddr(SMAC));
     ethpkt.set_ethertype(EtherType::IPV4);
 
     mbuf
@@ -186,19 +192,19 @@ fn build_tcp_offload(mp: &Mempool) -> Mbuf {
     let v = vec![PAYLOAD_BYTE; PACKET_LEN];
     let mut mbuf = Mbuf::from_slice(&v[..], mp).unwrap();
 
-    let total_header_len = ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12;
+    let total_header_len = ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12;
     let mut pkt = Pbuf::new(&mut mbuf);
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    tcpheader.set_header_len((TCP_HEADER_LEN + 12) as u8);
-    let mut tcppkt = TcpPacket::prepend_header(pkt, &tcpheader);
+    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
+        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);
-    tcppkt.set_seq_number(0x8e501902);
-    tcppkt.set_ack_number(0xc7529d89);
-    tcppkt.adjust_reserved();
-    tcppkt.set_ns(false);
+    tcppkt.set_seq_num(0x8e501902);
+    tcppkt.set_ack_num(0xc7529d89);
+    tcppkt.set_reserved(0);
     tcppkt.set_cwr(false);
     tcppkt.set_ece(false);
     tcppkt.set_urg(false);
@@ -208,31 +214,33 @@ fn build_tcp_offload(mp: &Mempool) -> Mbuf {
     tcppkt.set_syn(false);
     tcppkt.set_fin(false);
     tcppkt.set_window_size(46);
-    tcppkt.set_urgent_ptr(0);
-    tcppkt.option_bytes_mut().copy_from_slice(
-        &FRAME_BYTES[ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
-            ..(ETHER_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
+    tcppkt.set_urgent_pointer(0);
+    tcppkt.var_header_slice_mut().copy_from_slice(
+        &FRAME_BYTES[ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN
+            ..(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + TCP_HEADER_LEN + 12)],
     );
-    tcppkt.set_checksum(0);
+    tcppkt.set_checksum(utils::pseudo_sum(
+        Ipv4Addr::from(SIP),
+        Ipv4Addr::from(DIP),
+        6,
+        tcppkt.buf().remaining(),
+    ));
 
-    let mut ippkt = Ipv4Packet::prepend_header(tcppkt.release(), &IPV4_HEADER_TEMPLATE);
+    let mut ippkt = Ipv4::prepend_header(tcppkt.release(), &IPV4_HEADER_TEMPLATE);
     ippkt.set_ident(0x5c65);
-    ippkt.clear_flags();
-    ippkt.set_time_to_live(128);
-    ippkt.set_source_ip(Ipv4Addr(SIP));
-    ippkt.set_dest_ip(Ipv4Addr(DIP));
+    ippkt.set_ttl(128);
+    ippkt.set_src_addr(Ipv4Addr::from(SIP));
+    ippkt.set_dst_addr(Ipv4Addr::from(DIP));
     ippkt.set_protocol(IpProtocol::TCP);
     ippkt.set_checksum(0);
 
-    let mut ethpkt = EtherPacket::prepend_header(ippkt.release(), &ETHER_HEADER_TEMPLATE);
-    ethpkt.set_dest_mac(MacAddr(DMAC));
-    ethpkt.set_source_mac(MacAddr(SMAC));
+    let mut ethpkt = EtherFrame::prepend_header(ippkt.release(), &ETHER_FRAME_HEADER_TEMPLATE);
+    ethpkt.set_dst_addr(EtherAddr(DMAC));
+    ethpkt.set_src_addr(EtherAddr(SMAC));
     ethpkt.set_ethertype(EtherType::IPV4);
 
-    let mut of_flag = MbufTxOffload::ALL_DISABLED;
-    of_flag.enable_ip_cksum();
-    of_flag.enable_tcp_cksum();
-    mbuf.set_l2_len(ETHER_HEADER_LEN as u64);
+    let of_flag: u64 = (1 << 54) | (1 << 55) | (1 << 52);
+    mbuf.set_l2_len(ETHER_FRAME_HEADER_LEN as u64);
     mbuf.set_l3_len(IPV4_HEADER_LEN as u64);
     mbuf.set_tx_offload(of_flag);
 
@@ -242,11 +250,10 @@ fn build_tcp_offload(mp: &Mempool) -> Mbuf {
 fn entry_func(val: u64) {
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
@@ -263,7 +270,10 @@ fn entry_func(val: u64) {
     for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
             let mp = service().mempool(MP).unwrap();
@@ -311,50 +321,6 @@ fn entry_func(val: u64) {
     }
 }
 
-fn init_port(
-    port_id: u16,
-    nb_rx_queue: u16,
-    nb_tx_queue: u16,
-    nb_rx_desc: u16,
-    mp_name: &str,
-    nb_tx_desc: u16,
-    socket_id: u32,
-) -> Result<()> {
-    // make sure that the port is on the correct socket
-    let port_info = service().port_info(port_id)?;
-    if port_info.socket_id != socket_id {
-        return Err(Error::service_err("invalid socket id"));
-    }
-
-    // get the default port conf
-    let mut port_conf = PortConf::from_port_info(&port_info)?;
-    port_conf.mtu = 9000;
-    port_conf.rx_offloads.enable_scatter();
-    port_conf.tx_offloads.enable_multi_segs();
-
-    // configure rxq
-    let mut rxq_conf = RxQueueConf::default();
-    rxq_conf.set_nb_rx_desc(nb_rx_desc);
-    rxq_conf.set_socket_id(socket_id);
-    rxq_conf.set_mp_name(mp_name);
-    let rxq_confs: Vec<RxQueueConf> = (0..nb_rx_queue as usize)
-        .map(|_| rxq_conf.clone())
-        .collect();
-
-    // configure txq
-    let mut txq_conf = TxQueueConf::default();
-    txq_conf.set_nb_tx_desc(nb_tx_desc);
-    txq_conf.set_socket_id(socket_id);
-    let txq_confs: Vec<TxQueueConf> = (0..nb_tx_queue as usize)
-        .map(|_| txq_conf.clone())
-        .collect();
-
-    // create the port
-    service().port_configure(port_id, &port_conf, &rxq_confs, &txq_confs)?;
-
-    Ok(())
-}
-
 fn main() {
     let mut args = env::args();
     if args.len() != 2 {
@@ -392,7 +358,7 @@ fn main() {
     utils::init_mempool(MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
 
     // create the port
-    init_port(
+    utils::init_port_mtu(
         PORT_ID,
         THREAD_NUM as u16,
         THREAD_NUM as u16,
@@ -400,19 +366,20 @@ fn main() {
         MP,
         TXQ_DESC_NUM,
         WORKING_SOCKET,
+        9000,
     )
     .unwrap();
 
     entry_func(val);
 
     // shutdown the port
-    service().port_close(PORT_ID).unwrap();
+    service().dev_stop_and_close(PORT_ID).unwrap();
 
     // free the mempool
     service().mempool_free(MP).unwrap();
 
     // shutdown the DPDK service
-    service().service_close().unwrap();
+    service().graceful_cleanup().unwrap();
 
     println!("dpdk service shutdown gracefully");
 }

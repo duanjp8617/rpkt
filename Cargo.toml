@@ -6,6 +6,18 @@ members = [
   "benches"
 ]
 resolver = "2"
+exclude = ["examples"]
+
+# Keep normal release builds inexpensive; opt into whole-program optimization
+# explicitly for measured DPDK/benchmark deployments.
+[profile.bench]
+lto = "fat"
+codegen-units = 1
+
+[profile.performance]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
 
 [workspace.package]
 repository = "https://github.com/duanjp8617/rpkt"

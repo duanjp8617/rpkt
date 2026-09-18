@@ -38,7 +38,7 @@ fn main() {
 
         fn show_bit_offset(capa: u64, offload_name: &str) {
             for i in 0..64 {
-                let bit_mask: u64 = if i == 0 {1} else {1 << i};
+                let bit_mask: u64 = if i == 0 { 1 } else { 1 << i };
                 if bit_mask & capa != 0 {
                     println!("{offload_name}: bit {i}")
                 }
@@ -53,9 +53,12 @@ fn main() {
         println!("reta_size: {}", dev_info.reta_size());
         println!("hash_key_size: {}", dev_info.hash_key_size());
 
-        println!("flow_type_rss_offloads: {}", dev_info.flow_type_rss_offloads());
+        println!(
+            "flow_type_rss_offloads: {}",
+            dev_info.flow_type_rss_offloads()
+        );
         show_bit_offset(dev_info.flow_type_rss_offloads(), "flow_rss");
-        
+
         println!("tx_desc_lim: {:?}", dev_info.tx_desc_lim());
         println!("rx_desc_lim: {:?}", dev_info.rx_desc_lim());
     }
@@ -64,12 +67,12 @@ fn main() {
         let eth_conf = EthConf::default();
         service().mempool_alloc("wtf", 4096, 32, 2048, 1).unwrap();
 
-        let rxq_conf = RxqConf::new(128, 8, 1, "wtf");
+        let rxq_conf = RxqConf::new(128, 1, "wtf");
         let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
             .take(4)
             .collect();
 
-        let txq_conf = TxqConf::new(128, 32, 1);
+        let txq_conf = TxqConf::new(128, 1);
         let txq_confs: Vec<TxqConf> = std::iter::repeat_with(|| txq_conf.clone())
             .take(4)
             .collect();

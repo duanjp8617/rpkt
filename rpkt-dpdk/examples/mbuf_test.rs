@@ -12,10 +12,9 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
     let nb_mbufs = 4096;
     let per_core_caches = 256;
 
-    let mut mpconf = MempoolConf::default();
-    mpconf.nb_mbufs = nb_mbufs;
-    mpconf.per_core_caches = per_core_caches;
-    service().mempool_create("wtf", &mpconf).unwrap();
+    service()
+        .mempool_alloc("wtf", nb_mbufs, per_core_caches, 2176, 0)
+        .unwrap();
     println!(
         "mempool wtf created with {} mbufs and {} per-core cache",
         nb_mbufs, per_core_caches
@@ -29,7 +28,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
     // On the current rte thread, try to alloc `nb_mbufs / BATCH_SIZE` batches,
     // and fill in test data.
     for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
-        mp.fill_batch(&mut batch);
+        mp.fill_up_batch(&mut batch);
         for mbuf in batch.iter_mut() {
             unsafe { mbuf.extend(1) };
             mbuf.data_mut()[0] = 99;
@@ -41,7 +40,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
     // from the cache, and all the packets have been correctly set with
     // test data.
     for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
-        mp.fill_batch(&mut batch);
+        mp.fill_up_batch(&mut batch);
         for mbuf in batch.iter_mut() {
             unsafe { mbuf.extend(1) };
             assert_eq!(mbuf.data()[0], 99);
@@ -50,20 +49,21 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
     }
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        Lcore::current().unwrap().lcore_id
+        service().current_lcore().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
     for i in base_idx..base_idx + nb_threads {
         jhs.push(std::thread::spawn(move || {
-            service().lcore_bind(i).unwrap();
+            service().thread_bind_to(i).unwrap();
+            service().register_as_rte_thread().unwrap();
             let mp = service().mempool("wtf").unwrap();
             let mut batch = ArrayVec::<_, 128>::new();
 
             // On another rte_thread, we can see that the allocated mbuf
             // does not have the test data.
             for _ in 0..(nb_mbufs / BATCH_SIZE as u32) {
-                mp.fill_batch(&mut batch);
+                mp.fill_up_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
                     unsafe { mbuf.extend(1) };
                     assert_ne!(mbuf.data()[0], 99);
@@ -73,7 +73,7 @@ fn cache_enabled_batch(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                Lcore::current().unwrap().lcore_id
+                service().current_lcore().unwrap().lcore_id
             );
         }));
     }
@@ -92,10 +92,9 @@ fn cache_enabled_single_alloc(base_idx: u32, nb_threads: u32) {
     let nb_mbufs = 4096;
     let per_core_caches = 256;
 
-    let mut mpconf = MempoolConf::default();
-    mpconf.nb_mbufs = nb_mbufs;
-    mpconf.per_core_caches = per_core_caches;
-    service().mempool_create("wtf", &mpconf).unwrap();
+    service()
+        .mempool_alloc("wtf", nb_mbufs, per_core_caches, 2176, 0)
+        .unwrap();
     println!(
         "mempool wtf created with {} mbufs and {} per-core cache",
         nb_mbufs, per_core_caches
@@ -125,13 +124,14 @@ fn cache_enabled_single_alloc(base_idx: u32, nb_threads: u32) {
 
     println!(
         "lcore {}: all the mbufs from the local cache has been set with test data 99",
-        Lcore::current().unwrap().lcore_id
+        service().current_lcore().unwrap().lcore_id
     );
 
     let mut jhs = Vec::new();
     for i in base_idx..base_idx + nb_threads {
         jhs.push(std::thread::spawn(move || {
-            service().lcore_bind(i).unwrap();
+            service().thread_bind_to(i).unwrap();
+            service().register_as_rte_thread().unwrap();
             let mp = service().mempool("wtf").unwrap();
 
             // On another rte_thread, we can see that the allocated mbuf
@@ -146,7 +146,7 @@ fn cache_enabled_single_alloc(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are not set with test data 99",
-                Lcore::current().unwrap().lcore_id
+                service().current_lcore().unwrap().lcore_id
             );
         }));
     }
@@ -172,10 +172,9 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
     })
     .unwrap();
 
-    let mut mpconf = MempoolConf::default();
-    mpconf.nb_mbufs = nb_mbufs;
-    mpconf.per_core_caches = per_core_caches;
-    service().mempool_create("wtf", &mpconf).unwrap();
+    service()
+        .mempool_alloc("wtf", nb_mbufs, per_core_caches, 2176, 0)
+        .unwrap();
     println!(
         "mempool wtf created with {} mbufs and {} per-core cache",
         nb_mbufs, per_core_caches
@@ -192,7 +191,7 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
     }
     println!(
         "lcore {}: all the mbufs from current mempool has been set with test data 99",
-        Lcore::current().unwrap().lcore_id
+        service().current_lcore().unwrap().lcore_id
     );
     drop(v);
 
@@ -200,13 +199,14 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
     for i in base_idx..base_idx + nb_threads {
         let run = run.clone();
         jhs.push(std::thread::spawn(move || {
-            service().lcore_bind(i).unwrap();
+            service().thread_bind_to(i).unwrap();
+            service().register_as_rte_thread().unwrap();
             let mp = service().mempool("wtf").unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
 
             // On another rte_thread, we can see that the allocated mbuf have the test data.
             while run.load(Ordering::Acquire) {
-                mp.fill_batch(&mut batch);
+                mp.fill_up_batch(&mut batch);
                 for mbuf in batch.iter_mut() {
                     unsafe { mbuf.extend(1) };
                     assert_eq!(mbuf.data()[0], 99);
@@ -216,7 +216,7 @@ fn set_all_mbufs_in_a_pool(base_idx: u32, nb_threads: u32) {
 
             println!(
                 "lcore {}: all the mbufs from the local cache are set with test data 99",
-                Lcore::current().unwrap().lcore_id
+                service().current_lcore().unwrap().lcore_id
             );
         }));
     }
@@ -234,7 +234,7 @@ fn main() {
 
     // Note: lcore 0 - 6 should all be on socket 0.
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| lcore.lcore_id < 7)
         .find(|lcore| lcore.socket_id != 0)
@@ -245,6 +245,6 @@ fn main() {
     cache_enabled_single_alloc(3, 2);
     set_all_mbufs_in_a_pool(5, 2);
 
-    service().service_close().unwrap();
+    service().graceful_cleanup().unwrap();
     println!("dpdk service shutdown gracefully");
 }

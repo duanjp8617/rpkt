@@ -1,3 +1,5 @@
+#[path = "common/mod.rs"]
+mod utils;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
@@ -6,7 +8,6 @@ use ctrlc;
 use smoltcp::wire;
 
 use once_cell::sync::OnceCell;
-use rpkt_dpdk::offload::MbufTxOffload;
 use rpkt_dpdk::*;
 
 // the following result is acuiqred without setting ip checksum value
@@ -16,8 +17,8 @@ use rpkt_dpdk::*;
 
 // Another test it seems that pcie 3.0 and 4.0 have no significant differences
 // nbcore      1         2        3        4          14       18
-// run         16.80   27.94    30.94     
-// smoltcp     12.63   24.91    30.22    30.05                 
+// run         16.80   27.94    30.94
+// smoltcp     12.63   24.91    30.22    30.05
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
@@ -72,11 +73,10 @@ fn entry_func() {
 
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
@@ -94,15 +94,16 @@ fn entry_func() {
         let run_clone = run.clone();
 
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut txq = service().tx_queue(PORT_ID, i as u16).unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
 
-            let mut tx_of_flag = MbufTxOffload::ALL_DISABLED;
-            tx_of_flag.enable_ip_cksum();
-            tx_of_flag.enable_udp_cksum();
+            let tx_of_flag: u64 = (1 << 54) | (1 << 55) | (3 << 52);
 
             let ip_addrs = IP_ADDRS.get().unwrap();
             let mut adder: usize = 0;
@@ -116,15 +117,15 @@ fn entry_func() {
                             if let Ok(mut ippkt) =
                                 wire::Ipv4Packet::new_checked(ethpkt.payload_mut())
                             {
-                                if ippkt.protocol() == wire::IpProtocol::Udp {
+                                if ippkt.next_header() == wire::IpProtocol::Udp {
                                     if let Ok(mut udppkt) =
                                         wire::UdpPacket::new_checked(ippkt.payload_mut())
                                     {
                                         udppkt.set_dst_port(DPORT);
                                         udppkt.set_src_port(SPORT);
 
-                                        ippkt.set_dst_addr(wire::Ipv4Address(DIP));
-                                        ippkt.set_src_addr(wire::Ipv4Address(
+                                        ippkt.set_dst_addr(wire::Ipv4Address::from(DIP));
+                                        ippkt.set_src_addr(wire::Ipv4Address::from(
                                             ip_addrs[adder % NUM_FLOWS],
                                         ));
                                         let ip_hdr_len = ippkt.header_len();
@@ -193,13 +194,13 @@ fn main() {
     entry_func();
 
     // shutdown the port
-    service().port_close(PORT_ID).unwrap();
+    service().dev_stop_and_close(PORT_ID).unwrap();
 
     // free the mempool
     service().mempool_free(MP_NAME).unwrap();
 
     // shutdown the DPDK service
-    service().service_close().unwrap();
+    service().graceful_cleanup().unwrap();
 
     println!("dpdk service shutdown gracefully");
 }

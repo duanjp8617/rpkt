@@ -1,14 +1,16 @@
+#[path = "common/mod.rs"]
+mod utils;
 use std::collections::HashSet;
 use std::sync::{atomic::AtomicBool, atomic::AtomicUsize, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
 
-use rpkt_dpdk::*;
 use rpkt::ether::*;
 use rpkt::ipv4::*;
 use rpkt::Cursor;
-use rpkt_time::*;
+use rpkt_dpdk::*;
+use std::time::{Duration, Instant};
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 1;
@@ -31,11 +33,10 @@ const RXQ_DESC_NUM: u16 = 1024;
 fn entry_func() {
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
@@ -64,7 +65,10 @@ fn entry_func() {
         flow_nums.push(flow_num.clone());
 
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
@@ -74,7 +78,7 @@ fn entry_func() {
             let mut prev_pkts = 0;
             let mut prev_bytes = 0;
 
-            let mut next_ddl = Instant::now().raw() + cycles_per_sec();
+            let mut next_ddl = Instant::now() + Duration::from_secs(1);
 
             let mut hs = HashSet::new();
 
@@ -83,19 +87,19 @@ fn entry_func() {
 
                 total_pkts += batch.len();
                 for mbuf in batch.iter() {
-                    total_bytes += mbuf.len();
+                    total_bytes += mbuf.pkt_len();
 
                     let buf = Cursor::new(mbuf.data());
-                    let _ = EtherPacket::parse(buf)
+                    let _ = EtherFrame::parse(buf)
                         .and_then(|eth| {
                             if eth.ethertype() != EtherType::IPV4 {
                                 Err(eth.release())
                             } else {
-                                Ipv4Packet::parse(eth.payload())
+                                Ipv4::parse(eth.payload())
                             }
                         })
                         .and_then(|ipv4| {
-                            let addr = u32::from_le_bytes(ipv4.source_ip().0);
+                            let addr = u32::from_le_bytes(ipv4.src_addr().octets());
 
                             if let None = hs.get(&addr) {
                                 hs.insert(addr);
@@ -107,7 +111,7 @@ fn entry_func() {
 
                 Mempool::free_batch(&mut batch);
 
-                if Instant::now().raw() >= next_ddl {
+                if Instant::now() >= next_ddl {
                     per_q_pps.store(total_pkts - prev_pkts, Ordering::SeqCst);
                     per_q_bps.store(total_bytes - prev_bytes, Ordering::SeqCst);
                     flow_num.store(hs.len(), Ordering::SeqCst);
@@ -115,7 +119,7 @@ fn entry_func() {
                     prev_pkts = total_pkts;
                     prev_bytes = total_bytes;
                     hs.clear();
-                    next_ddl = Instant::now().raw() + cycles_per_sec();
+                    next_ddl = Instant::now() + Duration::from_secs(1);
                 }
             }
         });
@@ -178,13 +182,13 @@ fn main() {
     entry_func();
 
     // shutdown the port
-    service().port_close(PORT_ID).unwrap();
+    service().dev_stop_and_close(PORT_ID).unwrap();
 
     // free the mempool
     service().mempool_free(MP_NAME).unwrap();
 
     // shutdown the DPDK service
-    service().service_close().unwrap();
+    service().graceful_cleanup().unwrap();
 
     println!("dpdk service shutdown gracefully");
 }

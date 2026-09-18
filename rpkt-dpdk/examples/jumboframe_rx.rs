@@ -1,14 +1,16 @@
+#[path = "common/mod.rs"]
+mod utils;
+use rpkt::Buf;
 use std::sync::{atomic::AtomicBool, atomic::Ordering, Arc};
 
 use arrayvec::ArrayVec;
 use ctrlc;
 
-use rpkt_dpdk::error::{Error, Result};
-use rpkt_dpdk::*;
 use rpkt::ether::*;
 use rpkt::ipv4::*;
 use rpkt::tcp::*;
 use rpkt::udp::*;
+use rpkt_dpdk::*;
 
 // The socket to work on
 const WORKING_SOCKET: u32 = 0;
@@ -32,11 +34,10 @@ const RXQ_DESC_NUM: u16 = 1024;
 fn entry_func() {
     // make sure that the rx and tx threads are on the correct cores
     let res = service()
-        .lcores()
+        .available_lcores()
         .iter()
         .filter(|lcore| {
-            lcore.lcore_id >= START_CORE as u32
-                && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
+            lcore.lcore_id >= START_CORE as u32 && lcore.lcore_id < START_CORE as u32 + THREAD_NUM
         })
         .all(|lcore| lcore.socket_id == WORKING_SOCKET);
     assert_eq!(res, true);
@@ -53,7 +54,10 @@ fn entry_func() {
     for i in 0..THREAD_NUM as usize {
         let run_clone = run.clone();
         let jh = std::thread::spawn(move || {
-            service().lcore_bind(i as u32 + START_CORE as u32).unwrap();
+            service()
+                .thread_bind_to(i as u32 + START_CORE as u32)
+                .unwrap();
+            service().register_as_rte_thread().unwrap();
 
             let mut rxq = service().rx_queue(PORT_ID, i as u16).unwrap();
             let mut batch = ArrayVec::<_, BATCH_SIZE>::new();
@@ -62,70 +66,73 @@ fn entry_func() {
                 rxq.rx(&mut batch);
 
                 for mut mbuf in batch.drain(..) {
+                    let transport_valid = utils::verify_transport(&mbuf);
                     let mbuf_rx_ol = mbuf.rx_offload();
                     let mbuf_rx_rss = mbuf.rss();
-                    let pkt_len = mbuf.len();
+                    let pkt_len = mbuf.pkt_len();
                     let nb_segs = mbuf.num_segs();
 
                     let buf = Pbuf::new(&mut mbuf);
 
-                    let ethpkt = match EtherPacket::parse(buf) {
+                    let ethpkt = match EtherFrame::parse(buf) {
                         Err(_) => continue,
                         Ok(ethpkt) => ethpkt,
                     };
 
-                    let ippkt = match Ipv4Packet::parse(ethpkt.payload()) {
+                    let ippkt = match Ipv4::parse(ethpkt.payload()) {
                         Err(_) => continue,
                         Ok(ippkt) => ippkt,
                     };
-                    let src_ip = ippkt.source_ip();
-                    let dst_ip = ippkt.dest_ip();
-                    let manual_ip_cksum_good = ippkt.verify_checksum();
+                    let src_ip = ippkt.src_addr();
+                    let dst_ip = ippkt.dst_addr();
+                    let manual_ip_cksum_good = (rpkt::checksum::from_slice(
+                        &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+                    ) == 0xffff);
 
                     let (manual_l4_cksum_good, sport, dport, protocol) = match ippkt.protocol() {
                         IpProtocol::TCP => {
-                            let mut tcppkt = match TcpPacket::parse(ippkt.payload()) {
+                            let mut tcppkt = match Tcp::parse(ippkt.payload()) {
                                 Err(_) => continue,
                                 Ok(tcppkt) => tcppkt,
                             };
 
                             (
-                                tcppkt.verify_ipv4_checksum(src_ip, dst_ip),
+                                transport_valid,
                                 tcppkt.src_port(),
                                 tcppkt.dst_port(),
                                 IpProtocol::TCP,
                             )
                         }
                         IpProtocol::UDP => {
-                            let mut udppkt = match UdpPacket::parse(ippkt.payload()) {
+                            let mut udppkt = match Udp::parse(ippkt.payload()) {
                                 Err(_) => continue,
                                 Ok(udppkt) => udppkt,
                             };
 
                             (
-                                udppkt.verify_ipv4_checksum(src_ip, dst_ip),
-                                udppkt.source_port(),
-                                udppkt.dest_port(),
+                                transport_valid,
+                                udppkt.src_port(),
+                                udppkt.dst_port(),
                                 IpProtocol::UDP,
                             )
                         }
                         _ => continue,
                     };
 
-                    println!("receiving {} packet with source IP {}, dest IP {}, source port {}, dest port {}, length {}, segs {}.", protocol, src_ip, dst_ip, sport, dport, pkt_len, nb_segs);
+                    println!("receiving {:?} packet with source IP {}, dest IP {}, source port {}, dest port {}, length {}, segs {}.", protocol, src_ip, dst_ip, sport, dport, pkt_len, nb_segs);
                     println!(
                         "ip checksum ok: offload {}, manual {}",
                         manual_ip_cksum_good,
-                        mbuf_rx_ol.ip_cksum_good()
+                        (mbuf_rx_ol & ((1 << 4) | (1 << 7)) == 1 << 7)
                     );
                     println!(
                         "l4 checksum ok: offload {}, manual {}",
                         manual_l4_cksum_good,
-                        mbuf_rx_ol.l4_cksum_good()
+                        (mbuf_rx_ol & ((1 << 3) | (1 << 8)) == 1 << 8)
                     );
                     println!(
                         "rss offload enabled {}, rss value {}",
-                        mbuf_rx_ol.rss_hash(),
+                        (mbuf_rx_ol & (1 << 1) != 0),
                         mbuf_rx_rss
                     );
                     for (idx, seg) in mbuf.seg_iter().enumerate() {
@@ -146,50 +153,6 @@ fn entry_func() {
     }
 }
 
-fn init_port(
-    port_id: u16,
-    nb_rx_queue: u16,
-    nb_tx_queue: u16,
-    nb_rx_desc: u16,
-    mp_name: &str,
-    nb_tx_desc: u16,
-    socket_id: u32,
-) -> Result<()> {
-    // make sure that the port is on the correct socket
-    let port_info = service().port_info(port_id)?;
-    if port_info.socket_id != socket_id {
-        return Err(Error::service_err("invalid socket id"));
-    }
-
-    // get the default port conf
-    let mut port_conf = PortConf::from_port_info(&port_info)?;
-    port_conf.mtu = 9000;
-    port_conf.rx_offloads.enable_scatter();
-    port_conf.tx_offloads.enable_multi_segs();
-
-    // configure rxq
-    let mut rxq_conf = RxQueueConf::default();
-    rxq_conf.set_nb_rx_desc(nb_rx_desc);
-    rxq_conf.set_socket_id(socket_id);
-    rxq_conf.set_mp_name(mp_name);
-    let rxq_confs: Vec<RxQueueConf> = (0..nb_rx_queue as usize)
-        .map(|_| rxq_conf.clone())
-        .collect();
-
-    // configure txq
-    let mut txq_conf = TxQueueConf::default();
-    txq_conf.set_nb_tx_desc(nb_tx_desc);
-    txq_conf.set_socket_id(socket_id);
-    let txq_confs: Vec<TxQueueConf> = (0..nb_tx_queue as usize)
-        .map(|_| txq_conf.clone())
-        .collect();
-
-    // create the port
-    service().port_configure(port_id, &port_conf, &rxq_confs, &txq_confs)?;
-
-    Ok(())
-}
-
 fn main() {
     DpdkOption::new().init().unwrap();
 
@@ -197,7 +160,7 @@ fn main() {
     utils::init_mempool(MP, MBUF_NUM, MBUF_CACHE, WORKING_SOCKET).unwrap();
 
     // create the port
-    init_port(
+    utils::init_port_mtu(
         PORT_ID,
         THREAD_NUM as u16,
         THREAD_NUM as u16,
@@ -205,19 +168,20 @@ fn main() {
         MP,
         TXQ_DESC_NUM,
         WORKING_SOCKET,
+        9000,
     )
     .unwrap();
 
     entry_func();
 
     // shutdown the port
-    service().port_close(PORT_ID).unwrap();
+    service().dev_stop_and_close(PORT_ID).unwrap();
 
     // free the mempool
     service().mempool_free(MP).unwrap();
 
     // shutdown the DPDK service
-    service().service_close().unwrap();
+    service().graceful_cleanup().unwrap();
 
     println!("dpdk service shutdown gracefully");
 }

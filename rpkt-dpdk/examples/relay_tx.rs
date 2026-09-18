@@ -30,7 +30,6 @@ const TX_MP: &str = "tx";
 const PORT_ID: u16 = 0;
 const MTU: u32 = 1512;
 const Q_DESC_NUM: u16 = 1024;
-const PTHRESH: u8 = 8;
 
 // header info
 const DMAC: [u8; 6] = [0xac, 0xdc, 0xca, 0x79, 0xe5, 0xc6];
@@ -112,7 +111,7 @@ fn entry_func() {
                                                 for _ in 0..ack_pkt_num {
                                                     let mut mbuf = tx_mp.try_alloc().unwrap();
                                                     unsafe {
-                                                        mbuf.set_data_len(
+                                                        mbuf.extend(
                                                             PACKET_LEN
                                                                 - (ETHER_FRAME_HEADER_LEN
                                                                     + IPV4_HEADER_LEN
@@ -185,9 +184,7 @@ fn send_trigger_packet(txq: &mut TxQueue, mp: &Mempool) {
     for _ in 0..TRIGGER_BATCH {
         let mut mbuf = mp.try_alloc().unwrap();
         unsafe {
-            mbuf.set_data_len(
-                PACKET_LEN - (ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN),
-            );
+            mbuf.extend(PACKET_LEN - (ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN));
         }
         mbuf.data_mut().fill(PAYLOAD_BYTE);
         format_mbuf_header(&mut mbuf);
@@ -201,7 +198,7 @@ fn send_trigger_packet(txq: &mut TxQueue, mp: &Mempool) {
 
 fn format_mbuf_header(mbuf: &mut Mbuf) {
     unsafe {
-        mbuf.increase_len_at_front(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
+        mbuf.extend_front(ETHER_FRAME_HEADER_LEN + IPV4_HEADER_LEN + UDP_HEADER_LEN);
     }
 
     let mut pbuf = CursorMut::new(mbuf.data_mut());
@@ -279,8 +276,8 @@ fn config_port() {
     eth_conf.enable_promiscuous = true;
 
     // create rxq conf and txq conf
-    let rxq_conf = RxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET, MP_NAME);
-    let txq_conf = TxqConf::new(Q_DESC_NUM, PTHRESH, WORKING_SOCKET);
+    let rxq_conf = RxqConf::new(Q_DESC_NUM, WORKING_SOCKET, MP_NAME);
+    let txq_conf = TxqConf::new(Q_DESC_NUM, WORKING_SOCKET);
     let rxq_confs: Vec<RxqConf> = std::iter::repeat_with(|| rxq_conf.clone())
         .take(THREAD_NUM as usize)
         .collect();
