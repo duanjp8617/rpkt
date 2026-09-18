@@ -174,3 +174,75 @@ on the generator's clock for every 1024th sequence, capped at 65536 samples;
 zero percentiles mean no samples. It includes queueing, both links and polling.
 Record both endpoint JSON objects, not just the peak rate. See the checked-in
 [lab report](../benches/results/2026-09-18-two-port.md) for results and limits.
+
+## Three-process NAT forwarding experiment
+
+`nat_loop` uses separate generator, single-thread forwarding worker and sink
+processes. The forwarding adapters and independent reference are shared with
+the [CPU NAT workload](../benches/README.md#established-flow-nat). Build the
+same feature/profile combination on both hosts:
+
+This is a repository-workspace experiment: its shared workload lives under
+`benches/`, so run it from a checkout of the complete repository, not from an
+isolated copy of the published DPDK crate.
+
+```sh
+cargo build --locked --profile performance -p rpkt-dpdk --features nat-fast-table --example nat_loop
+# CLI (EAL allowlist determines local port numbers):
+nat_loop <gen|sink|rpkt|cursor|pnet|smoltcp> CORE RX TX SECONDS SIZE FLOWS <udp|tcp|mixed|tcpopts> -- EAL_ARGS
+```
+
+`RPKT_TRAFFIC_WORKERS=2` gives the generator/sink two dedicated queues and
+consecutive CPU cores starting at `CORE` (maximum four). Sender workers partition
+flow IDs; sink workers use IPv4 TCP/UDP RSS with a deterministic nonperiodic key
+(the repeating symmetric default can collapse correlated synthetic tuples onto
+one queue). A barrier aligns their start and
+completion. Each worker emits its own JSON, with device-wide counters emitted
+only by worker 0. The runner retains those records and aggregates counters;
+summed receiver bins have independently aligned first-packet origins and are
+approximate. **The NAT DUT always uses one worker**, regardless of this setting.
+Frames identify flows, not unique transmissions: there is no per-packet
+de-duplication or ordering check. Final returned rates use total accepted sink
+packets divided by the sender's measured interval; the steady DUT bins are a
+separate diagnostic. `dev/summarize_nat_live.py` reports all three repetitions.
+
+Use only dedicated idle test links. Frame sizes exclude FCS; MTU stays 1500.
+Each role uses burst 64, queue descriptors 2048, a NUMA-local 16383-object pool
+with cache 256 and data room 2176. DUT RX and TX must differ. No TX checksum
+offload is requested. The DUT checks NIC checksum status and falls back to
+software verification if status is unknown. All libraries share that ingress
+gate and identical I/O. Segmented packets are rejected by this experiment.
+
+The sink checks length, MACs and NIC bad-checksum flags on every packet. Every
+1021st received packet is compared byte-for-byte with the independent expected
+packet and full checksum recomputation; the prime stride avoids repeatedly
+sampling only the same few flows. This is sampled validation, not exhaustive
+inspection of every payload. Generator inputs and expected outputs are built
+outside timing. Generator TX failures/partial bursts are counted and freed;
+there is no unbounded retry. Counters include receiver misses, allocation
+failures and checksum fallback. Rates must distinguish offered, DUT and returned
+traffic. Receiver loss or insufficient offered load invalidates a capacity claim.
+
+`SECONDS` is a 1–60-second wall-time bound. DUT/sink also finish one second
+after their last accepted traffic. `active_seconds` spans first to last accepted
+burst; one-second RX bins start at the first accepted burst. For steady rates,
+use **all complete interior bins**, dropping the first and final partial bin,
+not the highest bin. This is not RFC 2544 zero-loss throughput testing.
+
+`python3 dev/nat_lab.py --output NEW_FILE.jsonl` runs the documented tg/duanjp
+wiring with three rotated-order repetitions. It refuses an existing output
+file or a nonzero duanjp node-2 hugepage reservation, temporarily reserves
+128 two-MiB pages, and restores the original count in cleanup. DUT EAL uses
+`--huge-unlink=always` so no backing files retain those pages after exit.
+The generator/sink use `--no-huge`; no addresses, routes, drivers or MTUs are
+changed. Configure passwordless sudo or supply `RPKT_DUT_SUDO_PASSWORD` through
+your local secret mechanism (never put it in source, logs or command arguments).
+The runner is intentionally specific to the documented lab, not autodetection
+or a generally safe command for arbitrary production interfaces.
+
+Wiring: tg `17:00.0` → duanjp `b8:00.1` (RX port 1), then duanjp `b8:00.0`
+(TX port 0) → tg `25:00.1`. duanjp uses
+core 60 on NUMA node 2. In the two-worker traffic configuration, tg uses cores
+2/3 for generation and 4/5 for reception. The runner keeps scalar RX on the DUT and allows the
+default mlx5 vector RX path on the sink; this setting is identical across DUT
+implementations. See the [NAT report](../benches/results/2026-09-18-nat.md).

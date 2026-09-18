@@ -48,6 +48,12 @@ jobs:
         run: cargo check --locked -p benches --bench matrix --bench protocols --all-features
       - name: Check cross-library protocol benchmark equivalence
         run: cargo bench --locked -p benches --bench protocols -- --test
+      - name: Check NAT byte and checksum equivalence
+        run: |
+          cargo test --locked -p benches --test nat_support
+          cargo test --locked -p benches --features nat-fast-table --test nat_support
+          cargo bench --locked -p benches --bench nat_forward -- --test
+          cargo bench --locked -p benches --features nat-fast-table --bench nat_forward -- --test
 
   supported-rust:
     name: Rust 1.98 compatibility
@@ -72,6 +78,7 @@ jobs:
         run: |
           bash dev/check_safety.sh
           cargo +nightly miri test -p rpkt --features batch --test batch
+          cargo +nightly miri test -p rpkt --test parts
       - name: Fuzz checked parsers
         run: cargo +nightly fuzz run checked_packets -- -max_len=65536 -max_total_time=30
 

@@ -16,11 +16,13 @@ license.workspace = true
 libc = "0.2"
 arrayvec = "0.7.4"
 once_cell = "1.9.0"
+ahash = { version = "=0.8.12", optional = true }
 rpkt = {path = "../rpkt", package = "rpkt"}
 
 [features]
 default = []
 rpkt-eval = []
+nat-fast-table = ["dep:ahash"]
 
 [build-dependencies]
 version-compare = "0.1.1"

@@ -143,3 +143,57 @@ all three adapters. Do not infer a library speedup from changing this shared
 benchmark code. See [the native-host report](results/2026-09-18-common-protocols.md)
 for all outcomes, including ties and losses. No universal fastest claim or
 hardware-independent performance threshold is established.
+
+## Established-flow NAT
+
+`nat_forward` compares the same checked forwarding transaction through rpkt,
+pnet 0.35 and smoltcp 0.12. It is an established-flow **full NAT kernel**, not a
+complete NAT gateway: no connection creation/expiry, routing/ARP, reassembly,
+ICMP error generation, reverse-flow installation or TCP state tracking.
+
+Every implementation checks Ethernet/IPv4 selectors, IPv4/transport lengths,
+TTL > 1 and absence of fragments, performs the same five-tuple hash lookup,
+rewrites both IPv4 addresses, both ports and both Ethernet addresses, decrements
+TTL and updates IPv4 and transport checksums. Invalid packets and table misses
+remain unchanged. Input checksums are prevalidated; the live harness uses NIC
+status with a software fallback. No competitor performs extra checksum scans,
+allocating packet parsing, or an extra flow lookup. All adapters are inlined
+equally in the monomorphic timed loop. `rpkt_cursor` is a same-build comparison
+using the existing nested cursor API, **not** the pre-PR compiler/library.
+
+All adapters share precomputed, folded per-flow checksum deltas and the same
+[RFC 1624](https://www.rfc-editor.org/rfc/rfc1624.html) update arithmetic. IPv4
+UDP checksum omission is preserved; a computed UDP zero is encoded as 0xffff.
+An independent byte-wise/full-recomputation implementation verifies output
+before timing, including options, padding, misalignment, all truncations,
+malformed lengths/selectors, and an exhaustive transport-checksum value sweep.
+
+The default table uses deterministic `DefaultHasher`/SipHash. Optional
+`nat-fast-table` uses aHash 0.8.12 **for every library**, with the same fixed
+seeds/table layout. Faster shared lookup is an application improvement, not an
+rpkt codegen speedup. Fixed seeds are for repeatable experiments only; production
+Internet-facing tables need a per-process random keyed hash policy. These
+experiments do not benchmark adversarial hash flooding.
+
+```sh
+cargo bench --locked -p benches --bench nat_forward -- --test
+cargo bench --locked -p benches --features nat-fast-table --bench nat_forward -- --test
+RPKT_BENCH_CPU=2 bash dev/bench_nat.sh nat-final
+# On a synced tree without .git, also set RPKT_BENCH_REVISION.
+python3 dev/summarize_nat.py results.json tg=ARTIFACT_DIR duanjp=ARTIFACT_DIR
+```
+
+Each iteration traverses 64 or 4096 separately allocated packets and an installed
+table containing both protocols for every flow ID (128 or 8192 total entries).
+Frame sizes exclude FCS: 64, 512, 1500 bytes; the option case uses 128 instead
+of 64 bytes, with four IPv4-option and twelve TCP-option bytes. Flow IDs are
+round-robin, not a realistic measured Internet distribution. Cloning/resetting
+packets is outside timing; checked parsing, lookup, rewriting and consumption
+are inside it. Divide iteration time by flow count for ns/packet. Larger sets
+are not necessarily cache-cold. CPU-kernel packets/s is **not NIC throughput**.
+
+The runner uses four library-order rotations, both hash policies, 30 samples,
+200 ms warmup, 500 ms measurement and 1000 bootstrap resamples. It saves source
+hashes, toolchain, affinity, environment, raw logs and Criterion estimates.
+See [the NAT report](results/2026-09-18-nat.md) for all comparisons and live
+limitations, including cases that fail the requested 1.15x threshold.
