@@ -120,14 +120,14 @@ Every measured workload is included, including negative results.
 
 ## Interpretation and rejected experiments
 
-- TCP options: 1.67–2.44x relative to pnet and 2.36–5.73x relative to smoltcp,
+- TCP options: 1.68–2.44x relative to pnet and 2.36–5.73x relative to smoltcp,
   across both hosts and the timestamp, SYN and three-SACK-plus-timestamp sets.
   This confirms the existing borrowed typed-iterator advantage for these
   cases; it is not a new speedup introduced by this PR.
 - Ethernet/IPv4/TCP: median ratios 1.07–1.16x relative to pnet and
   1.42–1.95x relative to smoltcp, across both sizes and working sets.
 - Ethernet/IPv4/UDP: median ratios 1.01–1.08x relative to pnet and
-  1.38–1.67x relative to smoltcp. The smallest pnet differences are too small
+  1.38–1.66x relative to smoltcp. The smallest pnet differences are too small
   to establish a durable advantage.
 - Standalone headers: several near-ties and losses remain. For example,
   tg's small-set 64-byte IPv4 workload is about 10% slower than pnet by

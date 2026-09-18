@@ -21,6 +21,7 @@ diff stays focused.
 | Performance 3 and 4. Common/batch parsing | [#22](https://github.com/duanjp8617/rpkt/pull/22) | Optional safe borrowed batch API, immutable cached facts, explicit fallback/order/partial handling |
 | Performance 5 and 6. Offload/local batched I/O | [#23](https://github.com/duanjp8617/rpkt/pull/23) | Bounded two-link harness, NUMA fix, software/offload/burst/RTT/drop measurements on both hosts |
 | Performance 4 and acceptance experiments | [#24](https://github.com/duanjp8617/rpkt/pull/24) | Full-field initializer prototype, separate LTO/codegen-unit comparisons, raw confidence intervals and this review map |
+| Follow-up: common protocols and TCP options | [#25](https://github.com/duanjp8617/rpkt/pull/25) | Equivalent checked Ethernet/IPv4/UDP/TCP workloads, borrowed option comparison, 486 native measurements and CI equivalence checks; blanket fastest-for-every-header target remains unmet |
 
 ## Measured acceptance, not unconditional optimization
 
