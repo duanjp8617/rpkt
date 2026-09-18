@@ -8,6 +8,9 @@ use crate::{PktBuf, PktBufMut};
 /// A container type that turns a byte slice into `PktBuf`.
 #[derive(Debug, Clone, Copy)]
 pub struct Cursor<'a> {
+    // Invariant: chunk is a subslice of the original allocation; start_addr has
+    // that allocation's provenance and stays valid for 'a. Trimming can only
+    // shorten the end. Checked movement keeps both pointers in the allocation.
     chunk: &'a [u8],
     start_addr: *const u8,
 }
@@ -77,6 +80,10 @@ impl<'a> PktBuf for Cursor<'a> {
 /// A mutable container type that turns a mutable byte slice into `PktBufMut`.
 #[derive(Debug)]
 pub struct CursorMut<'a> {
+    // The original exclusive borrow is held for 'a by PhantomData. All slices
+    // created from these pointers are tied to a reborrow of self; no mutable
+    // slice can coexist with another access through this cursor. Pointer
+    // arithmetic stays within the original allocation (including one-past-end).
     chunk_addr: *mut u8,
     chunk_len: usize,
     start_addr: *mut u8,

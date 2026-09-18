@@ -7,6 +7,11 @@ use crate::mbuf::{data_addr, mbuf_data_len, Mbuf};
 
 #[derive(Debug)]
 pub struct Pbuf<'a> {
+    // Invariant: the exclusive Mbuf borrow owns a live, acyclic segment chain.
+    // mbuf_cur belongs to that chain; chunk_start..chunk_len is initialized and
+    // within its current segment. segs_len is the cumulative end of that segment.
+    // Truncation must refresh pointers before accessing any freed tail segment.
+    // Returned slices borrow self, preventing concurrent mutation or free.
     mbuf_head: *mut Mbuf,
     mbuf_cur: *mut rte_mbuf,
     chunk_start: *mut u8,

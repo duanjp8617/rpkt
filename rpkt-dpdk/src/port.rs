@@ -92,6 +92,10 @@ impl RxQueue {
     #[inline]
     pub fn rx<const N: usize>(&mut self, batch: &mut ArrayVec<Mbuf, N>) -> usize {
         assert!(N <= usize::from(u16::MAX));
+        // SAFETY: repr(transparent) makes Mbuf layout identical to its non-null
+        // pointer. DPDK initializes only the requested spare slots with uniquely
+        // owned packets. Publish exactly nb_rx initialized elements afterward.
+        // The exclusive queue handle prevents concurrent bursts on this queue.
         unsafe {
             let mbufs = std::mem::transmute::<*mut Mbuf, *mut *mut ffi::rte_mbuf>(
                 batch.as_mut_ptr().add(batch.len()),
@@ -153,6 +157,9 @@ impl TxQueue {
     #[inline]
     pub fn tx<const N: usize>(&mut self, batch: &mut ArrayVec<Mbuf, N>) -> usize {
         assert!(N <= usize::from(u16::MAX));
+        // SAFETY: DPDK takes ownership of only the accepted prefix. Move the
+        // unsent suffix down with overlap-safe copy, then shorten without
+        // dropping accepted pointers; the NIC now owns and frees those packets.
         unsafe {
             let mbufs =
                 std::mem::transmute::<*mut Mbuf, *mut *mut ffi::rte_mbuf>(batch.as_mut_ptr());
