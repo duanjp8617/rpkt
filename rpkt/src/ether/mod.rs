@@ -5,7 +5,9 @@ pub use generated::EtherGroup;
 pub use generated::{
     EtherDot3Frame, ETHER_DOT3_FRAME_HEADER_LEN, ETHER_DOT3_FRAME_HEADER_TEMPLATE,
 };
-pub use generated::{EtherFrame, ETHER_FRAME_HEADER_LEN, ETHER_FRAME_HEADER_TEMPLATE};
+pub use generated::{
+    EtherFrame, EtherFrameFields, ETHER_FRAME_HEADER_LEN, ETHER_FRAME_HEADER_TEMPLATE,
+};
 
 use core::fmt;
 

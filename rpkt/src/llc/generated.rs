@@ -52,6 +52,16 @@ impl<T: Buf> Llc<T> {
     pub fn control(&self) -> u8 {
         self.buf.chunk()[2]
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn dsap_and_ssap_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn ssap_and_control_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[1..3].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> Llc<T> {
     #[inline]
@@ -80,6 +90,18 @@ impl<T: PktBufMut> Llc<T> {
     #[inline]
     pub fn set_control(&mut self, value: u8) {
         self.buf.chunk_mut()[2] = value;
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_dsap_and_ssap(&mut self, dsap: u8, ssap: u8) {
+        let value = ((dsap as u16) << 8) | (ssap as u16);
+        self.buf.chunk_mut()[0..2].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_ssap_and_control(&mut self, ssap: u8, control: u8) {
+        let value = ((ssap as u16) << 8) | (control as u16);
+        self.buf.chunk_mut()[1..3].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> Llc<Cursor<'a>> {

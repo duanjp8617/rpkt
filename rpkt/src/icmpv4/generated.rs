@@ -62,6 +62,16 @@ impl<T: Buf> EchoReply<T> {
     pub fn sequence(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> EchoReply<T> {
     #[inline]
@@ -100,6 +110,18 @@ impl<T: PktBufMut> EchoReply<T> {
     #[inline]
     pub fn set_sequence(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> EchoReply<Cursor<'a>> {
@@ -609,6 +631,16 @@ impl<T: Buf> EchoRequest<T> {
     pub fn sequence(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> EchoRequest<T> {
     #[inline]
@@ -647,6 +679,18 @@ impl<T: PktBufMut> EchoRequest<T> {
     #[inline]
     pub fn set_sequence(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> EchoRequest<Cursor<'a>> {
@@ -1331,6 +1375,16 @@ impl<T: Buf> TimestampRequest<T> {
     pub fn transmit_timestamp(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[16..20]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> TimestampRequest<T> {
     #[inline]
@@ -1383,6 +1437,18 @@ impl<T: PktBufMut> TimestampRequest<T> {
     pub fn set_transmit_timestamp(&mut self, value: u32) {
         assert!(value == 0);
         (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> TimestampRequest<Cursor<'a>> {
@@ -1502,6 +1568,26 @@ impl<T: Buf> TimestampReply<T> {
     pub fn transmit_timestamp(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[16..20]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn originate_timestamp_and_receive_timestamp_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[8..16].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn receive_timestamp_and_transmit_timestamp_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[12..20].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> TimestampReply<T> {
     #[inline]
@@ -1552,6 +1638,38 @@ impl<T: PktBufMut> TimestampReply<T> {
     #[inline]
     pub fn set_transmit_timestamp(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_originate_timestamp_and_receive_timestamp(
+        &mut self,
+        originate_timestamp: u32,
+        receive_timestamp: u32,
+    ) {
+        let value = ((originate_timestamp as u64) << 32) | (receive_timestamp as u64);
+        self.buf.chunk_mut()[8..16].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_receive_timestamp_and_transmit_timestamp(
+        &mut self,
+        receive_timestamp: u32,
+        transmit_timestamp: u32,
+    ) {
+        let value = ((receive_timestamp as u64) << 32) | (transmit_timestamp as u64);
+        self.buf.chunk_mut()[12..20].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> TimestampReply<Cursor<'a>> {
@@ -1657,6 +1775,16 @@ impl<T: Buf> InformationRequest<T> {
     pub fn sequence(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> InformationRequest<T> {
     #[inline]
@@ -1695,6 +1823,18 @@ impl<T: PktBufMut> InformationRequest<T> {
     #[inline]
     pub fn set_sequence(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> InformationRequest<Cursor<'a>> {
@@ -1800,6 +1940,16 @@ impl<T: Buf> InformationReply<T> {
     pub fn sequence(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> InformationReply<T> {
     #[inline]
@@ -1838,6 +1988,18 @@ impl<T: PktBufMut> InformationReply<T> {
     #[inline]
     pub fn set_sequence(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> InformationReply<Cursor<'a>> {
@@ -1950,6 +2112,16 @@ impl<T: Buf> AddressMaskRequest<T> {
             (&self.buf.chunk()[8..12]).try_into().unwrap(),
         ))
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> AddressMaskRequest<T> {
     #[inline]
@@ -1994,6 +2166,18 @@ impl<T: PktBufMut> AddressMaskRequest<T> {
         let value = u32::from(value);
         assert!(value == 0);
         (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> AddressMaskRequest<Cursor<'a>> {
@@ -2106,6 +2290,16 @@ impl<T: Buf> AddressMaskReply<T> {
             (&self.buf.chunk()[8..12]).try_into().unwrap(),
         ))
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn identifier_and_sequence_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[4..8].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> AddressMaskReply<T> {
     #[inline]
@@ -2148,6 +2342,18 @@ impl<T: PktBufMut> AddressMaskReply<T> {
     #[inline]
     pub fn set_address_mask(&mut self, value: Ipv4Addr) {
         (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_identifier_and_sequence(&mut self, identifier: u16, sequence: u16) {
+        let value = ((identifier as u32) << 16) | (sequence as u32);
+        self.buf.chunk_mut()[4..8].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> AddressMaskReply<Cursor<'a>> {
@@ -2261,6 +2467,11 @@ impl<T: Buf> ExtendedEchoRequest<T> {
     pub fn reserved(&self) -> u8 {
         self.buf.chunk()[7] & 0x7f
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> ExtendedEchoRequest<T> {
     #[inline]
@@ -2309,6 +2520,12 @@ impl<T: PktBufMut> ExtendedEchoRequest<T> {
     pub fn set_reserved(&mut self, value: u8) {
         assert!(value == 0);
         self.buf.chunk_mut()[7] = (self.buf.chunk_mut()[7] & 0x80) | value;
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> ExtendedEchoRequest<Cursor<'a>> {
@@ -2426,6 +2643,11 @@ impl<T: Buf> ExtendedEchoReply<T> {
     pub fn reserved(&self) -> u8 {
         self.buf.chunk()[7] & 0xf
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_identifier_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[2..6].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> ExtendedEchoReply<T> {
     #[inline]
@@ -2478,6 +2700,12 @@ impl<T: PktBufMut> ExtendedEchoReply<T> {
     pub fn set_reserved(&mut self, value: u8) {
         assert!(value == 0);
         self.buf.chunk_mut()[7] = (self.buf.chunk_mut()[7] & 0xf0) | value;
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_identifier(&mut self, checksum: u16, identifier: u16) {
+        let value = ((checksum as u32) << 16) | (identifier as u32);
+        self.buf.chunk_mut()[2..6].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> ExtendedEchoReply<Cursor<'a>> {

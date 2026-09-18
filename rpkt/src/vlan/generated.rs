@@ -47,7 +47,7 @@ impl<T: Buf> VlanFrame<T> {
     }
     #[inline]
     pub fn dei_flag(&self) -> bool {
-        self.buf.chunk()[0] & 0x10 != 0
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 4096 != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
@@ -189,7 +189,7 @@ impl<T: Buf> VlanDot3Frame<T> {
     }
     #[inline]
     pub fn dei_flag(&self) -> bool {
-        self.buf.chunk()[0] & 0x10 != 0
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 4096 != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {

@@ -23,6 +23,8 @@ use build::*;
 mod iter;
 use iter::*;
 
+mod parts;
+
 // A writer object that appends prefix string and prepends suffix string to the
 // underlying content.
 struct HeadTailWriter<T: Write> {
@@ -182,6 +184,10 @@ impl<'a> PktGen<'a> {
             derives: &["Debug", "Clone", "Copy"],
         };
         packet_struct_gen.code_gen(output);
+
+        if self.item().enable_parts() {
+            parts::generate(self.item(), output);
+        }
 
         let fields = FieldGenerator::new(self.item().header());
         let length = LengthGenerator::new(self.item().header(), self.item().length());

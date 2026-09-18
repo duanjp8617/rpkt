@@ -624,6 +624,16 @@ impl<T: Buf> ExtLongPduNumber<T> {
     pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         Gtpv1NextExtention::from(self.buf.chunk()[7])
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn spare2_and_spare3_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[4..6].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn spare3_and_spare4_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[5..7].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> ExtLongPduNumber<T> {
     #[inline]
@@ -672,6 +682,18 @@ impl<T: PktBufMut> ExtLongPduNumber<T> {
     #[inline]
     pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         self.buf.chunk_mut()[7] = u8::from(value);
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_spare2_and_spare3(&mut self, spare2: u8, spare3: u8) {
+        let value = ((spare2 as u16) << 8) | (spare3 as u16);
+        self.buf.chunk_mut()[4..6].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_spare3_and_spare4(&mut self, spare3: u8, spare4: u8) {
+        let value = ((spare3 as u16) << 8) | (spare4 as u16);
+        self.buf.chunk_mut()[5..7].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> ExtLongPduNumber<Cursor<'a>> {
@@ -772,6 +794,11 @@ impl<T: Buf> ExtServiceClassIndicator<T> {
     pub fn next_extention_header(&self) -> Gtpv1NextExtention {
         Gtpv1NextExtention::from(self.buf.chunk()[3])
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn service_class_indicator_and_spare_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[1..3].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> ExtServiceClassIndicator<T> {
     #[inline]
@@ -805,6 +832,16 @@ impl<T: PktBufMut> ExtServiceClassIndicator<T> {
     #[inline]
     pub fn set_next_extention_header(&mut self, value: Gtpv1NextExtention) {
         self.buf.chunk_mut()[3] = u8::from(value);
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_service_class_indicator_and_spare(
+        &mut self,
+        service_class_indicator: u8,
+        spare: u8,
+    ) {
+        let value = ((service_class_indicator as u16) << 8) | (spare as u16);
+        self.buf.chunk_mut()[1..3].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> ExtServiceClassIndicator<Cursor<'a>> {

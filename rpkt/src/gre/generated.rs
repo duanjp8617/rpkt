@@ -714,6 +714,11 @@ impl<T: Buf> PPTP<T> {
     pub fn protocol(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn address_and_control_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> PPTP<T> {
     #[inline]
@@ -742,6 +747,12 @@ impl<T: PktBufMut> PPTP<T> {
     #[inline]
     pub fn set_protocol(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_address_and_control(&mut self, address: u8, control: u8) {
+        let value = ((address as u16) << 8) | (control as u16);
+        self.buf.chunk_mut()[0..2].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> PPTP<Cursor<'a>> {

@@ -54,7 +54,7 @@
 //! ```
 
 mod generated;
-pub use generated::{Tcp, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
+pub use generated::{Tcp, TcpFields, TCP_HEADER_LEN, TCP_HEADER_TEMPLATE};
 
 /// Tcp options.
 pub mod options {

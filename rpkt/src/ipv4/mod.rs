@@ -13,6 +13,22 @@
 //! - Protocol type enumeration for next-layer protocol identification
 //! - Integration with standard library's `Ipv4Addr` type
 //!
+//! # Disjoint mutable views
+//!
+//! The parts parser checks structural lengths and returns fixed fields, options
+//! and payload as disjoint borrows. Applications must separately check protocol
+//! selectors and checksums. Length setters are unavailable on the fixed view.
+//!
+//! ```
+//! use rpkt::ipv4::{Ipv4, IPV4_HEADER_TEMPLATE};
+//! let mut bytes = IPV4_HEADER_TEMPLATE;
+//! let (mut fields, options, payload) = Ipv4::parse_parts_mut(&mut bytes).unwrap();
+//! fields.set_ttl(63);
+//! assert!(options.is_empty());
+//! assert!(payload.is_empty());
+//! assert_eq!(fields.ttl(), 63);
+//! ```
+//!
 //! # IPv4 Options Support
 //!
 //! This implementation supports the following IPv4 options:
@@ -66,7 +82,7 @@
 //! ```
 
 mod generated;
-pub use generated::{Ipv4, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
+pub use generated::{Ipv4, Ipv4Fields, IPV4_HEADER_LEN, IPV4_HEADER_TEMPLATE};
 
 /// The Ipv4 options.
 pub mod options {

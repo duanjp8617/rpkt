@@ -732,6 +732,11 @@ impl<T: Buf> AggregateMaxBitRateIE<T> {
     pub fn apn_ambr_for_downlink(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn apn_ambr_for_uplink_and_apn_ambr_for_downlink_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[4..12].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> AggregateMaxBitRateIE<T> {
     #[inline]
@@ -776,6 +781,16 @@ impl<T: PktBufMut> AggregateMaxBitRateIE<T> {
     #[inline]
     pub fn set_apn_ambr_for_downlink(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_apn_ambr_for_uplink_and_apn_ambr_for_downlink(
+        &mut self,
+        apn_ambr_for_uplink: u32,
+        apn_ambr_for_downlink: u32,
+    ) {
+        let value = ((apn_ambr_for_uplink as u64) << 32) | (apn_ambr_for_downlink as u64);
+        self.buf.chunk_mut()[4..12].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> AggregateMaxBitRateIE<Cursor<'a>> {
@@ -1776,6 +1791,11 @@ impl<T: Buf> UliCgi<T> {
     pub fn cell_identity(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn location_area_code_and_cell_identity_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[3..7].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> UliCgi<T> {
     #[inline]
@@ -1830,6 +1850,16 @@ impl<T: PktBufMut> UliCgi<T> {
     #[inline]
     pub fn set_cell_identity(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_location_area_code_and_cell_identity(
+        &mut self,
+        location_area_code: u16,
+        cell_identity: u16,
+    ) {
+        let value = ((location_area_code as u32) << 16) | (cell_identity as u32);
+        self.buf.chunk_mut()[3..7].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> UliCgi<Cursor<'a>> {
@@ -1946,6 +1976,11 @@ impl<T: Buf> UliSai<T> {
     pub fn servie_area_code(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn location_area_code_and_servie_area_code_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[3..7].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> UliSai<T> {
     #[inline]
@@ -2000,6 +2035,16 @@ impl<T: PktBufMut> UliSai<T> {
     #[inline]
     pub fn set_servie_area_code(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_location_area_code_and_servie_area_code(
+        &mut self,
+        location_area_code: u16,
+        servie_area_code: u16,
+    ) {
+        let value = ((location_area_code as u32) << 16) | (servie_area_code as u32);
+        self.buf.chunk_mut()[3..7].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> UliSai<Cursor<'a>> {
@@ -2116,6 +2161,11 @@ impl<T: Buf> UliRai<T> {
     pub fn routing_area_code(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn location_area_code_and_routing_area_code_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[3..7].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> UliRai<T> {
     #[inline]
@@ -2170,6 +2220,16 @@ impl<T: PktBufMut> UliRai<T> {
     #[inline]
     pub fn set_routing_area_code(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_location_area_code_and_routing_area_code(
+        &mut self,
+        location_area_code: u16,
+        routing_area_code: u16,
+    ) {
+        let value = ((location_area_code as u32) << 16) | (routing_area_code as u32);
+        self.buf.chunk_mut()[3..7].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> UliRai<Cursor<'a>> {

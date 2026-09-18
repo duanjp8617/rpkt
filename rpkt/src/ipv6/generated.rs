@@ -562,6 +562,11 @@ impl<T: Buf> RoutingHeader<T> {
     pub fn type_specific_data(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn type_and_segments_left_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[2..4].try_into().unwrap())
+    }
     #[inline]
     pub fn header_len(&self) -> u16 {
         (self.buf.chunk()[1]) as u16 * 8 + 8
@@ -605,6 +610,12 @@ impl<T: PktBufMut> RoutingHeader<T> {
     #[inline]
     pub fn set_type_specific_data(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_type_and_segments_left(&mut self, type_: u8, segments_left: u8) {
+        let value = ((type_ as u16) << 8) | (segments_left as u16);
+        self.buf.chunk_mut()[2..4].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u16) {
@@ -884,6 +895,11 @@ impl<T: Buf> AuthenticationHeader<T> {
     pub fn seq_num_field(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn security_parameters_index_and_seq_num_field_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[4..12].try_into().unwrap())
+    }
     #[inline]
     pub fn header_len(&self) -> u16 {
         (self.buf.chunk()[1]) as u16 * 4 + 8
@@ -927,6 +943,16 @@ impl<T: PktBufMut> AuthenticationHeader<T> {
     #[inline]
     pub fn set_seq_num_field(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_security_parameters_index_and_seq_num_field(
+        &mut self,
+        security_parameters_index: u32,
+        seq_num_field: u32,
+    ) {
+        let value = ((security_parameters_index as u64) << 32) | (seq_num_field as u64);
+        self.buf.chunk_mut()[4..12].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u16) {

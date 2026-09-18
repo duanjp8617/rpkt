@@ -16,5 +16,6 @@ packet Udp {
     ],
     length = [
         packet_len = length_
-    ]
+    ],
+    enable_parts = true,
 }

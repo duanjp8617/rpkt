@@ -24,6 +24,7 @@ pub struct Packet {
     length: Length,
     cond: Option<Cond>,
     enable_iter: bool,
+    enable_parts: bool,
 }
 
 impl Packet {
@@ -33,6 +34,7 @@ impl Packet {
         length: length::Length,
         cond: Option<Cond>,
         enable_iter: bool,
+        enable_parts: bool,
     ) -> Self {
         Self {
             protocol_name: protocol_name.to_string(),
@@ -40,6 +42,7 @@ impl Packet {
             length,
             cond,
             enable_iter,
+            enable_parts,
         }
     }
 
@@ -65,6 +68,10 @@ impl Packet {
 
     pub fn enable_iter(&self) -> bool {
         self.enable_iter
+    }
+
+    pub fn enable_parts(&self) -> bool {
+        self.enable_parts
     }
 }
 
@@ -142,6 +149,15 @@ impl<'a> TopLevel<'a> {
                 ))
             }
             all_names.insert(name);
+        }
+
+        for ((item, span), _) in parsed_items {
+            if let ParsedItem::Packet_(p) = item {
+                let view_name = format!("{}Fields", p.protocol_name());
+                if p.enable_parts() && all_names.contains(view_name.as_str()) {
+                    return_err!((Error::top_level(2, format!("generated parts view name {view_name} conflicts with a declared name")), *span))
+                }
+            }
         }
 
         // construct the `pkt_groups` by checking the correctness of each packet group.

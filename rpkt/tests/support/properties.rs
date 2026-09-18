@@ -18,6 +18,21 @@ pub fn exercise(data: &[u8]) {
     check!(Tcp<_>);
     check!(Udp<_>);
     check!(rpkt::vlan::VlanFrame<_>);
+    // Parts parsers must accept exactly the same structural lengths as their
+    // cursor counterparts.
+    macro_rules! parts {
+        ($packet:ident) => {{
+            let expected = $packet::parse_from_cursor(Cursor::new(data)).is_ok();
+            assert_eq!($packet::parse_parts(data).is_ok(), expected);
+            let mut storage = data.to_vec();
+            assert_eq!($packet::parse_parts_mut(&mut storage).is_ok(), expected);
+            assert_eq!(storage, data);
+        }};
+    }
+    parts!(EtherFrame);
+    parts!(Ipv4);
+    parts!(Tcp);
+    parts!(Udp);
     if let Ok(ip) = Ipv4::parse(Cursor::new(data)) {
         let expected = ip.packet_len() as usize - ip.header_len() as usize;
         assert_eq!(ip.payload().remaining(), expected);

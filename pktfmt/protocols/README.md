@@ -17,3 +17,9 @@ they need handwritten helpers, integration, and tests before joining that list.
 Edit definitions or the compiler for generated behavior, then regenerate and
 commit the affected `generated.rs` files together. Handwritten protocol modules
 provide supplementary types and helpers.
+
+Ethernet, IPv4, TCP and UDP opt into checked disjoint field/options/payload
+views with `enable_parts = true`. See [the language notes](../design.md) for
+the borrowing contract and packed adjacent-field methods. IPv4 addresses now
+use the ordinary generated `u32`/`Ipv4Addr` conversions; public address types,
+byte order and method signatures remain unchanged.
