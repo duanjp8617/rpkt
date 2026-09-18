@@ -20,7 +20,7 @@ diff stays focused.
 | Performance 4. Repeated construction | [#21](https://github.com/duanjp8617/rpkt/pull/21) | Prepared Ethernet/IPv4/UDP template, initialized output, byte-equivalence and performance tests |
 | Performance 3 and 4. Common/batch parsing | [#22](https://github.com/duanjp8617/rpkt/pull/22) | Optional safe borrowed batch API, immutable cached facts, explicit fallback/order/partial handling |
 | Performance 5 and 6. Offload/local batched I/O | [#23](https://github.com/duanjp8617/rpkt/pull/23) | Bounded two-link harness, NUMA fix, software/offload/burst/RTT/drop measurements on both hosts |
-| Performance 4 and acceptance experiments | Final codegen/profile PR | Full-field initializer prototype, separate LTO/codegen-unit comparisons, raw confidence intervals and this review map |
+| Performance 4 and acceptance experiments | [#24](https://github.com/duanjp8617/rpkt/pull/24) | Full-field initializer prototype, separate LTO/codegen-unit comparisons, raw confidence intervals and this review map |
 
 ## Measured acceptance, not unconditional optimization
 
