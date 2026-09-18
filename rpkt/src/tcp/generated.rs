@@ -17,6 +17,261 @@ pub const TCP_HEADER_TEMPLATE: [u8; 20] = [
 pub struct Tcp<T> {
     buf: T,
 }
+/// Fixed header fields only; no payload or cursor operations.
+/// Construct through the checked parts parser or an exact-size array.
+#[derive(Debug)]
+pub struct TcpFields<T> {
+    buf: T,
+}
+impl<T: core::ops::Deref<Target = [u8; 20]>> TcpFields<T> {
+    #[inline]
+    pub fn from_header(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn src_port(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[0..2]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn dst_port(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn seq_num(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.deref()[4..8]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn ack_num(&self) -> u32 {
+        u32::from_be_bytes((&self.buf.deref()[8..12]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn reserved(&self) -> u8 {
+        self.buf.deref()[12] & 0xf
+    }
+    #[inline]
+    pub fn cwr(&self) -> bool {
+        self.buf.deref()[13] & 0x80 != 0
+    }
+    #[inline]
+    pub fn ece(&self) -> bool {
+        self.buf.deref()[13] & 0x40 != 0
+    }
+    #[inline]
+    pub fn urg(&self) -> bool {
+        self.buf.deref()[13] & 0x20 != 0
+    }
+    #[inline]
+    pub fn ack(&self) -> bool {
+        self.buf.deref()[13] & 0x10 != 0
+    }
+    #[inline]
+    pub fn psh(&self) -> bool {
+        self.buf.deref()[13] & 0x8 != 0
+    }
+    #[inline]
+    pub fn rst(&self) -> bool {
+        self.buf.deref()[13] & 0x4 != 0
+    }
+    #[inline]
+    pub fn syn(&self) -> bool {
+        self.buf.deref()[13] & 0x2 != 0
+    }
+    #[inline]
+    pub fn fin(&self) -> bool {
+        self.buf.deref()[13] & 0x1 != 0
+    }
+    #[inline]
+    pub fn window_size(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[14..16]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn checksum(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[16..18]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn urgent_pointer(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[18..20]).try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_port_and_dst_port_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.deref()[0..4].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn seq_num_and_ack_num_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.deref()[4..12].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn window_size_and_checksum_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.deref()[14..18].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_urgent_pointer_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.deref()[16..20].try_into().unwrap())
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.deref()[12] >> 4) * 4
+    }
+}
+impl<T: core::ops::DerefMut<Target = [u8; 20]>> TcpFields<T> {
+    #[inline]
+    pub fn set_src_port(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_dst_port(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_seq_num(&mut self, value: u32) {
+        (&mut self.buf.deref_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_ack_num(&mut self, value: u32) {
+        (&mut self.buf.deref_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_reserved(&mut self, value: u8) {
+        assert!(value <= 0xf);
+        self.buf.deref_mut()[12] = (self.buf.deref_mut()[12] & 0xf0) | value;
+    }
+    #[inline]
+    pub fn set_cwr(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0x7f) | (value << 7);
+    }
+    #[inline]
+    pub fn set_ece(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xbf) | (value << 6);
+    }
+    #[inline]
+    pub fn set_urg(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xdf) | (value << 5);
+    }
+    #[inline]
+    pub fn set_ack(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xef) | (value << 4);
+    }
+    #[inline]
+    pub fn set_psh(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xf7) | (value << 3);
+    }
+    #[inline]
+    pub fn set_rst(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfb) | (value << 2);
+    }
+    #[inline]
+    pub fn set_syn(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfd) | (value << 1);
+    }
+    #[inline]
+    pub fn set_fin(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfe) | value;
+    }
+    #[inline]
+    pub fn set_window_size(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[14..16]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_checksum(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[16..18]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_urgent_pointer(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[18..20]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
+        let value = ((src_port as u32) << 16) | (dst_port as u32);
+        self.buf.deref_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_seq_num_and_ack_num(&mut self, seq_num: u32, ack_num: u32) {
+        let value = ((seq_num as u64) << 32) | (ack_num as u64);
+        self.buf.deref_mut()[4..12].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_window_size_and_checksum(&mut self, window_size: u16, checksum: u16) {
+        let value = ((window_size as u32) << 16) | (checksum as u32);
+        self.buf.deref_mut()[14..18].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_urgent_pointer(&mut self, checksum: u16, urgent_pointer: u16) {
+        let value = ((checksum as u32) << 16) | (urgent_pointer as u32);
+        self.buf.deref_mut()[16..20].copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> Tcp<Cursor<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts(
+        bytes: &'a [u8],
+    ) -> Result<(TcpFields<&'a [u8; 20]>, &'a [u8], &'a [u8]), &'a [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Tcp::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = _p.header_len() as usize;
+            (h, bytes.len())
+        };
+        let (packet, _) = bytes.split_at(end);
+        let (header, payload) = packet.split_at(h);
+        let (fixed, options) = header.split_at(20);
+        Ok((
+            TcpFields::from_header(<&[u8; 20]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
+impl<'a> Tcp<CursorMut<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts_mut(
+        bytes: &'a mut [u8],
+    ) -> Result<(TcpFields<&'a mut [u8; 20]>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Tcp::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = _p.header_len() as usize;
+            (h, bytes.len())
+        };
+        let (packet, _) = bytes.split_at_mut(end);
+        let (header, payload) = packet.split_at_mut(h);
+        let (fixed, options) = header.split_at_mut(20);
+        Ok((
+            TcpFields::from_header(<&mut [u8; 20]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
 impl<T: Buf> Tcp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
@@ -115,6 +370,26 @@ impl<T: Buf> Tcp<T> {
     #[inline]
     pub fn urgent_pointer(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[18..20]).try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_port_and_dst_port_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[0..4].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn seq_num_and_ack_num_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[4..12].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn window_size_and_checksum_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[14..18].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn checksum_and_urgent_pointer_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[16..20].try_into().unwrap())
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -216,6 +491,30 @@ impl<T: PktBufMut> Tcp<T> {
     #[inline]
     pub fn set_urgent_pointer(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[18..20]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
+        let value = ((src_port as u32) << 16) | (dst_port as u32);
+        self.buf.chunk_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_seq_num_and_ack_num(&mut self, seq_num: u32, ack_num: u32) {
+        let value = ((seq_num as u64) << 32) | (ack_num as u64);
+        self.buf.chunk_mut()[4..12].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_window_size_and_checksum(&mut self, window_size: u16, checksum: u16) {
+        let value = ((window_size as u32) << 16) | (checksum as u32);
+        self.buf.chunk_mut()[14..18].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_checksum_and_urgent_pointer(&mut self, checksum: u16, urgent_pointer: u16) {
+        let value = ((checksum as u32) << 16) | (urgent_pointer as u32);
+        self.buf.chunk_mut()[16..20].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {
@@ -1111,6 +1410,11 @@ impl<T: Buf> Timestamp<T> {
     pub fn ts_echo(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[6..10]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn ts_and_ts_echo_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[2..10].try_into().unwrap())
+    }
     #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.chunk()[1])
@@ -1146,6 +1450,12 @@ impl<T: PktBufMut> Timestamp<T> {
     #[inline]
     pub fn set_ts_echo(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[6..10]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_ts_and_ts_echo(&mut self, ts: u32, ts_echo: u32) {
+        let value = ((ts as u64) << 32) | (ts_echo as u64);
+        self.buf.chunk_mut()[2..10].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {

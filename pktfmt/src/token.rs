@@ -79,6 +79,7 @@ pub enum Token<'input> {
 
     // group sub-fields
     EnableIter,
+    EnableParts,
     Members,
 
     // Identifiers
@@ -147,6 +148,7 @@ const KEYWORDS: &[(&str, Token)] = &[
     ("packet_len", Token::PacketLen),
     ("cond", Token::Cond),
     ("enable_iter", Token::EnableIter),
+    ("enable_parts", Token::EnableParts),
     ("members", Token::Members),
 ];
 

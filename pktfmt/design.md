@@ -1,5 +1,36 @@
 # Design of pktfmt script language
 
+## Checked disjoint views and packed fields
+
+`packet` definitions can opt into `enable_parts = true` after `enable_iter`
+(if present). Ethernet, IPv4, UDP and TCP use it. The compiler then emits
+`NameFields<T>` and `Name::parse_parts` / `parse_parts_mut`, returning fixed
+fields, variable header bytes and payload. Fixed fields borrow `[u8; N]`, not
+a dynamically sized slice; the checked parser establishes the bound once.
+Mutable parts are disjoint and can be used simultaneously. Packet padding is
+excluded. Length getters remain available, but length setters are deliberately
+absent: changing a field cannot resize existing disjoint borrows. `from_header`
+accepts an exact-size array and only establishes storage size, not semantic
+validity. `into_inner` releases the view. No unchecked indexing is generated.
+
+Parts parsing uses the existing contiguous parser's structural length checks.
+It does **not** add checks for version, protocol selectors, fragments, TTL or
+checksums; those remain the application's responsibility. On error it returns
+the original slice, unmodified. The generated `NameFields` name is reserved
+within the input definition when this option is enabled.
+
+For adjacent, byte-aligned, unrestricted built-in integer fields whose total
+width is 16, 32 or 64 bits, generated views also offer
+`a_and_b_bits()` and `set_a_and_b(a, b)`. The packed getter places `a` in the
+high bits (network byte order); the setter preserves every other field. Fixed
+defaults, bitfields, custom conversion types, `gen=false` fields and name
+collisions do not get these methods. Existing scalar methods are unchanged.
+The compiler may share a two-byte load between a boolean flag and a neighboring
+multi-byte field, allowing a combined fragment-mask test after inlining.
+
+These are code-generation opportunities, not a throughput guarantee. Consult
+the NAT workload and measurements under `benches/` before selecting an API.
+
 ```json
 packet {
     header = [

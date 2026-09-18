@@ -33,7 +33,8 @@ packet Tcp {
     ],
     length = [
         header_len =data_off*4,
-    ]
+    ],
+    enable_parts = true,
 }
 
 packet Eol {

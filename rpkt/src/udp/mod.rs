@@ -31,4 +31,4 @@
 //! ```
 
 mod generated;
-pub use generated::{Udp, UDP_HEADER_LEN, UDP_HEADER_TEMPLATE};
+pub use generated::{Udp, UdpFields, UDP_HEADER_LEN, UDP_HEADER_TEMPLATE};

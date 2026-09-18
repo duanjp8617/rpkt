@@ -43,7 +43,7 @@ impl<T: Buf> Vxlan<T> {
     }
     #[inline]
     pub fn gbp_extention(&self) -> bool {
-        self.buf.chunk()[0] & 0x80 != 0
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 32768 != 0
     }
     #[inline]
     pub fn reserved_0(&self) -> u8 {
@@ -51,7 +51,7 @@ impl<T: Buf> Vxlan<T> {
     }
     #[inline]
     pub fn vni_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x8 != 0
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 2048 != 0
     }
     #[inline]
     pub fn reserved_1(&self) -> u8 {

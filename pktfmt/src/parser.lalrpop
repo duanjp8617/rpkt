@@ -59,6 +59,7 @@ extern {
         // group sub-fields
         "members" => Token::Members,
         "enable_iter" => Token::EnableIter,
+        "enable_parts" => Token::EnableParts,
 
         // identifiers
         "ident" => Token::Ident(<&'input str>),
@@ -349,12 +350,15 @@ EnableIter: (bool, (usize, usize)) = {
       (b, (l, r))
 }
 
+EnableParts: bool = { "enable_parts" "=" <b: Bool> => b }
+
 pub Packet: Packet = {
     "packet" <name: "ident"> "{"
         <header: Header>
         <length_fields_with_pos_opt: ("," <LengthFieldList>)?>
         <cond_field_with_pos_opt: ("," <CondFieldList>)?>
         <enable_iter_opt: ("," <EnableIter>)?>
+        <enable_parts_opt: ("," <EnableParts>)?>
         ","?
     "}" =>? {
         let (length_fields, span) = length_fields_with_pos_opt.unwrap_or(
@@ -390,7 +394,7 @@ pub Packet: Packet = {
             }
         };
 
-        let pkt = Packet::new(name, header, length, cond_opt, enable_iter);
+        let pkt = Packet::new(name, header, length, cond_opt, enable_iter, enable_parts_opt.unwrap_or(false));
         Ok(pkt)
     }
 }

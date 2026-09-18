@@ -18,6 +18,200 @@ pub const IPV4_HEADER_TEMPLATE: [u8; 20] = [
 pub struct Ipv4<T> {
     buf: T,
 }
+/// Fixed header fields only; no payload or cursor operations.
+/// Construct through the checked parts parser or an exact-size array.
+#[derive(Debug)]
+pub struct Ipv4Fields<T> {
+    buf: T,
+}
+impl<T: core::ops::Deref<Target = [u8; 20]>> Ipv4Fields<T> {
+    #[inline]
+    pub fn from_header(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn version(&self) -> u8 {
+        self.buf.deref()[0] >> 4
+    }
+    #[inline]
+    pub fn dscp(&self) -> u8 {
+        self.buf.deref()[1] >> 2
+    }
+    #[inline]
+    pub fn ecn(&self) -> u8 {
+        self.buf.deref()[1] & 0x3
+    }
+    #[inline]
+    pub fn ident(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[4..6]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn flag_reserved(&self) -> u8 {
+        self.buf.deref()[6] >> 7
+    }
+    #[inline]
+    pub fn dont_frag(&self) -> bool {
+        u16::from_be_bytes(self.buf.deref()[6..8].try_into().unwrap()) & 16384 != 0
+    }
+    #[inline]
+    pub fn more_frag(&self) -> bool {
+        u16::from_be_bytes(self.buf.deref()[6..8].try_into().unwrap()) & 8192 != 0
+    }
+    #[inline]
+    pub fn frag_offset(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[6..8]).try_into().unwrap()) & 0x1fff
+    }
+    #[inline]
+    pub fn ttl(&self) -> u8 {
+        self.buf.deref()[8]
+    }
+    #[inline]
+    pub fn protocol(&self) -> IpProtocol {
+        IpProtocol::from(self.buf.deref()[9])
+    }
+    #[inline]
+    pub fn checksum(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[10..12]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn src_addr(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.deref()[12..16]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
+    pub fn dst_addr(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.deref()[16..20]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
+    pub fn header_len(&self) -> u8 {
+        (self.buf.deref()[0] & 0xf) * 4
+    }
+    #[inline]
+    pub fn packet_len(&self) -> u16 {
+        (u16::from_be_bytes((&self.buf.deref()[2..4]).try_into().unwrap()))
+    }
+}
+impl<T: core::ops::DerefMut<Target = [u8; 20]>> Ipv4Fields<T> {
+    #[inline]
+    pub fn set_version(&mut self, value: u8) {
+        assert!(value == 4);
+        self.buf.deref_mut()[0] = (self.buf.deref_mut()[0] & 0x0f) | (value << 4);
+    }
+    #[inline]
+    pub fn set_dscp(&mut self, value: u8) {
+        assert!(value <= 0x3f);
+        self.buf.deref_mut()[1] = (self.buf.deref_mut()[1] & 0x03) | (value << 2);
+    }
+    #[inline]
+    pub fn set_ecn(&mut self, value: u8) {
+        assert!(value <= 0x3);
+        self.buf.deref_mut()[1] = (self.buf.deref_mut()[1] & 0xfc) | value;
+    }
+    #[inline]
+    pub fn set_ident(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[4..6]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_flag_reserved(&mut self, value: u8) {
+        assert!(value <= 0x1);
+        self.buf.deref_mut()[6] = (self.buf.deref_mut()[6] & 0x7f) | (value << 7);
+    }
+    #[inline]
+    pub fn set_dont_frag(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[6] = (self.buf.deref_mut()[6] & 0xbf) | (value << 6);
+    }
+    #[inline]
+    pub fn set_more_frag(&mut self, value: bool) {
+        let value = if value { 1 } else { 0 };
+        self.buf.deref_mut()[6] = (self.buf.deref_mut()[6] & 0xdf) | (value << 5);
+    }
+    #[inline]
+    pub fn set_frag_offset(&mut self, value: u16) {
+        assert!(value <= 0x1fff);
+        let write_value = value | (((self.buf.deref_mut()[6] & 0xe0) as u16) << 8);
+        (&mut self.buf.deref_mut()[6..8]).copy_from_slice(&write_value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_ttl(&mut self, value: u8) {
+        self.buf.deref_mut()[8] = value;
+    }
+    #[inline]
+    pub fn set_protocol(&mut self, value: IpProtocol) {
+        self.buf.deref_mut()[9] = u8::from(value);
+    }
+    #[inline]
+    pub fn set_checksum(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[10..12]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_src_addr(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.deref_mut()[12..16]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
+    pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.deref_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+}
+impl<'a> Ipv4<Cursor<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts(
+        bytes: &'a [u8],
+    ) -> Result<(Ipv4Fields<&'a [u8; 20]>, &'a [u8], &'a [u8]), &'a [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Ipv4::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = _p.header_len() as usize;
+            (h, _p.packet_len() as usize)
+        };
+        let (packet, _) = bytes.split_at(end);
+        let (header, payload) = packet.split_at(h);
+        let (fixed, options) = header.split_at(20);
+        Ok((
+            Ipv4Fields::from_header(<&[u8; 20]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
+impl<'a> Ipv4<CursorMut<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts_mut(
+        bytes: &'a mut [u8],
+    ) -> Result<(Ipv4Fields<&'a mut [u8; 20]>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Ipv4::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = _p.header_len() as usize;
+            (h, _p.packet_len() as usize)
+        };
+        let (packet, _) = bytes.split_at_mut(end);
+        let (header, payload) = packet.split_at_mut(h);
+        let (fixed, options) = header.split_at_mut(20);
+        Ok((
+            Ipv4Fields::from_header(<&mut [u8; 20]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
 impl<T: Buf> Ipv4<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
@@ -80,11 +274,11 @@ impl<T: Buf> Ipv4<T> {
     }
     #[inline]
     pub fn dont_frag(&self) -> bool {
-        self.buf.chunk()[6] & 0x40 != 0
+        u16::from_be_bytes(self.buf.chunk()[6..8].try_into().unwrap()) & 16384 != 0
     }
     #[inline]
     pub fn more_frag(&self) -> bool {
-        self.buf.chunk()[6] & 0x20 != 0
+        u16::from_be_bytes(self.buf.chunk()[6..8].try_into().unwrap()) & 8192 != 0
     }
     #[inline]
     pub fn frag_offset(&self) -> u16 {
@@ -101,6 +295,18 @@ impl<T: Buf> Ipv4<T> {
     #[inline]
     pub fn checksum(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[10..12]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn src_addr(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[12..16]).try_into().unwrap(),
+        ))
+    }
+    #[inline]
+    pub fn dst_addr(&self) -> Ipv4Addr {
+        Ipv4Addr::from(u32::from_be_bytes(
+            (&self.buf.chunk()[16..20]).try_into().unwrap(),
+        ))
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
@@ -196,6 +402,14 @@ impl<T: PktBufMut> Ipv4<T> {
         (&mut self.buf.chunk_mut()[10..12]).copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
+    pub fn set_src_addr(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
+    pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
+        (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    #[inline]
     pub fn set_header_len(&mut self, value: u8) {
         assert!((value <= 60) && (value % 4 == 0));
         self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | (value / 4);
@@ -263,37 +477,6 @@ impl<'a> Ipv4<CursorMut<'a>> {
         Self {
             buf: CursorMut::new(header_array.as_mut_slice()),
         }
-    }
-}
-
-impl<T: Buf> Ipv4<T> {
-    #[inline]
-    pub fn src_addr(&self) -> Ipv4Addr {
-        Ipv4Addr::new(
-            self.buf.chunk()[12],
-            self.buf.chunk()[13],
-            self.buf.chunk()[14],
-            self.buf.chunk()[15],
-        )
-    }
-    #[inline]
-    pub fn dst_addr(&self) -> Ipv4Addr {
-        Ipv4Addr::new(
-            self.buf.chunk()[16],
-            self.buf.chunk()[17],
-            self.buf.chunk()[18],
-            self.buf.chunk()[19],
-        )
-    }
-}
-impl<T: PktBufMut> Ipv4<T> {
-    #[inline]
-    pub fn set_src_addr(&mut self, value: Ipv4Addr) {
-        (&mut self.buf.chunk_mut()[12..16]).copy_from_slice(&value.octets());
-    }
-    #[inline]
-    pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
-        (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&value.octets());
     }
 }
 

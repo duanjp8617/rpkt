@@ -14,6 +14,115 @@ pub const UDP_HEADER_TEMPLATE: [u8; 8] = [0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x
 pub struct Udp<T> {
     buf: T,
 }
+/// Fixed header fields only; no payload or cursor operations.
+/// Construct through the checked parts parser or an exact-size array.
+#[derive(Debug)]
+pub struct UdpFields<T> {
+    buf: T,
+}
+impl<T: core::ops::Deref<Target = [u8; 8]>> UdpFields<T> {
+    #[inline]
+    pub fn from_header(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn src_port(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[0..2]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn dst_port(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[2..4]).try_into().unwrap())
+    }
+    #[inline]
+    pub fn checksum(&self) -> u16 {
+        u16::from_be_bytes((&self.buf.deref()[6..8]).try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_port_and_dst_port_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.deref()[0..4].try_into().unwrap())
+    }
+    #[inline]
+    pub fn packet_len(&self) -> u16 {
+        (u16::from_be_bytes((&self.buf.deref()[4..6]).try_into().unwrap()))
+    }
+}
+impl<T: core::ops::DerefMut<Target = [u8; 8]>> UdpFields<T> {
+    #[inline]
+    pub fn set_src_port(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_dst_port(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+    }
+    #[inline]
+    pub fn set_checksum(&mut self, value: u16) {
+        (&mut self.buf.deref_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
+        let value = ((src_port as u32) << 16) | (dst_port as u32);
+        self.buf.deref_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+    }
+}
+impl<'a> Udp<Cursor<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts(
+        bytes: &'a [u8],
+    ) -> Result<(UdpFields<&'a [u8; 8]>, &'a [u8], &'a [u8]), &'a [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Udp::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = 8;
+            (h, _p.packet_len() as usize)
+        };
+        let (packet, _) = bytes.split_at(end);
+        let (header, payload) = packet.split_at(h);
+        let (fixed, options) = header.split_at(8);
+        Ok((
+            UdpFields::from_header(<&[u8; 8]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
+impl<'a> Udp<CursorMut<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts_mut(
+        bytes: &'a mut [u8],
+    ) -> Result<(UdpFields<&'a mut [u8; 8]>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
+        let (h, end) = {
+            let Ok(_p) = Udp::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = 8;
+            (h, _p.packet_len() as usize)
+        };
+        let (packet, _) = bytes.split_at_mut(end);
+        let (header, payload) = packet.split_at_mut(h);
+        let (fixed, options) = header.split_at_mut(8);
+        Ok((
+            UdpFields::from_header(<&mut [u8; 8]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
 impl<T: Buf> Udp<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {
@@ -56,6 +165,11 @@ impl<T: Buf> Udp<T> {
     pub fn checksum(&self) -> u16 {
         u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_port_and_dst_port_bits(&self) -> u32 {
+        u32::from_be_bytes(self.buf.chunk()[0..4].try_into().unwrap())
+    }
     #[inline]
     pub fn packet_len(&self) -> u16 {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
@@ -97,6 +211,12 @@ impl<T: PktBufMut> Udp<T> {
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
         (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
+        let value = ((src_port as u32) << 16) | (dst_port as u32);
+        self.buf.chunk_mut()[0..4].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_packet_len(&mut self, value: u16) {

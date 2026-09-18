@@ -17,6 +17,109 @@ pub const ETHER_FRAME_HEADER_TEMPLATE: [u8; 14] = [
 pub struct EtherFrame<T> {
     buf: T,
 }
+/// Fixed header fields only; no payload or cursor operations.
+/// Construct through the checked parts parser or an exact-size array.
+#[derive(Debug)]
+pub struct EtherFrameFields<T> {
+    buf: T,
+}
+impl<T: core::ops::Deref<Target = [u8; 14]>> EtherFrameFields<T> {
+    #[inline]
+    pub fn from_header(buf: T) -> Self {
+        Self { buf }
+    }
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.buf
+    }
+    #[inline]
+    pub fn dst_addr(&self) -> EtherAddr {
+        EtherAddr::from_bytes(&self.buf.deref()[0..6])
+    }
+    #[inline]
+    pub fn src_addr(&self) -> EtherAddr {
+        EtherAddr::from_bytes(&self.buf.deref()[6..12])
+    }
+    #[inline]
+    pub fn ethertype(&self) -> EtherType {
+        EtherType::from(u16::from_be_bytes(
+            (&self.buf.deref()[12..14]).try_into().unwrap(),
+        ))
+    }
+}
+impl<T: core::ops::DerefMut<Target = [u8; 14]>> EtherFrameFields<T> {
+    #[inline]
+    pub fn set_dst_addr(&mut self, value: EtherAddr) {
+        (&mut self.buf.deref_mut()[0..6]).copy_from_slice(value.as_bytes());
+    }
+    #[inline]
+    pub fn set_src_addr(&mut self, value: EtherAddr) {
+        (&mut self.buf.deref_mut()[6..12]).copy_from_slice(value.as_bytes());
+    }
+    #[inline]
+    pub fn set_ethertype(&mut self, value: EtherType) {
+        (&mut self.buf.deref_mut()[12..14]).copy_from_slice(&u16::from(value).to_be_bytes());
+    }
+}
+impl<'a> EtherFrame<Cursor<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts(
+        bytes: &'a [u8],
+    ) -> Result<(EtherFrameFields<&'a [u8; 14]>, &'a [u8], &'a [u8]), &'a [u8]> {
+        let (h, end) = {
+            let Ok(_p) = EtherFrame::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = 14;
+            (h, bytes.len())
+        };
+        let (packet, _) = bytes.split_at(end);
+        let (header, payload) = packet.split_at(h);
+        let (fixed, options) = header.split_at(14);
+        Ok((
+            EtherFrameFields::from_header(<&[u8; 14]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
+impl<'a> EtherFrame<CursorMut<'a>> {
+    /// Check the same structural lengths as the cursor parser, then split
+    /// fixed fields, variable header bytes and payload into disjoint views.
+    /// Excludes trailing packet padding. Does not verify protocol selectors
+    /// or checksums. Error returns the original bytes without modifying them.
+    #[inline]
+    pub fn parse_parts_mut(
+        bytes: &'a mut [u8],
+    ) -> Result<
+        (
+            EtherFrameFields<&'a mut [u8; 14]>,
+            &'a mut [u8],
+            &'a mut [u8],
+        ),
+        &'a mut [u8],
+    > {
+        let (h, end) = {
+            let Ok(_p) = EtherFrame::parse_from_cursor(Cursor::new(&*bytes)) else {
+                return Err(bytes);
+            };
+            let h = 14;
+            (h, bytes.len())
+        };
+        let (packet, _) = bytes.split_at_mut(end);
+        let (header, payload) = packet.split_at_mut(h);
+        let (fixed, options) = header.split_at_mut(14);
+        Ok((
+            EtherFrameFields::from_header(<&mut [u8; 14]>::try_from(fixed).unwrap()),
+            options,
+            payload,
+        ))
+    }
+}
 impl<T: Buf> EtherFrame<T> {
     #[inline]
     pub fn parse_unchecked(buf: T) -> Self {

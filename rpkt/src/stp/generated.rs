@@ -1323,6 +1323,16 @@ impl<T: Buf> MstiConf<T> {
     pub fn remaining_hops(&self) -> u8 {
         self.buf.chunk()[15]
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn bridge_priority_and_port_priority_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[13..15].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn port_priority_and_remaining_hops_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[14..16].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> MstiConf<T> {
     #[inline]
@@ -1369,6 +1379,22 @@ impl<T: PktBufMut> MstiConf<T> {
     #[inline]
     pub fn set_remaining_hops(&mut self, value: u8) {
         self.buf.chunk_mut()[15] = value;
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_bridge_priority_and_port_priority(
+        &mut self,
+        bridge_priority: u8,
+        port_priority: u8,
+    ) {
+        let value = ((bridge_priority as u16) << 8) | (port_priority as u16);
+        self.buf.chunk_mut()[13..15].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_port_priority_and_remaining_hops(&mut self, port_priority: u8, remaining_hops: u8) {
+        let value = ((port_priority as u16) << 8) | (remaining_hops as u16);
+        self.buf.chunk_mut()[14..16].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> MstiConf<Cursor<'a>> {

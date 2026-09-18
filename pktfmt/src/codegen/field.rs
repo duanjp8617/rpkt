@@ -26,9 +26,90 @@ impl<'a> FieldGenerator<'a> {
                     );
                 }
                 None => {
-                    FieldGetMethod::new(field, start).code_gen(field_name, target_slice, output)
+                    // A one-bit flag can share a storage word with a neighboring
+                    // multi-byte field (e.g. IPv4 MF and fragment offset). Using
+                    // the same load width lets LLVM fuse their masks/checks.
+                    let shared_word = field.gen
+                        && field.bit == 1
+                        && field.arg == Arg::BuiltinTypes(BuiltinTypes::Bool)
+                        && self.header.field_iter().any(|(_, other, pos)| {
+                            pos.byte_pos() == start.byte_pos()
+                                && pos.next_pos(other.bit).byte_pos() == start.byte_pos() + 1
+                        });
+                    if shared_word {
+                        let byte = start.byte_pos();
+                        let end = byte + 2;
+                        let mask = 1u16 << (15 - start.bit_pos());
+                        writeln!(output, "#[inline]\npub fn {field_name}(&self) -> bool {{\n\
+                            u16::from_be_bytes({target_slice}[{byte}..{end}].try_into().unwrap()) & {mask} != 0\n}}").unwrap();
+                    } else {
+                        FieldGetMethod::new(field, start).code_gen(field_name, target_slice, output)
+                    }
                 }
             }
+        }
+        self.pair_methods(target_slice, write_value.is_some(), output);
+    }
+
+    // Only whole, adjacent, unrestricted integer fields are eligible. No
+    // unrelated bits may be overwritten and no scalar range guard is omitted.
+    fn pair_methods(&self, target: &str, setter: bool, out: &mut dyn Write) {
+        let fields: Vec<_> = self.header.field_iter().collect();
+        let mut emitted = std::collections::HashSet::new();
+        for pair in fields.windows(2) {
+            let (a, fa, sa) = pair[0];
+            let (b, fb, sb) = pair[1];
+            let eligible = |f: &Field| {
+                f.gen
+                    && !f.default_fix
+                    && f.arg == Arg::BuiltinTypes(f.repr)
+                    && matches!(
+                        (f.bit, f.repr),
+                        (8, BuiltinTypes::U8) | (16, BuiltinTypes::U16) | (32, BuiltinTypes::U32)
+                    )
+            };
+            let bits = fa.bit + fb.bit;
+            if !eligible(fa)
+                || !eligible(fb)
+                || sa.bit_pos() != 0
+                || sb.bit_pos() != 0
+                || !matches!(bits, 16 | 32 | 64)
+            {
+                continue;
+            }
+            let ty = endian_rw_type(bits / 8).to_string();
+            let suffix = format!(
+                "{}_and_{}",
+                a.trim_end_matches('_'),
+                b.trim_start_matches('_')
+            );
+            let method_suffix = if setter {
+                suffix.clone()
+            } else {
+                format!("{suffix}_bits")
+            };
+            if self.header.field(&method_suffix).is_some() || !emitted.insert(method_suffix) {
+                continue;
+            }
+            let start = sa.byte_pos();
+            let end = start + bits / 8;
+            if !setter {
+                writeln!(out, "/// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.\n\
+                    #[inline]\npub fn {suffix}_bits(&self) -> {ty} {{\n\
+                    {ty}::from_be_bytes({target}[{start}..{end}].try_into().unwrap())\n}}").unwrap();
+                continue;
+            }
+            writeln!(
+                out,
+                "/// Set two adjacent fields with one network-order store.\n\
+                #[inline]\npub fn set_{suffix}(&mut self, {a}: {}, {b}: {}) {{\n\
+                let value = (({a} as {ty}) << {}) | ({b} as {ty});\n\
+                {target}[{start}..{end}].copy_from_slice(&value.to_be_bytes());\n}}",
+                fa.arg.to_string(),
+                fb.arg.to_string(),
+                fb.bit
+            )
+            .unwrap();
         }
     }
 }
