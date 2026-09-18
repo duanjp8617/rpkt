@@ -2,5 +2,8 @@ target/*
 
 rpkt-dpdk/.dpdk_install
 
-Cargo.lock
+# The workspace lockfile is tracked for reproducible tests and benchmarks.
+fuzz/Cargo.lock
+bench-results/
+/bench-results-*/
 rustfmt.toml

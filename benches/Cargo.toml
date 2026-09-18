@@ -16,6 +16,11 @@ pnet = "0.35"
 rpkt = {path = "../rpkt", package = "rpkt"}
 
 [[bench]]
+name = "matrix"
+path = "matrix.rs"
+harness = false
+
+[[bench]]
 name = "smol_parse"
 path = "smol/smol_parse.rs"
 harness = false

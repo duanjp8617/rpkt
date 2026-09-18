@@ -42,6 +42,8 @@ jobs:
         run: cargo clippy --package rpkt --package pktfmt --all-targets
       - name: Check generated protocols
         run: bash gen_cmds.sh --check
+      - name: Compile benchmark matrix
+        run: cargo check --locked -p benches --bench matrix
 
   supported-rust:
     name: Rust 1.98 compatibility
