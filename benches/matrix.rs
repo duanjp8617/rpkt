@@ -1,6 +1,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rpkt::{checksum, ether::*, ipv4::*, udp::*, Buf, Cursor, CursorMut};
 use std::{hint::black_box, time::Duration};
+#[cfg(feature = "batch")]
+mod batch_matrix;
 #[path = "../rpkt/tests/support/template_reference.rs"]
 mod template_reference;
 
@@ -158,6 +160,8 @@ fn dataset(len: usize, count: usize, align: usize, mixed: bool) -> Vec<Vec<u8>> 
 }
 
 fn matrix(c: &mut Criterion) {
+    #[cfg(feature = "batch")]
+    batch_matrix::run(c);
     let flow = template_reference::flow();
     let template = rpkt::template::UdpIpv4Template::new(flow);
     for size in [64, 128, 512, 1500, 9000] {

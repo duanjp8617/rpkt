@@ -9,7 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-rpkt = { path = "../rpkt" }
+rpkt = { path = "../rpkt", features = ["batch"] }
 
 [[bin]]
 name = "checked_packets"

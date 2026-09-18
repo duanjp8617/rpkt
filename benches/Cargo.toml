@@ -10,6 +10,7 @@ license.workspace = true
 
 [features]
 simd = ["rpkt/simd"]
+batch = ["rpkt/batch"]
 
 [dev-dependencies]
 criterion = "0.5"

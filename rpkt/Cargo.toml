@@ -16,6 +16,7 @@ license.workspace = true
 default = ["std"]
 std = ["bytes/std"]
 simd = []
+batch = []
 
 [dependencies]
 bytes = { version = "1", default-features = false }
