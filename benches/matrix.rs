@@ -156,6 +156,30 @@ fn dataset(len: usize, count: usize, align: usize, mixed: bool) -> Vec<Vec<u8>> 
 }
 
 fn matrix(c: &mut Criterion) {
+    let mut update = c.benchmark_group("forward_checksum");
+    let mut header = IPV4_HEADER_TEMPLATE;
+    header[8] = 64;
+    header[9] = 17;
+    let old = !checksum::from_slice(&header);
+    let mut changed = header;
+    changed[8] = 63;
+    assert_eq!(
+        checksum::replace_word(old, 0x4011, 0x3f11),
+        !checksum::from_slice(&changed)
+    );
+    update.bench_function("incremental_ttl", |b| {
+        b.iter(|| {
+            black_box(checksum::replace_word(
+                black_box(old),
+                black_box(0x4011),
+                black_box(0x3f11),
+            ))
+        })
+    });
+    update.bench_function("full_ipv4_header", |b| {
+        b.iter(|| black_box(!checksum::from_slice(black_box(&changed))))
+    });
+    update.finish();
     let mut sums = c.benchmark_group("checksum_bytes");
     for len in [
         0, 1, 15, 16, 17, 31, 32, 33, 63, 64, 65, 128, 512, 1500, 9000,
