@@ -1,6 +1,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use rpkt::{checksum, ether::*, ipv4::*, udp::*, Buf, Cursor, CursorMut};
 use std::{hint::black_box, time::Duration};
+#[path = "../rpkt/tests/support/template_reference.rs"]
+mod template_reference;
 
 type Flow = ([u8; 4], [u8; 4], u16, u16);
 
@@ -156,6 +158,39 @@ fn dataset(len: usize, count: usize, align: usize, mixed: bool) -> Vec<Vec<u8>> 
 }
 
 fn matrix(c: &mut Criterion) {
+    let flow = template_reference::flow();
+    let template = rpkt::template::UdpIpv4Template::new(flow);
+    for size in [64, 128, 512, 1500, 9000] {
+        let payload = vec![0xa5; size - 42];
+        let mut prepared = vec![0; size];
+        let mut ordinary = vec![0; size];
+        template.write(&mut prepared, &payload, 7).unwrap();
+        template_reference::ordinary(&mut ordinary, &payload, 7, flow);
+        assert_eq!(prepared, ordinary);
+        let mut group = c.benchmark_group(format!("prepared_build/{size}"));
+        group.throughput(Throughput::Elements(1));
+        let mut ident = 0u16;
+        group.bench_function("template", |b| {
+            b.iter(|| {
+                black_box(template.write(black_box(&mut prepared), black_box(&payload), ident));
+                ident = ident.wrapping_add(1);
+                black_box(&prepared);
+            })
+        });
+        group.bench_function("general", |b| {
+            b.iter(|| {
+                template_reference::ordinary(
+                    black_box(&mut ordinary),
+                    black_box(&payload),
+                    ident,
+                    flow,
+                );
+                ident = ident.wrapping_add(1);
+                black_box(&ordinary);
+            })
+        });
+        group.finish();
+    }
     let mut update = c.benchmark_group("forward_checksum");
     let mut header = IPV4_HEADER_TEMPLATE;
     header[8] = 64;
