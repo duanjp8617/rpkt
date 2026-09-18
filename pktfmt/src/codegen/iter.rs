@@ -76,7 +76,7 @@ pub fn iter_mut_parse_for_pkt(pkt: &Packet, pkt_var: &str, output: &mut dyn Writ
             format!("header_len")
         }
     };
-    write!(output, "let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut({header_len_var});\n").unwrap();
+    write!(output, "let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut({header_len_var});\n").unwrap();
     write!(output, "self.buf = snd;\n").unwrap();
     write!(
         output,

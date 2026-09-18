@@ -1743,7 +1743,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
         match cond_value0 {
             0 => match Eol::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
                     let result = Eol {
                         buf: CursorMut::new(fst),
@@ -1754,7 +1754,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
             },
             1 => match Nop::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
                     let result = Nop {
                         buf: CursorMut::new(fst),
@@ -1767,7 +1767,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = Timestamp {
                         buf: CursorMut::new(fst),
@@ -1780,7 +1780,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = RecordRoute {
                         buf: CursorMut::new(fst),
@@ -1793,7 +1793,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = RouteAlert {
                         buf: CursorMut::new(fst),
@@ -1806,7 +1806,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = CommercialSecurity {
                         buf: CursorMut::new(fst),
@@ -1819,7 +1819,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = StrictSourceRoute {
                         buf: CursorMut::new(fst),
@@ -1832,7 +1832,7 @@ impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = LooseSourceRoute {
                         buf: CursorMut::new(fst),

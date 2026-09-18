@@ -3662,7 +3662,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
         match cond_value0 {
             1 => match CauseIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
                     self.buf = snd;
                     let result = CauseIE {
                         buf: CursorMut::new(fst),
@@ -3673,7 +3673,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             14 => match RecoveryIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(2);
                     self.buf = snd;
                     let result = RecoveryIE {
                         buf: CursorMut::new(fst),
@@ -3684,7 +3684,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             16 => match TunnelEndpointIdentData1IE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = TunnelEndpointIdentData1IE {
                         buf: CursorMut::new(fst),
@@ -3695,7 +3695,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             17 => match TunnelEndpointIdentControlPlaneIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = TunnelEndpointIdentControlPlaneIE {
                         buf: CursorMut::new(fst),
@@ -3708,7 +3708,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = ExtHeaderTypeListIE {
                         buf: CursorMut::new(fst),
@@ -3721,7 +3721,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = GtpuPeerAddrIE {
                         buf: CursorMut::new(fst),
@@ -3734,7 +3734,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = PrivateExtentionIE {
                         buf: CursorMut::new(fst),
@@ -3745,7 +3745,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             231 => match RecoveryTimeStampIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
                     self.buf = snd;
                     let result = RecoveryTimeStampIE {
                         buf: CursorMut::new(fst),
@@ -3756,7 +3756,7 @@ impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
             },
             230 => match GtpuTunnelStatusInfoIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(4);
                     self.buf = snd;
                     let result = GtpuTunnelStatusInfoIE {
                         buf: CursorMut::new(fst),

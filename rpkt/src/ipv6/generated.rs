@@ -2,7 +2,7 @@
 #![allow(unused_parens)]
 #![allow(unreachable_patterns)]
 
-use std::net::Ipv6Addr;
+use core::net::Ipv6Addr;
 
 use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
@@ -1639,7 +1639,7 @@ impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = Generic {
                         buf: CursorMut::new(fst),
@@ -1652,7 +1652,7 @@ impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = RouterAlert {
                         buf: CursorMut::new(fst),
@@ -1665,7 +1665,7 @@ impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = Padn {
                         buf: CursorMut::new(fst),
@@ -1676,7 +1676,7 @@ impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
             },
             0 => match Pad0::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(1);
                     self.buf = snd;
                     let result = Pad0 {
                         buf: CursorMut::new(fst),
