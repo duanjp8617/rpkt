@@ -95,6 +95,45 @@ pub fn combine(checksums: &[u16]) -> u16 {
         .fold(0, |sum, &word| fold(sum as u32 + word as u32))
 }
 
+/// Update a valid, complemented Internet checksum after replacing one network-
+/// order 16-bit word (RFC 1624, equation 3).
+///
+/// `old` and `new` are the numeric big-endian words, not native-endian memory
+/// loads. The original checksum must be valid; this does not validate input or
+/// complete a pending hardware offload. An IPv4 TTL decrement changes the whole
+/// TTL/protocol word. Address edits affect both the IP header and the transport
+/// pseudo-header. Apply the update separately to each covered checksum.
+///
+/// The result can be zero. Protocol-specific zero rules are the caller's job;
+/// use [`replace_udp_ipv4_word`] for IPv4 UDP's omitted-checksum convention.
+pub fn replace_word(checksum: u16, old: u16, new: u16) -> u16 {
+    !fold((!checksum) as u32 + (!old) as u32 + new as u32)
+}
+
+/// Replace a network-order 32-bit value, such as an IPv4 pseudo-header address.
+pub fn replace_u32(checksum: u16, old: u32, new: u32) -> u16 {
+    replace_word(
+        replace_word(checksum, (old >> 16) as u16, (new >> 16) as u16),
+        old as u16,
+        new as u16,
+    )
+}
+
+/// Update an IPv4 UDP checksum, preserving zero when checksumming was omitted
+/// and encoding a computed zero as `0xffff` (RFC 768).
+///
+/// The same valid-checksum precondition as [`replace_word`] applies. Do not use
+/// this for IPv6 UDP, where an omitted checksum is normally invalid.
+pub fn replace_udp_ipv4_word(checksum: u16, old: u16, new: u16) -> u16 {
+    if checksum == 0 {
+        return 0;
+    }
+    match replace_word(checksum, old, new) {
+        0 => 0xffff,
+        value => value,
+    }
+}
+
 fn fold(word: u32) -> u16 {
     let sum = (word >> 16) + (word & 0xffff);
     ((sum >> 16) + (sum & 0xffff)) as u16
