@@ -3787,7 +3787,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = UserLocationInfoIE {
                         buf: CursorMut::new(fst),
@@ -3800,7 +3800,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = InternationalMobileSubscriberIdIE {
                         buf: CursorMut::new(fst),
@@ -3811,7 +3811,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             83 => match ServingNetworkIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(7);
                     self.buf = snd;
                     let result = ServingNetworkIE {
                         buf: CursorMut::new(fst),
@@ -3822,7 +3822,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             82 => match RatTypeIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = RatTypeIE {
                         buf: CursorMut::new(fst),
@@ -3835,7 +3835,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = FullyQualifiedTeidIE {
                         buf: CursorMut::new(fst),
@@ -3846,7 +3846,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             72 => match AggregateMaxBitRateIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(12);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(12);
                     self.buf = snd;
                     let result = AggregateMaxBitRateIE {
                         buf: CursorMut::new(fst),
@@ -3859,7 +3859,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = MobileEquipmentIdIE {
                         buf: CursorMut::new(fst),
@@ -3870,7 +3870,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             114 => match UeTimeZoneIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(6);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(6);
                     self.buf = snd;
                     let result = UeTimeZoneIE {
                         buf: CursorMut::new(fst),
@@ -3883,7 +3883,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = BearerContextIE {
                         buf: CursorMut::new(fst),
@@ -3894,7 +3894,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
             },
             73 => match EpsBearerIdIE::parse(&self.buf[..]) {
                 Ok(_pkt) => {
-                    let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
+                    let (fst, snd) = core::mem::replace(&mut self.buf, &mut []).split_at_mut(5);
                     self.buf = snd;
                     let result = EpsBearerIdIE {
                         buf: CursorMut::new(fst),
@@ -3907,7 +3907,7 @@ impl<'a> Iterator for Gtpv2IEGroupIterMut<'a> {
                 Ok(_pkt) => {
                     let header_len = _pkt.header_len() as usize;
                     let (fst, snd) =
-                        std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                        core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                     self.buf = snd;
                     let result = RecoveryIE {
                         buf: CursorMut::new(fst),

@@ -53,6 +53,16 @@ jobs:
       - name: Check core crates with the declared Rust version
         run: cargo +1.98.0 check --package rpkt --package pktfmt
 
+  no-std:
+    name: Core without a standard library
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust and bare-metal target
+        run: rustup toolchain install 1.98.0 --profile minimal --target thumbv7em-none-eabi
+      - name: Check without std on bare metal
+        run: cargo +1.98.0 check -p rpkt --no-default-features --target thumbv7em-none-eabi
+
   dpdk-build:
     name: DPDK build
     runs-on: ubuntu-22.04

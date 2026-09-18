@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 #![allow(unreachable_patterns)]
 
-use std::net::Ipv6Addr;
+use core::net::Ipv6Addr;
 
 use crate::endian::{read_uint_from_be_bytes, write_uint_as_be_bytes};
 use crate::ipv4::IpProtocol;

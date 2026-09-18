@@ -560,7 +560,8 @@ impl<'a> Iterator for PppoeTagIterMut<'a> {
         match PppoeTag::parse(&self.buf[..]) {
             Ok(pkt) => {
                 let header_len = pkt.header_len() as usize;
-                let (fst, snd) = std::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
+                let (fst, snd) =
+                    core::mem::replace(&mut self.buf, &mut []).split_at_mut(header_len);
                 self.buf = snd;
                 let result = PppoeTag {
                     buf: CursorMut::new(fst),
