@@ -39,7 +39,9 @@ def main():
             for proto, size, count in groups:
                 medians = {}
                 for library in ["rpkt", "pnet", "smoltcp", "rpkt_cursor"]:
-                    values = [r["ns"] for r in samples if (r["policy"], r["protocol"], r["bytes"], r["flows"], r["library"]) == (policy, proto, size, count, library)]
+                    selected = [r for r in samples if (r["policy"], r["protocol"], r["bytes"], r["flows"], r["library"]) == (policy, proto, size, count, library)]
+                    assert {r["run"] for r in selected} == {0, 1, 2, 3}
+                    values = [r["ns"] for r in selected]
                     assert len(values) == 4
                     medians[library] = statistics.median(values)
                 ratios = {library: value / medians["rpkt"] for library, value in medians.items()}

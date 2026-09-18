@@ -22,6 +22,8 @@ diff stays focused.
 | Performance 5 and 6. Offload/local batched I/O | [#23](https://github.com/duanjp8617/rpkt/pull/23) | Bounded two-link harness, NUMA fix, software/offload/burst/RTT/drop measurements on both hosts |
 | Performance 4 and acceptance experiments | [#24](https://github.com/duanjp8617/rpkt/pull/24) | Full-field initializer prototype, separate LTO/codegen-unit comparisons, raw confidence intervals and this review map |
 | Follow-up: common protocols and TCP options | [#25](https://github.com/duanjp8617/rpkt/pull/25) | Equivalent checked Ethernet/IPv4/UDP/TCP workloads, borrowed option comparison, 486 native measurements and CI equivalence checks; blanket fastest-for-every-header target remains unmet |
+| Follow-up: NAT-oriented compiler output | [#26](https://github.com/duanjp8617/rpkt/pull/26) | Checked disjoint field/options/payload views, packed adjacent integer access, generated IPv4 address conversions, regenerated outputs and safety tests |
+| Follow-up: full-NAT performance evaluation | [#27](https://github.com/duanjp8617/rpkt/pull/27) | Equivalent established-flow NAT kernels, 1,152 native CPU estimates, shared fast/SipHash tables and a bounded single-DUT-worker live harness; blanket 1.15x end-to-end target remains unmet |
 
 ## Measured acceptance, not unconditional optimization
 
@@ -41,7 +43,9 @@ inconclusive results are completed work, not enabled production optimizations:
   TCP and general composition stay on existing builders.
 - The grouped full-field initializer prototype did not materially beat generated
   setters under the selected benchmark profile. No generator-wide rewrite or
-  explicit vector stores are retained. Independent setters preserve unrelated bits.
+  explicit vector stores were retained in PR #24. The later NAT study in PR #26
+  retains checked disjoint views and packed adjacent integer access, while
+  preserving existing scalar methods and unrelated bits.
 - LTO is an explicit profile choice, not a universal speedup. The profile study
   separates codegen-unit count from LTO. No timing regression threshold is imposed.
 - Live counters did not establish a memory-stall bottleneck requiring application

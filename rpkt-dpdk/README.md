@@ -182,6 +182,10 @@ processes. The forwarding adapters and independent reference are shared with
 the [CPU NAT workload](../benches/README.md#established-flow-nat). Build the
 same feature/profile combination on both hosts:
 
+This is a repository-workspace experiment: its shared workload lives under
+`benches/`, so run it from a checkout of the complete repository, not from an
+isolated copy of the published DPDK crate.
+
 ```sh
 cargo build --locked --profile performance -p rpkt-dpdk --features nat-fast-table --example nat_loop
 # CLI (EAL allowlist determines local port numbers):
@@ -197,6 +201,10 @@ completion. Each worker emits its own JSON, with device-wide counters emitted
 only by worker 0. The runner retains those records and aggregates counters;
 summed receiver bins have independently aligned first-packet origins and are
 approximate. **The NAT DUT always uses one worker**, regardless of this setting.
+Frames identify flows, not unique transmissions: there is no per-packet
+de-duplication or ordering check. Final returned rates use total accepted sink
+packets divided by the sender's measured interval; the steady DUT bins are a
+separate diagnostic. `dev/summarize_nat_live.py` reports all three repetitions.
 
 Use only dedicated idle test links. Frame sizes exclude FCS; MTU stays 1500.
 Each role uses burst 64, queue descriptors 2048, a NUMA-local 16383-object pool
