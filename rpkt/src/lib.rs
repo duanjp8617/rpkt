@@ -16,6 +16,8 @@ pub use traits::{Buf, PktBuf, PktBufMut};
 mod cursors;
 pub use cursors::{Cursor, CursorMut};
 
+#[cfg(feature = "batch")]
+pub mod batch;
 pub mod checksum;
 pub mod network_rw;
 pub mod template;

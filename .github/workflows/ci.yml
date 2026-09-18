@@ -35,7 +35,7 @@ jobs:
       - name: Run core tests and documentation tests
         run: cargo test --package rpkt --package pktfmt
       - name: Test optional checksum backend
-        run: cargo test --locked -p rpkt --features simd
+        run: cargo test --locked -p rpkt --all-features
       - name: Check compiler diagnostics
         run: |
           cargo build --package pktfmt --bin pktfmt
@@ -45,7 +45,7 @@ jobs:
       - name: Check generated protocols
         run: bash gen_cmds.sh --check
       - name: Compile benchmark matrix
-        run: cargo check --locked -p benches --bench matrix
+        run: cargo check --locked -p benches --bench matrix --all-features
 
   supported-rust:
     name: Rust 1.98 compatibility
@@ -67,7 +67,9 @@ jobs:
           rustup toolchain install nightly --profile minimal --component miri,rust-src
           cargo +nightly install cargo-fuzz --locked
       - name: Check cursor and parser properties under Miri
-        run: bash dev/check_safety.sh
+        run: |
+          bash dev/check_safety.sh
+          cargo +nightly miri test -p rpkt --features batch --test batch
       - name: Fuzz checked parsers
         run: cargo +nightly fuzz run checked_packets -- -max_len=65536 -max_total_time=30
 
@@ -79,7 +81,7 @@ jobs:
       - name: Install Rust and bare-metal target
         run: rustup toolchain install 1.98.0 --profile minimal --target thumbv7em-none-eabi
       - name: Check without std on bare metal
-        run: cargo +1.98.0 check -p rpkt --no-default-features --target thumbv7em-none-eabi
+        run: cargo +1.98.0 check -p rpkt --no-default-features --features batch,simd --target thumbv7em-none-eabi
 
   dpdk-build:
     name: DPDK build
