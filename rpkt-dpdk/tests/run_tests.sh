@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 
 set -eu
+export RUST_TEST_THREADS=1
 
 script_dir=$(dirname "$(readlink -f "$0")")
 cd "$script_dir/.."

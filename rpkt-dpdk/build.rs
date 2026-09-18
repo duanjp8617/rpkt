@@ -6,6 +6,21 @@ use std::process::Command;
 use bindgen::Formatter;
 use version_compare::Version;
 
+fn pkg_config(args: &[&str]) -> String {
+    let program = env::var_os("PKG_CONFIG").unwrap_or_else(|| "pkg-config".into());
+    let output = Command::new(&program).args(args).output().unwrap_or_else(|error| {
+        panic!("Cannot execute {program:?}: {error}. Install pkg-config or set PKG_CONFIG to its executable path. See rpkt-dpdk/README.md.")
+    });
+    if !output.status.success() {
+        panic!("{program:?} {} failed ({}):\n{}\nInstall a supported DPDK development package, or set PKG_CONFIG_PATH to the directory containing libdpdk.pc. Run pkg-config --modversion --cflags --libs libdpdk to diagnose. See rpkt-dpdk/README.md.", args.join(" "), output.status, String::from_utf8_lossy(&output.stderr));
+    }
+    String::from_utf8(output.stdout).expect("pkg-config output must be UTF-8")
+}
+
+fn flags(text: &str) -> Vec<String> {
+    shlex::split(text).expect("pkg-config returned malformed shell quoting")
+}
+
 // On Ubuntu server, we need the following packages:
 // 1. meson (apt install meson) for meson build
 // 2. pyelf-tool (apt install python3-pyelftools) for meson configuration
@@ -23,15 +38,10 @@ use version_compare::Version;
 // The ffi interface is generated with the bindgen.
 fn build_dpdk_ffi() {
     // Probe the cflags of the installed DPDK library.
-    let output = Command::new("pkg-config")
-        .args(&["--cflags", "libdpdk"])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let cflags = String::from_utf8(output.stdout).unwrap();
+    let cflags = flags(&pkg_config(&["--cflags", "libdpdk"]));
 
     // Compile the csrc/impl.c file into a static library.
-    let cflags_iter = cflags.trim().split(' ');
+    let cflags_iter = cflags.iter();
     let mut cbuild = cc::Build::new();
     cbuild.opt_level(3);
     for cflag in cflags_iter.clone() {
@@ -93,19 +103,14 @@ fn build_dpdk_ffi() {
     bgbuilder
         .formatter(Formatter::Rustfmt)
         .generate()
-        .expect("Unable to generate rust bingdings from csrc/header.h.")
+        .expect("Cannot generate DPDK bindings. Install matching clang/libclang development packages, set LIBCLANG_PATH, and if builtin headers are missing set BINDGEN_EXTRA_CLANG_ARGS='-resource-dir <clang -print-resource-dir>'. See rpkt-dpdk/README.md.")
         .write_to_file(outdir.join("dpdk.rs"))
-        .unwrap();
+        .expect("Cannot write generated DPDK bindings to OUT_DIR");
     println!("cargo:rerun-if-changed=csrc/header.h");
 
     // Generate linker option hints.
-    let output = Command::new("pkg-config")
-        .args(&["--libs", "--static", "libdpdk"])
-        .output()
-        .unwrap();
-    assert_eq!(output.status.success(), true);
-    let ldflags = String::from_utf8(output.stdout).unwrap();
-    for ldflag in ldflags.trim().split(' ') {
+    let ldflags = flags(&pkg_config(&["--libs", "--static", "libdpdk"]));
+    for ldflag in &ldflags {
         if ldflag.starts_with("-L") {
             println!("cargo:rustc-link-search=native={}", &ldflag[2..]);
         } else if ldflag.starts_with("-l") {
@@ -126,8 +131,16 @@ fn build_dpdk_ffi() {
         } else {
             if ldflag == "-pthread" {
                 println!("cargo:rustc-link-lib={}", &ldflag[1..]);
-            } else if ldflag.starts_with("-Wl") {
-                // We do nothing with -Wl linker options.
+            } else if [
+                "-Wl,--whole-archive",
+                "-Wl,--no-whole-archive",
+                "-Wl,--as-needed",
+            ]
+            .contains(&ldflag.as_str())
+            {
+                // Whole-archive semantics are expressed on each static library above.
+            } else if ldflag.starts_with("-Wl,") || std::path::Path::new(ldflag).is_absolute() {
+                println!("cargo:rustc-link-arg={ldflag}");
             } else {
                 panic!("Invalid linker option: {}.", ldflag);
             }
@@ -137,6 +150,18 @@ fn build_dpdk_ffi() {
 
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(dpdk_24_11)");
+    for key in [
+        "PKG_CONFIG",
+        "PKG_CONFIG_PATH",
+        "PKG_CONFIG_LIBDIR",
+        "PKG_CONFIG_SYSROOT_DIR",
+        "LIBCLANG_PATH",
+        "CLANG_PATH",
+        "BINDGEN_EXTRA_CLANG_ARGS",
+    ] {
+        println!("cargo:rerun-if-env-changed={key}");
+    }
+    println!("cargo:rerun-if-changed=.dpdk_install");
 
     // Only support recent LTS versions.
     let raw_supported_versions = [
@@ -161,7 +186,7 @@ fn main() {
         // Try to retrieve the dpdk installation path from previous build.
         match std::fs::read_to_string(dest_path.clone()) {
             Ok(content) => {
-                env::set_var("PKG_CONFIG_PATH", &content);
+                env::set_var("PKG_CONFIG_PATH", content.trim());
             }
             _ => {}
         }
@@ -169,17 +194,8 @@ fn main() {
     };
 
     // Check DPDK version.
-    let Ok(output) = Command::new("pkg-config")
-        .args(&["--modversion", "libdpdk"])
-        .output()
-    else {
-        eprintln!("pkg-config is not available on your system.");
-        eprintln!("Please install pkg-config first.");
-        std::process::exit(1);
-    };
-
-    if output.status.success() {
-        let s = String::from_utf8(output.stdout).unwrap();
+    let s = pkg_config(&["--modversion", "libdpdk"]);
+    {
         let version_str = s.trim();
         let Some(version) = Version::from(version_str) else {
             eprintln!("pkg-config reports an invalid DPDK version: {version_str}");
@@ -208,17 +224,12 @@ fn main() {
         // Found a installed dpdk library.
         build_dpdk_ffi();
 
-        if let Some(input_pkgconfig_env) = input_pkgconfig_env {
-            let mut f = std::fs::File::create(dest_path).unwrap();
-            f.write_all(format!("{input_pkgconfig_env}").as_bytes())
-                .unwrap();
+        if let Some(value) = input_pkgconfig_env {
+            if std::fs::read_to_string(&dest_path).ok().as_deref() != Some(value.as_str()) {
+                let mut f = std::fs::File::create(dest_path).expect("Cannot save .dpdk_install");
+                f.write_all(value.as_bytes())
+                    .expect("Cannot save PKG_CONFIG_PATH");
+            }
         }
-
-        return;
-    } else {
-        eprintln!("pkg-config can not find installed DPDK library, please build and install DPDK.");
-        eprintln!("If you install DPDK locally, you can build this crate by setting the installation path in PKG_CONFIG_PATH: ");
-        eprintln!("PKG_CONFIG_PATH=<dpdk_installation_path>/lib/<arch>-<os>/pkgconfig cargo build");
-        std::process::exit(1);
     }
 }

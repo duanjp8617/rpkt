@@ -1,5 +1,6 @@
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
 #![no_std]
+#![doc = include_str!("../../README.md")]
 
 //! Provide utilities for parsing and constructing network packets.
 
