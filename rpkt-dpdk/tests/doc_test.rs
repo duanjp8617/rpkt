@@ -343,7 +343,7 @@ fn dpdkservice_tx_queue() {
 
 #[test]
 fn dpdkservice_stats_query() {
-    use rpkt_dpdk::{constant, rdtsc, service, DpdkOption, EthConf, RxqConf, TxqConf};
+    use rpkt_dpdk::{constant, time, service, DpdkOption, EthConf, RxqConf, TxqConf};
     DpdkOption::new()
         .args("-n 4 --file-prefix app".split(" "))
         .init()
@@ -391,12 +391,12 @@ fn dpdkservice_stats_query() {
         let mut stat_query = service().stats_query(0).unwrap();
 
         // test the basic cpu frequecy for the rdtsc counter
-        let base_freq = rdtsc::BaseFreq::new();
+        let base_freq = time::BaseFreq::new();
         // get the current dpdk port stats
         let curr_stats = stat_query.query();
         // wait for 1s using rdtsc
-        let tick_in_1s = rdtsc::rdtsc() + base_freq.sec_to_cycles(1.0);
-        while rdtsc::rdtsc() < tick_in_1s {}
+        let tick_in_1s = time::rdtsc() + base_freq.sec_to_cycles(1.0);
+        while time::rdtsc() < tick_in_1s {}
         // get the new stats after 1s
         let new_stats = stat_query.query();
         println!("{} pps", new_stats.ipackets() - curr_stats.ipackets());
@@ -572,22 +572,21 @@ fn dpdkservice_graceful_cleanup() {
 
 #[test]
 fn basefreq() {
-    use rpkt_dpdk::rdtsc;
-    use std::time;
+    use rpkt_dpdk::time;
 
     // prepare the base frequency
-    let base_freq = rdtsc::BaseFreq::new();
+    let base_freq = time::BaseFreq::new();
     // prepare the current time value using std
-    let curr_time = time::Instant::now();
+    let curr_time = std::time::Instant::now();
     // calculate the current rdtsc value.
-    let curr_rdtsc = rdtsc::rdtsc();
+    let curr_rdtsc = time::rdtsc();
     // wait for 1s.
     let tick_in_1s = curr_rdtsc + base_freq.sec_to_cycles(1.0);
-    while rdtsc::rdtsc() < tick_in_1s {}
+    while time::rdtsc() < tick_in_1s {}
     // calculate the ending rdtsc value
-    let end_rdtsc = rdtsc::rdtsc();
+    let end_rdtsc = time::rdtsc();
     // calculate the ending time instant.
-    let end_time = time::Instant::now();
+    let end_time = std::time::Instant::now();
 
     let measured_time_in_std = (end_time - curr_time).as_secs() as f64;
     let mesured_time_in_rdtsc = base_freq.cycles_to_sec(end_rdtsc.checked_sub(curr_rdtsc).unwrap());

@@ -9,7 +9,7 @@ use rpkt::udp::*;
 use rpkt::Buf;
 use rpkt::CursorMut;
 use rpkt::{ether::*, Cursor};
-use rpkt_dpdk::rdtsc::*;
+use rpkt_dpdk::time::*;
 use rpkt_dpdk::*;
 
 // The socket to work on
@@ -83,7 +83,7 @@ fn entry_func() {
             let mut response_received = 0;
             let mut response_received_1s_ago = 0;
 
-            let mut cycle_marker = rdtsc();
+            let mut cycle_marker = time();
 
             send_trigger_packet(&mut txq, &tx_mp);
             while run_clone.load(Ordering::Acquire) {
@@ -136,7 +136,7 @@ fn entry_func() {
                     }
                 }
 
-                let curr_rdtsc = rdtsc();
+                let curr_rdtsc = time();
                 if curr_rdtsc - cycle_marker > base_freq.sec_to_cycles(1.0) {
                     // 1 second has elapsed
                     if response_received_1s_ago == response_received {

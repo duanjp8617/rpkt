@@ -10,7 +10,7 @@ extern crate std;
 mod macros;
 
 mod traits;
-pub use traits::{Buf, PktBuf, PktBufMut};
+pub use traits::{Buf, PktBuf, PktBufMut, PktBufCopy};
 
 mod cursors;
 pub use cursors::{Cursor, CursorMut};
