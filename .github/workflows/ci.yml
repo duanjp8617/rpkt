@@ -34,6 +34,8 @@ jobs:
         run: cargo fmt --package rpkt --package pktfmt -- --check
       - name: Run core tests and documentation tests
         run: cargo test --package rpkt --package pktfmt
+      - name: Test optional checksum backend
+        run: cargo test --locked -p rpkt --features simd
       - name: Check compiler diagnostics
         run: |
           cargo build --package pktfmt --bin pktfmt

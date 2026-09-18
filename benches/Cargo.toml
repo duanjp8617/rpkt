@@ -8,6 +8,9 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+simd = ["rpkt/simd"]
+
 [dev-dependencies]
 criterion = "0.5"
 smoltcp = "0.12"
