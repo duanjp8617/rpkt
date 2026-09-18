@@ -17,6 +17,7 @@ result=$(mktemp -d "$PWD/bench-results-$label.XXXXXX")
   lscpu
   taskset -pc $$
   echo "CPU=$cpu RUSTFLAGS=${RUSTFLAGS:-} RPKT_BENCH_FULL=${RPKT_BENCH_FULL:-}"
+  echo "CARGO_PROFILE_BENCH_LTO=${CARGO_PROFILE_BENCH_LTO:-manifest} CARGO_PROFILE_BENCH_CODEGEN_UNITS=${CARGO_PROFILE_BENCH_CODEGEN_UNITS:-manifest}"
   cargo tree --locked -p benches
 } > "$result/environment.txt"
 cp Cargo.lock rust-toolchain.toml "$result/"

@@ -30,6 +30,7 @@ cases include copying/assertions; do not compare their numbers to matrix results
 | `work/payload_copy` | Copy bytes after the 42-byte Ethernet/IPv4/UDP header |
 | `work/header_build` | Construct headers into preallocated storage; no payload fill or checksum scan |
 | `work/complete_build` | Header construction, payload fill and valid IP/UDP software checksums |
+| `field_initialization` | Full-field IPv4 initializer prototype versus generated independent setters, including width checks and output stores |
 
 Frame sizes 64/128/512/1500/9000 include the Ethernet header but exclude FCS,
 preamble and interpacket gap. Checksum sizes additionally cover 0/1 and both
@@ -63,6 +64,14 @@ Inspect optimized assembly with `cargo rustc -p rpkt --release -- --emit=asm` an
 use profiles before retaining an optimization. Preserve at least three runs per
 candidate, including short/mixed inputs, and report confidence intervals and
 code-size costs. No regression threshold is established yet.
+
+`RPKT_BENCH_CPU=2 bash dev/bench_profiles.sh` compares no LTO/16 codegen units,
+no LTO/1 unit, and fat LTO/1 unit separately, with three runs each. It retains
+per-run artifacts through `dev/bench.sh`, including the profile overrides.
+The initializer is benchmark-only: its proposed grouped-store output is checked
+against the actual generated setters over all 65536 varying inputs, including
+guard bytes. It does not add a generator API or change standalone setter
+behavior. See [the experiment report](results/2026-09-18-codegen-profiles.md).
 
 Live DPDK runs additionally need port/link map, NIC/firmware/driver and DPDK
 versions, worker and pool NUMA placement, offered and received rates, RX errors,
