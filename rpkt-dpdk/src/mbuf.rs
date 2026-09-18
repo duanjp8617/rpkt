@@ -104,11 +104,18 @@ macro_rules! mbuf_rss {
 pub(crate) use mbuf_data_len;
 
 #[derive(Debug)]
+// Burst APIs reinterpret arrays of Mbuf as arrays of rte_mbuf pointers.
+#[repr(transparent)]
 pub struct Mbuf {
     ptr: NonNull<ffi::rte_mbuf>,
 }
 
+// SAFETY: Mbuf uniquely owns the entire direct, unshared segment chain. Moving
+// ownership across threads transfers all packet access; the pool supports
+// concurrent frees and the service prevents pool destruction while mbufs exist.
 unsafe impl Send for Mbuf {}
+// SAFETY: shared methods only read initialized packet bytes/metadata. Mutation
+// and transfer to a NIC require exclusive access; foreign aliases are forbidden.
 unsafe impl Sync for Mbuf {}
 
 impl Mbuf {
@@ -171,6 +178,10 @@ impl Mbuf {
     }
 
     /// Increase buffer length by `cnt` bytes.
+    ///
+    /// # Safety
+    /// `cnt` must fit the first segment's tailroom. Newly exposed bytes must be
+    /// initialized before any read or transmission (including through `data`).
     #[inline]
     pub unsafe fn extend(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.capacity() - self.data_len());
@@ -179,6 +190,9 @@ impl Mbuf {
     }
 
     /// Decrease buffer length by `cnt` bytes.
+    ///
+    /// # Safety
+    /// `cnt` must not exceed the first segment's data length.
     #[inline]
     pub unsafe fn shrink(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.data_len());
@@ -189,6 +203,10 @@ impl Mbuf {
     /// Increase the buffer length at the front.
     ///
     /// This also increases the total capacity.
+    ///
+    /// # Safety
+    /// `cnt` must fit in headroom. Initialize exposed bytes before reading or
+    /// transmitting them. The whole segment chain must remain uniquely owned.
     #[inline]
     pub unsafe fn extend_front(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.front_capacity());
@@ -200,6 +218,9 @@ impl Mbuf {
     /// Decrease the buffer length at the front.
     ///
     /// This also decreases the total capacity.
+    ///
+    /// # Safety
+    /// `cnt` must not exceed the first segment's data length.
     #[inline]
     pub unsafe fn shrink_front(&mut self, cnt: usize) {
         debug_assert!(cnt <= self.data_len());
@@ -210,7 +231,13 @@ impl Mbuf {
         }
     }
 
-    // modified to pub for netbricks_port
+    /// Take ownership of a native packet and its entire segment chain.
+    ///
+    /// # Safety
+    /// The pointer must be non-null, aligned, live, and uniquely owned, with
+    /// valid lengths, initialized data, and an acyclic chain of direct mbufs.
+    /// No foreign reader, writer, NIC, indirect clone, or second owner may keep
+    /// access. Its pool must outlive this owner and all segments.
     #[inline]
     pub const unsafe fn from_raw(ptr: *mut ffi::rte_mbuf) -> Self {
         Self {
@@ -218,6 +245,11 @@ impl Mbuf {
         }
     }
 
+    /// Transfer ownership to the caller without freeing the packet.
+    ///
+    /// # Safety
+    /// The caller must eventually return the chain to DPDK or reconstruct
+    /// exactly one owner, and must keep its memory pool alive until then.
     #[inline]
     pub const unsafe fn into_raw(self) -> *mut ffi::rte_mbuf {
         let res = self.ptr.as_ptr();
@@ -227,6 +259,11 @@ impl Mbuf {
 
     #[inline]
     #[cfg(feature = "rpkt-eval")]
+    /// Borrow the native pointer without transferring ownership.
+    ///
+    /// # Safety
+    /// Do not free or retain the pointer beyond this borrow. Preserve chain,
+    /// length, initialization and unique-ownership invariants after mutation.
     pub const unsafe fn as_mut_ptr(&mut self) -> *mut ffi::rte_mbuf {
         self.ptr.as_ptr()
     }

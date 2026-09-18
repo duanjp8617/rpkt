@@ -53,6 +53,20 @@ jobs:
       - name: Check core crates with the declared Rust version
         run: cargo +1.98.0 check --package rpkt --package pktfmt
 
+  safety:
+    name: Core Miri and fuzz smoke
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly safety tools
+        run: |
+          rustup toolchain install nightly --profile minimal --component miri,rust-src
+          cargo +nightly install cargo-fuzz --locked
+      - name: Check cursor and parser properties under Miri
+        run: bash dev/check_safety.sh
+      - name: Fuzz checked parsers
+        run: cargo +nightly fuzz run checked_packets -- -max_len=65536 -max_total_time=30
+
   no-std:
     name: Core without a standard library
     runs-on: ubuntu-22.04

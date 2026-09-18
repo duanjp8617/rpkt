@@ -1,0 +1,21 @@
+[package]
+name = "rpkt-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rpkt = { path = "../rpkt" }
+
+[[bin]]
+name = "checked_packets"
+path = "fuzz_targets/checked_packets.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

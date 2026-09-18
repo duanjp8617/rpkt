@@ -12,7 +12,12 @@ pub struct Mempool {
     counter: Arc<()>,
 }
 
+// SAFETY: DPDK pools use concurrent allocation/free operations. Each registered
+// thread owns its cache; unregistered threads use the common pool. The service
+// and Arc counter keep pool storage alive until handles and mbufs are returned.
 unsafe impl Send for Mempool {}
+// SAFETY: shared access exposes only DPDK's concurrent pool operations, never a
+// shared mutable packet. Successful allocations create unique Mbuf owners.
 unsafe impl Sync for Mempool {}
 
 // PktmbufPool
