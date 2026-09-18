@@ -11,6 +11,10 @@ license.workspace = true
 [features]
 simd = ["rpkt/simd"]
 batch = ["rpkt/batch"]
+nat-fast-table = ["dep:ahash"]
+
+[dependencies]
+ahash = { version = "=0.8.12", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"
@@ -18,6 +22,15 @@ smoltcp = "0.12"
 arrayvec = "0.7"
 pnet = "0.35"
 rpkt = {path = "../rpkt", package = "rpkt"}
+
+[[bench]]
+name = "nat_forward"
+path = "nat_forward.rs"
+harness = false
+
+[[test]]
+name = "nat_support"
+path = "nat_support_tests.rs"
 
 [[bench]]
 name = "protocols"
