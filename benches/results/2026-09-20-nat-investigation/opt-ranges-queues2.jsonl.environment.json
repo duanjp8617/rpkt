@@ -1,0 +1,24 @@
+{
+  "hosts": {
+    "tg": "Sun Sep 20 04:19:45 UTC 2026\nLinux pcl-109 5.15.0-185-generic #195-Ubuntu SMP Fri Jun 19 17:11:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\n321a90615f5b94fdef02a49cbf3bfe623677109d4f620a365aba21bdf4af21ff  rpkt-dpdk/examples/nat_loop.rs\n51cf6b0a61a715c866c0019705c9b062ec5c191962b516d9c665b079e59b0397  benches/nat_support/mod.rs\n2657df783cc9b9e5338a8d1d903900727d2a098a7e0e4539c8dde7899153ef47  target/performance/examples/nat_loop\nPause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for enp37s0f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n",
+    "duanjp": "Sun Sep 20 04:19:47 UTC 2026\nLinux amax-2510 6.17.0-35-generic #35~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 19:30:42 UTC 2 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\n1b68ebfc1611e8d8352817c3d4e2ffc01c2cfac8c69e8134956c1628e0857b17  rpkt-dpdk/examples/nat_loop.rs\n336849508abc2837d2033492088db20c542c9e6b2b4ad9551ac53f76d58c4cba  benches/nat_support/mod.rs\n09007eaae3781a4c6e0e0a1aa5ac271db904364df7cd88851f389aa0ebc5f68e  target/performance/examples/nat_loop\n09007eaae3781a4c6e0e0a1aa5ac271db904364df7cd88851f389aa0ebc5f68e  /home/duanjp/rpkt-ws/bench-results-live-opt/nat_loop-ranges\nPause parameters for ens31f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n"
+  },
+  "initial_node2_hugepages": "0",
+  "options": {
+    "output": "bench-results-nat/opt-ranges-queues2.jsonl",
+    "repeats": 1,
+    "pilot": true,
+    "modes": [
+      "rpkt",
+      "pnet",
+      "smoltcp"
+    ],
+    "dut_binary": "/home/duanjp/rpkt-ws/bench-results-live-opt/nat_loop-ranges",
+    "perf": false,
+    "vector_rx": true,
+    "sink_workers": 4,
+    "gen_workers": 4,
+    "disable_pause": true,
+    "dut_queues": 2
+  }
+}

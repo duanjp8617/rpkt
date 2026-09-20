@@ -161,6 +161,15 @@ allocating packet parsing, or an extra flow lookup. All adapters are inlined
 equally in the monomorphic timed loop. `rpkt_cursor` is a same-build comparison
 using the existing nested cursor API, **not** the pre-PR compiler/library.
 
+The optimized adapters now use the same common-prefix specialization for
+unfragmented Ethernet/IPv4 without IP options: shared SSE2 (scalar elsewhere)
+selector, identical length checks, and disjoint fixed header slices. This is
+available to **all three libraries**, not an rpkt-only speedup. General parser
+fallbacks preserve short UDP frames and IP options. rpkt alone uses its generated
+packed address/port accessors; competitors use their own field methods on the
+same fixed slices. Compare with the [live investigation](results/2026-09-20-nat-investigation.md),
+not the older results, when evaluating this adapter revision.
+
 All adapters share precomputed, folded per-flow checksum deltas and the same
 [RFC 1624](https://www.rfc-editor.org/rfc/rfc1624.html) update arithmetic. IPv4
 UDP checksum omission is preserved; a computed UDP zero is encoded as 0xffff.
