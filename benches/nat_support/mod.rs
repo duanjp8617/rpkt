@@ -505,6 +505,35 @@ fn prefix_simd_bounds_and_unaligned_input() {
 }
 
 #[test]
+fn short_udp_fallback_and_tcp_options_fast_path() {
+    let t = table(1);
+    for len in 42..=54 {
+        let packet = input(len, 0, false, false);
+        let mut expected = packet.clone();
+        assert!(reference(&mut expected, &t));
+        for forward in [rpkt, rpkt_cursor, pnet, smoltcp] {
+            let mut bytes = packet.clone();
+            assert!(forward(&mut bytes, &t));
+            assert_eq!(bytes, expected);
+        }
+    }
+    // TCP options without IPv4 options still use the common fast path.
+    let mut packet = input(128, 0, true, false);
+    packet[46] = 8 << 4;
+    packet[54..66].fill(1); // Twelve TCP NOP options.
+    repair(&mut packet);
+    assert_eq!(common_prefix(&packet), 6);
+    let mut expected = packet.clone();
+    assert!(reference(&mut expected, &t));
+    for forward in [rpkt, rpkt_cursor, pnet, smoltcp] {
+        let mut bytes = packet.clone();
+        assert!(forward(&mut bytes, &t));
+        assert_eq!(bytes, expected);
+        assert!(valid(&bytes));
+    }
+}
+
+#[test]
 fn prefix_selector_matches_scalar_checks() {
     fn scalar(data: &[u8]) -> u8 {
         if data.len() >= 54
