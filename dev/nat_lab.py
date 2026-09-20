@@ -213,6 +213,8 @@ def main():
                                                       for i in range(max(len(w["rx_bins_1s"]) for w in workers))]
                             record[name] = combined
                             record[name + "_workers"] = workers
+                            record[name + "_reject_samples"] = [
+                                line for line in content.splitlines() if line.startswith("REJECT ")]
                         record["logs"] = logs
                         record["dut_binary"] = args.dut_binary
                         record["vector_rx"] = args.vector_rx

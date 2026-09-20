@@ -223,6 +223,11 @@ there is no unbounded retry. Counters include receiver misses, allocation
 failures and checksum fallback. Rates must distinguish offered, DUT and returned
 traffic. Receiver loss or insufficient offered load invalidates a capacity claim.
 
+The sink logs bounded header samples for its first four segmented/length/MAC
+rejects per worker; the runner retains these as `sink_reject_samples`. This
+helps distinguish unexpected traffic from output failures. A nonzero rejection
+counter without captured evidence must not be assumed harmless.
+
 `SECONDS` is a 1–60-second wall-time bound. DUT/sink also finish one second
 after their last accepted traffic. `active_seconds` spans first to last accepted
 burst; one-second RX bins start at the first accepted burst. For steady rates,

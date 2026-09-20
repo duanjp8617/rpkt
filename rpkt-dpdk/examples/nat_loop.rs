@@ -202,6 +202,10 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
             for mut m in rx.drain(..) {
                 if m.pkt_len() != m.data().len() {
                     rejected += 1;
+                    if ROLE == 1 && rejected <= 4 {
+                        eprintln!("REJECT worker={qid} reason=segmented pkt_len={} data_len={} prefix={:02x?}",
+                            m.pkt_len(), m.data().len(), &m.data()[..m.data().len().min(64)]);
+                    }
                     continue;
                 }
                 let flags = m.rx_offload();
@@ -213,6 +217,10 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
                     let b = m.data();
                     if b.len() != c.size || b[..6] != nat::DST_MAC || b[6..12] != nat::SRC_MAC {
                         rejected += 1;
+                        if rejected <= 4 {
+                            eprintln!("REJECT worker={qid} reason=length_or_mac data_len={} expected_len={} prefix={:02x?}",
+                                b.len(), c.size, &b[..b.len().min(64)]);
+                        }
                         continue;
                     }
                     received += 1;
