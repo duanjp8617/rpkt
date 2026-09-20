@@ -126,3 +126,31 @@ fn paired_stores_match_independent_setters() {
         assert_eq!(p.frag_offset(), bits & 0x1fff);
     }
 }
+
+#[test]
+fn paired_custom_fields_preserve_conversions_and_neighbors() {
+    for a in [0, 1, 0x0102_0304, 0x8000_0001, u32::MAX] {
+        for b in [0, 1, 0xff80_0102, u32::MAX] {
+            let mut one = rpkt::ipv4::IPV4_HEADER_TEMPLATE;
+            let mut two = one;
+            let (mut p, _, _) = Ipv4::parse_parts_mut(&mut one).unwrap();
+            p.set_src_addr_and_dst_addr(a.into(), b.into());
+            assert_eq!(
+                p.src_addr_and_dst_addr_bits(),
+                (u64::from(a) << 32) | u64::from(b)
+            );
+            assert_eq!(u32::from(p.src_addr()), a);
+            assert_eq!(u32::from(p.dst_addr()), b);
+            let mut p = Ipv4::from_header_array_mut(&mut two);
+            p.set_src_addr(a.into());
+            p.set_dst_addr(b.into());
+            assert_eq!(one, two);
+        }
+    }
+    let mut header = rpkt::ipv4::IPV4_HEADER_TEMPLATE;
+    let (mut p, _, _) = Ipv4::parse_parts_mut(&mut header).unwrap();
+    p.set_ttl_and_protocol(63, rpkt::ipv4::IpProtocol::UDP);
+    assert_eq!(p.ttl_and_protocol_bits(), 0x3f11);
+    assert_eq!(p.ttl(), 63);
+    assert_eq!(p.protocol(), rpkt::ipv4::IpProtocol::UDP);
+}

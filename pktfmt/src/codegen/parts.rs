@@ -106,4 +106,18 @@ mod tests {
         let (_, items) = parse_with_error!(TopLevelParser, Tokenizer::new(source)).unwrap();
         assert!(TopLevel::new(&items).is_err());
     }
+
+    #[test]
+    fn custom_pairs_use_repr_conversions_without_bypassing_guards() {
+        let on = code("packet P { header=[a=Field{bit=32,arg=%%Addr%%},b=Field{bit=32,arg=%%Addr%%}], enable_parts=true }");
+        assert!(on.contains("pub fn a_and_b_bits(&self) -> u64"));
+        assert!(on.contains("u32::from(a) as u64"));
+        assert!(on.contains("u32::from(b) as u64"));
+        let guarded = code("packet P { header=[a=Field{bit=32,arg=%%Addr%%,default=@1},b=Field{bit=32,arg=%%Addr%%}] }");
+        assert!(!guarded.contains("set_a_and_b"));
+        let partial = code(
+            "packet P { header=[a=Field{bit=12,arg=%%Small%%},b=Field{bit=12,arg=%%Small%%}] }",
+        );
+        assert!(!partial.contains("set_a_and_b"));
+    }
 }

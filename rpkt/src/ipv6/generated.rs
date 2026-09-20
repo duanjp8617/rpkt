@@ -73,6 +73,11 @@ impl<T: Buf> Ipv6<T> {
     pub fn hop_limit(&self) -> u8 {
         self.buf.chunk()[7]
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn next_header_and_hop_limit_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[6..8].try_into().unwrap())
+    }
     #[inline]
     pub fn payload_len(&self) -> u16 {
         (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
@@ -128,6 +133,12 @@ impl<T: PktBufMut> Ipv6<T> {
     #[inline]
     pub fn set_hop_limit(&mut self, value: u8) {
         self.buf.chunk_mut()[7] = value;
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_next_header_and_hop_limit(&mut self, next_header: IpProtocol, hop_limit: u8) {
+        let value = ((u8::from(next_header) as u16) << 8) | (hop_limit as u16);
+        self.buf.chunk_mut()[6..8].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_payload_len(&mut self, value: u16) {
@@ -740,6 +751,11 @@ impl<T: Buf> FragmentHeader<T> {
     pub fn ident(&self) -> u32 {
         u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn next_header_and_reserved_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap())
+    }
 }
 impl<T: PktBuf> FragmentHeader<T> {
     #[inline]
@@ -784,6 +800,12 @@ impl<T: PktBufMut> FragmentHeader<T> {
     #[inline]
     pub fn set_ident(&mut self, value: u32) {
         (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_next_header_and_reserved(&mut self, next_header: IpProtocol, reserved: u8) {
+        let value = ((u8::from(next_header) as u16) << 8) | (reserved as u16);
+        self.buf.chunk_mut()[0..2].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> FragmentHeader<Cursor<'a>> {

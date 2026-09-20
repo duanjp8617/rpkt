@@ -10,6 +10,35 @@ mod common;
 #[allow(dead_code)]
 mod nat;
 
+// Apply the same inlining policy to every adapter. The investigation also
+// tested outlined kernels; those were not retained as a throughput optimization.
+mod kernels {
+    use super::nat;
+    macro_rules! kernel {
+        ($name:ident) => {
+            #[inline(always)]
+            pub fn $name(data: &mut [u8], table: &nat::Table) -> bool {
+                nat::$name(data, table)
+            }
+        };
+    }
+    kernel!(rpkt);
+    kernel!(rpkt_cursor);
+    kernel!(pnet);
+    kernel!(smoltcp);
+
+    /// Diagnostic I/O ceiling, not a NAT implementation or a competitor.
+    #[inline(always)]
+    pub fn io(data: &mut [u8], _: &nat::Table) -> bool {
+        if data.len() < 14 {
+            return false;
+        }
+        data[..6].copy_from_slice(&nat::DST_MAC);
+        data[6..12].copy_from_slice(&nat::SRC_MAC);
+        true
+    }
+}
+
 struct Config {
     mode: String,
     core: u32,
@@ -20,6 +49,8 @@ struct Config {
     flows: usize,
     pattern: String,
     workers: u16,
+    io_only: bool,
+    dut_queues: u16,
 }
 fn packet(c: &Config, id: usize) -> Vec<u8> {
     let tcp = match c.pattern.as_str() {
@@ -31,6 +62,7 @@ fn packet(c: &Config, id: usize) -> Vec<u8> {
     assert_eq!(b.len(), c.size, "frame too short for selected options");
     b
 }
+#[inline(never)]
 fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
     c: &Config,
     f: F,
@@ -51,12 +83,31 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
         .iter()
         .map(|b| {
             let mut p = b.clone();
-            assert!(nat::reference(&mut p, &table));
+            if c.io_only {
+                assert!(kernels::io(&mut p, &table));
+            } else {
+                assert!(nat::reference(&mut p, &table));
+            }
             p
         })
         .collect();
-    let mut rxq = service().rx_queue(c.rx, qid).unwrap();
-    let mut txq = service().tx_queue(c.tx, qid).unwrap();
+    // Several hardware queues can still be serviced by exactly one DUT thread.
+    let queue_ids = if ROLE == 2 {
+        0..c.dut_queues
+    } else {
+        qid..qid + 1
+    };
+    let mut queues: ArrayVec<_, 4> = queue_ids
+        .map(|id| {
+            (
+                service().rx_queue(c.rx, id).unwrap(),
+                service().tx_queue(c.tx, id).unwrap(),
+            )
+        })
+        .collect();
+    let queue_count = queues.len();
+    let mut queue_index = 0;
+    let mut queue_rx = [0u64; 4];
     let pool = service().mempool(&format!("nat_{}", c.tx)).unwrap();
     let mut rx = ArrayVec::<Mbuf, 64>::new();
     let mut tx = ArrayVec::<Mbuf, 64>::new();
@@ -95,8 +146,24 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
         c.mode,
         c.core + u32::from(qid)
     );
+    let mut clock = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: clock points to initialized, writable timespec storage.
+    assert_eq!(
+        unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut clock) },
+        0
+    );
+    let mono_origin = clock.tv_sec as f64 + clock.tv_nsec as f64 * 1e-9;
     let start = Instant::now();
     while start.elapsed() < Duration::from_secs(c.seconds) {
+        let active_queue = queue_index;
+        let (rxq, txq) = &mut queues[queue_index];
+        queue_index += 1;
+        if queue_index == queue_count {
+            queue_index = 0;
+        }
         // Receiver/DUT wall-time is a safety bound. Finish one second after
         // traffic stops, allowing staggered SSH startup without truncating TX.
         if ROLE != 0 && first.is_some() && start.elapsed() - last > Duration::from_secs(1) {
@@ -117,6 +184,20 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
             }
         } else {
             rxq.rx(&mut rx);
+            queue_rx[active_queue] += rx.len() as u64;
+            // The same header-prefetch pass for all adapters. Only the first
+            // cache line is needed for ordinary Ethernet/IPv4/UDP/TCP headers.
+            #[cfg(target_arch = "x86_64")]
+            for m in &rx {
+                // SAFETY: x86_64 guarantees SSE; this is a non-dereferencing
+                // prefetch hint into a live packet allocation.
+                unsafe {
+                    core::arch::x86_64::_mm_prefetch(
+                        m.data().as_ptr().cast(),
+                        core::arch::x86_64::_MM_HINT_T0,
+                    );
+                }
+            }
             let mut accepted = 0;
             for mut m in rx.drain(..) {
                 if m.pkt_len() != m.data().len() {
@@ -199,6 +280,14 @@ fn run<const ROLE: u8, F: Fn(&mut [u8], &nat::Table) -> bool>(
     let active = first
         .map(|first| (last - first).as_secs_f64())
         .unwrap_or(0.0);
+    if ROLE == 2 {
+        eprintln!("QUEUE_RX {:?}", &queue_rx[..queue_count]);
+        eprintln!(
+            "PROFILE_WINDOW {:.9} {:.9}",
+            mono_origin + first.unwrap_or(Duration::ZERO).as_secs_f64(),
+            mono_origin + last.as_secs_f64()
+        );
+    }
     barrier.wait(); // Primary stats query includes every worker's completed run.
     let ra = rs.as_mut().map(|q| q.query()).unwrap_or_default();
     let tx_errors_after = ts
@@ -221,7 +310,7 @@ fn traffic<const ROLE: u8>(c: &Config) {
 }
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    let usage="nat_loop <gen|sink|rpkt|cursor|pnet|smoltcp> CORE RX TX SECONDS SIZE FLOWS <udp|tcp|mixed|tcpopts> -- EAL_ARGS";
+    let usage="nat_loop <gen|sink|rpkt|cursor|pnet|smoltcp|io> CORE RX TX SECONDS SIZE FLOWS <udp|tcp|mixed|tcpopts> -- EAL_ARGS";
     let sep = args.iter().position(|s| s == "--").expect(usage);
     assert_eq!(sep, 8, "{usage}");
     let c = Config {
@@ -241,12 +330,22 @@ fn main() {
         } else {
             1
         },
+        io_only: args[0] == "io" || std::env::var_os("RPKT_NAT_IO_ONLY").is_some(),
+        dut_queues: if matches!(args[0].as_str(), "gen" | "sink") {
+            1
+        } else {
+            std::env::var("RPKT_DUT_QUEUES")
+                .unwrap_or_else(|_| "1".into())
+                .parse()
+                .unwrap()
+        },
     };
     assert!(matches!(
         c.mode.as_str(),
-        "gen" | "sink" | "rpkt" | "cursor" | "pnet" | "smoltcp"
+        "gen" | "sink" | "rpkt" | "cursor" | "pnet" | "smoltcp" | "io"
     ));
     assert!((1..=4).contains(&c.workers));
+    assert!((1..=4).contains(&c.dut_queues));
     assert!(matches!(
         c.pattern.as_str(),
         "udp" | "tcp" | "mixed" | "tcpopts"
@@ -279,7 +378,7 @@ fn main() {
         conf.mtu = 1500;
         conf.rx_offloads =
             info.rx_offload_capa() & u64::from(rpkt_dpdk::ffi::RPKT_RX_CHECKSUM_OFFLOADS);
-        if c.mode == "sink" && c.workers > 1 {
+        if (c.mode == "sink" && c.workers > 1) || c.dut_queues > 1 {
             conf.rss_hf = (1 << 4 | 1 << 5) & info.flow_type_rss_offloads();
             assert_eq!(conf.rss_hf, 1 << 4 | 1 << 5, "IPv4 TCP/UDP RSS required");
             // The library's repeating symmetric key can cancel correlated
@@ -299,10 +398,10 @@ fn main() {
             .dev_configure_and_start(
                 port,
                 &conf,
-                &(0..c.workers)
+                &(0..c.workers.max(c.dut_queues))
                     .map(|_| RxqConf::new(2048, info.socket_id, &name))
                     .collect::<Vec<_>>(),
-                &(0..c.workers)
+                &(0..c.workers.max(c.dut_queues))
                     .map(|_| TxqConf::new(2048, info.socket_id))
                     .collect::<Vec<_>>(),
             )
@@ -325,10 +424,11 @@ fn main() {
     match c.mode.as_str() {
         "gen" => traffic::<0>(&c),
         "sink" => traffic::<1>(&c),
-        "rpkt" => run::<2, _>(&c, nat::rpkt, 0, &barrier),
-        "cursor" => run::<2, _>(&c, nat::rpkt_cursor, 0, &barrier),
-        "pnet" => run::<2, _>(&c, nat::pnet, 0, &barrier),
-        "smoltcp" => run::<2, _>(&c, nat::smoltcp, 0, &barrier),
+        "rpkt" => run::<2, _>(&c, kernels::rpkt, 0, &barrier),
+        "cursor" => run::<2, _>(&c, kernels::rpkt_cursor, 0, &barrier),
+        "pnet" => run::<2, _>(&c, kernels::pnet, 0, &barrier),
+        "smoltcp" => run::<2, _>(&c, kernels::smoltcp, 0, &barrier),
+        "io" => run::<2, _>(&c, kernels::io, 0, &barrier),
         _ => unreachable!(),
     }
     service().graceful_cleanup().unwrap();

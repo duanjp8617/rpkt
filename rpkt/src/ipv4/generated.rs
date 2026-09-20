@@ -89,6 +89,16 @@ impl<T: core::ops::Deref<Target = [u8; 20]>> Ipv4Fields<T> {
             (&self.buf.deref()[16..20]).try_into().unwrap(),
         ))
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn ttl_and_protocol_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.deref()[8..10].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_addr_and_dst_addr_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.deref()[12..20].try_into().unwrap())
+    }
     #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.deref()[0] & 0xf) * 4
@@ -158,6 +168,18 @@ impl<T: core::ops::DerefMut<Target = [u8; 20]>> Ipv4Fields<T> {
     #[inline]
     pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
         (&mut self.buf.deref_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_ttl_and_protocol(&mut self, ttl: u8, protocol: IpProtocol) {
+        let value = ((ttl as u16) << 8) | (u8::from(protocol) as u16);
+        self.buf.deref_mut()[8..10].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_addr_and_dst_addr(&mut self, src_addr: Ipv4Addr, dst_addr: Ipv4Addr) {
+        let value = ((u32::from(src_addr) as u64) << 32) | (u32::from(dst_addr) as u64);
+        self.buf.deref_mut()[12..20].copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> Ipv4<Cursor<'a>> {
@@ -308,6 +330,16 @@ impl<T: Buf> Ipv4<T> {
             (&self.buf.chunk()[16..20]).try_into().unwrap(),
         ))
     }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn ttl_and_protocol_bits(&self) -> u16 {
+        u16::from_be_bytes(self.buf.chunk()[8..10].try_into().unwrap())
+    }
+    /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
+    #[inline]
+    pub fn src_addr_and_dst_addr_bits(&self) -> u64 {
+        u64::from_be_bytes(self.buf.chunk()[12..20].try_into().unwrap())
+    }
     #[inline]
     pub fn header_len(&self) -> u8 {
         (self.buf.chunk()[0] & 0xf) * 4
@@ -408,6 +440,18 @@ impl<T: PktBufMut> Ipv4<T> {
     #[inline]
     pub fn set_dst_addr(&mut self, value: Ipv4Addr) {
         (&mut self.buf.chunk_mut()[16..20]).copy_from_slice(&u32::from(value).to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_ttl_and_protocol(&mut self, ttl: u8, protocol: IpProtocol) {
+        let value = ((ttl as u16) << 8) | (u8::from(protocol) as u16);
+        self.buf.chunk_mut()[8..10].copy_from_slice(&value.to_be_bytes());
+    }
+    /// Set two adjacent fields with one network-order store.
+    #[inline]
+    pub fn set_src_addr_and_dst_addr(&mut self, src_addr: Ipv4Addr, dst_addr: Ipv4Addr) {
+        let value = ((u32::from(src_addr) as u64) << 32) | (u32::from(dst_addr) as u64);
+        self.buf.chunk_mut()[12..20].copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_header_len(&mut self, value: u8) {

@@ -246,3 +246,38 @@ core 60 on NUMA node 2. In the two-worker traffic configuration, tg uses cores
 2/3 for generation and 4/5 for reception. The runner keeps scalar RX on the DUT and allows the
 default mlx5 vector RX path on the sink; this setting is identical across DUT
 implementations. See the [NAT report](../benches/results/2026-09-18-nat.md).
+
+Investigation controls in `dev/nat_lab.py` (apply settings equally to all DUTs):
+
+- `--dut-binary PATH` selects a frozen DUT build and records its hash;
+  `--modes rpkt pnet smoltcp` selects adapters.
+- `--vector-rx` enables the default mlx5 vector receive path on the DUT;
+  the burst remains 64. Default DUT RX remains scalar.
+- `--gen-workers 4 --sink-workers 4` uses tg cores 0–3 and 4–7 respectively,
+  with independent queues. Defaults remain two workers per traffic role.
+- `--perf` records whole-process counters and cycle samples. New binaries
+  report monotonic first/last-traffic timestamps; the sample report excludes
+  250 ms at each edge. Older binaries without these timestamps get a whole-
+  process report. Whole-process counters are **not** active cycles/packet.
+- `--disable-pause` temporarily disables RX/TX pause and autonegotiation on
+  all four dedicated test ports. It records each original state before changing
+  it, restores every port in cleanup, and verifies restoration. Use only with
+  the link owner's approval. Without this flag pause settings are unchanged.
+- `--dut-queues 2` (or `4`) lets the **same one DUT thread** round-robin several
+  RX/TX queues with identical RSS for every library. This separates a hardware
+  queue ceiling from a packet-processing ceiling; it does not add DUT workers.
+- `--modes io` is a MAC-only, no-NAT diagnostic for the I/O ceiling. Its sink
+  checks the original IP/transport bytes. Never count it as a NAT result.
+
+The optimized NAT adapters share the same SSE2/scalar fixed-prefix selector,
+protocol specialization, disjoint fixed-header slices and length-validation
+schedule. Each library uses its own field getters/setters; rpkt uses generated
+adjacent-field methods. IPv4 options and short UDP packets fall back to each
+library's general parser. No prefix-specialization gain belongs exclusively
+to rpkt. The scalar cursor adapter is a separate baseline, not an equalized
+fast-path competitor. NIC validation, hash table, checksum arithmetic and
+rewrites are identical for all three optimized libraries.
+
+These switches do not establish a performance win. See the
+[open investigation and failed probes](../benches/results/2026-09-20-nat-investigation.md).
+Do not run concurrent lab tests or build during acceptance trials.

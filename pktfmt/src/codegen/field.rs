@@ -51,7 +51,7 @@ impl<'a> FieldGenerator<'a> {
         self.pair_methods(target_slice, write_value.is_some(), output);
     }
 
-    // Only whole, adjacent, unrestricted integer fields are eligible. No
+    // Only whole, adjacent, unrestricted integer representations are eligible. No
     // unrelated bits may be overwritten and no scalar range guard is omitted.
     fn pair_methods(&self, target: &str, setter: bool, out: &mut dyn Write) {
         let fields: Vec<_> = self.header.field_iter().collect();
@@ -62,7 +62,7 @@ impl<'a> FieldGenerator<'a> {
             let eligible = |f: &Field| {
                 f.gen
                     && !f.default_fix
-                    && f.arg == Arg::BuiltinTypes(f.repr)
+                    && (f.arg == Arg::BuiltinTypes(f.repr) || matches!(f.arg, Arg::Code(_)))
                     && matches!(
                         (f.bit, f.repr),
                         (8, BuiltinTypes::U8) | (16, BuiltinTypes::U16) | (32, BuiltinTypes::U32)
@@ -99,11 +99,20 @@ impl<'a> FieldGenerator<'a> {
                     {ty}::from_be_bytes({target}[{start}..{end}].try_into().unwrap())\n}}").unwrap();
                 continue;
             }
+            let as_repr = |name: &str, field: &Field| {
+                if matches!(field.arg, Arg::Code(_)) {
+                    rust_var_as_repr(name, field.repr)
+                } else {
+                    name.to_string()
+                }
+            };
+            let repr_a = as_repr(a, fa);
+            let repr_b = as_repr(b, fb);
             writeln!(
                 out,
                 "/// Set two adjacent fields with one network-order store.\n\
                 #[inline]\npub fn set_{suffix}(&mut self, {a}: {}, {b}: {}) {{\n\
-                let value = (({a} as {ty}) << {}) | ({b} as {ty});\n\
+                let value = (({repr_a} as {ty}) << {}) | ({repr_b} as {ty});\n\
                 {target}[{start}..{end}].copy_from_slice(&value.to_be_bytes());\n}}",
                 fa.arg.to_string(),
                 fb.arg.to_string(),

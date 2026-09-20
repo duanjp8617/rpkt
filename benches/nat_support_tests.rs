@@ -3,6 +3,11 @@ mod nat_support;
 use nat_support::{input, pnet, reference, rpkt, rpkt_cursor, smoltcp, table, valid};
 
 #[test]
+fn exhaustive_nat_equivalence() {
+    nat_support::check();
+}
+
+#[test]
 fn misses_and_non_forwardable_packets_remain_unchanged() {
     for tcp in [false, true] {
         for options in [false, true] {
