@@ -50,6 +50,7 @@ jobs:
         run: cargo bench --locked -p benches --bench protocols -- --test
       - name: Check NAT byte and checksum equivalence
         run: |
+          python3 -m unittest discover -s dev -p 'test_nat_lab.py'
           cargo test --locked -p benches --test nat_support
           cargo test --locked -p benches --features nat-fast-table --test nat_support
           cargo bench --locked -p benches --bench nat_forward -- --test
@@ -79,6 +80,7 @@ jobs:
           bash dev/check_safety.sh
           cargo +nightly miri test -p rpkt --features batch --test batch
           cargo +nightly miri test -p rpkt --test parts
+          cargo +nightly miri test --locked -p benches --test nat_support prefix_simd_bounds_and_unaligned_input
       - name: Fuzz checked parsers
         run: cargo +nightly fuzz run checked_packets -- -max_len=65536 -max_total_time=30
 
