@@ -1,0 +1,271 @@
+{
+  "description": "Decoded bounded diagnostic samples; unrelated host addresses omitted. Not a classification of the earlier 128 uncaptured rejects.",
+  "samples": [
+    {
+      "repeat": 0,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    },
+    {
+      "repeat": 0,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 107,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 0,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 0,
+      "pattern": "udp",
+      "mode": "smoltcp",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 110,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 0
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 86,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 135
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 110,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 0
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 110,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 0
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "rpkt",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 0,
+      "pattern": "tcp",
+      "mode": "pnet",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "pnet",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "pnet",
+      "length": 107,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "pnet",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 107,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 203,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "udp",
+      "mode": "rpkt",
+      "length": 107,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "tcp",
+      "mode": "pnet",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    },
+    {
+      "repeat": 1,
+      "pattern": "tcp",
+      "mode": "pnet",
+      "length": 107,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        5353,
+        5353
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "tcp",
+      "mode": "pnet",
+      "length": 329,
+      "ether_type": "0800",
+      "nat_macs": false,
+      "protocol": 17,
+      "udp_ports": [
+        68,
+        67
+      ]
+    },
+    {
+      "repeat": 1,
+      "pattern": "tcp",
+      "mode": "smoltcp",
+      "length": 62,
+      "ether_type": "86dd",
+      "nat_macs": false,
+      "protocol": 58,
+      "icmpv6_type": 133
+    }
+  ]
+}

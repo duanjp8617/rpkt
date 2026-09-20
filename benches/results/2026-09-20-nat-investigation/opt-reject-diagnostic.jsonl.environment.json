@@ -1,0 +1,24 @@
+{
+  "hosts": {
+    "tg": "Sun Sep 20 05:05:19 UTC 2026\nLinux pcl-109 5.15.0-185-generic #195-Ubuntu SMP Fri Jun 19 17:11:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\na576de5a6ce39fc9aa1bc2bf1a62805cc80d0529ddc5183b20080f6c33986ee3  rpkt-dpdk/examples/nat_loop.rs\nb23dc14bd77755e8c0e11620282a6e9079a9098947edf8337201dcd65bae82fd  benches/nat_support/mod.rs\n915a4be75f8d0f6e35ca112a8154409dc2df74d093f63e8ef46d93130e8ce53f  target/performance/examples/nat_loop\nPause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for enp37s0f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n",
+    "duanjp": "Sun Sep 20 05:05:20 UTC 2026\nLinux amax-2510 6.17.0-35-generic #35~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 19:30:42 UTC 2 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\n1b68ebfc1611e8d8352817c3d4e2ffc01c2cfac8c69e8134956c1628e0857b17  rpkt-dpdk/examples/nat_loop.rs\nb23dc14bd77755e8c0e11620282a6e9079a9098947edf8337201dcd65bae82fd  benches/nat_support/mod.rs\n1e41118f4368a4a9425fac9a1143eb03dc612bbb52c0b8dc86418125f3bd810b  target/performance/examples/nat_loop\n1e41118f4368a4a9425fac9a1143eb03dc612bbb52c0b8dc86418125f3bd810b  /home/duanjp/rpkt-ws/bench-results-live-opt/nat_loop-equalized-final\nPause parameters for ens31f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n"
+  },
+  "initial_node2_hugepages": "0",
+  "options": {
+    "output": "bench-results-nat/opt-reject-diagnostic.jsonl",
+    "repeats": 2,
+    "pilot": true,
+    "modes": [
+      "rpkt",
+      "pnet",
+      "smoltcp"
+    ],
+    "dut_binary": "/home/duanjp/rpkt-ws/bench-results-live-opt/nat_loop-equalized-final",
+    "perf": false,
+    "vector_rx": true,
+    "sink_workers": 4,
+    "gen_workers": 4,
+    "disable_pause": true,
+    "dut_queues": 2
+  }
+}

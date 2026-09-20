@@ -1,0 +1,22 @@
+Final read-only check after the 90-trial matrix, six profiles, and 12 reject diagnostics.
+The numeric 0 is the duanjp node-2 hugepage reservation.
+Pause parameters for ens31f0np0:
+Autonegotiate:	off
+RX:		on
+TX:		on
+
+Pause parameters for ens31f1np1:
+Autonegotiate:	off
+RX:		on
+TX:		on
+
+0
+Pause parameters for enp23s0f0np0:
+Autonegotiate:	off
+RX:		on
+TX:		on
+
+Pause parameters for enp37s0f1np1:
+Autonegotiate:	off
+RX:		on
+TX:		on
