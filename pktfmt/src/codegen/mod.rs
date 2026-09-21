@@ -454,6 +454,7 @@ pub fn from_header_array_mut(header_array: &'a mut [u8; {}]) -> Self {{
             output,
             "impl<'a> Iterator for {pkt_struct_name}Iter<'a> {{
 type Item = {pkt_struct_name}<Cursor<'a>>;
+#[inline]
 fn next(&mut self) -> Option<Self::Item> {{
 {pkt_struct_name}::parse(self.buf).map(|pkt|{{
 "
@@ -481,6 +482,7 @@ fn next(&mut self) -> Option<Self::Item> {{
             output,
             "impl<'a> Iterator for {pkt_struct_name}IterMut<'a> {{
 type Item = {pkt_struct_name}<CursorMut<'a>>;
+#[inline]
 fn next(&mut self) -> Option<Self::Item> {{
 match {pkt_struct_name}::parse(&self.buf[..]) {{
 Ok(pkt) => {{
@@ -648,6 +650,7 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
             output,
             "impl<'a> Iterator for {group_struct_name}Iter<'a> {{
 type Item = {group_struct_name}<Cursor<'a>>;
+#[inline]
 fn next(&mut self) -> Option<Self::Item> {{
 "
         )
@@ -691,6 +694,7 @@ fn next(&mut self) -> Option<Self::Item> {{
             output,
             "impl<'a> Iterator for {group_struct_name}IterMut<'a> {{
 type Item = {group_struct_name}<CursorMut<'a>>;
+#[inline]
 fn next(&mut self) -> Option<Self::Item> {{
 "
         )

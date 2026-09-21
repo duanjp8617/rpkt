@@ -3614,6 +3614,7 @@ impl<'a> Gtpv1IEGroupIter<'a> {
 }
 impl<'a> Iterator for Gtpv1IEGroupIter<'a> {
     type Item = Gtpv1IEGroup<Cursor<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -3721,6 +3722,7 @@ impl<'a> Gtpv1IEGroupIterMut<'a> {
 }
 impl<'a> Iterator for Gtpv1IEGroupIterMut<'a> {
     type Item = Gtpv1IEGroup<CursorMut<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;

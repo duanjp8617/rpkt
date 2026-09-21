@@ -1709,6 +1709,7 @@ impl<'a> TcpOptionsIter<'a> {
 }
 impl<'a> Iterator for TcpOptionsIter<'a> {
     type Item = TcpOptions<Cursor<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1807,6 +1808,7 @@ impl<'a> TcpOptionsIterMut<'a> {
 }
 impl<'a> Iterator for TcpOptionsIterMut<'a> {
     type Item = TcpOptions<CursorMut<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;

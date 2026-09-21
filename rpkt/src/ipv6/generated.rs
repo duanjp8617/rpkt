@@ -1615,6 +1615,7 @@ impl<'a> Ipv6OptionsIter<'a> {
 }
 impl<'a> Iterator for Ipv6OptionsIter<'a> {
     type Item = Ipv6Options<Cursor<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1677,6 +1678,7 @@ impl<'a> Ipv6OptionsIterMut<'a> {
 }
 impl<'a> Iterator for Ipv6OptionsIterMut<'a> {
     type Item = Ipv6Options<CursorMut<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
