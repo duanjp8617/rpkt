@@ -79,7 +79,10 @@ def main():
         json.dump(metadata, f, indent=2)
     processes = []
     try:
-        ssh("duanjp", f"tee {huge}", root=True, data=("256\n" if args.offloads else "128\n"))
+        pages = 192 if args.offloads else 128
+        ssh("duanjp", f"tee {huge}", root=True, data=f"{pages}\n")
+        if int(ssh("duanjp", f"cat {huge}").strip()) < pages:
+            raise RuntimeError("Kernel could not reserve the requested hugepages")
         cases = [("echo", 64, 1, True), ("echo", 64, 16, True),
                  ("echo", 512, 16, True), ("bulk", 64, 16, True),
                  ("bulk", 1400, 16, True), ("echo", 64, 16, False)]
@@ -104,7 +107,7 @@ def main():
                         for role, host, variant in [("server", args.dut, backend),
                             ("client", "tg" if args.dut == "duanjp" else "duanjp", "smoltcp")]:
                             core = 60 if host == "duanjp" else 4
-                            memory = 512 if args.offloads else 256
+                            memory = 384 if args.offloads else 256
                             eal = (f"--huge-unlink=always --socket-mem 0,0,{memory},0 -a 0000:b8:00.1"
                                    if host == "duanjp" else f"--no-huge -m {memory} -a 0000:17:00.0")
                             binary = f"{bases[host]}/{args.binary_dir}/tcp-stack-{variant}"

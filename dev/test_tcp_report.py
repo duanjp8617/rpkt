@@ -45,6 +45,15 @@ class TcpReportTests(unittest.TestCase):
         row["linearize_rpkt"] = True
         validate_offloads(row)
 
+    def test_both_endpoints_must_use_same_rx_buffers(self):
+        row = self.offload_row()
+        row["rx_data_room"] = 8192
+        row["server"]["rx_data_room"] = 8192
+        with self.assertRaises(AssertionError):
+            validate_offloads(row)
+        row["client"]["rx_data_room"] = 8192
+        validate_offloads(row)
+
 
 if __name__ == "__main__":
     unittest.main()

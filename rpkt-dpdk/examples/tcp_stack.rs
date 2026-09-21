@@ -43,7 +43,7 @@ fn main() {
     service()
         .mempool_alloc(
             "tcp",
-            if rx_data_room == 2048 { 16383 } else { 8191 },
+            if rx_data_room == 2048 { 16383 } else { 4095 },
             256,
             rx_data_room + 128,
             info.socket_id as i32,
