@@ -1,4 +1,5 @@
 //! Closed-loop, byte-checked TCP over the same DPDK Device in both builds.
+use rpkt_dpdk::tcp_device::{RX_OFFLOADS, TX_OFFLOADS};
 use rpkt_dpdk::{tcp_device::DpdkDevice, *};
 use std::time::{Duration, Instant};
 use tcp_eval::{stack::time::Instant as TcpTime, Endpoint};
@@ -21,17 +22,44 @@ fn main() {
     let request = args[5].parse::<usize>().unwrap();
     let echo = args[6] == "echo";
     let timestamps = args[7] == "timestamps";
+    let offloads = std::env::var("RPKT_TCP_OFFLOADS").as_deref() == Ok("1");
+    let force_linearize = std::env::var("RPKT_TCP_FORCE_LINEARIZE").as_deref() == Ok("1");
     assert!((1..=60).contains(&seconds));
     assert_eq!(args[8], "--");
     DpdkOption::new().args(&args[9..]).init().unwrap();
     service().thread_bind_to(core).unwrap();
     let info = service().dev_info(port).unwrap();
     assert_eq!(service().current_lcore().unwrap().socket_id, info.socket_id);
+    eprintln!(
+        "CAPS rx={:#x} tx={:#x} max_lro={} offloads={offloads}",
+        info.rx_offload_capa(),
+        info.tx_offload_capa(),
+        info.max_lro_pkt_size()
+    );
     service()
         .mempool_alloc("tcp", 16383, 256, 2176, info.socket_id as i32)
         .unwrap();
     let mut conf = EthConf::default();
     conf.mtu = 1500;
+    if offloads {
+        assert_eq!(
+            info.rx_offload_capa() & RX_OFFLOADS,
+            RX_OFFLOADS,
+            "RX LRO/scatter/checksum unsupported"
+        );
+        assert_eq!(
+            info.tx_offload_capa() & TX_OFFLOADS,
+            TX_OFFLOADS,
+            "TX TSO/checksum unsupported"
+        );
+        assert!(info.max_lro_pkt_size() >= 65280);
+        conf.rx_offloads = RX_OFFLOADS;
+        conf.tx_offloads = TX_OFFLOADS;
+        conf.max_lro_pkt_size = 65280;
+        service()
+            .mempool_alloc("tcp-tx", 2047, 256, 64768, info.socket_id as i32)
+            .unwrap();
+    }
     service()
         .dev_configure_and_start(
             port,
@@ -40,12 +68,16 @@ fn main() {
             &vec![TxqConf::new(2048, info.socket_id)],
         )
         .unwrap();
-    let mut device = DpdkDevice::new(
+    let mut device = DpdkDevice::with_offloads(
         service().rx_queue(port, 0).unwrap(),
         service().tx_queue(port, 0).unwrap(),
-        service().mempool("tcp").unwrap(),
+        service()
+            .mempool(if offloads { "tcp-tx" } else { "tcp" })
+            .unwrap(),
+        offloads,
     );
     let start = Instant::now();
+    device.force_linearization(force_linearize);
     let mut endpoint = Endpoint::new(
         &mut device,
         client,
@@ -95,8 +127,9 @@ fn main() {
         device.flush();
     }
     let stats = service().stats_query(port).unwrap().query();
-    println!("{{\"backend\":\"{}\",\"role\":\"{}\",\"connections\":{},\"request\":{},\"echo\":{},\"timestamps\":{},\"seconds\":{},\"measured_ns\":{},\"congestion\":\"reno\",\"measured\":{},\"bytes\":{},\"responses\":{},\"errors\":{},\"rx\":{},\"tx\":{},\"rejected\":{},\"no_mbuf\":{},\"pending_tx\":{},\"rx_missed\":{},\"tx_errors\":{}}}",
-        tcp_eval::BACKEND,args[0],connections,request,echo,timestamps,seconds,measured_ns,measurement.is_some()&&closing,end_bytes,end_responses,endpoint.errors,device.counters.rx,device.counters.tx,device.counters.rejected,device.counters.no_mbuf,device.pending_tx(),stats.imissed(),stats.oerrors());
+    eprintln!("OFFLOAD_COUNTERS {:?}", device.counters);
+    println!("{{\"backend\":\"{}\",\"role\":\"{}\",\"connections\":{},\"request\":{},\"echo\":{},\"timestamps\":{},\"seconds\":{},\"measured_ns\":{},\"congestion\":\"reno\",\"measured\":{},\"bytes\":{},\"responses\":{},\"errors\":{},\"rx\":{},\"tx\":{},\"rejected\":{},\"no_mbuf\":{},\"pending_tx\":{},\"rx_missed\":{},\"tx_errors\":{},\"offloads\":{},\"chains\":{},\"lro\":{},\"linearized_bytes\":{},\"tso\":{},\"max_rx_len\":{}}}",
+        tcp_eval::BACKEND,args[0],connections,request,echo,timestamps,seconds,measured_ns,measurement.is_some()&&closing,end_bytes,end_responses,endpoint.errors,device.counters.rx,device.counters.tx,device.counters.rejected,device.counters.no_mbuf,device.pending_tx(),stats.imissed(),stats.oerrors(),offloads,device.counters.chains,device.counters.lro,device.counters.linearized_bytes,device.counters.tso,device.counters.max_rx_len);
     assert!(
         measurement.is_some() && closing,
         "connections never established"

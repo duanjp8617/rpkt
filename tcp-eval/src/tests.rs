@@ -54,12 +54,15 @@ struct Link {
     held: Option<(usize, Vec<u8>)>,
     sacks: usize,
     timestamps: usize,
+    scatter: usize,
+    tso: bool,
+    large_frames: usize,
 }
 struct Memory {
     link: Rc<RefCell<Link>>,
     side: usize,
 }
-struct Rx(Vec<u8>);
+struct Rx(Vec<u8>, usize);
 struct Tx {
     link: Rc<RefCell<Link>>,
     side: usize,
@@ -68,12 +71,58 @@ impl RxToken for Rx {
     fn consume<R, F: FnOnce(&[u8]) -> R>(self, f: F) -> R {
         f(&self.0)
     }
+    #[cfg(feature = "rpkt-tcp")]
+    fn consume_pbuf<R, F: FnOnce(&mut dyn rpkt::PktBuf) -> R>(self, f: F) -> R {
+        if self.1 == 0 || self.0.len() < 54 || self.0[12..14] != [8, 0] {
+            return f(&mut rpkt::Cursor::new(&self.0));
+        }
+        f(&mut TestChain {
+            data: &self.0,
+            at: 0,
+            segment: self.1,
+        })
+    }
+}
+
+#[cfg(feature = "rpkt-tcp")]
+struct TestChain<'a> {
+    data: &'a [u8],
+    at: usize,
+    segment: usize,
+}
+#[cfg(feature = "rpkt-tcp")]
+impl rpkt::Buf for TestChain<'_> {
+    fn remaining(&self) -> usize {
+        self.data.len() - self.at
+    }
+    fn chunk(&self) -> &[u8] {
+        &self.data[self.at
+            ..self
+                .data
+                .len()
+                .min((self.at / self.segment + 1) * self.segment)]
+    }
+    fn advance(&mut self, n: usize) {
+        assert!(n <= self.remaining());
+        self.at += n;
+    }
+}
+#[cfg(feature = "rpkt-tcp")]
+impl rpkt::PktBuf for TestChain<'_> {
+    fn move_back(&mut self, n: usize) {
+        self.at = self.at.checked_sub(n).unwrap();
+    }
+    fn trim_off(&mut self, n: usize) {
+        assert!(n <= self.data.len() - self.at);
+        self.data = &self.data[..self.data.len() - n];
+    }
 }
 impl TxToken for Tx {
     fn consume<R, F: FnOnce(&mut [u8]) -> R>(self, len: usize, f: F) -> R {
         let mut bytes = vec![0; len];
         let result = f(&mut bytes);
         let mut link = self.link.borrow_mut();
+        link.large_frames += usize::from(len > 1514);
         let mut data = false;
         if bytes.len() >= 54 && bytes[12..14] == [8, 0] && bytes[23] == 6 {
             let h = 14 + usize::from(bytes[14] & 15) * 4;
@@ -86,6 +135,9 @@ impl TxToken for Tx {
             while !options.is_empty() {
                 let (tail, opt) = stack::wire::TcpOption::parse(options).unwrap();
                 match opt {
+                    stack::wire::TcpOption::MaxSegmentSize(mss) => {
+                        assert_eq!(mss, 1460, "TSO must not change the advertised MSS")
+                    }
                     stack::wire::TcpOption::SackRange(_) => link.sacks += 1,
                     stack::wire::TcpOption::TimeStamp { .. } => link.timestamps += 1,
                     stack::wire::TcpOption::EndOfList => break,
@@ -104,6 +156,12 @@ impl TxToken for Tx {
             link.held = Some((self.side, bytes));
             return result;
         }
+        if link.fault && data && link.data_frames == 7 {
+            // Corrupt after checksum generation: both contiguous and scatter
+            // ingress must discard it and recover by retransmission.
+            let last = bytes.len() - 1;
+            bytes[last] ^= 1;
+        }
         link.queues[1 - self.side].push_back(bytes);
         if data {
             if let Some((side, held)) = link.held.take() {
@@ -119,7 +177,7 @@ impl Device for Memory {
     fn receive(&mut self, _: Instant) -> Option<(Rx, Tx)> {
         let packet = self.link.borrow_mut().queues[self.side].pop_front()?;
         Some((
-            Rx(packet),
+            Rx(packet, self.link.borrow().scatter),
             Tx {
                 link: self.link.clone(),
                 side: self.side,
@@ -136,15 +194,33 @@ impl Device for Memory {
         let mut caps = DeviceCapabilities::default();
         caps.max_transmission_unit = 1514;
         caps.max_burst_size = Some(64);
+        if self.link.borrow().tso {
+            caps.max_tcp_segmentation_len = 32768;
+        }
         caps
     }
 }
 
 #[test]
 fn connections_echo_timestamps_sack_loss_reordering_and_fin() {
+    run_connections(0, false, 8192);
+}
+
+#[test]
+fn logical_offload_packets_preserve_tcp_semantics() {
+    // Models host-side offloaded packets, not NIC TSO/LRO performance. Hardware
+    // segmentation/coalescing is separately validated by the live DPDK tests.
+    for scatter in [0, 1, 13, 53, 511, 2048] {
+        run_connections(scatter, true, 65536);
+    }
+}
+
+fn run_connections(scatter: usize, tso: bool, request: usize) {
     for fault in [false, true] {
         let link = Rc::new(RefCell::new(Link {
             fault,
+            scatter,
+            tso,
             ..Link::default()
         }));
         let mut a = Memory {
@@ -155,16 +231,37 @@ fn connections_echo_timestamps_sack_loss_reordering_and_fin() {
             link: link.clone(),
             side: 1,
         };
-        let mut client = Endpoint::new(&mut a, true, 4, 8192, true, true, Instant::from_millis(0));
-        let mut server = Endpoint::new(&mut b, false, 4, 8192, true, true, Instant::from_millis(0));
+        let mut client = Endpoint::new(
+            &mut a,
+            true,
+            4,
+            request,
+            true,
+            true,
+            Instant::from_millis(0),
+        );
+        let mut server = Endpoint::new(
+            &mut b,
+            false,
+            4,
+            request,
+            true,
+            true,
+            Instant::from_millis(0),
+        );
         let mut close_at = None;
+        let mut stop_producing = false;
         for tick in 0..30000 {
             let now = Instant::from_millis(tick);
-            if close_at.is_none() && client.responses >= 100 {
+            stop_producing |= client.responses >= 100;
+            // Drain every connection, including the one recovering from loss,
+            // before testing orderly close. An aggregate response count alone
+            // does not mean all requests on all connections have completed.
+            if close_at.is_none() && stop_producing && client.sent == client.received {
                 client.close();
                 close_at = Some(tick);
             }
-            client.poll(&mut a, now, close_at.is_none());
+            client.poll(&mut a, now, !stop_producing);
             server.poll(&mut b, now, true);
             if close_at.is_some_and(|at| tick > at + 12000) {
                 break;
@@ -173,6 +270,9 @@ fn connections_echo_timestamps_sack_loss_reordering_and_fin() {
         assert!(client.responses>=100,"fault={fault} responses={} established={}/{} bytes={}/{} sent={:?}/{:?} frames={} ts={}",client.responses,client.established(),server.established(),client.bytes,server.bytes,client.sent,server.sent,link.borrow().data_frames,link.borrow().timestamps);
         assert_eq!((client.errors, server.errors), (0, 0));
         assert!(link.borrow().timestamps > 100);
+        if tso {
+            assert!(link.borrow().large_frames > 0);
+        }
         if fault {
             assert!(link.borrow().sacks > 0);
         }

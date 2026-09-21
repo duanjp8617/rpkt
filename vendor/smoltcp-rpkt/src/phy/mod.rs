@@ -258,6 +258,10 @@ pub struct DeviceCapabilities {
     /// Most common IP MTU is 1500. Minimum is 576 (for IPv4) or 1280 (for IPv6). Maximum is 9216 octets.
     pub max_transmission_unit: usize,
 
+    /// Experimental IPv4 TCP segmentation offload: maximum logical IP packet
+    /// length. Zero disables it. The wire MTU and advertised MSS stay unchanged.
+    pub max_tcp_segmentation_len: usize,
+
     /// Maximum burst size, in terms of MTU.
     ///
     /// The network device is unable to send or receive bursts large than the value returned
@@ -375,6 +379,17 @@ pub trait RxToken {
     fn consume<R, F>(self, f: F) -> R
     where
         F: FnOnce(&[u8]) -> R;
+
+    /// Experimental scatter ingress. Devices can lend their packet chain without
+    /// materializing a contiguous frame. Ordinary devices keep the slice adapter.
+    #[cfg(feature = "rpkt-tcp")]
+    fn consume_pbuf<R, F>(self, f: F) -> R
+    where
+        Self: Sized,
+        F: FnOnce(&mut dyn rpkt::PktBuf) -> R,
+    {
+        self.consume(|bytes| f(&mut rpkt::Cursor::new(bytes)))
+    }
 
     /// The Packet ID associated with the frame received by this [`RxToken`]
     fn meta(&self) -> PacketMeta {

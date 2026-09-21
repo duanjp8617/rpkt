@@ -7,12 +7,55 @@ implemented TCP state machine**. See [vendor provenance](../vendor/smoltcp-rpkt/
 
 The common DPDK adapter owns mbuf receive tokens, batches RX/TX in groups of 64,
 retains partial TX bursts, bounds ingress work per poll, and initializes output
-buffers before the stack writes them. It rejects multi-segment/oversized input.
+buffers before the stack writes them. Optional TSO/LRO mode supports chained
+IPv4/TCP input as described below.
 The evaluation uses Ethernet/IPv4, MTU 1500, one hardware queue and one thread
 per endpoint. IPv6 is compiled but is not part of the live benchmark.
 
+## Chained mbufs with TSO/LRO
+
+Set `RPKT_TCP_OFFLOADS=1` (or use the lab runner's `--offloads`) on **both**
+endpoints. Physical MTU remains 1500 and the SYN MSS remains 1460. Both variants
+submit logical IPv4 TCP packets up to 64512 bytes, with correct hardware
+checksum metadata and a timestamp-enabled TSO payload size of 1448. Both use
+the same 65280-byte LRO limit, 2048-byte RX data rooms, and separate large TX
+mbufs. Hardware capability checks fail explicitly if offloads are unavailable.
+
+Native smoltcp copies each received chain into a reusable contiguous buffer,
+then runs its slice API. Rpkt passes the actual `Pbuf` into segmented ingress,
+parses the TCP header/options without copying the payload, and copies accepted
+chunks directly into the final socket receive ring. This removes **one extra
+full-frame copy**, not all copies. Split headers use bounded scratch; chained
+protocols other than IPv4/TCP are outside this experimental path's scope.
+
+Both versions check NIC RX checksum status, reject BAD and compute a software
+checksum for UNKNOWN/NONE. Timestamp-only options are identically aligned to
+`NOP,NOP,TS` before TX checksum offload: the lab NICs did not coalesce the
+original `TS,EOL,pad` layout. This interoperability fix is not credited to rpkt.
+
+Use frozen, separately built `--profile performance` binaries in
+`bench-results-tcp-chained-performance/` and run sequentially:
+
+```sh
+python3 dev/tcp_lab.py --offloads --dut tg --repeats 3 \
+  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-tg.jsonl
+python3 dev/tcp_lab.py --offloads --dut duanjp --repeats 3 \
+  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-duanjp.jsonl
+# Extra-copy ablation: same rpkt parser, but linearize incoming chains first.
+python3 dev/tcp_lab.py --offloads --dut tg --linearize-rpkt --quick --repeats 3 \
+  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-copy-control.jsonl
+```
+
+JSON includes cumulative `chains`, `lro`, `linearized_bytes`, `tso`, and
+`max_rx_len` counters. The runner/report reject purported offload results
+without actual TSO submissions, LRO chains, and the expected copy-path counters.
+Do not pool different build profiles, offload settings or copy controls.
+Ordinary mode retains software checksums; offloaded mode accepts Ethernet
+ARP/IPv4 only. Both modes still validate every application byte.
+
 Both endpoints use Reno, 256 KiB send/receive buffers per connection, Nagle off,
-immediate ACKs, the same polling policy and software IP/TCP checksums. Nothing
+immediate ACKs and the same polling policy. Without offloads, both use software
+IP/TCP checksums. Nothing
 assumes incoming checksums are valid. The application generates and verifies
 every byte of a deterministic stream, including across segment boundaries.
 Its 64-KiB period is precomputed before measurement, then copied/compared with

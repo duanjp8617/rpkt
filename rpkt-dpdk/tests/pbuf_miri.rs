@@ -5,6 +5,27 @@ mod tests {
 
     #[test]
     #[cfg(miri)]
+    fn zero_trim_preserves_chain_and_cursor() {
+        let bytes: Vec<_> = (0..6145).map(|i| (i % 251) as u8).collect();
+        for position in [0, 1, 2047, 2048, 2049, 4096, 6145] {
+            let mut mbuf = Mbuf::from_slice(&bytes, 2048, 128).unwrap();
+            let segments = mbuf.num_segs();
+            let mut buf = Pbuf::new(&mut mbuf);
+            buf.advance(position);
+            let chunk = buf.chunk().to_vec();
+            buf.trim_off(0);
+            assert_eq!(buf.cursor(), position);
+            assert_eq!(buf.buf().num_segs(), segments);
+            assert_eq!(buf.buf().pkt_len(), bytes.len());
+            assert_eq!(buf.chunk(), chunk);
+            let mut remaining = vec![0; buf.remaining()];
+            buf.copy_to_slice(&mut remaining);
+            assert_eq!(remaining, bytes[position..]);
+        }
+    }
+
+    #[test]
+    #[cfg(miri)]
     fn read_non_contiguous_packet_data() {
         let mut buf: [u8; 11235] = [0xac; 11235];
         for i in 0..11235 {
