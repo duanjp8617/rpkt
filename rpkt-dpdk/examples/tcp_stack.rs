@@ -23,6 +23,10 @@ fn main() {
     let echo = args[6] == "echo";
     let timestamps = args[7] == "timestamps";
     let offloads = std::env::var("RPKT_TCP_OFFLOADS").as_deref() == Ok("1");
+    let rx_data_room =
+        std::env::var("RPKT_TCP_RX_DATA_ROOM").map_or(2048, |s| s.parse::<u16>().unwrap());
+    assert!(matches!(rx_data_room, 2048 | 8192));
+    assert!(offloads || rx_data_room == 2048);
     let force_linearize = std::env::var("RPKT_TCP_FORCE_LINEARIZE").as_deref() == Ok("1");
     assert!((1..=60).contains(&seconds));
     assert_eq!(args[8], "--");
@@ -37,7 +41,13 @@ fn main() {
         info.max_lro_pkt_size()
     );
     service()
-        .mempool_alloc("tcp", 16383, 256, 2176, info.socket_id as i32)
+        .mempool_alloc(
+            "tcp",
+            if rx_data_room == 2048 { 16383 } else { 8191 },
+            256,
+            rx_data_room + 128,
+            info.socket_id as i32,
+        )
         .unwrap();
     let mut conf = EthConf::default();
     conf.mtu = 1500;
@@ -57,7 +67,10 @@ fn main() {
         conf.tx_offloads = TX_OFFLOADS;
         conf.max_lro_pkt_size = 65280;
         service()
-            .mempool_alloc("tcp-tx", 2047, 256, 64768, info.socket_id as i32)
+            // More buffers than the 2048-entry TX ring plus cache/burst
+            // reservations: mlx5 may defer reclaim until a later TX burst.
+            // A 2047-buffer pool can starve before that burst is constructible.
+            .mempool_alloc("tcp-tx", 4095, 256, 64768, info.socket_id as i32)
             .unwrap();
     }
     service()
@@ -128,8 +141,8 @@ fn main() {
     }
     let stats = service().stats_query(port).unwrap().query();
     eprintln!("OFFLOAD_COUNTERS {:?}", device.counters);
-    println!("{{\"backend\":\"{}\",\"role\":\"{}\",\"connections\":{},\"request\":{},\"echo\":{},\"timestamps\":{},\"seconds\":{},\"measured_ns\":{},\"congestion\":\"reno\",\"measured\":{},\"bytes\":{},\"responses\":{},\"errors\":{},\"rx\":{},\"tx\":{},\"rejected\":{},\"no_mbuf\":{},\"pending_tx\":{},\"rx_missed\":{},\"tx_errors\":{},\"offloads\":{},\"chains\":{},\"lro\":{},\"linearized_bytes\":{},\"tso\":{},\"max_rx_len\":{}}}",
-        tcp_eval::BACKEND,args[0],connections,request,echo,timestamps,seconds,measured_ns,measurement.is_some()&&closing,end_bytes,end_responses,endpoint.errors,device.counters.rx,device.counters.tx,device.counters.rejected,device.counters.no_mbuf,device.pending_tx(),stats.imissed(),stats.oerrors(),offloads,device.counters.chains,device.counters.lro,device.counters.linearized_bytes,device.counters.tso,device.counters.max_rx_len);
+    println!("{{\"backend\":\"{}\",\"role\":\"{}\",\"connections\":{},\"request\":{},\"echo\":{},\"timestamps\":{},\"seconds\":{},\"measured_ns\":{},\"congestion\":\"reno\",\"measured\":{},\"bytes\":{},\"responses\":{},\"errors\":{},\"rx\":{},\"tx\":{},\"rejected\":{},\"no_mbuf\":{},\"pending_tx\":{},\"rx_missed\":{},\"tx_errors\":{},\"offloads\":{},\"chains\":{},\"lro\":{},\"linearized_bytes\":{},\"tso\":{},\"max_rx_len\":{},\"rx_data_room\":{}}}",
+        tcp_eval::BACKEND,args[0],connections,request,echo,timestamps,seconds,measured_ns,measurement.is_some()&&closing,end_bytes,end_responses,endpoint.errors,device.counters.rx,device.counters.tx,device.counters.rejected,device.counters.no_mbuf,device.pending_tx(),stats.imissed(),stats.oerrors(),offloads,device.counters.chains,device.counters.lro,device.counters.linearized_bytes,device.counters.tso,device.counters.max_rx_len,rx_data_room);
     assert!(
         measurement.is_some() && closing,
         "connections never established"

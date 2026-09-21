@@ -57,6 +57,7 @@ struct Link {
     scatter: usize,
     tso: bool,
     large_frames: usize,
+    peer_mss: Option<u16>,
 }
 struct Memory {
     link: Rc<RefCell<Link>>,
@@ -145,6 +146,18 @@ impl TxToken for Tx {
                 }
                 options = tail;
             }
+            if let Some(mss) = link.peer_mss {
+                let (src, dst) = (ip.src_addr(), ip.dst_addr());
+                let mut tcp = stack::wire::TcpPacket::new_unchecked(&mut bytes[h..]);
+                if tcp.syn() {
+                    let options = tcp.options_mut();
+                    // The shared emitter puts MSS first in its SYN options.
+                    assert_eq!(&options[..2], &[2, 4]);
+                    options[2..4].copy_from_slice(&mss.to_be_bytes());
+                    tcp.fill_checksum(&src.into(), &dst.into());
+                }
+                assert!(len <= 54 + mss as usize);
+            }
         }
         if data {
             link.data_frames += 1;
@@ -203,7 +216,7 @@ impl Device for Memory {
 
 #[test]
 fn connections_echo_timestamps_sack_loss_reordering_and_fin() {
-    run_connections(0, false, 8192);
+    run_connections(0, false, 8192, None);
 }
 
 #[test]
@@ -211,16 +224,22 @@ fn logical_offload_packets_preserve_tcp_semantics() {
     // Models host-side offloaded packets, not NIC TSO/LRO performance. Hardware
     // segmentation/coalescing is separately validated by the live DPDK tests.
     for scatter in [0, 1, 13, 53, 511, 2048] {
-        run_connections(scatter, true, 65536);
+        run_connections(scatter, true, 65536, None);
     }
 }
 
-fn run_connections(scatter: usize, tso: bool, request: usize) {
+#[test]
+fn smaller_peer_mss_uses_non_tso_packets() {
+    run_connections(37, true, 8192, Some(1000));
+}
+
+fn run_connections(scatter: usize, tso: bool, request: usize, peer_mss: Option<u16>) {
     for fault in [false, true] {
         let link = Rc::new(RefCell::new(Link {
             fault,
             scatter,
             tso,
+            peer_mss,
             ..Link::default()
         }));
         let mut a = Memory {
@@ -270,8 +289,11 @@ fn run_connections(scatter: usize, tso: bool, request: usize) {
         assert!(client.responses>=100,"fault={fault} responses={} established={}/{} bytes={}/{} sent={:?}/{:?} frames={} ts={}",client.responses,client.established(),server.established(),client.bytes,server.bytes,client.sent,server.sent,link.borrow().data_frames,link.borrow().timestamps);
         assert_eq!((client.errors, server.errors), (0, 0));
         assert!(link.borrow().timestamps > 100);
-        if tso {
+        if tso && peer_mss.is_none() {
             assert!(link.borrow().large_frames > 0);
+        }
+        if peer_mss.is_some() {
+            assert_eq!(link.borrow().large_frames, 0);
         }
         if fault {
             assert!(link.borrow().sacks > 0);

@@ -20,6 +20,11 @@ submit logical IPv4 TCP packets up to 64512 bytes, with correct hardware
 checksum metadata and a timestamp-enabled TSO payload size of 1448. Both use
 the same 65280-byte LRO limit, 2048-byte RX data rooms, and separate large TX
 mbufs. Hardware capability checks fail explicitly if offloads are unavailable.
+The 4095-buffer TX pool exceeds the 2048-entry TX ring plus cache/burst
+reservations; a smaller pool can deadlock with deferred driver reclamation.
+Offload runs reserve 512 MiB per endpoint. Optional `--rx-data-room 8192`
+configures larger RX buffers identically for both stacks, still producing
+chains for large LRO packets; the default remains 2048.
 
 Native smoltcp copies each received chain into a reusable contiguous buffer,
 then runs its slice API. Rpkt passes the actual `Pbuf` into segmented ingress,
@@ -146,7 +151,8 @@ python3 dev/tcp_report.py /tmp/tcp-duanjp.jsonl /tmp/tcp-tg.jsonl
 ```
 
 Run these **sequentially**, with no simultaneous builds. The runner refuses an
-existing node-2 hugepage reservation, temporarily allocates 128 2-MiB pages,
+existing node-2 hugepage reservation, temporarily allocates 128 2-MiB pages
+(256 pages with offloads),
 then restores the original value in cleanup and checks readback. It does not
 change drivers, IP addresses, MTU or Ethernet pause settings. Binary/source
 hashes and environment data are recorded before testing; logs remain on the

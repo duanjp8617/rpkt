@@ -24,9 +24,11 @@ def main():
     p.add_argument("--plain", action="store_true", help="Disable TCP timestamps identically")
     p.add_argument("--linearize-rpkt", action="store_true", help="Ablation: rpkt parser with the native extra copy")
     p.add_argument("--perf", default="perf", help="perf executable on the DUT")
+    p.add_argument("--rx-data-room", type=int, choices=[2048, 8192], default=2048)
     p.add_argument("--binary-dir", default="bench-results-tcp")
     args = p.parse_args()
     assert 1 <= args.repeats <= 5
+    assert args.offloads or args.rx_data_room == 2048
     if not args.binary_dir.replace("-", "").replace("_", "").isalnum():
         raise ValueError("binary-dir must be a single safe directory name")
     password = os.environ.pop("RPKT_DUT_SUDO_PASSWORD", None)
@@ -77,7 +79,7 @@ def main():
         json.dump(metadata, f, indent=2)
     processes = []
     try:
-        ssh("duanjp", f"tee {huge}", root=True, data="128\n")
+        ssh("duanjp", f"tee {huge}", root=True, data=("256\n" if args.offloads else "128\n"))
         cases = [("echo", 64, 1, True), ("echo", 64, 16, True),
                  ("echo", 512, 16, True), ("bulk", 64, 16, True),
                  ("bulk", 1400, 16, True), ("echo", 64, 16, False)]
@@ -102,13 +104,14 @@ def main():
                         for role, host, variant in [("server", args.dut, backend),
                             ("client", "tg" if args.dut == "duanjp" else "duanjp", "smoltcp")]:
                             core = 60 if host == "duanjp" else 4
-                            eal = ("--huge-unlink=always --socket-mem 0,0,256,0 -a 0000:b8:00.1"
-                                   if host == "duanjp" else "--no-huge -m 256 -a 0000:17:00.0")
+                            memory = 512 if args.offloads else 256
+                            eal = (f"--huge-unlink=always --socket-mem 0,0,{memory},0 -a 0000:b8:00.1"
+                                   if host == "duanjp" else f"--no-huge -m {memory} -a 0000:17:00.0")
                             binary = f"{bases[host]}/{args.binary_dir}/tcp-stack-{variant}"
                             log = f"/tmp/tcp-{stamp}-{role}.log"
                             logs[role] = (host, log)
                             linearize = args.linearize_rpkt and variant == "rpkt"
-                            command = (f"RPKT_TCP_FORCE_LINEARIZE={int(linearize)} RPKT_TCP_OFFLOADS={int(args.offloads)} timeout 30 {binary} {role} {core} 0 5 {connections} {request} {mode} "
+                            command = (f"RPKT_TCP_RX_DATA_ROOM={args.rx_data_room} RPKT_TCP_FORCE_LINEARIZE={int(linearize)} RPKT_TCP_OFFLOADS={int(args.offloads)} timeout 30 {binary} {role} {core} 0 5 {connections} {request} {mode} "
                                        f"{'timestamps' if timestamps else 'plain'} -- -l {core} --no-shconf "
                                        f"--file-prefix tcp-{role} {eal} > {log} 2>&1")
                             process = ssh(host, "sh -c " + shlex.quote(command), root=True, background=True)
@@ -133,7 +136,7 @@ def main():
                             out, err = process.communicate(timeout=40)
                             if process.returncode:
                                 raise RuntimeError(f"TCP process failed: {out} {err}; logs={logs}")
-                        result = dict(repeat=repeat, dut=args.dut, mode=mode, backend=backend, offloads=args.offloads, linearize_rpkt=args.linearize_rpkt,
+                        result = dict(repeat=repeat, dut=args.dut, mode=mode, backend=backend, offloads=args.offloads, linearize_rpkt=args.linearize_rpkt, rx_data_room=args.rx_data_room,
                                       request=request, connections=connections, timestamps=timestamps, logs=logs)
                         for role, (host, log) in logs.items():
                             content = ssh(host, f"cat {log}")
@@ -141,6 +144,8 @@ def main():
                             assert len(records) == 1, content
                             result[role] = records[0]
                             assert records[0]["measured"] and records[0]["errors"] == 0, result
+                            assert records[0]["backend"] == (backend if role == "server" else "smoltcp"), "Binary/backend mismatch"
+                            assert records[0].get("rx_data_room", 2048) == args.rx_data_room, "Wrong RX buffer configuration"
                         validate_offloads(result)
                         output.write(json.dumps(result) + "\n")
                         if args.profile:
