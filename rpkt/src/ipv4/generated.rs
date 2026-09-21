@@ -1864,6 +1864,7 @@ impl<'a> Ipv4OptionsIter<'a> {
 }
 impl<'a> Iterator for Ipv4OptionsIter<'a> {
     type Item = Ipv4Options<Cursor<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;
@@ -1962,6 +1963,7 @@ impl<'a> Ipv4OptionsIterMut<'a> {
 }
 impl<'a> Iterator for Ipv4OptionsIterMut<'a> {
     type Item = Ipv4Options<CursorMut<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.len() < 1 {
             return None;

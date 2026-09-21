@@ -1,0 +1,47 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:u'
+# Event count (approx.): 8634168861
+#
+# Overhead  Symbol                                                                                                      IPC   [IPC Coverage]
+# ........  ..........................................................................................................  ....................
+#
+    80.41%  [.] tcp_stack::main                                                                                         -      -
+     6.32%  [.] smoltcp::wire::ip::checksum::data                                                                       -      -
+     3.83%  [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                -      -
+     3.38%  [.] common_ring_mp_enqueue                                                                                  -      -
+     1.43%  [.] __memmove_avx512_unaligned_erms                                                                         -      -
+     0.57%  [.] common_ring_mc_dequeue                                                                                  -      -
+     0.50%  [.] rte_pktmbuf_alloc_                                                                                      -      -
+     0.47%  [.] rxq_cq_process_v                                                                                        -      -
+     0.40%  [.] mlx5_rx_burst_vec                                                                                       -      -
+     0.37%  [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                         -      -
+     0.37%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}  -      -
+     0.30%  [.] rxq_cq_decompress_v                                                                                     -      -
+     0.27%  [.] rte_pktmbuf_free_                                                                                       -      -
+     0.27%  [.] <smoltcp::iface::interface::Interface>::socket_egress::<rpkt_dpdk::tcp_device::DpdkDevice>              -      -
+     0.17%  [.] <smoltcp::storage::assembler::Assembler>::add                                                           -      -
+     0.13%  [.] rte_eth_tx_burst_                                                                                       -      -
+     0.10%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>               -      -
+     0.10%  [.] <smoltcp::socket::tcp::Socket>::window_to_update                                                        -      -
+     0.10%  [.] mlx5_tx_handle_completion                                                                               -      -
+     0.10%  [.] smoltcp::wire::ip::checksum::pseudo_header                                                              -      -
+     0.07%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::window  -      -
+     0.07%  [.] <smoltcp::wire::tcp::TcpOption>::emit                                                                   -      -
+     0.03%  [.] 0x0000000000000c59                                                                                      -      -
+     0.03%  [.] rte_eth_rx_burst_                                                                                       -      -
+     0.03%  [.] <std::sys::pal::unix::time::Timespec>::now                                                              -      -
+     0.03%  [.] 0x0000000000000c4b                                                                                      -      -
+     0.03%  [.] 0x0000000000000c31                                                                                      -      -
+     0.03%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::on_ack  -      -
+     0.03%  [.] <std::sys::pal::unix::time::Timespec>::sub_timespec                                                     -      -
+     0.03%  [.] <smoltcp::socket::tcp::Socket>::ack_reply                                                               -      -
+     0.03%  [.] mlx5_tx_burst_none_empw                                                                                 -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

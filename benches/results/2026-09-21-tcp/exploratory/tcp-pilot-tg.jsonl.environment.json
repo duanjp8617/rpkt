@@ -1,0 +1,13 @@
+{
+  "dut": "tg",
+  "options": {
+    "output": "/tmp/tcp-pilot-tg.jsonl",
+    "dut": "tg",
+    "repeats": 1,
+    "quick": false
+  },
+  "hosts": {
+    "duanjp": "Mon Sep 21 01:49:12 UTC 2026\nLinux amax-2510 6.17.0-35-generic #35~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 19:30:42 UTC 2 x86_64 x86_64 x86_64 GNU/Linux\ndd07d32a49789582ed05eb66b7c180bbe94b64abc2e55d9d719724f5ba24a914  Cargo.lock\n1ecd5a2f4cfebc6845d23df82c90205b0df2a1fdaff2faa66184be831f7d18d7  tcp-eval/src/lib.rs\n114063dca3aa71308f49d65c21c5e8fd664c32cc7fc35489a619d99d2b7200b0  rpkt-dpdk/examples/tcp_stack.rs\n434b243fdbf5df5d2ca864859c56b1b42148131158a5a9c06f3277d69afddbd1  rpkt-dpdk/src/tcp_device.rs\ned99b0db236cac30b439a97bc15ba9c9d662ede2a5d01ef69bd6d866462a2da6  vendor/smoltcp-rpkt/src/wire/tcp/rpkt_backend.rs\nf8b273fe50ee7b82d64e5f0da6029620ea7c1c5fa9fa2a7d0803cb7f9d7adc18  vendor/smoltcp-rpkt/src/socket/tcp.rs\n8f4c00740a8314bb6df0f6518cd832699da714756728ece59c5619f62c95d92a  bench-results-tcp/tcp-stack-smoltcp\n06c4690a7d378b8509ff5bf2c0394c537dc133440bb9d1d637081535d98109da  bench-results-tcp/tcp-stack-rpkt\nPause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n",
+    "tg": "Mon Sep 21 01:49:15 UTC 2026\nLinux pcl-109 5.15.0-185-generic #195-Ubuntu SMP Fri Jun 19 17:11:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\ndd07d32a49789582ed05eb66b7c180bbe94b64abc2e55d9d719724f5ba24a914  Cargo.lock\n1ecd5a2f4cfebc6845d23df82c90205b0df2a1fdaff2faa66184be831f7d18d7  tcp-eval/src/lib.rs\n114063dca3aa71308f49d65c21c5e8fd664c32cc7fc35489a619d99d2b7200b0  rpkt-dpdk/examples/tcp_stack.rs\n434b243fdbf5df5d2ca864859c56b1b42148131158a5a9c06f3277d69afddbd1  rpkt-dpdk/src/tcp_device.rs\ned99b0db236cac30b439a97bc15ba9c9d662ede2a5d01ef69bd6d866462a2da6  vendor/smoltcp-rpkt/src/wire/tcp/rpkt_backend.rs\nf8b273fe50ee7b82d64e5f0da6029620ea7c1c5fa9fa2a7d0803cb7f9d7adc18  vendor/smoltcp-rpkt/src/socket/tcp.rs\nb96e848c7fcdbb3e77094706a706ce5474c6283d30410ee4ea44ed8d05a20056  bench-results-tcp/tcp-stack-smoltcp\n5770aa8c492e0675f9a54e640cc929c94dc082174abab5e4779ff31a94b7c357  bench-results-tcp/tcp-stack-rpkt\nPause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n"
+  }
+}

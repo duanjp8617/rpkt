@@ -31,3 +31,7 @@ mod conf;
 pub use conf::{DevInfo, EthConf, RxqConf, TxqConf};
 
 pub mod rdtsc;
+
+/// Batched DPDK device adapter for the experimental TCP stack comparison.
+#[cfg(feature = "tcp-stack")]
+pub mod tcp_device;

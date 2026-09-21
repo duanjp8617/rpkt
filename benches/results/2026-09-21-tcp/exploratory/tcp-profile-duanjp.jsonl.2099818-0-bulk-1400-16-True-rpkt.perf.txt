@@ -1,0 +1,44 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:u'
+# Event count (approx.): 8642598309
+#
+# Overhead  Symbol                                                                                                                 IPC   [IPC Coverage]
+# ........  .....................................................................................................................  ....................
+#
+    81.18%  [.] tcp_stack::main                                                                                                    -      -
+     7.26%  [.] smoltcp::wire::ip::checksum::data                                                                                  -      -
+     3.10%  [.] common_ring_mp_enqueue                                                                                             -      -
+     2.64%  [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                           -      -
+     1.33%  [.] __memmove_avx512_unaligned_erms                                                                                    -      -
+     0.80%  [.] common_ring_mc_dequeue                                                                                             -      -
+     0.43%  [.] rxq_cq_process_v                                                                                                   -      -
+     0.37%  [.] rte_pktmbuf_alloc_                                                                                                 -      -
+     0.36%  [.] rte_pktmbuf_free_                                                                                                  -      -
+     0.33%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}             -      -
+     0.33%  [.] rxq_cq_decompress_v                                                                                                -      -
+     0.33%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>                          -      -
+     0.27%  [.] <smoltcp::iface::interface::Interface>::socket_egress::<rpkt_dpdk::tcp_device::DpdkDevice>                         -      -
+     0.23%  [.] mlx5_rx_burst_vec                                                                                                  -      -
+     0.13%  [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                                    -      -
+     0.13%  [.] smoltcp::wire::ip::checksum::pseudo_header                                                                         -      -
+     0.10%  [.] <smoltcp::iface::interface::InterfaceInner>::in_same_network                                                       -      -
+     0.10%  [.] 0x0000000000000c4b                                                                                                 -      -
+     0.10%  [.] <smoltcp::storage::assembler::Assembler>::add                                                                      -      -
+     0.10%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::on_ack             -      -
+     0.07%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::window             -      -
+     0.07%  [.] <smoltcp::socket::tcp::Socket>::window_to_update                                                                   -      -
+     0.07%  [.] __memset_avx512_unaligned_erms                                                                                     -      -
+     0.03%  [.] mlx5_tx_burst_none_empw                                                                                            -      -
+     0.03%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::set_remote_window  -      -
+     0.03%  [.] <smoltcp::wire::ipv4::Packet<&[u8]>>::next_header                                                                  -      -
+     0.03%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::pre_transmit       -      -
+     0.03%  [.] rte_eth_rx_burst_                                                                                                  -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

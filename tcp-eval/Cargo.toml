@@ -1,0 +1,13 @@
+[package]
+name = "tcp-eval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+stack = { package = "smoltcp-rpkt", path = "../vendor/smoltcp-rpkt", features = ["socket-tcp-reno"] }
+
+[features]
+rpkt-tcp = ["stack/rpkt-tcp"]
+native-tcp-inline = ["stack/native-tcp-inline"]

@@ -3,7 +3,9 @@ members = [
   "rpkt",
   "pktfmt",
   "rpkt-dpdk",
-  "benches"
+  "benches",
+  "vendor/smoltcp-rpkt",
+  "tcp-eval"
 ]
 resolver = "2"
 exclude = ["examples"]

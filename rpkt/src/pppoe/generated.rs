@@ -528,6 +528,7 @@ impl<'a> PppoeTagIter<'a> {
 }
 impl<'a> Iterator for PppoeTagIter<'a> {
     type Item = PppoeTag<Cursor<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         PppoeTag::parse(self.buf)
             .map(|pkt| {
@@ -556,6 +557,7 @@ impl<'a> PppoeTagIterMut<'a> {
 }
 impl<'a> Iterator for PppoeTagIterMut<'a> {
     type Item = PppoeTag<CursorMut<'a>>;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         match PppoeTag::parse(&self.buf[..]) {
             Ok(pkt) => {
