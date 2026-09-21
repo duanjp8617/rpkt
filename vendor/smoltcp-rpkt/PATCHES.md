@@ -1,6 +1,8 @@
 # Experimental smoltcp TCP wire backend
 
 Source: published smoltcp 0.12.0 crate, copied from the local Cargo cache.
+Archive SHA-256 (verified against Cargo.lock):
+`dad095989c1533c1c266d9b1e8d70a1329dd3723c3edac6d03bbd67e7bf6f4bb`.
 Original copyright and 0BSD license are retained in LICENSE-0BSD.txt.
 This is an experimental derivative, not an independent TCP implementation.
 

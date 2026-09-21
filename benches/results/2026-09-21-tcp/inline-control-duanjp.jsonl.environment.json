@@ -1,0 +1,6 @@
+{
+  "host": "duanjp",
+  "core": 60,
+  "inline_control": true,
+  "environment": "Mon Sep 21 02:23:43 UTC 2026\n70e3438e79241c4a45827bf3eaaca422a217fcad1309fdfe135ce957e66e28e0  bench-results-tcp/tcp-wire-control-smoltcp\nfd7ed0dcabfb985820c90ad2f25b24c931e6c2cb061094401c1f40154c0d2f7d  bench-results-tcp/tcp-wire-control-smoltcp-inline\n5cff8c8829cb05c8861e81c651b7c1775a8e593e4a73d96d2d180187681b4ba9  bench-results-tcp/tcp-wire-control-rpkt\ne096dd58494bc7edc9c14c7a63781cd815514dcc55d472d0fa451950a826fe64  tcp-eval/src/bin/tcp_wire.rs\ndc0fcbca0a20e5a92eb329713fb2f7d77b6f459cae07c7050ccf0ac66a73ce88  tcp-eval/Cargo.toml\n43bfc909893babe0b7ef88c8bd5cf987fabde441dd8aec39a5c115b5f2f0f4ba  vendor/smoltcp-rpkt/Cargo.toml\n2c94effd6191724947b29c64264592f39ddfdff02d923e2b568291b917ec77a0  vendor/smoltcp-rpkt/src/wire/tcp.rs\n6d643df3af727f3a44d2589a6f442f7042d7aa3857909beb77f8a52b58532187  vendor/smoltcp-rpkt/src/wire/tcp/rpkt_backend.rs\n"
+}

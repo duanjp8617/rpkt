@@ -1,0 +1,67 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:u'
+# Event count (approx.): 8631770199
+#
+# Overhead  Symbol                                                                                                            IPC   [IPC Coverage]
+# ........  ................................................................................................................  ....................
+#
+    14.04%  [.] tcp_stack::main                                                                                               -      -
+    13.44%  [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                               -      -
+    13.38%  [.] smoltcp::wire::ip::checksum::data                                                                             -      -
+     6.39%  [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                      -      -
+     5.94%  [.] common_ring_mp_enqueue                                                                                        -      -
+     5.86%  [.] <smoltcp::socket::tcp::Socket>::window_to_update                                                              -      -
+     5.79%  [.] __memcmp_evex_movbe                                                                                           -      -
+     5.09%  [.] __memmove_avx512_unaligned_erms                                                                               -      -
+     4.36%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}        -      -
+     3.91%  [.] rxq_cq_process_v                                                                                              -      -
+     3.33%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>                     -      -
+     2.53%  [.] common_ring_mc_dequeue                                                                                        -      -
+     2.06%  [.] 0x0000000000000c4b                                                                                            -      -
+     1.86%  [.] mlx5_rx_burst_vec                                                                                             -      -
+     1.70%  [.] <smoltcp::socket::tcp::Socket>::ack_to_transmit                                                               -      -
+     1.63%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::window        -      -
+     1.53%  [.] rte_pktmbuf_alloc_                                                                                            -      -
+     1.00%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::pre_transmit  -      -
+     0.77%  [.] rte_eth_tx_burst_                                                                                             -      -
+     0.61%  [.] rte_pktmbuf_free_                                                                                             -      -
+     0.53%  [.] mlx5_tx_handle_completion                                                                                     -      -
+     0.50%  [.] mlx5_tx_burst_none_empw                                                                                       -      -
+     0.37%  [.] <std::sys::pal::unix::time::Timespec>::sub_timespec                                                           -      -
+     0.37%  [.] rte_eth_rx_burst_                                                                                             -      -
+     0.37%  [.] <smoltcp::wire::tcp::TcpOption>::emit                                                                         -      -
+     0.27%  [.] smoltcp::wire::ip::checksum::pseudo_header                                                                    -      -
+     0.27%  [.] 0x0000000000000c81                                                                                            -      -
+     0.23%  [.] <smoltcp::wire::tcp::Repr>::header_len                                                                        -      -
+     0.20%  [.] rxq_cq_decompress_v                                                                                           -      -
+     0.20%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::on_ack        -      -
+     0.17%  [.] 0x0000000000000c20                                                                                            -      -
+     0.13%  [.] <smoltcp::storage::assembler::Assembler>::add                                                                 -      -
+     0.13%  [.] <smoltcp::iface::neighbor::Cache>::lookup                                                                     -      -
+     0.10%  [.] <smoltcp::wire::ipv4::Packet<&[u8]>>::next_header                                                             -      -
+     0.10%  [.] <smoltcp::iface::interface::InterfaceInner>::in_same_network                                                  -      -
+     0.10%  [.] 0x0000000000000cc8                                                                                            -      -
+     0.10%  [.] clock_gettime@@GLIBC_2.17                                                                                     -      -
+     0.07%  [.] <std::sys::pal::unix::time::Timespec>::now                                                                    -      -
+     0.07%  [.] 0x0000000000000bff                                                                                            -      -
+     0.07%  [.] __memset_avx512_unaligned_erms                                                                                -      -
+     0.07%  [.] 0x0000000000000c84                                                                                            -      -
+     0.07%  [.] 0x0000000000000c64                                                                                            -      -
+     0.07%  [.] 0x0000000000000c79                                                                                            -      -
+     0.03%  [.] 0x0000000000000c3b                                                                                            -      -
+     0.03%  [.] 0x0000000000000c51                                                                                            -      -
+     0.03%  [.] 0x0000000000000cdc                                                                                            -      -
+     0.03%  [.] 0x0000000000000c59                                                                                            -      -
+     0.03%  [.] 0x0000000000000cb1                                                                                            -      -
+     0.03%  [.] 0x0000000000000c87                                                                                            -      -
+     0.03%  [.] __vdso_clock_gettime                                                                                          -      -
+     0.03%  [.] 0x0000000000000c31                                                                                            -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

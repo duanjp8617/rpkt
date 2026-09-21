@@ -1,0 +1,5 @@
+{
+  "host": "tg",
+  "core": 4,
+  "environment": "Mon Sep 21 02:11:31 UTC 2026\n392f8cf6f04a35b80f9b749315d66a149ba3a8568845bb84668a0a5830b465cd  bench-results-tcp/tcp-wire-smoltcp\n2cb9268da18cd0f265150aba422e8354abd66bed207e6241b029495af43e7cf0  bench-results-tcp/tcp-wire-rpkt\ne096dd58494bc7edc9c14c7a63781cd815514dcc55d472d0fa451950a826fe64  tcp-eval/src/bin/tcp_wire.rs\n6d643df3af727f3a44d2589a6f442f7042d7aa3857909beb77f8a52b58532187  vendor/smoltcp-rpkt/src/wire/tcp/rpkt_backend.rs\n"
+}
