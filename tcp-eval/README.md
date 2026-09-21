@@ -95,6 +95,11 @@ python3 dev/tcp_lab.py --dut tg --repeats 3 --output /tmp/tcp-tg.jsonl
 
 # Separate instrumentation run; do not pool with uninstrumented throughput.
 python3 dev/tcp_lab.py --dut duanjp --profile --repeats 1 --output /tmp/tcp-profile.jsonl
+
+# After live traffic has stopped; five alternating repetitions per host:
+python3 dev/tcp_wire_lab.py --host duanjp --output /tmp/tcp-wire-duanjp.jsonl
+python3 dev/tcp_wire_lab.py --host tg --output /tmp/tcp-wire-tg.jsonl
+python3 dev/tcp_report.py /tmp/tcp-duanjp.jsonl /tmp/tcp-tg.jsonl
 ```
 
 Run these **sequentially**, with no simultaneous builds. The runner refuses an
@@ -137,3 +142,26 @@ payload and checksums disabled to isolate that cost. Its plain, timestamp, SYN
 and three-SACK-plus-timestamp cases are supporting microbenchmarks, **not TCP
 application or NIC throughput**. Run frozen binaries in alternating order on
 the same pinned, idle core. Faster options alone do not prove a faster stack.
+
+An additional opt-in `native-tcp-inline` control forces inlining of native TCP
+option and representation parse/emit methods, without changing their logic.
+This distinguishes inlining effects from claims about the borrowed option API.
+It is disabled in the ordinary baseline. Build three fresh wire binaries on
+each host, then run the six backend-order permutations:
+
+```sh
+cargo build --locked --profile performance -p tcp-eval --bin tcp_wire
+cp target/performance/tcp_wire bench-results-tcp/tcp-wire-control-smoltcp
+cargo build --locked --profile performance -p tcp-eval --bin tcp_wire --features native-tcp-inline
+cp target/performance/tcp_wire bench-results-tcp/tcp-wire-control-smoltcp-inline
+cargo build --locked --profile performance -p tcp-eval --bin tcp_wire --features rpkt-tcp
+cp target/performance/tcp_wire bench-results-tcp/tcp-wire-control-rpkt
+python3 dev/tcp_wire_lab.py --host duanjp --inline-control --output /tmp/tcp-inline-duanjp.jsonl
+# Repeat on tg after all builds and other tests stop.
+```
+
+Results record a separate `configuration` for `smoltcp-inline`; it is still
+smoltcp, not a third TCP algorithm. Do not enable `native-tcp-inline` together
+with `rpkt-tcp` when constructing this native control. Backend labels come from
+the actual vendored stack feature, so dependency feature unification cannot
+silently mislabel rpkt as the native baseline.

@@ -41,6 +41,7 @@ jobs:
           python3 -m unittest discover -s dev -p 'test_tcp_report.py'
           cargo test --locked -p tcp-eval
           cargo test --locked -p tcp-eval --features rpkt-tcp
+          cargo test --locked -p tcp-eval --features stack/rpkt-tcp --lib backend_label_reflects_dependency_feature_unification
           cargo test --locked -p smoltcp-rpkt --lib --features medium-ip,socket-udp,socket-icmp,socket-raw,multicast,proto-ipv6-hbh
           cargo test --locked -p smoltcp-rpkt --lib --features medium-ip,socket-udp,socket-icmp,socket-raw,multicast,proto-ipv6-hbh,rpkt-tcp
       - name: Check compiler diagnostics

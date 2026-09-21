@@ -10,3 +10,4 @@ stack = { package = "smoltcp-rpkt", path = "../vendor/smoltcp-rpkt", features = 
 
 [features]
 rpkt-tcp = ["stack/rpkt-tcp"]
+native-tcp-inline = ["stack/native-tcp-inline"]

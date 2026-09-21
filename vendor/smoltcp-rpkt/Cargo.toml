@@ -43,6 +43,8 @@ name = "smoltcp"
 
 [features]
 rpkt-tcp = ["dep:rpkt"]
+# Opt-in fairness control; off in the published/native baseline measurements.
+native-tcp-inline = []
 std = ["managed/std", "alloc"]
 alloc = ["managed/alloc", "defmt?/alloc"]
 verbose = []

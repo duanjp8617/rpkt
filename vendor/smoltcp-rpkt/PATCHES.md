@@ -9,6 +9,12 @@ std, Ethernet, IPv4/IPv6 and TCP. Upstream sources are unchanged except:
 
 - `wire/tcp.rs`: compile-time dispatch in `TcpRepr::parse/emit`; original bodies
   retained as the native backend and differential-test oracle.
+  `TcpRepr::USES_RPKT` identifies the actual backend even when Cargo unifies
+  features through another dependency, so benchmark labels cannot silently lie.
+  The opt-in `native-tcp-inline` fairness control adds `inline(always)` to
+  native option and representation parse/emit functions. It is OFF in the
+  original/native baseline; separate measurements test whether ordinary
+  inlining can explain the wire-only speedup.
 - `wire/tcp/rpkt_backend.rs`: rpkt checked fixed-header views, packed accesses,
   borrowed TCP options, and rpkt emission. Checksums use the SAME upstream
   routines. Malformed/unknown options preserve smoltcp semantics, including

@@ -49,6 +49,8 @@ def main():
     old = ssh("duanjp", f"cat {huge}").strip()
     if old != "0":
         raise RuntimeError("node 2 has an existing hugepage reservation")
+    if args.profile:
+        ssh(args.dut, "command -v perf")
     metadata = {"dut": args.dut, "options": vars(args), "hosts": {}}
     for host in bases:
         iface = "ens31f1np1" if host == "duanjp" else "enp23s0f0np0"

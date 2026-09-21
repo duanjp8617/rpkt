@@ -16,7 +16,7 @@ fn timestamp() -> u32 {
 }
 
 /// Backend identity, recorded with every result.
-pub const BACKEND: &str = if cfg!(feature = "rpkt-tcp") {
+pub const BACKEND: &str = if stack::wire::TcpRepr::USES_RPKT {
     "rpkt"
 } else {
     "smoltcp"

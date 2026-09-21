@@ -3,6 +3,30 @@ use stack::phy::{DeviceCapabilities, RxToken, TxToken};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 #[test]
+fn backend_label_reflects_dependency_feature_unification() {
+    assert_eq!(BACKEND == "rpkt", stack::wire::TcpRepr::USES_RPKT);
+}
+
+#[test]
+fn both_backends_reject_corrupted_tcp_checksums() {
+    use stack::wire::{IpAddress, TcpPacket, TcpRepr};
+    let src = IpAddress::v4(10, 77, 0, 1);
+    let dst = IpAddress::v4(10, 77, 0, 2);
+    let mut bytes = [0; 20];
+    let mut packet = TcpPacket::new_unchecked(&mut bytes[..]);
+    packet.set_src_port(1234);
+    packet.set_dst_port(5000);
+    packet.set_header_len(20);
+    packet.fill_checksum(&src, &dst);
+    let mut caps = stack::phy::ChecksumCapabilities::default();
+    assert!(TcpRepr::parse(&TcpPacket::new_unchecked(&bytes[..]), &src, &dst, &caps).is_ok());
+    bytes[16] ^= 1;
+    assert!(TcpRepr::parse(&TcpPacket::new_unchecked(&bytes[..]), &src, &dst, &caps).is_err());
+    caps.tcp = stack::phy::Checksum::None;
+    assert!(TcpRepr::parse(&TcpPacket::new_unchecked(&bytes[..]), &src, &dst, &caps).is_ok());
+}
+
+#[test]
 fn stream_bulk_copy_and_check_preserve_byte_oracle() {
     for id in [0, 1, 255] {
         let pattern: Vec<_> = (0..PERIOD).map(|p| stream_byte(p as u64, id)).collect();

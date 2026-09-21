@@ -633,6 +633,7 @@ pub enum TcpOption<'a> {
 }
 
 impl<'a> TcpOption<'a> {
+    #[cfg_attr(feature = "native-tcp-inline", inline(always))]
     pub fn parse(buffer: &'a [u8]) -> Result<(&'a [u8], TcpOption<'a>)> {
         let (length, option);
         match *buffer.first().ok_or(Error)? {
@@ -717,6 +718,7 @@ impl<'a> TcpOption<'a> {
         }
     }
 
+    #[cfg_attr(feature = "native-tcp-inline", inline(always))]
     pub fn emit<'b>(&self, buffer: &'b mut [u8]) -> &'b mut [u8] {
         let length;
         match *self {
@@ -852,6 +854,9 @@ impl TcpTimestampRepr {
 }
 
 impl<'a> Repr<'a> {
+    /// Identity of the actual compiled backend, including Cargo feature unification.
+    pub const USES_RPKT: bool = cfg!(feature = "rpkt-tcp");
+
     /// Parse a Transmission Control Protocol packet and return a high-level representation.
     pub fn parse<T>(
         packet: &Packet<&'a T>,
@@ -869,6 +874,7 @@ impl<'a> Repr<'a> {
     }
 
     #[allow(dead_code)]
+    #[cfg_attr(feature = "native-tcp-inline", inline(always))]
     fn parse_native<T>(
         packet: &Packet<&'a T>,
         src_addr: &IpAddress,
@@ -1019,6 +1025,7 @@ impl<'a> Repr<'a> {
     }
 
     #[allow(dead_code)]
+    #[cfg_attr(feature = "native-tcp-inline", inline(always))]
     fn emit_native<T>(
         &self,
         packet: &mut Packet<&mut T>,
