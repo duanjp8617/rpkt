@@ -69,7 +69,7 @@ impl InterfaceInner {
     }
 
     /// Checks if an ipv4 address is unicast, taking into account subnet broadcast addresses
-    fn is_unicast_v4(&self, address: Ipv4Address) -> bool {
+    pub(super) fn is_unicast_v4(&self, address: Ipv4Address) -> bool {
         address.x_is_unicast() && !self.is_broadcast_v4(address)
     }
 

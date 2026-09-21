@@ -1,0 +1,124 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 2K of event 'cycles:u'
+# Event count (approx.): 11147530464
+#
+# Overhead  Shared Object      Symbol                                                                                                            IPC   [IPC Coverage]
+# ........  .................  ................................................................................................................  ....................
+#
+    17.24%  libc.so.6          [.] 0x00000000001afafa                                                                                            -      -
+    11.84%  tcp-stack-smoltcp  [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                               -      -
+    10.62%  tcp-stack-smoltcp  [.] tcp_stack::main                                                                                               -      -
+     9.46%  libc.so.6          [.] 0x00000000001af1cc                                                                                            -      -
+     5.99%  tcp-stack-smoltcp  [.] mlx5_rx_burst                                                                                                 -      -
+     3.46%  tcp-stack-smoltcp  [.] <smoltcp::socket::tcp::Socket>::window_to_update                                                              -      -
+     3.11%  tcp-stack-smoltcp  [.] rte_pktmbuf_alloc_                                                                                            -      -
+     2.81%  libc.so.6          [.] 0x00000000001af04d                                                                                            -      -
+     2.40%  libc.so.6          [.] 0x00000000001af05b                                                                                            -      -
+     2.33%  tcp-stack-smoltcp  [.] common_ring_mp_enqueue                                                                                        -      -
+     1.97%  tcp-stack-smoltcp  [.] common_ring_mc_dequeue                                                                                        -      -
+     1.79%  tcp-stack-smoltcp  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}        -      -
+     1.70%  tcp-stack-smoltcp  [.] <smoltcp::socket::tcp::Socket>::ack_to_transmit                                                               -      -
+     1.69%  libc.so.6          [.] 0x00000000001aea8b                                                                                            -      -
+     1.61%  libc.so.6          [.] 0x00000000001aea6d                                                                                            -      -
+     1.45%  tcp-stack-smoltcp  [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                      -      -
+     1.41%  libc.so.6          [.] 0x00000000001aea75                                                                                            -      -
+     1.34%  libc.so.6          [.] 0x00000000001aea84                                                                                            -      -
+     1.26%  libc.so.6          [.] 0x00000000001aea67                                                                                            -      -
+     1.17%  libc.so.6          [.] 0x00000000001aea93                                                                                            -      -
+     0.96%  tcp-stack-smoltcp  [.] <smoltcp::wire::tcp::TcpOption>::emit                                                                         -      -
+     0.80%  libc.so.6          [.] 0x00000000001af00e                                                                                            -      -
+     0.68%  [vdso]             [.] 0x00000000000006e8                                                                                            -      -
+     0.53%  libc.so.6          [.] 0x00000000001af046                                                                                            -      -
+     0.50%  tcp-stack-smoltcp  [.] <smoltcp::iface::interface::Interface>::socket_ingress::<rpkt_dpdk::tcp_device::DpdkDevice>::{closure#0}      -      -
+     0.50%  libc.so.6          [.] 0x00000000001aea9b                                                                                            -      -
+     0.50%  libc.so.6          [.] 0x00000000001aee93                                                                                            -      -
+     0.47%  tcp-stack-smoltcp  [.] rte_pktmbuf_free_                                                                                             -      -
+     0.47%  tcp-stack-smoltcp  [.] <std::sys::pal::unix::time::Timespec>::sub_timespec                                                           -      -
+     0.47%  libc.so.6          [.] 0x00000000001aea7c                                                                                            -      -
+     0.46%  tcp-stack-smoltcp  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::window        -      -
+     0.44%  libc.so.6          [.] 0x00000000001af073                                                                                            -      -
+     0.44%  libc.so.6          [.] 0x00000000001afafc                                                                                            -      -
+     0.44%  libc.so.6          [.] 0x00000000001af16d                                                                                            -      -
+     0.44%  tcp-stack-smoltcp  [.] mlx5_tx_burst_mtsc_empw                                                                                       -      -
+     0.38%  tcp-stack-smoltcp  [.] rte_eth_tx_burst_                                                                                             -      -
+     0.36%  tcp-stack-smoltcp  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>                     -      -
+     0.30%  libc.so.6          [.] 0x00000000001af08a                                                                                            -      -
+     0.30%  libc.so.6          [.] 0x00000000001aeaac                                                                                            -      -
+     0.30%  tcp-stack-smoltcp  [.] <std::sys::pal::unix::time::Timespec>::now                                                                    -      -
+     0.29%  libc.so.6          [.] 0x00000000001af1ce                                                                                            -      -
+     0.27%  libc.so.6          [.] 0x00000000001ae906                                                                                            -      -
+     0.27%  tcp-stack-smoltcp  [.] mlx5_tx_handle_completion                                                                                     -      -
+     0.27%  libc.so.6          [.] 0x00000000001af0ee                                                                                            -      -
+     0.27%  libc.so.6          [.] 0x00000000001af054                                                                                            -      -
+     0.25%  libc.so.6          [.] clock_gettime                                                                                                 -      -
+     0.22%  libc.so.6          [.] 0x00000000001af06c                                                                                            -      -
+     0.20%  libc.so.6          [.] 0x00000000001af065                                                                                            -      -
+     0.17%  libc.so.6          [.] 0x00000000001aeab4                                                                                            -      -
+     0.17%  tcp-stack-smoltcp  [.] rte_eth_rx_burst_                                                                                             -      -
+     0.17%  libc.so.6          [.] 0x00000000001af05f                                                                                            -      -
+     0.14%  tcp-stack-smoltcp  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::pre_transmit  -      -
+     0.14%  libc.so.6          [.] 0x00000000001aeaa2                                                                                            -      -
+     0.13%  libc.so.6          [.] 0x00000000001aeaa8                                                                                            -      -
+     0.13%  libc.so.6          [.] 0x00000000001af07a                                                                                            -      -
+     0.10%  libc.so.6          [.] 0x00000000001aeab8                                                                                            -      -
+     0.10%  libc.so.6          [.] 0x00000000001aefd0                                                                                            -      -
+     0.10%  libc.so.6          [.] 0x00000000001af146                                                                                            -      -
+     0.10%  [vdso]             [.] 0x000000000000082a                                                                                            -      -
+     0.10%  libc.so.6          [.] 0x00000000001af07e                                                                                            -      -
+     0.10%  tcp-stack-smoltcp  [.] <&[u8] as smoltcp::socket::tcp::ReceivePayload>::write                                                        -      -
+     0.10%  libc.so.6          [.] 0x00000000001af016                                                                                            -      -
+     0.07%  libc.so.6          [.] 0x00000000001af14e                                                                                            -      -
+     0.07%  [vdso]             [.] 0x00000000000007b0                                                                                            -      -
+     0.07%  libc.so.6          [.] 0x00000000001af025                                                                                            -      -
+     0.07%  [vdso]             [.] 0x0000000000000870                                                                                            -      -
+     0.07%  libc.so.6          [.] 0x00000000001af02d                                                                                            -      -
+     0.07%  libc.so.6          [.] 0x00000000001aefe6                                                                                            -      -
+     0.07%  libc.so.6          [.] 0x00000000001af0fb                                                                                            -      -
+     0.07%  tcp-stack-smoltcp  [.] <smoltcp::wire::ip::Repr>::new                                                                                -      -
+     0.06%  tcp-stack-smoltcp  [.] <smoltcp::iface::neighbor::Cache>::lookup                                                                     -      -
+     0.03%  libc.so.6          [.] 0x00000000001aee80                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af0cf                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007f1                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001afa80                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af114                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007dc                                                                                            -      -
+     0.03%  tcp-stack-smoltcp  [.] <rpkt_dpdk::tcp_device::DpdkDevice as smoltcp::phy::Device>::transmit                                         -      -
+     0.03%  libc.so.6          [.] 0x00000000001af1c6                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007ba                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae90d                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af0aa                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007f7                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae969                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae94e                                                                                            -      -
+     0.03%  [vdso]             [.] 0x000000000000082d                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001aee87                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af0c7                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007b1                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001aeb40                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af0a4                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af11a                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007b6                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af040                                                                                            -      -
+     0.03%  tcp-stack-smoltcp  [.] <smoltcp::iface::interface::InterfaceInner>::in_same_network                                                  -      -
+     0.03%  tcp-stack-smoltcp  [.] <smoltcp::storage::assembler::Assembler>::add                                                                 -      -
+     0.03%  tcp-stack-smoltcp  [.] rpkt_dpdk::tcp_device::prepare_tx                                                                             -      -
+     0.03%  libc.so.6          [.] 0x00000000001aee84                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007c0                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000007bf                                                                                            -      -
+     0.03%  [vdso]             [.] 0x00000000000006e0                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001af036                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae975                                                                                            -      -
+     0.03%  tcp-stack-smoltcp  [.] <smoltcp::wire::tcp::Repr>::buffer_len                                                                        -      -
+     0.03%  [vdso]             [.] 0x00000000000006e5                                                                                            -      -
+     0.03%  libc.so.6          [.] 0x00000000001aeff7                                                                                            -      -
+     0.03%  [vdso]             [.] 0x000000000000083d                                                                                            -      -
+     0.00%  libc.so.6          [.] ioctl                                                                                                         -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

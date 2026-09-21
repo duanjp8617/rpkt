@@ -122,6 +122,11 @@ impl<'a> PktBuf for Pbuf<'a> {
     }
 
     fn trim_off(&mut self, cnt: usize) {
+        // Normal protocol parsing often trims zero padding. Do not walk the
+        // entire mbuf chain just to keep its length unchanged.
+        if cnt == 0 {
+            return;
+        }
         let cursor = self.cursor();
         assert!(cnt <= self.remaining());
 

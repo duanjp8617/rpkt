@@ -1,6 +1,6 @@
 import unittest
 
-from tcp_report import rate
+from tcp_report import rate, validate_offloads
 
 
 class TcpReportTests(unittest.TestCase):
@@ -22,6 +22,37 @@ class TcpReportTests(unittest.TestCase):
         row["server"]["errors"] = 1
         with self.assertRaises(AssertionError):
             rate(row)
+
+    def offload_row(self):
+        row = self.row("bulk")
+        row.update(offloads=True, backend="rpkt")
+        row["server"].update(offloads=True, chains=10, lro=10, max_rx_len=32000, linearized_bytes=0)
+        row["client"].update(offloads=True, tso=10)
+        return row
+
+    def test_real_chain_evidence_required(self):
+        row = self.offload_row()
+        validate_offloads(row)
+        row["server"]["chains"] = 0
+        with self.assertRaises(AssertionError):
+            validate_offloads(row)
+
+    def test_copy_path_evidence_required(self):
+        row = self.offload_row()
+        row["server"]["linearized_bytes"] = 320000
+        with self.assertRaises(AssertionError):
+            validate_offloads(row)
+        row["linearize_rpkt"] = True
+        validate_offloads(row)
+
+    def test_both_endpoints_must_use_same_rx_buffers(self):
+        row = self.offload_row()
+        row["rx_data_room"] = 8192
+        row["server"]["rx_data_room"] = 8192
+        with self.assertRaises(AssertionError):
+            validate_offloads(row)
+        row["client"]["rx_data_room"] = 8192
+        validate_offloads(row)
 
 
 if __name__ == "__main__":

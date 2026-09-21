@@ -19,6 +19,45 @@ use crate::wire::{
 
 mod congestion;
 
+/// Receive storage only: transport state and window/assembler decisions are
+/// shared by contiguous and chained ingress. The socket ring still owns data.
+pub(crate) trait ReceivePayload {
+    fn len(&self) -> usize;
+    fn write(self, ring: &mut SocketBuffer<'_>, range: core::ops::Range<usize>, offset: usize);
+}
+
+impl ReceivePayload for &[u8] {
+    fn len(&self) -> usize {
+        <[u8]>::len(self)
+    }
+    fn write(self, ring: &mut SocketBuffer<'_>, range: core::ops::Range<usize>, offset: usize) {
+        let data = &self[range];
+        assert_eq!(ring.write_unallocated(offset, data), data.len());
+    }
+}
+
+#[cfg(feature = "rpkt-tcp")]
+impl ReceivePayload for &mut dyn rpkt::PktBuf {
+    fn len(&self) -> usize {
+        self.remaining()
+    }
+    fn write(self, ring: &mut SocketBuffer<'_>, range: core::ops::Range<usize>, mut offset: usize) {
+        self.advance(range.start);
+        let mut left = range.len();
+        while left != 0 {
+            // Split at the socket ring's wrap, not at every source mbuf.
+            // This computes ring offsets at most twice per packet while Buf
+            // copies directly from all source chunks into the final storage.
+            let destination = ring.get_unallocated(offset, left);
+            let n = destination.len();
+            assert!(n != 0);
+            self.copy_to_slice(destination);
+            offset += n;
+            left -= n;
+        }
+    }
+}
+
 macro_rules! tcp_trace {
     ($($arg:expr),*) => (net_log!(trace, $($arg),*));
 }
@@ -1355,6 +1394,14 @@ impl<'a> Socket<'a> {
     }
 
     pub(crate) fn rst_reply(ip_repr: &IpRepr, repr: &TcpRepr) -> (IpRepr, TcpRepr<'static>) {
+        Self::rst_reply_len(ip_repr, repr, repr.payload.len())
+    }
+
+    pub(crate) fn rst_reply_len(
+        ip_repr: &IpRepr,
+        repr: &TcpRepr,
+        payload_len: usize,
+    ) -> (IpRepr, TcpRepr<'static>) {
         debug_assert!(repr.control != TcpControl::Rst);
 
         let (ip_reply_repr, mut reply_repr) = Self::reply(ip_repr, repr);
@@ -1364,7 +1411,7 @@ impl<'a> Socket<'a> {
         reply_repr.control = TcpControl::Rst;
         reply_repr.seq_number = repr.ack_number.unwrap_or_default();
         if repr.control == TcpControl::Syn && repr.ack_number.is_none() {
-            reply_repr.ack_number = Some(repr.seq_number + repr.segment_len());
+            reply_repr.ack_number = Some(repr.seq_number + payload_len + 1);
         }
 
         (ip_reply_repr, reply_repr)
@@ -1480,6 +1527,17 @@ impl<'a> Socket<'a> {
         ip_repr: &IpRepr,
         repr: &TcpRepr,
     ) -> Option<(IpRepr, TcpRepr<'static>)> {
+        self.process_payload(cx, ip_repr, repr, repr.payload)
+    }
+
+    pub(crate) fn process_payload<P: ReceivePayload>(
+        &mut self,
+        cx: &mut Context,
+        ip_repr: &IpRepr,
+        repr: &TcpRepr,
+        payload: P,
+    ) -> Option<(IpRepr, TcpRepr<'static>)> {
+        let original_payload_len = payload.len();
         debug_assert!(self.accepts(cx, ip_repr, repr));
 
         // Consider how much the sequence number space differs from the transmit buffer space.
@@ -1518,7 +1576,7 @@ impl<'a> Socket<'a> {
             (State::SynSent, TcpControl::Syn, Some(ack_number)) => {
                 if ack_number != self.local_seq_no + 1 {
                     net_debug!("unacceptable SYN|ACK in response to initial SYN");
-                    return Some(Self::rst_reply(ip_repr, repr));
+                    return Some(Self::rst_reply_len(ip_repr, repr, original_payload_len));
                 }
             }
             // TCP simultaneous open.
@@ -1541,7 +1599,7 @@ impl<'a> Socket<'a> {
                 net_debug!(
                     "expecting a SYN|ACK, received an ACK with the wrong ack_number, sending RST."
                 );
-                return Some(Self::rst_reply(ip_repr, repr));
+                return Some(Self::rst_reply_len(ip_repr, repr, original_payload_len));
             }
             // Anything else in the SYN-SENT state is invalid.
             (State::SynSent, _, _) => {
@@ -1557,7 +1615,7 @@ impl<'a> Socket<'a> {
             (State::SynReceived, _, Some(ack_number)) => {
                 if ack_number != self.local_seq_no + 1 {
                     net_debug!("unacceptable ACK in response to SYN|ACK");
-                    return Some(Self::rst_reply(ip_repr, repr));
+                    return Some(Self::rst_reply_len(ip_repr, repr, original_payload_len));
                 }
             }
             // Every acknowledgement must be for transmitted but unacknowledged data.
@@ -1598,11 +1656,11 @@ impl<'a> Socket<'a> {
         let window_start = self.remote_seq_no + self.rx_buffer.len();
         let window_end = self.remote_seq_no + self.rx_buffer.capacity();
         let segment_start = repr.seq_number;
-        let segment_end = repr.seq_number + repr.payload.len();
+        let segment_end = repr.seq_number + original_payload_len;
 
-        let (payload, payload_offset) = match self.state {
+        let (payload_range, payload_offset) = match self.state {
             // In LISTEN and SYN-SENT states, we have not yet synchronized with the remote end.
-            State::Listen | State::SynSent => (&[][..], 0),
+            State::Listen | State::SynSent => (0..0, 0),
             _ => {
                 // https://www.rfc-editor.org/rfc/rfc9293.html#name-segment-acceptability-tests
                 let segment_in_window = match (
@@ -1667,7 +1725,7 @@ impl<'a> Socket<'a> {
                     self.local_rx_last_seq = Some(repr.seq_number);
 
                     (
-                        &repr.payload[overlap_start - segment_start..overlap_end - segment_start],
+                        overlap_start - segment_start..overlap_end - segment_start,
                         overlap_start - window_start,
                     )
                 } else {
@@ -1973,7 +2031,7 @@ impl<'a> Socket<'a> {
                 // Increment duplicate ACK count and set for retransmit if we just received
                 // the third duplicate ACK
                 Some(last_rx_ack)
-                    if repr.payload.is_empty()
+                    if original_payload_len == 0
                         && last_rx_ack == ack_number
                         && ack_number < self.remote_last_seq
                         && !is_window_update =>
@@ -2029,7 +2087,7 @@ impl<'a> Socket<'a> {
             self.last_remote_tsval = timestamp.tsval;
         }
 
-        let payload_len = payload.len();
+        let payload_len = payload_range.len();
         if payload_len == 0 {
             return None;
         }
@@ -2055,8 +2113,7 @@ impl<'a> Socket<'a> {
             payload_len,
             payload_offset
         );
-        let len_written = self.rx_buffer.write_unallocated(payload_offset, payload);
-        debug_assert!(len_written == payload_len);
+        payload.write(&mut self.rx_buffer, payload_range, payload_offset);
 
         if contig_len != 0 {
             // Enqueue the contiguous data octets in front of the buffer.
@@ -2420,9 +2477,26 @@ impl<'a> Socket<'a> {
                 // exceed the link MTU and the interface silently drops them when
                 // fragmentation is disabled. Not an rpkt performance advantage.
                 let option_len = repr.header_len() - TCP_HEADER_LEN;
-                let size = win_limit
-                    .min(self.remote_mss.saturating_sub(option_len))
-                    .min(cx.ip_mtu().saturating_sub(ip_repr.header_len() + repr.header_len()));
+                // TSO is used only for IPv4 peers whose MSS accommodates our
+                // physical MTU. Smaller peer MSS values use normal packets.
+                let wire_mss = cx.ip_mtu() - ip_repr.header_len() - TCP_HEADER_LEN;
+                #[cfg(feature = "proto-ipv4")]
+                let tso = if matches!(ip_repr, IpRepr::Ipv4(_)) {
+                    cx.max_tcp_segmentation_len()
+                } else {
+                    0
+                };
+                #[cfg(not(feature = "proto-ipv4"))]
+                let tso = 0;
+                let limit = if tso > cx.ip_mtu() && self.remote_mss >= wire_mss {
+                    tso.saturating_sub(ip_repr.header_len() + repr.header_len())
+                } else {
+                    self.remote_mss.saturating_sub(option_len).min(
+                        cx.ip_mtu()
+                            .saturating_sub(ip_repr.header_len() + repr.header_len()),
+                    )
+                };
+                let size = win_limit.min(limit);
 
                 let offset = self.remote_last_seq - self.local_seq_no;
                 repr.payload = self.tx_buffer.get_allocated(offset, size);

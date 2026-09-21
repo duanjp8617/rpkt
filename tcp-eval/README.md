@@ -1,4 +1,4 @@
-# TCP over rpkt-dpdk: controlled wire-backend experiment
+# TCP over rpkt-dpdk: controlled wire and chained-buffer comparison
 
 Two builds run the same smoltcp 0.12 connection state machine through the same
 `rpkt_dpdk::tcp_device::DpdkDevice`. The `rpkt-tcp` feature replaces TCP parsing
@@ -7,12 +7,79 @@ implemented TCP state machine**. See [vendor provenance](../vendor/smoltcp-rpkt/
 
 The common DPDK adapter owns mbuf receive tokens, batches RX/TX in groups of 64,
 retains partial TX bursts, bounds ingress work per poll, and initializes output
-buffers before the stack writes them. It rejects multi-segment/oversized input.
+buffers before the stack writes them. Optional TSO/LRO mode supports chained
+IPv4/TCP input as described below.
 The evaluation uses Ethernet/IPv4, MTU 1500, one hardware queue and one thread
 per endpoint. IPv6 is compiled but is not part of the live benchmark.
 
+## Chained mbufs with TSO/LRO
+
+Set `RPKT_TCP_OFFLOADS=1` (or use the lab runner's `--offloads`) on **both**
+endpoints. Physical MTU remains 1500 and the SYN MSS remains 1460. Both variants
+submit logical IPv4 TCP packets up to 64512 bytes, with correct hardware
+checksum metadata and a timestamp-enabled TSO payload size of 1448. Both use
+the same 65280-byte LRO limit, 2048-byte RX data rooms, and separate large TX
+mbufs. Hardware capability checks fail explicitly if offloads are unavailable.
+The 4095-buffer TX pool exceeds the 2048-entry TX ring plus cache/burst
+reservations; a smaller pool can deadlock with deferred driver reclamation.
+Offload runs reserve 384 MiB per endpoint. Optional `--rx-data-room 8192`
+configures larger RX buffers identically for both stacks, still producing
+chains for large LRO packets; the default remains 2048.
+
+Native smoltcp copies each received chain into a reusable contiguous buffer,
+then runs its slice API. Rpkt passes the actual `Pbuf` into segmented ingress,
+parses the TCP header/options without copying the payload, and copies accepted
+chunks directly into the final socket receive ring. This removes **one extra
+full-frame copy**, not all copies. Split headers use bounded scratch; chained
+protocols other than IPv4/TCP are outside this experimental path's scope.
+
+Both versions check NIC RX checksum status, reject BAD and compute a software
+checksum for UNKNOWN/NONE. Timestamp-only options are identically aligned to
+`NOP,NOP,TS` before TX checksum offload: the lab NICs did not coalesce the
+original `TS,EOL,pad` layout. This interoperability fix is not credited to rpkt.
+
+Build frozen binaries separately on each host, outside any live run:
+
+```sh
+mkdir bench-results-tcp-chained-final
+cargo build --locked --profile performance -p rpkt-dpdk --example tcp_stack --features tcp-stack
+cp target/performance/examples/tcp_stack bench-results-tcp-chained-final/tcp-stack-smoltcp
+cargo build --locked --profile performance -p rpkt-dpdk --example tcp_stack --features tcp-rpkt
+cp target/performance/examples/tcp_stack bench-results-tcp-chained-final/tcp-stack-rpkt
+```
+
+Run sequentially. The larger RX buffers are a shared offload tuning choice,
+not an rpkt-specific optimization:
+
+```sh
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-tg.jsonl
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut duanjp --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-duanjp.jsonl
+# Extra-copy ablation: same rpkt parser, but linearize incoming chains first.
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --linearize-rpkt --quick --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-copy-control.jsonl
+# Separate active-window profiling, never pooled with throughput trials.
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --profile --repeats 1 \
+  --perf /root/rpkt-ws/bench-tools/perf \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-profile.jsonl
+```
+
+The checked-in [chained-buffer report](../benches/results/2026-09-21-tcp-chained.md)
+includes the complete matrix, copy control, profiles and limitations. The
+workspace-local `perf` path above is specific to tg; use your host's compatible
+executable elsewhere.
+
+JSON includes cumulative `chains`, `lro`, `linearized_bytes`, `tso`, and
+`max_rx_len` counters. The runner/report reject purported offload results
+without actual TSO submissions, LRO chains, and the expected copy-path counters.
+Do not pool different build profiles, offload settings or copy controls.
+Ordinary mode retains software checksums; offloaded mode accepts Ethernet
+ARP/IPv4 only. Both modes still validate every application byte.
+
 Both endpoints use Reno, 256 KiB send/receive buffers per connection, Nagle off,
-immediate ACKs, the same polling policy and software IP/TCP checksums. Nothing
+immediate ACKs and the same polling policy. Without offloads, both use software
+IP/TCP checksums. Nothing
 assumes incoming checksums are valid. The application generates and verifies
 every byte of a deterministic stream, including across segment boundaries.
 Its 64-KiB period is precomputed before measurement, then copied/compared with
@@ -36,6 +103,13 @@ cargo test --locked -p smoltcp-rpkt --lib \
 # No NIC needed. Differential parsing and emission under the interpreter:
 cargo +nightly miri test --locked -p smoltcp-rpkt --lib \
   --features rpkt-tcp differential_wire_and_options
+
+# Actual chained mbufs and offload metadata, isolated process on tg; no NIC.
+RPKT_TCP_TEST_CORE=4 cargo test --locked -p rpkt-dpdk --lib --features tcp-rpkt \
+  tcp_device::tests::offload_mbuf_checksums_tokens_and_metadata \
+  -- --ignored --test-threads=1
+cargo +nightly miri test --locked -p rpkt-dpdk --test pbuf_miri \
+  zero_trim_preserves_chain_and_cursor
 ```
 
 The application test establishes four connections, exchanges timestamp-enabled
@@ -103,7 +177,8 @@ python3 dev/tcp_report.py /tmp/tcp-duanjp.jsonl /tmp/tcp-tg.jsonl
 ```
 
 Run these **sequentially**, with no simultaneous builds. The runner refuses an
-existing node-2 hugepage reservation, temporarily allocates 128 2-MiB pages,
+existing node-2 hugepage reservation, temporarily allocates 128 2-MiB pages
+(192 pages with offloads, with allocation readback checked),
 then restores the original value in cleanup and checks readback. It does not
 change drivers, IP addresses, MTU or Ethernet pause settings. Binary/source
 hashes and environment data are recorded before testing; logs remain on the

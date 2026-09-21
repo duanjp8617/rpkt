@@ -1,0 +1,109 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 2K of event 'cycles:u'
+# Event count (approx.): 11222636862
+#
+# Overhead  Symbol                                                                                                            IPC   [IPC Coverage]
+# ........  ................................................................................................................  ....................
+#
+    16.50%  [.] mlx5_rx_burst                                                                                                 -      -
+    12.61%  [.] 0x00000000001afafa                                                                                            -      -
+    10.31%  [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                               -      -
+    10.24%  [.] tcp_stack::main                                                                                               -      -
+     9.81%  [.] 0x00000000001af1cc                                                                                            -      -
+     2.79%  [.] <smoltcp::socket::tcp::Socket>::window_to_update                                                              -      -
+     2.69%  [.] rte_pktmbuf_alloc_                                                                                            -      -
+     2.24%  [.] 0x00000000001af04d                                                                                            -      -
+     2.24%  [.] common_ring_mc_dequeue                                                                                        -      -
+     2.18%  [.] 0x00000000001af05b                                                                                            -      -
+     2.11%  [.] common_ring_mp_enqueue                                                                                        -      -
+     1.91%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}        -      -
+     1.75%  [.] 0x00000000001aea84                                                                                            -      -
+     1.54%  [.] 0x00000000001aea75                                                                                            -      -
+     1.51%  [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                      -      -
+     1.46%  [.] 0x00000000001aea93                                                                                            -      -
+     1.32%  [.] 0x00000000001aea8b                                                                                            -      -
+     1.10%  [.] 0x00000000001aea6d                                                                                            -      -
+     0.97%  [.] 0x00000000001aea67                                                                                            -      -
+     0.94%  [.] 0x00000000001aee93                                                                                            -      -
+     0.80%  [.] mlx5_tx_burst_mtsc_empw                                                                                       -      -
+     0.74%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::window        -      -
+     0.67%  [.] <smoltcp::socket::tcp::Socket>::ack_to_transmit                                                               -      -
+     0.62%  [.] 0x00000000001af16d                                                                                            -      -
+     0.62%  [.] 0x00000000001aea9b                                                                                            -      -
+     0.60%  [.] rte_pktmbuf_free_                                                                                             -      -
+     0.57%  [.] 0x00000000000006e8                                                                                            -      -
+     0.57%  [.] 0x00000000001af00e                                                                                            -      -
+     0.57%  [.] 0x00000000001aea7c                                                                                            -      -
+     0.50%  [.] <smoltcp::wire::tcp::TcpOption>::emit                                                                         -      -
+     0.47%  [.] 0x00000000001afafc                                                                                            -      -
+     0.40%  [.] 0x00000000001af054                                                                                            -      -
+     0.37%  [.] <smoltcp::iface::interface::Interface>::socket_ingress::<rpkt_dpdk::tcp_device::DpdkDevice>::{closure#0}      -      -
+     0.37%  [.] rte_eth_tx_burst_                                                                                             -      -
+     0.34%  [.] 0x00000000001af08a                                                                                            -      -
+     0.30%  [.] 0x00000000001af046                                                                                            -      -
+     0.30%  [.] 0x00000000001aeaa2                                                                                            -      -
+     0.30%  [.] <&[u8] as smoltcp::socket::tcp::ReceivePayload>::write                                                        -      -
+     0.30%  [.] 0x00000000001af073                                                                                            -      -
+     0.27%  [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>                     -      -
+     0.26%  [.] 0x00000000001aeaac                                                                                            -      -
+     0.23%  [.] 0x00000000001aee80                                                                                            -      -
+     0.20%  [.] 0x00000000001af025                                                                                            -      -
+     0.20%  [.] mlx5_tx_handle_completion                                                                                     -      -
+     0.17%  [.] <std::sys::pal::unix::time::Timespec>::now                                                                    -      -
+     0.16%  [.] 0x00000000001ae906                                                                                            -      -
+     0.14%  [.] 0x00000000001af1ce                                                                                            -      -
+     0.13%  [.] rte_eth_rx_burst_                                                                                             -      -
+     0.13%  [.] 0x00000000001aeab4                                                                                            -      -
+     0.13%  [.] 0x00000000001af07a                                                                                            -      -
+     0.10%  [.] 0x00000000001aeab8                                                                                            -      -
+     0.10%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::pre_transmit  -      -
+     0.10%  [.] 0x00000000001aeff7                                                                                            -      -
+     0.10%  [.] 0x00000000001af06c                                                                                            -      -
+     0.10%  [.] <std::sys::pal::unix::time::Timespec>::sub_timespec                                                           -      -
+     0.10%  [.] 0x0000000000000840                                                                                            -      -
+     0.10%  [.] __vdso_clock_gettime                                                                                          -      -
+     0.10%  [.] 0x00000000001aeaa8                                                                                            -      -
+     0.07%  [.] 0x00000000001af07e                                                                                            -      -
+     0.07%  [.] 0x00000000001aefe6                                                                                            -      -
+     0.07%  [.] 0x00000000001af1a5                                                                                            -      -
+     0.07%  [.] 0x00000000001af065                                                                                            -      -
+     0.07%  [.] 0x00000000001af040                                                                                            -      -
+     0.07%  [k] asm_sysvec_apic_timer_interrupt                                                                               -      -
+     0.07%  [.] 0x00000000001af0a4                                                                                            -      -
+     0.07%  [.] 0x0000000000000869                                                                                            -      -
+     0.07%  [.] 0x00000000001aea60                                                                                            -      -
+     0.07%  [.] 0x00000000001af05f                                                                                            -      -
+     0.07%  [.] 0x00000000001ae94e                                                                                            -      -
+     0.07%  [.] 0x00000000001aefd0                                                                                            -      -
+     0.07%  [.] rpkt_dpdk::tcp_device::prepare_tx                                                                             -      -
+     0.06%  [.] 0x00000000000006f1                                                                                            -      -
+     0.03%  [.] 0x00000000001af02d                                                                                            -      -
+     0.03%  [.] 0x00000000001aeee5                                                                                            -      -
+     0.03%  [.] 0x0000000000000823                                                                                            -      -
+     0.03%  [.] 0x00000000000006e5                                                                                            -      -
+     0.03%  [.] 0x00000000000007b0                                                                                            -      -
+     0.03%  [.] 0x00000000001af016                                                                                            -      -
+     0.03%  [.] 0x00000000001af036                                                                                            -      -
+     0.03%  [.] 0x0000000000000801                                                                                            -      -
+     0.03%  [.] 0x000000000000082a                                                                                            -      -
+     0.03%  [.] <smoltcp::wire::tcp::Repr>::header_len                                                                        -      -
+     0.03%  [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::on_ack        -      -
+     0.03%  [.] <rpkt_dpdk::tcp_device::DpdkDevice as smoltcp::phy::Device>::transmit                                         -      -
+     0.03%  [.] 0x0000000000000870                                                                                            -      -
+     0.03%  [.] 0x00000000001af14e                                                                                            -      -
+     0.03%  [.] 0x00000000000007dc                                                                                            -      -
+     0.03%  [.] 0x0000000000000812                                                                                            -      -
+     0.03%  [.] <smoltcp::wire::tcp::Repr>::buffer_len                                                                        -      -
+     0.03%  [.] <smoltcp::iface::interface::InterfaceInner>::in_same_network                                                  -      -
+     0.02%  [.] perf_mmap__consume                                                                                            -      -
+     0.00%  [.] __evlist__enable.constprop.0                                                                                  -      -
+     0.00%  [.] ioctl                                                                                                         -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

@@ -19,6 +19,13 @@ mod sixlowpan;
 
 #[cfg(feature = "multicast")]
 pub(crate) mod multicast;
+#[cfg(all(
+    feature = "rpkt-tcp",
+    feature = "socket-tcp",
+    feature = "medium-ethernet",
+    feature = "proto-ipv4"
+))]
+mod scatter;
 #[cfg(feature = "socket-tcp")]
 mod tcp;
 #[cfg(any(feature = "socket-udp", feature = "socket-dns"))]
@@ -190,6 +197,10 @@ impl Interface {
     /// the medium of the device.
     pub fn new(config: Config, device: &mut (impl Device + ?Sized), now: Instant) -> Self {
         let caps = device.capabilities();
+        assert!(
+            caps.max_tcp_segmentation_len <= u16::MAX as usize,
+            "IPv4 TSO length exceeds the IPv4 total-length field"
+        );
         assert_eq!(
             config.hardware_addr.medium(),
             caps.medium,
@@ -578,67 +589,103 @@ impl Interface {
         };
 
         let rx_meta = rx_token.meta();
-        rx_token.consume(|frame| {
-            if frame.is_empty() {
-                return PollIngressSingleResult::PacketProcessed;
+        #[cfg(all(
+            feature = "rpkt-tcp",
+            feature = "socket-tcp",
+            feature = "medium-ethernet",
+            feature = "proto-ipv4"
+        ))]
+        return rx_token.consume_pbuf(|frame| {
+            if frame.remaining() != frame.chunk().len()
+                && self.inner.caps.medium == Medium::Ethernet
+            {
+                if let Some(packet) = self.inner.process_scatter_tcp(sockets, frame) {
+                    if let Err(err) = self.inner.dispatch(
+                        tx_token,
+                        EthernetPacket::Ip(packet),
+                        &mut self.fragmenter,
+                    ) {
+                        net_debug!("Failed to send scatter response: {:?}", err);
+                    }
+                }
+                PollIngressSingleResult::SocketStateChanged
+            } else {
+                self.socket_ingress_frame(sockets, rx_meta, frame.chunk(), tx_token)
             }
+        });
+        #[cfg(not(all(
+            feature = "rpkt-tcp",
+            feature = "socket-tcp",
+            feature = "medium-ethernet",
+            feature = "proto-ipv4"
+        )))]
+        rx_token.consume(|frame| self.socket_ingress_frame(sockets, rx_meta, frame, tx_token))
+    }
 
-            match self.inner.caps.medium {
-                #[cfg(feature = "medium-ethernet")]
-                Medium::Ethernet => {
-                    if let Some(packet) =
-                        self.inner
-                            .process_ethernet(sockets, rx_meta, frame, &mut self.fragments)
-                    {
-                        if let Err(err) =
-                            self.inner.dispatch(tx_token, packet, &mut self.fragmenter)
-                        {
-                            net_debug!("Failed to send response: {:?}", err);
-                        }
-                    }
-                }
-                #[cfg(feature = "medium-ip")]
-                Medium::Ip => {
-                    if let Some(packet) =
-                        self.inner
-                            .process_ip(sockets, rx_meta, frame, &mut self.fragments)
-                    {
-                        if let Err(err) = self.inner.dispatch_ip(
-                            tx_token,
-                            PacketMeta::default(),
-                            packet,
-                            &mut self.fragmenter,
-                        ) {
-                            net_debug!("Failed to send response: {:?}", err);
-                        }
-                    }
-                }
-                #[cfg(feature = "medium-ieee802154")]
-                Medium::Ieee802154 => {
-                    if let Some(packet) =
-                        self.inner
-                            .process_ieee802154(sockets, rx_meta, frame, &mut self.fragments)
-                    {
-                        if let Err(err) = self.inner.dispatch_ip(
-                            tx_token,
-                            PacketMeta::default(),
-                            packet,
-                            &mut self.fragmenter,
-                        ) {
-                            net_debug!("Failed to send response: {:?}", err);
-                        }
+    fn socket_ingress_frame(
+        &mut self,
+        sockets: &mut SocketSet<'_>,
+        rx_meta: PacketMeta,
+        frame: &[u8],
+        tx_token: impl TxToken,
+    ) -> PollIngressSingleResult {
+        if frame.is_empty() {
+            return PollIngressSingleResult::PacketProcessed;
+        }
+
+        match self.inner.caps.medium {
+            #[cfg(feature = "medium-ethernet")]
+            Medium::Ethernet => {
+                if let Some(packet) =
+                    self.inner
+                        .process_ethernet(sockets, rx_meta, frame, &mut self.fragments)
+                {
+                    if let Err(err) = self.inner.dispatch(tx_token, packet, &mut self.fragmenter) {
+                        net_debug!("Failed to send response: {:?}", err);
                     }
                 }
             }
+            #[cfg(feature = "medium-ip")]
+            Medium::Ip => {
+                if let Some(packet) =
+                    self.inner
+                        .process_ip(sockets, rx_meta, frame, &mut self.fragments)
+                {
+                    if let Err(err) = self.inner.dispatch_ip(
+                        tx_token,
+                        PacketMeta::default(),
+                        packet,
+                        &mut self.fragmenter,
+                    ) {
+                        net_debug!("Failed to send response: {:?}", err);
+                    }
+                }
+            }
+            #[cfg(feature = "medium-ieee802154")]
+            Medium::Ieee802154 => {
+                if let Some(packet) =
+                    self.inner
+                        .process_ieee802154(sockets, rx_meta, frame, &mut self.fragments)
+                {
+                    if let Err(err) = self.inner.dispatch_ip(
+                        tx_token,
+                        PacketMeta::default(),
+                        packet,
+                        &mut self.fragmenter,
+                    ) {
+                        net_debug!("Failed to send response: {:?}", err);
+                    }
+                }
+            }
+        }
 
-            // TODO: Propagate the PollIngressSingleResult from deeper.
-            // There's many received packets that we process but can't cause sockets
-            // to change state. For example IP fragments, multicast stuff, ICMP pings
-            // if they dont't match any raw socket...
-            // We should return `PacketProcessed` for these to save the user from
-            // doing useless socket polls.
-            PollIngressSingleResult::SocketStateChanged
-        })
+        // TODO: Propagate the PollIngressSingleResult from deeper.
+        // There's many received packets that we process but can't cause sockets
+        // to change state. For example IP fragments, multicast stuff, ICMP pings
+        // if they dont't match any raw socket...
+        // We should return `PacketProcessed` for these to save the user from
+        // doing useless socket polls.
+        PollIngressSingleResult::SocketStateChanged
     }
 
     fn socket_egress(
@@ -780,6 +827,10 @@ impl InterfaceInner {
     #[allow(unused)] // unused depending on which sockets are enabled
     pub(crate) fn ip_mtu(&self) -> usize {
         self.caps.ip_mtu()
+    }
+
+    pub(crate) fn max_tcp_segmentation_len(&self) -> usize {
+        self.caps.max_tcp_segmentation_len
     }
 
     #[allow(unused)] // unused depending on which sockets are enabled, and in tests
@@ -1206,7 +1257,12 @@ impl InterfaceInner {
             #[cfg(feature = "proto-ipv4")]
             IpRepr::Ipv4(repr) => {
                 // If we have an IPv4 packet, then we need to check if we need to fragment it.
-                if total_ip_len > self.caps.ip_mtu() {
+                #[cfg(feature = "socket-tcp")]
+                let tcp_tso = matches!(packet.payload(), IpPayload::Tcp(_))
+                    && total_ip_len <= self.caps.max_tcp_segmentation_len;
+                #[cfg(not(feature = "socket-tcp"))]
+                let tcp_tso = false;
+                if total_ip_len > self.caps.ip_mtu() && !tcp_tso {
                     #[cfg(feature = "proto-ipv4-fragmentation")]
                     {
                         net_debug!("start fragmentation");
