@@ -1,0 +1,15 @@
+EAL: Detected CPU lcores: 128
+EAL: Detected NUMA nodes: 4
+EAL: Detected static linkage of DPDK
+EAL: Selected IOVA mode 'VA'
+EAL: No free 2048 kB hugepages reported on node 0
+EAL: No free 2048 kB hugepages reported on node 1
+EAL: No free 2048 kB hugepages reported on node 3
+CAPS rx=0x18621f tx=0x2d96af max_lro=65280 offloads=true
+READY role=server backend=smoltcp
+OFFLOAD_COUNTERS Counters { rx: 30042, tx: 26012, rejected: 0, no_mbuf: 0, chains: 3247, lro: 3247, linearized_bytes: 10353118, tso: 0, max_rx_len: 23234 }
+{"backend":"smoltcp","role":"server","connections":16,"request":4096,"echo":false,"timestamps":true,"seconds":5,"measured_ns":5000000072,"congestion":"reno","measured":true,"bytes":0,"responses":0,"errors":0,"rx":30042,"tx":26012,"rejected":0,"no_mbuf":0,"pending_tx":0,"rx_missed":1384,"tx_errors":0,"offloads":true,"chains":3247,"lro":3247,"linearized_bytes":10353118,"tso":0,"max_rx_len":23234}
+
+thread 'main' (1023619) panicked at rpkt-dpdk/examples/tcp_stack.rs:138:5:
+transfer stalled
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,4 +1,4 @@
-# TCP over rpkt-dpdk: controlled wire-backend experiment
+# TCP over rpkt-dpdk: controlled wire and chained-buffer comparison
 
 Two builds run the same smoltcp 0.12 connection state machine through the same
 `rpkt_dpdk::tcp_device::DpdkDevice`. The `rpkt-tcp` feature replaces TCP parsing
@@ -38,18 +38,37 @@ checksum for UNKNOWN/NONE. Timestamp-only options are identically aligned to
 `NOP,NOP,TS` before TX checksum offload: the lab NICs did not coalesce the
 original `TS,EOL,pad` layout. This interoperability fix is not credited to rpkt.
 
-Use frozen, separately built `--profile performance` binaries in
-`bench-results-tcp-chained-performance/` and run sequentially:
+Build frozen binaries separately on each host, outside any live run:
 
 ```sh
-python3 dev/tcp_lab.py --offloads --dut tg --repeats 3 \
-  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-tg.jsonl
-python3 dev/tcp_lab.py --offloads --dut duanjp --repeats 3 \
-  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-duanjp.jsonl
-# Extra-copy ablation: same rpkt parser, but linearize incoming chains first.
-python3 dev/tcp_lab.py --offloads --dut tg --linearize-rpkt --quick --repeats 3 \
-  --binary-dir bench-results-tcp-chained-performance --output /tmp/chained-copy-control.jsonl
+mkdir bench-results-tcp-chained-final
+cargo build --locked --profile performance -p rpkt-dpdk --example tcp_stack --features tcp-stack
+cp target/performance/examples/tcp_stack bench-results-tcp-chained-final/tcp-stack-smoltcp
+cargo build --locked --profile performance -p rpkt-dpdk --example tcp_stack --features tcp-rpkt
+cp target/performance/examples/tcp_stack bench-results-tcp-chained-final/tcp-stack-rpkt
 ```
+
+Run sequentially. The larger RX buffers are a shared offload tuning choice,
+not an rpkt-specific optimization:
+
+```sh
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-tg.jsonl
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut duanjp --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-duanjp.jsonl
+# Extra-copy ablation: same rpkt parser, but linearize incoming chains first.
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --linearize-rpkt --quick --repeats 3 \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-copy-control.jsonl
+# Separate active-window profiling, never pooled with throughput trials.
+python3 dev/tcp_lab.py --offloads --rx-data-room 8192 --dut tg --profile --repeats 1 \
+  --perf /root/rpkt-ws/bench-tools/perf \
+  --binary-dir bench-results-tcp-chained-final --output /tmp/chained-profile.jsonl
+```
+
+The checked-in [chained-buffer report](../benches/results/2026-09-21-tcp-chained.md)
+includes the complete matrix, copy control, profiles and limitations. The
+workspace-local `perf` path above is specific to tg; use your host's compatible
+executable elsewhere.
 
 JSON includes cumulative `chains`, `lro`, `linearized_bytes`, `tso`, and
 `max_rx_len` counters. The runner/report reject purported offload results
@@ -84,6 +103,13 @@ cargo test --locked -p smoltcp-rpkt --lib \
 # No NIC needed. Differential parsing and emission under the interpreter:
 cargo +nightly miri test --locked -p smoltcp-rpkt --lib \
   --features rpkt-tcp differential_wire_and_options
+
+# Actual chained mbufs and offload metadata, isolated process on tg; no NIC.
+RPKT_TCP_TEST_CORE=4 cargo test --locked -p rpkt-dpdk --lib --features tcp-rpkt \
+  tcp_device::tests::offload_mbuf_checksums_tokens_and_metadata \
+  -- --ignored --test-threads=1
+cargo +nightly miri test --locked -p rpkt-dpdk --test pbuf_miri \
+  zero_trim_preserves_chain_and_cursor
 ```
 
 The application test establishes four connections, exchanges timestamp-enabled

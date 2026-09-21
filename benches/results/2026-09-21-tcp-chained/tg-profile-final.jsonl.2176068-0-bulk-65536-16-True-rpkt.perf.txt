@@ -1,0 +1,114 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 2K of event 'cycles:u'
+# Event count (approx.): 10867224658
+#
+# Overhead  Shared Object      Symbol                                                                                                        IPC   [IPC Coverage]
+# ........  .................  ............................................................................................................  ....................
+#
+    27.77%  libc.so.6          [.] 0x00000000001af1cc                                                                                        -      -
+     9.05%  tcp-stack-rpkt     [.] mlx5_rx_burst                                                                                             -      -
+     6.75%  libc.so.6          [.] 0x00000000001aea6d                                                                                        -      -
+     6.74%  libc.so.6          [.] 0x00000000001aea8b                                                                                        -      -
+     4.11%  libc.so.6          [.] 0x00000000001af16d                                                                                        -      -
+     4.09%  tcp-stack-rpkt     [.] rte_pktmbuf_alloc_                                                                                        -      -
+     3.64%  libc.so.6          [.] 0x00000000001af05b                                                                                        -      -
+     3.46%  libc.so.6          [.] 0x00000000001af04d                                                                                        -      -
+     2.31%  libc.so.6          [.] 0x00000000001aea75                                                                                        -      -
+     2.18%  libc.so.6          [.] 0x00000000001aea84                                                                                        -      -
+     1.90%  libc.so.6          [.] 0x00000000001aea9b                                                                                        -      -
+     1.73%  tcp-stack-rpkt     [.] common_ring_mc_dequeue                                                                                    -      -
+     1.67%  libc.so.6          [.] 0x00000000001aea67                                                                                        -      -
+     1.65%  libc.so.6          [.] 0x00000000001aea93                                                                                        -      -
+     1.57%  tcp-stack-rpkt     [.] <rpkt_dpdk::pbuf::Pbuf as bytes::buf::buf_impl::Buf>::copy_to_slice                                       -      -
+     1.43%  libc.so.6          [.] 0x00000000001af00e                                                                                        -      -
+     1.32%  libc.so.6          [.] 0x00000000001aeaa2                                                                                        -      -
+     1.27%  tcp-stack-rpkt     [.] common_ring_mp_enqueue                                                                                    -      -
+     1.26%  libc.so.6          [.] 0x00000000001af1ce                                                                                        -      -
+     1.24%  libc.so.6          [.] 0x00000000001aea7c                                                                                        -      -
+     1.05%  libc.so.6          [.] 0x00000000001aeaac                                                                                        -      -
+     1.01%  tcp-stack-rpkt     [.] tcp_stack::main                                                                                           -      -
+     0.98%  libc.so.6          [.] 0x00000000001aee93                                                                                        -      -
+     0.74%  libc.so.6          [.] 0x00000000001af073                                                                                        -      -
+     0.74%  libc.so.6          [.] 0x00000000001af07a                                                                                        -      -
+     0.70%  tcp-stack-rpkt     [.] <smoltcp::iface::interface::Interface>::socket_ingress::<rpkt_dpdk::tcp_device::DpdkDevice>::{closure#0}  -      -
+     0.67%  tcp-stack-rpkt     [.] <smoltcp::iface::interface::InterfaceInner>::process_tcp                                                  -      -
+     0.60%  libc.so.6          [.] 0x00000000001af06c                                                                                        -      -
+     0.52%  libc.so.6          [.] 0x00000000001aeab4                                                                                        -      -
+     0.44%  libc.so.6          [.] 0x00000000001af054                                                                                        -      -
+     0.40%  libc.so.6          [.] 0x00000000001af065                                                                                        -      -
+     0.40%  tcp-stack-rpkt     [.] rpkt_dpdk::tcp_device::prepare_tx                                                                         -      -
+     0.40%  tcp-stack-rpkt     [.] <smoltcp::socket::tcp::Socket>::process_payload::<&mut dyn rpkt::traits::PktBuf>                          -      -
+     0.34%  tcp-stack-rpkt     [.] <smoltcp::socket::tcp::Socket>::accepts                                                                   -      -
+     0.33%  tcp-stack-rpkt     [.] rte_pktmbuf_free_                                                                                         -      -
+     0.31%  libc.so.6          [.] 0x00000000001af16f                                                                                        -      -
+     0.27%  tcp-stack-rpkt     [.] smoltcp::wire::tcp::rpkt_backend::parse::<[u8]>                                                           -      -
+     0.23%  libc.so.6          [.] 0x00000000001af0ee                                                                                        -      -
+     0.21%  tcp-stack-rpkt     [.] <rpkt_dpdk::pbuf::Pbuf as bytes::buf::buf_impl::Buf>::remaining                                           -      -
+     0.20%  tcp-stack-rpkt     [.] mlx5_tx_burst_mtsc_empw                                                                                   -      -
+     0.17%  libc.so.6          [.] 0x00000000001aeaa8                                                                                        -      -
+     0.17%  libc.so.6          [.] 0x00000000001af0fb                                                                                        -      -
+     0.17%  libc.so.6          [.] 0x00000000001af025                                                                                        -      -
+     0.17%  tcp-stack-rpkt     [.] smoltcp::iface::interface::scatter::peek                                                                  -      -
+     0.16%  libc.so.6          [.] 0x00000000001af0f5                                                                                        -      -
+     0.15%  libc.so.6          [.] 0x00000000001af08a                                                                                        -      -
+     0.14%  tcp-stack-rpkt     [.] <smoltcp::socket::tcp::congestion::reno::Reno as smoltcp::socket::tcp::congestion::Controller>::on_ack    -      -
+     0.13%  libc.so.6          [.] 0x00000000001af046                                                                                        -      -
+     0.13%  libc.so.6          [.] 0x00000000001af05f                                                                                        -      -
+     0.13%  libc.so.6          [.] 0x00000000001af016                                                                                        -      -
+     0.13%  tcp-stack-rpkt     [.] mlx5_tx_handle_completion                                                                                 -      -
+     0.13%  libc.so.6          [.] 0x00000000001af02d                                                                                        -      -
+     0.13%  libc.so.6          [.] 0x00000000001af0e7                                                                                        -      -
+     0.13%  tcp-stack-rpkt     [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>::{closure#1}    -      -
+     0.10%  libc.so.6          [.] 0x00000000001ae906                                                                                        -      -
+     0.10%  tcp-stack-rpkt     [.] <&[u8] as smoltcp::socket::tcp::ReceivePayload>::write                                                    -      -
+     0.10%  libc.so.6          [.] 0x00000000001ae92e                                                                                        -      -
+     0.10%  libc.so.6          [.] 0x00000000001af0cf                                                                                        -      -
+     0.10%  tcp-stack-rpkt     [.] <rpkt_dpdk::pbuf::Pbuf as bytes::buf::buf_impl::Buf>::advance                                             -      -
+     0.10%  libc.so.6          [.] 0x00000000001af11a                                                                                        -      -
+     0.10%  libc.so.6          [.] 0x00000000001aeab8                                                                                        -      -
+     0.10%  tcp-stack-rpkt     [.] <smoltcp::iface::interface::InterfaceInner>::dispatch_ip::<rpkt_dpdk::tcp_device::DpdkTx>                 -      -
+     0.09%  libc.so.6          [.] 0x00000000001aeb40                                                                                        -      -
+     0.07%  tcp-stack-rpkt     [.] <rpkt_dpdk::tcp_device::DpdkDevice as smoltcp::phy::Device>::transmit                                     -      -
+     0.07%  tcp-stack-rpkt     [.] <smoltcp::iface::neighbor::Cache>::lookup                                                                 -      -
+     0.07%  tcp-stack-rpkt     [.] <smoltcp::socket::tcp::Socket>::ack_to_transmit                                                           -      -
+     0.07%  tcp-stack-rpkt     [.] <smoltcp::iface::interface::InterfaceInner>::is_unicast_v4                                                -      -
+     0.07%  tcp-stack-rpkt     [.] <smoltcp::wire::ipv4::Packet<&[u8]>>::next_header                                                         -      -
+     0.07%  tcp-stack-rpkt     [.] <smoltcp::socket::tcp::Socket>::seq_to_transmit                                                           -      -
+     0.07%  tcp-stack-rpkt     [.] <rpkt_dpdk::pbuf::Pbuf as rpkt::traits::PktBuf>::trim_off                                                 -      -
+     0.06%  libc.so.6          [.] 0x00000000001aea60                                                                                        -      -
+     0.06%  tcp-stack-rpkt     [.] <smoltcp::wire::tcp::Repr>::header_len                                                                    -      -
+     0.05%  tcp-stack-rpkt     [.] rte_eth_rx_burst_                                                                                         -      -
+     0.03%  libc.so.6          [.] 0x00000000001aee8d                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af192                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001aefec                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af10d                                                                                        -      -
+     0.03%  tcp-stack-rpkt     [.] <std::sys::pal::unix::time::Timespec>::sub_timespec                                                       -      -
+     0.03%  libc.so.6          [.] 0x00000000001af114                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae90d                                                                                        -      -
+     0.03%  tcp-stack-rpkt     [.] <smoltcp::iface::neighbor::Cache>::reset_expiry_if_existing                                               -      -
+     0.03%  libc.so.6          [.] 0x00000000001af083                                                                                        -      -
+     0.03%  perf               [.] fdarray__poll                                                                                             -      -
+     0.03%  libc.so.6          [.] 0x00000000001ae971                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af180                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af1c6                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001aeb05                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af040                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001aee80                                                                                        -      -
+     0.03%  [kernel.kallsyms]  [k] asm_exc_page_fault                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001aeb30                                                                                        -      -
+     0.03%  tcp-stack-rpkt     [.] tcp_eval::timestamp                                                                                       -      -
+     0.03%  tcp-stack-rpkt     [.] <rpkt_dpdk::pbuf::Pbuf as bytes::buf::buf_impl::Buf>::chunk                                               -      -
+     0.03%  libc.so.6          [.] 0x00000000001af1db                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af17c                                                                                        -      -
+     0.03%  libc.so.6          [.] 0x00000000001af0ff                                                                                        -      -
+     0.00%  perf               [.] __evlist__enable.constprop.0                                                                              -      -
+     0.00%  libc.so.6          [.] ioctl                                                                                                     -      -
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#

@@ -1,0 +1,9 @@
+EAL: Detected CPU lcores: 128
+EAL: Detected NUMA nodes: 1
+EAL: Detected static linkage of DPDK
+EAL: Selected IOVA mode 'VA'
+EAL: VFIO support initialized
+CAPS rx=0x19621f tx=0xd96af max_lro=65280 offloads=true
+READY role=client backend=smoltcp
+OFFLOAD_COUNTERS Counters { rx: 22426, tx: 16204, rejected: 0, no_mbuf: 88494269, chains: 0, lro: 0, linearized_bytes: 0, tso: 9272, max_rx_len: 74 }
+{"backend":"smoltcp","role":"client","connections":16,"request":4096,"echo":false,"timestamps":true,"seconds":5,"measured_ns":5000000117,"congestion":"reno","measured":true,"bytes":0,"responses":0,"errors":0,"rx":22426,"tx":16204,"rejected":0,"no_mbuf":88494269,"pending_tx":0,"rx_missed":3521,"tx_errors":0,"offloads":true,"chains":0,"lro":0,"linearized_bytes":0,"tso":9272,"max_rx_len":74}

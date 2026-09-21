@@ -94,7 +94,7 @@ def main():
             cases = [("bulk", request, connections, True) for request in [4096, 16384, 65536] for connections in [1, 16]]
             cases += [("echo", 16384, 16, True), ("echo", 65536, 16, True)]
             if args.quick or args.profile:
-                cases = [("bulk", 65536, 16, True), ("echo", 16384, 16, True)]
+                cases = [("bulk", 65536, 1, True), ("bulk", 65536, 16, True), ("echo", 16384, 16, True)]
         if args.plain:
             cases = [(mode, request, connections, False) for mode, request, connections, _ in cases]
         with open(args.output, "x", buffering=1) as output:
@@ -153,9 +153,9 @@ def main():
                         output.write(json.dumps(result) + "\n")
                         if args.profile:
                             host, log = logs["server"]
-                            report = ssh(host, f"{shlex.quote(args.perf)} report --stdio --no-children --sort symbol -i {log}.perf", root=True)
+                            report = ssh(host, f"{shlex.quote(args.perf)} report --stdio --no-children --sort dso,symbol -i {log}.perf", root=True)
                             with open(f"{args.output}.{stamp}.perf.txt", "x") as f:
-                                f.write(report)
+                                f.write("\n".join(line.rstrip() for line in report.splitlines()).rstrip() + "\n")
                         print(stamp, "responses", result["client"]["responses"], "server_bytes", result["server"]["bytes"], flush=True)
     finally:
         try:
