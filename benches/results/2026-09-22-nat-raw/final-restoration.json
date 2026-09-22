@@ -1,0 +1,16 @@
+{
+  "verified_at_utc": "2026-09-22T09:03:01.165340+00:00",
+  "duanjp": {
+    "ens31f0np0": "Pause parameters for ens31f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n",
+    "ens31f1np1": "Pause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n",
+    "nat_processes": "",
+    "binary_sha256": "4aac6771781b9d9fbd7fdbfe0eefd4aa339c0c7ddd1fafc1468d4e6cb87b4a23  /home/duanjp/rpkt-nat-raw-20260922/frozen/nat_loop-release\n91679154b5c92fdd14fde2c41a48c90fcd58b7b1907d7f649b8beaaa9708a199  /home/duanjp/rpkt-nat-raw-20260922/frozen/nat_loop-performance\n86fe91acd711ba137677dad83ffe6b8c4823a1f7205206a93498cfe5b0ebf041  /home/duanjp/rpkt-nat-checked-20260922/frozen/nat_loop-release\n6fff6bb4bfc9c4567a0da14211a76b914759ecd1354308f0a6c593406ac00b07  /home/duanjp/rpkt-nat-checked-20260922/frozen/nat_loop-performance\n",
+    "node2_hugepages": "0"
+  },
+  "tg": {
+    "enp23s0f0np0": "Pause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n",
+    "enp37s0f1np1": "Pause parameters for enp37s0f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n",
+    "nat_processes": "",
+    "binary_sha256": "da96d0ff68df6f4a22f4a34c2c7e21e22db9871eeeafe1111ccc24a7f6950579  /root/rpkt-nat-release-20260922/frozen/nat_loop-performance\n"
+  }
+}

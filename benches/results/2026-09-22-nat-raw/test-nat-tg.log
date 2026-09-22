@@ -1,0 +1,13 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running nat_support_tests.rs (target/debug/deps/nat_support-962081d23ce83b34)
+
+running 7 tests
+test misses_and_non_forwardable_packets_remain_unchanged ... ok
+test nat_support::prefix_simd_bounds_and_unaligned_input ... ok
+test nat_support::short_udp_fallback_and_tcp_options_fast_path ... ok
+test nat_support::native_carry_matches_wide_checksum_fold ... ok
+test omitted_udp_checksum_with_ip_options_and_padding ... ok
+test nat_support::prefix_selector_matches_scalar_checks ... ok
+test exhaustive_nat_equivalence ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.72s

@@ -1,0 +1,49 @@
+Compare accessor-bearing NAT functions in frozen raw and checked binaries.
+
+Normalization ignores relocation displacements and instruction padding, but
+keeps local branch destinations as non-padding instruction indices. This is
+an instruction-shape comparison, not a proof of semantic equivalence: RIP-
+relative data/call targets are deliberately not compared.
+
+4aac6771781b9d9fbd7fdbfe0eefd4aa339c0c7ddd1fafc1468d4e6cb87b4a23 /tmp/rpkt-nat-raw-release-20260922
+86fe91acd711ba137677dad83ffe6b8c4823a1f7205206a93498cfe5b0ebf041 /tmp/rpkt-nat-checked-release-20260922
+
+nat_loop::run::<2, nat_loop::kernels::rpkt>
+raw: start=0x1ff1e0, bytes=7183, non-padding instructions=1398
+checked: start=0x1ff220, bytes=7183, non-padding instructions=1398
+--- raw
+
++++ checked
+
+@@ -620,8 +620,8 @@
+
+ mov    %dx,0x18(%rdi)
+ movw   $0x100,0xa(%rdi)
+ movl   $0x2,0x6(%rdi)
++movw   $0x200,0x4(%rdi)
+ movl   $0x2,(%rdi)
+-movw   $0x200,0x4(%rdi)
+ incq   0xe0(%rsp)
+ mov    0x20(%rsp),%rax
+ movq   $0x0,0x18(%rax)
+
+nat_loop::nat::rpkt_general
+raw: start=0x206140, bytes=538, non-padding instructions=149
+checked: start=0x206180, bytes=538, non-padding instructions=149
+--- raw
+
++++ checked
+
+@@ -141,9 +141,9 @@
+
+ decb   0x16(%rcx)
+ rol    $0x8,%dx
+ mov    %dx,0x18(%rcx)
++movw   $0x100,0xa(%rcx)
+ movl   $0x2,0x6(%rcx)
+-movw   $0x100,0xa(%rcx)
++movw   $0x200,0x4(%rcx)
+ movl   $0x2,(%rcx)
+-movw   $0x200,0x4(%rcx)
+ mov    $0x1,%al
+ jmp    instruction[87]

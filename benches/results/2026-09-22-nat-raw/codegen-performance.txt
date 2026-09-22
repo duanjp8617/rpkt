@@ -1,0 +1,1685 @@
+Compare accessor-bearing NAT functions in frozen raw and checked binaries.
+
+Normalization ignores relocation displacements and instruction padding, but
+keeps local branch destinations as non-padding instruction indices. This is
+an instruction-shape comparison, not a proof of semantic equivalence: RIP-
+relative data/call targets are deliberately not compared.
+
+91679154b5c92fdd14fde2c41a48c90fcd58b7b1907d7f649b8beaaa9708a199 /tmp/rpkt-nat-raw-performance-20260922
+6fff6bb4bfc9c4567a0da14211a76b914759ecd1354308f0a6c593406ac00b07 /tmp/rpkt-nat-checked-performance-20260922
+
+nat_loop::run::<2, nat_loop::kernels::rpkt>
+raw: start=0x17cae0, bytes=9717, non-padding instructions=1861
+checked: start=0x17cae0, bytes=9749, non-padding instructions=1862
+--- raw
+
++++ checked
+
+@@ -20,7 +20,7 @@
+
+ xor    %edi,%edi
+ mov    %rbx,%rsi
+ call   <alloc::raw_vec::handle_error>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    %r12,0xf0(%rsp)
+ mov    %r15,0x48(%rsp)
+ test   %rbx,%rbx
+@@ -58,7 +58,7 @@
+
+ mov    %rbx,%rdi
+ call   *<RIP-relative>
+ test   %rax,%rax
+-je     instruction[1640]
++je     instruction[1641]
+ mov    %r14,0x1a0(%rsp)
+ mov    %rax,0x58(%rsp)
+ mov    %rax,0x1a8(%rsp)
+@@ -84,7 +84,7 @@
+
+ mov    %r12,%rdi
+ call   *<RIP-relative>
+ test   %rax,%rax
+-je     instruction[1577]
++je     instruction[1578]
+ mov    %rax,%r13
+ mov    %rax,%rdi
+ mov    %r15,%rsi
+@@ -93,7 +93,7 @@
+
+ cmpb   $0x0,0x10(%rsp)
+ je     instruction[104]
+ cmp    $0xd,%r12
+-jbe    instruction[1447]
++jbe    instruction[1448]
+ movw   $0x200,0x4(%r13)
+ movl   $0x2,0x0(%r13)
+ movl   $0x2,0x6(%r13)
+@@ -101,7 +101,7 @@
+
+ jmp    instruction[70]
+ mov    $0x1,%r13d
+ cmpb   $0x0,0x10(%rsp)
+-jne    instruction[1447]
++jne    instruction[1448]
+ mov    %r13,%rdi
+ mov    %r12,%rsi
+ lea    0x460(%rsp),%rdx
+@@ -112,7 +112,7 @@
+
+ lea    <RIP-relative>,%rdx
+ mov    $0x30,%esi
+ call   <core::panicking::panic>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    %r14,0x70(%rsp)
+ jmp    instruction[120]
+ mov    $0x8,%eax
+@@ -129,25 +129,25 @@
+
+ mov    <RIP-relative>,%rax
+ xor    %r15d,%r15d
+ cmp    $0x2,%rax
+-jne    instruction[1484]
++jne    instruction[1485]
+ lea    0x4c0(%rsp),%rdi
+ mov    %ebp,%esi
+ xor    %edx,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::rx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1489]
++jne    instruction[1490]
+ mov    0x4c8(%rsp),%r12
+ mov    0x4d0(%rsp),%r15
+ mov    <RIP-relative>,%rax
+ xor    %ebx,%ebx
+ cmp    $0x2,%rax
+-jne    instruction[1491]
++jne    instruction[1492]
+ lea    0x4c0(%rsp),%rdi
+ mov    0x10(%rsp),%esi
+ xor    %edx,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::tx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1496]
++jne    instruction[1497]
+ test   %r12,%r12
+ je     instruction[287]
+ mov    0x4c8(%rsp),%rax
+@@ -162,27 +162,27 @@
+
+ mov    <RIP-relative>,%rax
+ mov    $0x1,%r15d
+ cmp    $0x2,%rax
+-jne    instruction[1519]
++jne    instruction[1520]
+ lea    0x4c0(%rsp),%rdi
+ mov    %ebp,%esi
+ mov    $0x1,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::rx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1524]
++jne    instruction[1525]
+ mov    0x4c8(%rsp),%r12
+ mov    0x4d0(%rsp),%r15
+ mov    <RIP-relative>,%rax
+ mov    $0x1,%ebx
+ cmp    $0x2,%rax
+-jne    instruction[1526]
++jne    instruction[1527]
+ lea    0x4c0(%rsp),%rdi
+ mov    0x10(%rsp),%esi
+ mov    $0x1,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::tx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1531]
++jne    instruction[1532]
+ test   %r12,%r12
+-je     instruction[1436]
++je     instruction[1437]
+ mov    0x4c8(%rsp),%rax
+ mov    0x4d0(%rsp),%rcx
+ mov    %r12,0x1c8(%rsp)
+@@ -195,27 +195,27 @@
+
+ mov    <RIP-relative>,%rax
+ mov    $0x2,%r15d
+ cmp    $0x2,%rax
+-jne    instruction[1549]
++jne    instruction[1550]
+ lea    0x4c0(%rsp),%rdi
+ mov    %ebp,%esi
+ mov    $0x2,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::rx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1554]
++jne    instruction[1555]
+ mov    0x4c8(%rsp),%r12
+ mov    0x4d0(%rsp),%r15
+ mov    <RIP-relative>,%rax
+ mov    $0x2,%ebx
+ cmp    $0x2,%rax
+-jne    instruction[1556]
++jne    instruction[1557]
+ lea    0x4c0(%rsp),%rdi
+ mov    0x10(%rsp),%esi
+ mov    $0x2,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::tx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1561]
++jne    instruction[1562]
+ test   %r12,%r12
+-je     instruction[1443]
++je     instruction[1444]
+ mov    0x4c8(%rsp),%rax
+ mov    0x4d0(%rsp),%rcx
+ mov    %r12,0x1e8(%rsp)
+@@ -228,27 +228,27 @@
+
+ mov    <RIP-relative>,%rax
+ mov    $0x3,%r15d
+ cmp    $0x2,%rax
+-jne    instruction[1581]
++jne    instruction[1582]
+ lea    0x4c0(%rsp),%rdi
+ mov    %ebp,%esi
+ mov    $0x3,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::rx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1586]
++jne    instruction[1587]
+ mov    0x4c8(%rsp),%r12
+ mov    0x4d0(%rsp),%r15
+ mov    <RIP-relative>,%rax
+ mov    $0x3,%ebx
+ cmp    $0x2,%rax
+-jne    instruction[1588]
++jne    instruction[1589]
+ lea    0x4c0(%rsp),%rdi
+ mov    0x10(%rsp),%esi
+ mov    $0x3,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::tx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1593]
++jne    instruction[1594]
+ test   %r12,%r12
+-je     instruction[1445]
++je     instruction[1446]
+ mov    0x4c8(%rsp),%rax
+ mov    0x4d0(%rsp),%rcx
+ mov    %r12,0x208(%rsp)
+@@ -261,30 +261,30 @@
+
+ mov    <RIP-relative>,%rax
+ mov    $0x4,%r15d
+ cmp    $0x2,%rax
+-jne    instruction[1604]
++jne    instruction[1605]
+ lea    0x4c0(%rsp),%rdi
+ mov    %ebp,%esi
+ mov    $0x4,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::rx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1609]
++jne    instruction[1610]
+ mov    0x4c8(%rsp),%r12
+ mov    <RIP-relative>,%rax
+ mov    $0x4,%ebx
+ cmp    $0x2,%rax
+-jne    instruction[1622]
++jne    instruction[1623]
+ lea    0x4c0(%rsp),%rdi
+ mov    0x10(%rsp),%esi
+ mov    $0x4,%edx
+ call   <<rpkt_dpdk::service::DpdkService>::tx_queue>
+ cmpq   $0xffffffffffffffff,0x4c0(%rsp)
+-jne    instruction[1627]
++jne    instruction[1628]
+ mov    $0x4,%eax
+ test   %r12,%r12
+ je     instruction[288]
+ mov    0x4c8(%rsp),%r15
+ call   <arrayvec::arrayvec::extend_panic>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ xor    %eax,%eax
+ mov    %eax,0x1a0(%rsp)
+ lea    0x6c8(%rsp),%r12
+@@ -298,7 +298,7 @@
+
+ movapd %xmm0,0x4a0(%rsp)
+ mov    <RIP-relative>,%rax
+ cmp    $0x2,%rax
+-jne    instruction[1463]
++jne    instruction[1464]
+ mov    %rcx,0x110(%rsp)
+ mov    0x48(%rsp),%rax
+ lea    0x4e(%rax),%r15
+@@ -317,7 +317,7 @@
+
+ mov    (%rsp),%rbp
+ call   <<rpkt_dpdk::service::DpdkService>::mempool>
+ cmpq   $0xffffffffffffffff,0x750(%rsp)
+-jne    instruction[1468]
++jne    instruction[1469]
+ mov    0x760(%rsp),%rax
+ mov    %rax,0xe0(%rsp)
+ test   %r13,%r13
+@@ -337,14 +337,14 @@
+
+ jmp    instruction[399]
+ mov    <RIP-relative>,%rax
+ cmp    $0x2,%rax
+-jne    instruction[1503]
++jne    instruction[1504]
+ mov    0x48(%rsp),%rax
+ movzwl 0x4c(%rax),%ebx
+ lea    0x960(%rsp),%rdi
+ mov    %ebx,%esi
+ call   <<rpkt_dpdk::service::DpdkService>::stats_query>
+ cmpq   $0xffffffffffffffff,0x960(%rsp)
+-jne    instruction[1508]
++jne    instruction[1509]
+ mov    0x968(%rsp),%r12
+ movzwl 0x970(%rsp),%eax
+ mov    %ax,0x26(%rsp)
+@@ -355,11 +355,11 @@
+
+ jmp    instruction[366]
+ mov    <RIP-relative>,%rax
+ cmp    $0x2,%rax
+-jne    instruction[1533]
++jne    instruction[1534]
+ lea    0x960(%rsp),%rdi
+ call   <<rpkt_dpdk::service::DpdkService>::stats_query>
+ cmpq   $0xffffffffffffffff,0x960(%rsp)
+-jne    instruction[1538]
++jne    instruction[1539]
+ mov    0x968(%rsp),%rax
+ mov    %rax,0x50(%rsp)
+ movzwl 0x970(%rsp),%eax
+@@ -374,7 +374,7 @@
+
+ call   *<RIP-relative>
+ test   %eax,%eax
+ mov    %r12,0x78(%rsp)
+-jne    instruction[1498]
++jne    instruction[1499]
+ mov    0x1c0(%rsp),%rax
+ mov    %rax,0xd0(%rsp)
+ mov    0x1d8(%rsp),%rax
+@@ -390,7 +390,7 @@
+
+ mov    %rbx,%rsi
+ call   *<RIP-relative>
+ test   %eax,%eax
+-jne    instruction[1498]
++jne    instruction[1499]
+ mov    0x1d0(%rsp),%rax
+ mov    %rax,0xa8(%rsp)
+ jmp    instruction[399]
+@@ -438,7 +438,7 @@
+
+ call   *<RIP-relative>
+ mov    %eax,0x1a0(%rsp)
+ test   %eax,%eax
+-jne    instruction[1479]
++jne    instruction[1480]
+ xorps  %xmm0,%xmm0
+ cvtsi2sdq 0x150(%rsp),%xmm0
+ movsd  %xmm0,0x10(%rsp)
+@@ -490,14 +490,14 @@
+
+ mov    (%rsp),%rbp
+ cmp    0x170(%rsp),%rax
+ jb     instruction[497]
+-jmp    instruction[1042]
++jmp    instruction[1043]
+ xor    %eax,%eax
+ mov    (%rsp),%rbp
+ cmp    0x170(%rsp),%rax
+-jae    instruction[1042]
++jae    instruction[1043]
+ mov    0x6c8(%rsp),%esi
+ cmp    %rsi,%r13
+-jae    instruction[1568]
++jae    instruction[1569]
+ lea    0x1(%r13),%rax
+ cmp    0x110(%rsp),%rax
+ mov    $0x0,%ecx
+@@ -525,18 +525,18 @@
+
+ xor    %ecx,%ecx
+ sub    0x98(%rsp),%rax
+ mov    (%rsp),%rbp
+-jb     instruction[1563]
++jb     instruction[1564]
+ cmp    %ebx,%ecx
+ jae    instruction[534]
+ test   %rax,%rax
+-je     instruction[1563]
++je     instruction[1564]
+ dec    %rax
+ add    $0x3b9aca00,%ecx
+ sub    %ebx,%ecx
+ cmp    $0x3b9aca00,%ecx
+ jb     instruction[541]
+ cmp    $0xffffffffffffffff,%rax
+-je     instruction[1438]
++je     instruction[1439]
+ inc    %rax
+ add    $0xc4653600,%ecx
+ xor    %edx,%edx
+@@ -548,7 +548,7 @@
+
+ cmp    $0x1,%rax
+ cmove  %esi,%edx
+ test   %dl,%dl
+-jne    instruction[1042]
++jne    instruction[1043]
+ mov    %r13,%r15
+ shl    $0x5,%r15
+ lea    0x6d0(%rsp),%rax
+@@ -567,12 +567,12 @@
+
+ add    0xb60(%rsp),%ecx
+ mov    %ecx,0xb60(%rsp)
+ cmp    $0x3,%r13
+-ja     instruction[1571]
++ja     instruction[1572]
+ mov    %ecx,%eax
+ add    %rax,0x4a0(%rsp,%r13,8)
+ test   %ecx,%ecx
+ mov    %r12d,0xb8(%rsp)
+-je     instruction[983]
++je     instruction[984]
+ lea    0x0(,%rax,8),%rdx
+ add    $0xfffffffffffffff8,%rdx
+ mov    %edx,%esi
+@@ -624,36 +624,37 @@
+
+ mov    %rax,0x1c0(%rsp)
+ xor    %r13d,%r13d
+ mov    %r13,0x118(%rsp)
+-jmp    instruction[637]
++jmp    instruction[638]
++add    %r8,%rdi
+ lea    0x460(%rsp),%rdx
+ call   <nat_loop::nat::rpkt_general>
+ lea    0x18(%rsp),%rcx
+ test   %al,%al
+-jne    instruction[922]
++jne    instruction[923]
+ incq   (%rcx)
+ mov    %r13,%rdi
+ call   *<RIP-relative>
+ cmp    %r12,%rbp
+-je     instruction[936]
++je     instruction[937]
+ mov    0x0(%rbp),%r13
+ add    $0x8,%rbp
+ movzwl 0x28(%r13),%eax
+ lea    0x18(%rsp),%rcx
+ cmp    %eax,0x24(%r13)
+-jne    instruction[632]
++jne    instruction[633]
+ mov    0x18(%r13),%rdx
+ lea    0x38(%rsp),%rcx
+ test   $0x18,%dl
+-jne    instruction[632]
++jne    instruction[633]
+ not    %edx
+ test   $0x180,%edx
+-jne    instruction[741]
+-movzwl 0x10(%r13),%edi
+-add    0x0(%r13),%rdi
++jne    instruction[742]
++movzwl 0x10(%r13),%r8d
++mov    0x0(%r13),%rdi
+ movzwl %ax,%esi
+ cmp    $0x36,%si
+ jb     instruction[627]
+-movdqu 0xc(%rdi),%xmm0
++movdqu 0xc(%rdi,%r8,1),%xmm0
+ movdqa %xmm0,%xmm1
+ psubusb <RIP-relative>,%xmm1
+ pand   <RIP-relative>,%xmm1
+@@ -662,37 +663,37 @@
+
+ pmovmskb %xmm2,%ecx
+ pextrw $0x2,%xmm0,%eax
+ cmp    $0xfbff,%ecx
+-jne    instruction[778]
++jne    instruction[779]
+ rol    $0x8,%ax
+ movzwl %ax,%eax
+ lea    -0x1c(%rax),%edx
+ add    $0xffffffd6,%esi
+ lea    0x18(%rsp),%rcx
+ cmp    %esi,%edx
+-ja     instruction[632]
+-movzwl 0x26(%rdi),%ecx
++ja     instruction[633]
++movzwl 0x26(%rdi,%r8,1),%ecx
+ rol    $0x8,%cx
+ add    $0xffffffec,%eax
+ movzwl %cx,%edx
+ lea    0x18(%rsp),%rcx
+ cmp    %edx,%eax
+-jne    instruction[632]
++jne    instruction[633]
+ cmpq   $0x0,0x108(%rsp)
+-je     instruction[632]
+-mov    0x1a(%rdi),%rsi
++je     instruction[633]
++mov    0x1a(%rdi,%r8,1),%rsi
+ bswap  %rsi
+-mov    0x22(%rdi),%r8d
+-bswap  %r8d
++mov    0x22(%rdi,%r8,1),%r9d
++bswap  %r9d
+ mov    0x100(%rsp),%rax
+ xor    %rsi,%rax
+-movabs $0x5851f42d4c957f2d,%r9
+-mul    %r9
+-mov    %r8d,%ecx
++movabs $0x5851f42d4c957f2d,%r10
++mul    %r10
++mov    %r9d,%ecx
+ shl    $0x8,%rcx
+ or     $0x11,%rcx
+ xor    %rdx,%rcx
+ xor    %rcx,%rax
+-mul    %r9
++mul    %r10
+ mov    %rax,%rcx
+ xor    %rdx,%rcx
+ mov    %rcx,%rax
+@@ -711,39 +712,39 @@
+
+ movdqu (%rcx,%rdx,1),%xmm2
+ movdqa %xmm2,%xmm3
+ pcmpeqb %xmm1,%xmm3
+-pmovmskb %xmm3,%r9d
+-test   %r9d,%r9d
+-je     instruction[732]
+-tzcnt  %r9d,%r10d
+-add    %rdx,%r10
+-and    0x80(%rsp),%r10
+-shl    $0x5,%r10
++pmovmskb %xmm3,%r10d
++test   %r10d,%r10d
++je     instruction[733]
++tzcnt  %r10d,%r11d
++add    %rdx,%r11
++and    0x80(%rsp),%r11
++shl    $0x5,%r11
+ mov    0x88(%rsp),%rcx
+-sub    %r10,%rcx
++sub    %r11,%rcx
+ cmp    -0x20(%rcx),%rsi
+-jne    instruction[728]
+-cmp    -0x18(%rcx),%r8d
+-jne    instruction[728]
++jne    instruction[729]
++cmp    -0x18(%rcx),%r9d
++jne    instruction[729]
+ cmpb   $0x11,-0x14(%rcx)
+-je     instruction[859]
+-lea    -0x1(%r9),%ecx
+-and    %r9w,%cx
+-mov    %ecx,%r9d
+-jne    instruction[716]
++je     instruction[860]
++lea    -0x1(%r10),%ecx
++and    %r10w,%cx
++mov    %ecx,%r10d
++jne    instruction[717]
+ pcmpeqd %xmm3,%xmm3
+ pcmpeqb %xmm3,%xmm2
+ pmovmskb %xmm2,%ecx
+ test   %ecx,%ecx
+-jne    instruction[857]
++jne    instruction[858]
+ add    %rax,%rdx
+ add    $0x10,%rdx
+ add    $0x10,%rax
+-jmp    instruction[708]
++jmp    instruction[709]
+ incq   0x130(%rsp)
+ cmp    $0xe,%ax
+-jb     instruction[632]
++jb     instruction[633]
+ cmp    $0x22,%ax
+-jb     instruction[632]
++jb     instruction[633]
+ mov    0x0(%r13),%rdx
+ movzwl 0x10(%r13),%edi
+ lea    (%rdx,%rdi,1),%rsi
+@@ -753,29 +754,29 @@
+
+ movzwl %cx,%r8d
+ lea    0x38(%rsp),%rcx
+ cmp    %r8,%rax
+-jb     instruction[632]
++jb     instruction[633]
+ movzbl 0xe(%rsi),%esi
+ shl    $0x2,%esi
+ and    $0x3c,%esi
+ cmp    %esi,%r8d
+-jb     instruction[632]
++jb     instruction[633]
+ cmp    $0x14,%sil
+-jb     instruction[632]
++jb     instruction[633]
+ cmp    %esi,%eax
+-jb     instruction[632]
++jb     instruction[633]
+ add    %rdx,%rdi
+ add    $0xe,%rdi
+ call   <rpkt::checksum::from_slice>
+ lea    0x38(%rsp),%rcx
+ cmp    $0xffff,%ax
+-jne    instruction[632]
++jne    instruction[633]
+ mov    %r13,%rdi
+ call   <nat_loop::common::verify_transport>
+ lea    0x38(%rsp),%rcx
+ test   %al,%al
+-je     instruction[632]
++je     instruction[633]
+ movzwl 0x28(%r13),%eax
+-jmp    instruction[650]
++jmp    instruction[651]
+ pcmpeqb <RIP-relative>,%xmm1
+ pmovmskb %xmm1,%ecx
+ cmp    $0xfbff,%ecx
+@@ -786,29 +787,29 @@
+
+ lea    -0x36(%rsi),%rdx
+ lea    0x18(%rsp),%rcx
+ cmp    %rdx,%rax
+-ja     instruction[632]
+-movzbl 0x2e(%rdi),%ecx
++ja     instruction[633]
++movzbl 0x2e(%rdi,%r8,1),%ecx
+ shr    $0x4,%ecx
+ lea    -0x14(,%rcx,4),%edx
+ lea    0x18(%rsp),%rcx
+ cmp    %eax,%edx
+-ja     instruction[632]
++ja     instruction[633]
+ cmpq   $0x0,0x108(%rsp)
+-je     instruction[632]
+-mov    0x1a(%rdi),%rsi
++je     instruction[633]
++mov    0x1a(%rdi,%r8,1),%rsi
+ bswap  %rsi
+-mov    0x22(%rdi),%r8d
+-bswap  %r8d
++mov    0x22(%rdi,%r8,1),%r9d
++bswap  %r9d
+ mov    0x100(%rsp),%rax
+ xor    %rsi,%rax
+-movabs $0x5851f42d4c957f2d,%r9
+-mul    %r9
+-mov    %r8d,%ecx
++movabs $0x5851f42d4c957f2d,%r10
++mul    %r10
++mov    %r9d,%ecx
+ shl    $0x8,%rcx
+ or     $0x6,%rcx
+ xor    %rdx,%rcx
+ xor    %rcx,%rax
+-mul    %r9
++mul    %r10
+ mov    %rax,%rcx
+ xor    %rdx,%rcx
+ mov    %rcx,%rax
+@@ -829,37 +830,37 @@
+
+ pcmpeqb %xmm1,%xmm3
+ pmovmskb %xmm3,%ecx
+ test   %ecx,%ecx
+-je     instruction[848]
+-tzcnt  %ecx,%r10d
+-add    %rdx,%r10
+-and    0x80(%rsp),%r10
+-shl    $0x5,%r10
+-mov    0x88(%rsp),%r9
+-sub    %r10,%r9
+-cmp    -0x20(%r9),%rsi
+-jne    instruction[844]
+-cmp    -0x18(%r9),%r8d
+-jne    instruction[844]
+-cmpb   $0x6,-0x14(%r9)
+-je     instruction[873]
+-lea    -0x1(%rcx),%r9d
+-and    %cx,%r9w
+-mov    %r9d,%ecx
+-jne    instruction[832]
++je     instruction[849]
++tzcnt  %ecx,%r11d
++add    %rdx,%r11
++and    0x80(%rsp),%r11
++shl    $0x5,%r11
++mov    0x88(%rsp),%r10
++sub    %r11,%r10
++cmp    -0x20(%r10),%rsi
++jne    instruction[845]
++cmp    -0x18(%r10),%r9d
++jne    instruction[845]
++cmpb   $0x6,-0x14(%r10)
++je     instruction[874]
++lea    -0x1(%rcx),%r10d
++and    %cx,%r10w
++mov    %r10d,%ecx
++jne    instruction[833]
+ pcmpeqd %xmm3,%xmm3
+ pcmpeqb %xmm3,%xmm2
+ pmovmskb %xmm2,%ecx
+ test   %ecx,%ecx
+-jne    instruction[857]
++jne    instruction[858]
+ add    %rax,%rdx
+ add    $0x10,%rdx
+ add    $0x10,%rax
+-jmp    instruction[824]
++jmp    instruction[825]
+ lea    0x18(%rsp),%rcx
+-jmp    instruction[632]
+-movzwl 0x28(%rdi),%edx
++jmp    instruction[633]
++movzwl 0x28(%rdi,%r8,1),%edx
+ test   %dx,%dx
+-je     instruction[899]
++je     instruction[900]
+ not    %edx
+ rol    $0x8,%dx
+ add    -0x2(%rcx),%dx
+@@ -870,61 +871,61 @@
+
+ xor    $0xffff,%dx
+ mov    $0xffff,%edx
+ cmove  %edx,%eax
+-jmp    instruction[900]
++jmp    instruction[901]
+ pextrw $0x6,%xmm0,%eax
+ pextrw $0x5,%xmm0,%ecx
+-mov    -0x10(%r9),%rdx
+-mov    -0x8(%r9),%r8d
+-movzwl 0x32(%rdi),%esi
++mov    -0x10(%r10),%rdx
++mov    -0x8(%r10),%r9d
++movzwl 0x32(%rdi,%r8,1),%esi
+ not    %esi
+ rol    $0x8,%si
+-add    -0x2(%r9),%si
++add    -0x2(%r10),%si
+ adc    $0x0,%si
+ not    %esi
+ not    %eax
+ rol    $0x8,%ax
+-add    -0x4(%r9),%ax
++add    -0x4(%r10),%ax
+ adc    $0x0,%ax
+ not    %eax
+-bswap  %r8d
+-mov    %r8d,0x22(%rdi)
++bswap  %r9d
++mov    %r9d,0x22(%rdi,%r8,1)
+ rol    $0x8,%si
+-mov    %si,0x32(%rdi)
++mov    %si,0x32(%rdi,%r8,1)
+ bswap  %rdx
+-mov    %rdx,0x1a(%rdi)
++mov    %rdx,0x1a(%rdi,%r8,1)
+ dec    %cl
+-mov    %cl,0x16(%rdi)
++mov    %cl,0x16(%rdi,%r8,1)
+ rol    $0x8,%ax
+-mov    %ax,0x18(%rdi)
+-jmp    instruction[918]
++mov    %ax,0x18(%rdi,%r8,1)
++jmp    instruction[919]
+ xor    %eax,%eax
+ pextrw $0x6,%xmm0,%edx
+ pextrw $0x5,%xmm0,%esi
+-mov    -0x10(%rcx),%r8
+-mov    -0x8(%rcx),%r9d
++mov    -0x10(%rcx),%r9
++mov    -0x8(%rcx),%r10d
+ not    %edx
+ rol    $0x8,%dx
+ add    -0x4(%rcx),%dx
+ adc    $0x0,%dx
+ not    %edx
+-bswap  %r9d
+-mov    %r9d,0x22(%rdi)
+-mov    %ax,0x28(%rdi)
+-bswap  %r8
+-mov    %r8,0x1a(%rdi)
++bswap  %r10d
++mov    %r10d,0x22(%rdi,%r8,1)
++mov    %ax,0x28(%rdi,%r8,1)
++bswap  %r9
++mov    %r9,0x1a(%rdi,%r8,1)
+ dec    %sil
+-mov    %sil,0x16(%rdi)
++mov    %sil,0x16(%rdi,%r8,1)
+ rol    $0x8,%dx
+-mov    %dx,0x18(%rdi)
+-movw   $0x100,0xa(%rdi)
+-movl   $0x2,0x6(%rdi)
+-movl   $0x2,(%rdi)
+-movw   $0x200,0x4(%rdi)
++mov    %dx,0x18(%rdi,%r8,1)
++movw   $0x100,0xa(%rdi,%r8,1)
++movl   $0x2,0x6(%rdi,%r8,1)
++movw   $0x200,0x4(%rdi,%r8,1)
++movl   $0x2,(%rdi,%r8,1)
+ incq   0x120(%rsp)
+ movq   $0x0,0x18(%r13)
+ mov    0x4c0(%rsp),%eax
+ cmp    $0x40,%rax
+-jae    instruction[1595]
++jae    instruction[1596]
+ mov    0x118(%rsp),%rcx
+ inc    %rcx
+ mov    %r13,0x4c8(%rsp,%rax,8)
+@@ -933,17 +934,17 @@
+
+ mov    %eax,0x4c0(%rsp)
+ cmp    %r12,%rbp
+ jne    instruction[625]
+-jmp    instruction[937]
++jmp    instruction[938]
+ mov    0x118(%rsp),%r13
+ mov    0x750(%rsp),%esi
+ test   %esi,%esi
+-je     instruction[943]
++je     instruction[944]
+ lea    0x758(%rsp),%rdi
+ call   *<RIP-relative>
+ movl   $0x0,0x750(%rsp)
+ test   %r13,%r13
+ mov    0xb8(%rsp),%r12d
+-je     instruction[1003]
++je     instruction[1004]
+ call   <<std::sys::pal::unix::time::Timespec>::now>
+ mov    %rax,0x60(%rsp)
+ mov    %edx,0x68(%rsp)
+@@ -959,7 +960,7 @@
+
+ cmpb   $0x0,0x1a0(%rsp)
+ mov    $0x0,%esi
+ mov    $0x0,%ebx
+-jne    instruction[964]
++jne    instruction[965]
+ mov    0x1a8(%rsp),%rsi
+ mov    0x1b0(%rsp),%ebx
+ mov    %ebx,%ecx
+@@ -967,37 +968,37 @@
+
+ cmp    $0xffffffff,%r12d
+ mov    (%rsp),%rbp
+ mov    %rsi,0x98(%rsp)
+-je     instruction[1000]
++je     instruction[1001]
+ mov    %rsi,%rax
+ sub    0x90(%rsp),%rax
+-jb     instruction[1563]
++jb     instruction[1564]
+ cmp    %r12d,%ebx
+-jae    instruction[989]
++jae    instruction[990]
+ test   %rax,%rax
+-je     instruction[1563]
++je     instruction[1564]
+ dec    %rax
+ lea    0x3b9aca00(%rbx),%ecx
+ sub    %r12d,%ecx
+ cmp    $0x3b9aca00,%ecx
+-jae    instruction[993]
+-jmp    instruction[996]
++jae    instruction[994]
++jmp    instruction[997]
+ movl   $0x0,0xb60(%rsp)
+ xor    %r13d,%r13d
+ mov    0x750(%rsp),%esi
+ test   %esi,%esi
+-jne    instruction[940]
+-jmp    instruction[943]
++jne    instruction[941]
++jmp    instruction[944]
+ mov    %ebx,%ecx
+ sub    %r12d,%ecx
+ cmp    $0x3b9aca00,%ecx
+-jb     instruction[996]
++jb     instruction[997]
+ cmp    $0xffffffffffffffff,%rax
+-je     instruction[1438]
++je     instruction[1439]
+ inc    %rax
+ mov    %r12d,%ecx
+ mov    0x90(%rsp),%rdx
+ cmp    $0x3f,%rax
+-ja     instruction[1003]
++ja     instruction[1004]
+ add    %r13,0x960(%rsp,%rax,8)
+ mov    %rdx,0x90(%rsp)
+ mov    %ecx,%r12d
+@@ -1024,7 +1025,7 @@
+
+ mov    %r15d,0x4c0(%rsp)
+ add    %r12,0x128(%rsp)
+ cmp    %r12d,%ebp
+-jbe    instruction[1030]
++jbe    instruction[1031]
+ incq   0x140(%rsp)
+ mov    %r15d,%eax
+ add    %rax,0x138(%rsp)
+@@ -1056,7 +1057,7 @@
+
+ cmpb   $0x0,0x1a0(%rsp)
+ xorpd  %xmm0,%xmm0
+ xorpd  %xmm1,%xmm1
+-jne    instruction[1069]
++jne    instruction[1070]
+ movsd  0x1a8(%rsp),%xmm2
+ xorps  %xmm1,%xmm1
+ cvtsi2sdl 0x1b0(%rsp),%xmm1
+@@ -1069,26 +1070,26 @@
+
+ addsd  %xmm3,%xmm1
+ movsd  %xmm1,0x188(%rsp)
+ cmp    $0xffffffff,%r12d
+-je     instruction[1103]
++je     instruction[1104]
+ mov    0x98(%rsp),%rax
+ sub    0x90(%rsp),%rax
+-jb     instruction[1563]
++jb     instruction[1564]
+ cmp    %r12d,%ebx
+-jae    instruction[1085]
++jae    instruction[1086]
+ test   %rax,%rax
+-je     instruction[1563]
++je     instruction[1564]
+ dec    %rax
+ lea    0x3b9aca00(%rbx),%ecx
+ sub    %r12d,%ecx
+ cmp    $0x3b9aca00,%ecx
+-jae    instruction[1089]
+-jmp    instruction[1093]
++jae    instruction[1090]
++jmp    instruction[1094]
+ mov    %ebx,%ecx
+ sub    %r12d,%ecx
+ cmp    $0x3b9aca00,%ecx
+-jb     instruction[1093]
++jb     instruction[1094]
+ cmp    $0xffffffffffffffff,%rax
+-je     instruction[1438]
++je     instruction[1439]
+ inc    %rax
+ add    $0xc4653600,%ecx
+ movq   %rax,%xmm1
+@@ -1104,7 +1105,7 @@
+
+ movsd  %xmm0,0x148(%rsp)
+ mov    0x110(%rsp),%rsi
+ cmp    $0x5,%esi
+-jae    instruction[1452]
++jae    instruction[1453]
+ lea    0x4a0(%rsp),%rax
+ mov    %rax,0x28(%rsp)
+ mov    %rsi,0x30(%rsp)
+@@ -1119,7 +1120,7 @@
+
+ movapd <RIP-relative>,%xmm0
+ xorpd  %xmm2,%xmm2
+ cmp    $0xffffffff,%r12d
+-je     instruction[1128]
++je     instruction[1129]
+ movsd  0x90(%rsp),%xmm3
+ unpcklps %xmm1,%xmm3
+ subpd  %xmm0,%xmm3
+@@ -1158,7 +1159,7 @@
+
+ mov    0xf0(%rsp),%rdi
+ call   <<std::sync::barrier::Barrier>::wait>
+ cmpq   $0x0,0x78(%rsp)
+-je     instruction[1185]
++je     instruction[1186]
+ mov    %r15,%r13
+ lea    0x1a0(%rsp),%r15
+ mov    $0x2c0,%edx
+@@ -1169,7 +1170,7 @@
+
+ mov    %r15,%rsi
+ call   *<RIP-relative>
+ test   %eax,%eax
+-jne    instruction[1457]
++jne    instruction[1458]
+ mov    0x1c0(%rsp),%rbp
+ mov    0x1d0(%rsp),%rax
+ xor    %ecx,%ecx
+@@ -1181,13 +1182,13 @@
+
+ mov    %r13,%r15
+ lea    0x28(%rsp),%r13
+ cmpq   $0x0,0x50(%rsp)
+-jne    instruction[1190]
+-jmp    instruction[1205]
++jne    instruction[1191]
++jmp    instruction[1206]
+ xor    %ebp,%ebp
+ xor    %eax,%eax
+ xor    %ebx,%ebx
+ cmpq   $0x0,0x50(%rsp)
+-je     instruction[1205]
++je     instruction[1206]
+ mov    %r13,%r12
+ mov    %r15,%r13
+ lea    0x1a0(%rsp),%r15
+@@ -1199,7 +1200,7 @@
+
+ mov    %r15,%rsi
+ call   *<RIP-relative>
+ test   %eax,%eax
+-jne    instruction[1457]
++jne    instruction[1458]
+ mov    0x1d0(%rsp),%rax
+ mov    %r13,%r15
+ mov    %r12,%r13
+@@ -1305,123 +1306,123 @@
+
+ call   <std::io::stdio::_print>
+ mov    0x50(%rsp),%rdi
+ test   %rdi,%rdi
+-je     instruction[1311]
++je     instruction[1312]
+ lock decq (%rdi)
+-jne    instruction[1311]
++jne    instruction[1312]
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    0x78(%rsp),%rdi
+ test   %rdi,%rdi
+-je     instruction[1317]
++je     instruction[1318]
+ lock decq (%rdi)
+-jne    instruction[1317]
++jne    instruction[1318]
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    0x750(%rsp),%ebx
+ test   %rbx,%rbx
+-je     instruction[1329]
++je     instruction[1330]
+ movl   $0x0,0x750(%rsp)
+ xor    %r15d,%r15d
+ cmp    %r15,%rbx
+-je     instruction[1329]
++je     instruction[1330]
+ mov    0x758(%rsp,%r15,8),%rdi
+ inc    %r15
+ call   *<RIP-relative>
+ cmp    %r15,%rbx
+-jne    instruction[1324]
++jne    instruction[1325]
+ mov    0x4c0(%rsp),%ebx
+ test   %rbx,%rbx
+-je     instruction[1341]
++je     instruction[1342]
+ movl   $0x0,0x4c0(%rsp)
+ xor    %r15d,%r15d
+ cmp    %r15,%rbx
+-je     instruction[1341]
++je     instruction[1342]
+ mov    0x4c8(%rsp,%r15,8),%rdi
+ inc    %r15
+ call   *<RIP-relative>
+ cmp    %r15,%rbx
+-jne    instruction[1336]
++jne    instruction[1337]
+ mov    0xb60(%rsp),%ebx
+ test   %rbx,%rbx
+-je     instruction[1353]
++je     instruction[1354]
+ movl   $0x0,0xb60(%rsp)
+ xor    %r15d,%r15d
+ cmp    %r15,%rbx
+-je     instruction[1353]
++je     instruction[1354]
+ mov    0xb68(%rsp,%r15,8),%rdi
+ inc    %r15
+ call   *<RIP-relative>
+ cmp    %r15,%rbx
+-jne    instruction[1348]
++jne    instruction[1349]
+ mov    0xe0(%rsp),%rdi
+ lock decq (%rdi)
+-jne    instruction[1357]
++jne    instruction[1358]
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    0x6c8(%rsp),%ebx
+ test   %rbx,%rbx
+-je     instruction[1382]
++je     instruction[1383]
+ movl   $0x0,0x6c8(%rsp)
+ shl    $0x5,%rbx
+ xor    %r15d,%r15d
+-jmp    instruction[1367]
++jmp    instruction[1368]
+ add    $0x20,%r15
+ cmp    %r15,%rbx
+-je     instruction[1382]
++je     instruction[1383]
+ mov    0x6d0(%rsp,%r15,1),%rax
+ lock decq (%rax)
+-jne    instruction[1376]
++jne    instruction[1377]
+ mov    0x6d0(%rsp,%r15,1),%rdi
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    0x6e0(%rsp,%r15,1),%rax
+ lock decq (%rax)
+-jne    instruction[1364]
+-jmp    instruction[1379]
++jne    instruction[1365]
++jmp    instruction[1380]
+ mov    0x6e0(%rsp,%r15,1),%rax
+ lock decq (%rax)
+-jne    instruction[1364]
++jne    instruction[1365]
+ mov    0x6e0(%rsp,%r15,1),%rdi
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+-jmp    instruction[1364]
++jmp    instruction[1365]
+ cmpq   $0x0,0x70(%rsp)
+-je     instruction[1399]
++je     instruction[1400]
+ mov    0x58(%rsp),%rax
+ lea    0x8(%rax),%rbx
+ mov    <RIP-relative>,%r15
+ mov    %r14,%r12
+-jmp    instruction[1392]
++jmp    instruction[1393]
+ add    $0x18,%rbx
+ dec    %r12
+-je     instruction[1397]
++je     instruction[1398]
+ cmpq   $0x0,-0x8(%rbx)
+-je     instruction[1389]
++je     instruction[1390]
+ mov    (%rbx),%rdi
+ call   *%r15
+-jmp    instruction[1389]
++jmp    instruction[1390]
+ mov    0x58(%rsp),%rdi
+ call   *<RIP-relative>
+ test   %r14,%r14
+-je     instruction[1412]
++je     instruction[1413]
+ lea    0x8(%rbp),%rbx
+ mov    <RIP-relative>,%r15
+-jmp    instruction[1407]
++jmp    instruction[1408]
+ add    $0x18,%rbx
+ dec    %r14
+-je     instruction[1412]
++je     instruction[1413]
+ cmpq   $0x0,-0x8(%rbx)
+-je     instruction[1404]
++je     instruction[1405]
+ mov    (%rbx),%rdi
+ call   *%r15
+-jmp    instruction[1404]
++jmp    instruction[1405]
+ cmpq   $0x0,0xe8(%rsp)
+-je     instruction[1416]
++je     instruction[1417]
+ mov    %rbp,%rdi
+ call   *<RIP-relative>
+ mov    0x468(%rsp),%rcx
+ test   %rcx,%rcx
+-je     instruction[1428]
++je     instruction[1429]
+ mov    %rcx,%rax
+ shl    $0x5,%rax
+ add    %rax,%rcx
+ cmp    $0xffffffffffffffcf,%rcx
+-je     instruction[1428]
++je     instruction[1429]
+ mov    0x460(%rsp),%rdi
+ sub    %rax,%rdi
+ add    $0xffffffffffffffe0,%rdi
+@@ -1440,7 +1441,7 @@
+
+ lea    <RIP-relative>,%rdx
+ mov    $0x19,%esi
+ call   <core::option::expect_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x2,%eax
+ jmp    instruction[288]
+ mov    $0x3,%eax
+@@ -1449,23 +1450,23 @@
+
+ lea    <RIP-relative>,%rdx
+ mov    $0x2d,%esi
+ call   <core::panicking::panic>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rcx
+ mov    $0x4,%edx
+ xor    %edi,%edi
+ call   <core::slice::index::slice_index_fail>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x1a,%esi
+ mov    (%rsp),%rbp
+ call   <core::panicking::panic>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ movupd 0x750(%rsp),%xmm0
+ movupd 0x760(%rsp),%xmm1
+ movapd %xmm1,0x1b0(%rsp)
+@@ -1476,36 +1477,36 @@
+
+ lea    0x1a0(%rsp),%rdx
+ mov    $0x2b,%esi
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rsi
+ lea    <RIP-relative>,%rdx
+ lea    0x1a0(%rsp),%rdi
+ call   <core::panicking::assert_failed::<i32, i32>>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ xor    %r15d,%r15d
+-jmp    instruction[1610]
++jmp    instruction[1611]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ xor    %r15d,%r15d
+-jmp    instruction[1628]
++jmp    instruction[1629]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x1a,%esi
+ call   <core::panicking::panic>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ movupd 0x960(%rsp),%xmm0
+ movupd 0x970(%rsp),%xmm1
+ movapd %xmm1,0x1b0(%rsp)
+@@ -1516,26 +1517,26 @@
+
+ lea    0x1a0(%rsp),%rdx
+ mov    $0x2b,%esi
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x1,%r15d
+-jmp    instruction[1610]
++jmp    instruction[1611]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x1,%r15d
+-jmp    instruction[1628]
++jmp    instruction[1629]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ movupd 0x960(%rsp),%xmm0
+ movupd 0x970(%rsp),%xmm1
+ movapd %xmm1,0x1b0(%rsp)
+@@ -1546,53 +1547,53 @@
+
+ lea    0x1a0(%rsp),%rdx
+ mov    $0x2b,%esi
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x2,%r15d
+-jmp    instruction[1610]
++jmp    instruction[1611]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x2,%r15d
+-jmp    instruction[1628]
++jmp    instruction[1629]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x23,%esi
+ call   <core::option::expect_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rax
+ mov    %rax,0xc8(%rsp)
+-jmp    instruction[1572]
++jmp    instruction[1573]
+ mov    $0x4,%esi
+ mov    %r13,%rdi
+ mov    0xc8(%rsp),%rdx
+ mov    (%rsp),%rbp
+ call   <core::panicking::panic_bounds_check>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x1,%edi
+ mov    %r12,%rsi
+ call   <alloc::raw_vec::handle_error>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x3,%r15d
+-jmp    instruction[1610]
++jmp    instruction[1611]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x3,%r15d
+-jmp    instruction[1628]
++jmp    instruction[1629]
+ mov    %rbp,0x1a0(%rsp)
+ mov    %r13,0x28(%rsp)
+ lea    <RIP-relative>,%rdi
+@@ -1601,12 +1602,12 @@
+
+ lea    0x28(%rsp),%rdx
+ mov    $0x2b,%esi
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x4,%r15d
+ movupd 0x4c0(%rsp),%xmm0
+ movupd 0x4d0(%rsp),%xmm1
+@@ -1619,12 +1620,12 @@
+
+ mov    $0x2b,%esi
+ mov    (%rsp),%rbp
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ lea    <RIP-relative>,%rdi
+ lea    <RIP-relative>,%rdx
+ mov    $0x3f,%esi
+ call   <core::panicking::panic_fmt>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x4,%r15d
+ movupd 0x4c0(%rsp),%xmm0
+ movupd 0x4d0(%rsp),%xmm1
+@@ -1637,7 +1638,7 @@
+
+ mov    $0x2b,%esi
+ mov    (%rsp),%rbp
+ call   <core::result::unwrap_failed>
+-jmp    instruction[1643]
++jmp    instruction[1644]
+ mov    $0x8,%edi
+ mov    %rbx,%rsi
+ call   <alloc::raw_vec::handle_error>
+@@ -1647,212 +1648,212 @@
+
+ mov    %r15,%rsi
+ call   <core::ptr::drop_glue::<(rpkt_dpdk::port::RxQueue, rpkt_dpdk::port::TxQueue)>>
+ mov    $0x4,%r15d
+-jmp    instruction[1719]
++jmp    instruction[1720]
+ mov    %rax,%rbx
+-jmp    instruction[1744]
++jmp    instruction[1745]
+ mov    %rax,%rbx
+-jmp    instruction[1728]
++jmp    instruction[1729]
+ mov    %rax,%rbx
+ mov    %rbp,0x1a0(%rsp)
+-jmp    instruction[1659]
++jmp    instruction[1660]
+ mov    %rax,%rbx
+ mov    0x28(%rsp),%r13
+ mov    %r13,%rdi
+ call   *<RIP-relative>
+ lea    0x1a0(%rsp),%rdi
+ call   <core::ptr::drop_glue::<arrayvec::arrayvec::Drain<rpkt_dpdk::mbuf::Mbuf, 64>>>
+-jmp    instruction[1673]
++jmp    instruction[1674]
+ mov    %rax,%rbx
+-jmp    instruction[1741]
+-jmp    instruction[1736]
++jmp    instruction[1742]
++jmp    instruction[1737]
+ mov    %rax,%rbx
+ mov    %r15,0x760(%rsp)
+ lea    0x750(%rsp),%rdi
+ call   <core::ptr::drop_glue::<alloc::vec::Vec<alloc::vec::Vec<u8>>>>
+-jmp    instruction[1847]
++jmp    instruction[1848]
+ mov    %rax,%rbx
+ mov    (%rsp),%rbp
+-jmp    instruction[1747]
++jmp    instruction[1748]
+ mov    %rax,%rbx
+ cmpq   $0x0,0x1a0(%rsp)
+-jne    instruction[1680]
++jne    instruction[1681]
+ mov    (%rsp),%rbp
+-jmp    instruction[1756]
++jmp    instruction[1757]
+ mov    0x1a8(%rsp),%rdi
+ call   *<RIP-relative>
+ mov    (%rsp),%rbp
+-jmp    instruction[1756]
++jmp    instruction[1757]
+ mov    %rax,%rbx
+-jmp    instruction[1756]
++jmp    instruction[1757]
+ mov    %rax,%rbx
+ cmpq   $0x0,0x1a0(%rsp)
+-jne    instruction[1691]
++jne    instruction[1692]
+ mov    (%rsp),%rbp
+-jmp    instruction[1760]
++jmp    instruction[1761]
+ mov    0x1a8(%rsp),%rdi
+ call   *<RIP-relative>
+ mov    (%rsp),%rbp
+-jmp    instruction[1760]
++jmp    instruction[1761]
+ mov    %rax,%rbx
+-jmp    instruction[1760]
++jmp    instruction[1761]
+ mov    %rax,%r13
+ cmpq   $0x0,0x750(%rsp)
+-je     instruction[1712]
++je     instruction[1713]
+ mov    0x758(%rsp),%rdi
+ call   *<RIP-relative>
+-jmp    instruction[1712]
++jmp    instruction[1713]
+ mov    %rax,%rbx
+ cmpq   $0x0,0x750(%rsp)
+-je     instruction[1720]
++je     instruction[1721]
+ mov    0x758(%rsp),%rdi
+ call   *<RIP-relative>
+-jmp    instruction[1720]
++jmp    instruction[1721]
+ mov    %rax,%r13
+ mov    (%rsp),%rbp
+ mov    %ebx,%r15d
+ lock decq (%r12)
+-jne    instruction[1716]
++jne    instruction[1717]
+ mov    %r12,%rdi
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    %r13,%rbx
+-jmp    instruction[1720]
++jmp    instruction[1721]
+ mov    %rax,%rbx
+ mov    (%rsp),%rbp
+ mov    %r15d,0x1a0(%rsp)
+ lea    0x1a0(%rsp),%r12
++jmp    instruction[1805]
++mov    %rax,%rbx
++cmpq   $0x0,0x1a0(%rsp)
++je     instruction[1729]
++mov    0x1a8(%rsp),%rdi
++call   *<RIP-relative>
++test   %r13,%r13
++je     instruction[1804]
++mov    %r12,%rdi
++call   *<RIP-relative>
+ jmp    instruction[1804]
+ mov    %rax,%rbx
+-cmpq   $0x0,0x1a0(%rsp)
+-je     instruction[1728]
+-mov    0x1a8(%rsp),%rdi
+-call   *<RIP-relative>
+-test   %r13,%r13
+-je     instruction[1803]
+-mov    %r12,%rdi
+-call   *<RIP-relative>
+-jmp    instruction[1803]
+-mov    %rax,%rbx
+ mov    (%rsp),%rbp
+-jmp    instruction[1804]
++jmp    instruction[1805]
+ mov    %rax,%rbx
+ test   %r12,%r12
+-je     instruction[1741]
++je     instruction[1742]
+ mov    %r13,%rdi
+ call   *<RIP-relative>
+ mov    %rbp,0x1b0(%rsp)
+ lea    0x1a0(%rsp),%rdi
+ call   <core::ptr::drop_glue::<alloc::vec::Vec<alloc::vec::Vec<u8>>>>
+ mov    (%rsp),%rbp
+-jmp    instruction[1835]
++jmp    instruction[1836]
+ mov    %rax,%rbx
+ mov    0x50(%rsp),%rdi
+ test   %rdi,%rdi
+ mov    0x78(%rsp),%r12
+-je     instruction[1754]
++je     instruction[1755]
+ lock decq (%rdi)
+-jne    instruction[1754]
++jne    instruction[1755]
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ test   %r12,%r12
+-je     instruction[1760]
++je     instruction[1761]
+ lock decq (%r12)
+-jne    instruction[1760]
++jne    instruction[1761]
+ mov    %r12,%rdi
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ mov    0x750(%rsp),%r15d
+ test   %r15,%r15
+-je     instruction[1773]
++je     instruction[1774]
+ movl   $0x0,0x750(%rsp)
+ xor    %r12d,%r12d
+ mov    <RIP-relative>,%r13
+ cmp    %r12,%r15
+-je     instruction[1773]
++je     instruction[1774]
+ mov    0x758(%rsp,%r12,8),%rdi
+ inc    %r12
+ call   *%r13
+ cmp    %r12,%r15
+-jne    instruction[1768]
++jne    instruction[1769]
+ mov    0x4c0(%rsp),%r15d
+ test   %r15,%r15
+-je     instruction[1786]
++je     instruction[1787]
+ movl   $0x0,0x4c0(%rsp)
+ xor    %r12d,%r12d
+ mov    <RIP-relative>,%r13
+ cmp    %r12,%r15
+-je     instruction[1786]
++je     instruction[1787]
+ mov    0x4c8(%rsp,%r12,8),%rdi
+ inc    %r12
+ call   *%r13
+ cmp    %r12,%r15
+-jne    instruction[1781]
++jne    instruction[1782]
+ mov    0xb60(%rsp),%r15d
+ test   %r15,%r15
+-je     instruction[1799]
++je     instruction[1800]
+ movl   $0x0,0xb60(%rsp)
+ xor    %r12d,%r12d
+ mov    <RIP-relative>,%r13
+ cmp    %r12,%r15
+-je     instruction[1799]
++je     instruction[1800]
+ mov    0xb68(%rsp,%r12,8),%rdi
+ inc    %r12
+ call   *%r13
+ cmp    %r12,%r15
+-jne    instruction[1794]
++jne    instruction[1795]
+ mov    0xe0(%rsp),%rdi
+ lock decq (%rdi)
+-jne    instruction[1803]
++jne    instruction[1804]
+ call   <<alloc::sync::Arc<()>>::drop_slow>
+ lea    0x6c8(%rsp),%r12
+ mov    %r12,%rdi
+ call   <core::ptr::drop_glue::<arrayvec::arrayvec::ArrayVec<(rpkt_dpdk::port::RxQueue, rpkt_dpdk::port::TxQueue), 4>>>
+ cmpq   $0x0,0x70(%rsp)
+-jne    instruction[1812]
++jne    instruction[1813]
+ test   %r14,%r14
+-je     instruction[1830]
++je     instruction[1831]
+ xor    %r14d,%r14d
+-jmp    instruction[1835]
++jmp    instruction[1836]
+ mov    0x58(%rsp),%rax
+ lea    0x8(%rax),%r15
+ mov    <RIP-relative>,%r12
+ mov    %r14,%r13
+-jmp    instruction[1820]
++jmp    instruction[1821]
+ add    $0x18,%r15
+ dec    %r13
+-je     instruction[1825]
++je     instruction[1826]
+ cmpq   $0x0,-0x8(%r15)
+-je     instruction[1817]
++je     instruction[1818]
+ mov    (%r15),%rdi
+ call   *%r12
+-jmp    instruction[1817]
++jmp    instruction[1818]
+ mov    0x58(%rsp),%rdi
+ call   *<RIP-relative>
+ test   %r14,%r14
+ mov    0x70(%rsp),%r14
+-jne    instruction[1835]
++jne    instruction[1836]
+ cmpq   $0x0,0xe8(%rsp)
+-je     instruction[1847]
++je     instruction[1848]
+ mov    %rbp,%rdi
+ call   *<RIP-relative>
+-jmp    instruction[1847]
++jmp    instruction[1848]
+ lea    0x8(%rbp),%r15
+ mov    <RIP-relative>,%r12
+-jmp    instruction[1841]
++jmp    instruction[1842]
+ add    $0x18,%r15
+ dec    %r14
+-je     instruction[1830]
++je     instruction[1831]
+ cmpq   $0x0,-0x8(%r15)
+-je     instruction[1838]
++je     instruction[1839]
+ mov    (%r15),%rdi
+ call   *%r12
+-jmp    instruction[1838]
++jmp    instruction[1839]
+ mov    %rax,%rbx
+ mov    0x468(%rsp),%rcx
+ test   %rcx,%rcx
+-je     instruction[1859]
++je     instruction[1860]
+ mov    %rcx,%rax
+ shl    $0x5,%rax
+ add    %rax,%rcx
+ cmp    $0xffffffffffffffcf,%rcx
+-je     instruction[1859]
++je     instruction[1860]
+ mov    0x460(%rsp),%rdi
+ sub    %rax,%rdi
+ add    $0xffffffffffffffe0,%rdi
+
+nat_loop::nat::rpkt_general
+raw: start=0x18b390, bytes=538, non-padding instructions=149
+checked: start=0x18b3b0, bytes=538, non-padding instructions=149
+--- raw
+
++++ checked
+
+@@ -141,9 +141,9 @@
+
+ decb   0x16(%rcx)
+ rol    $0x8,%dx
+ mov    %dx,0x18(%rcx)
++movw   $0x100,0xa(%rcx)
+ movl   $0x2,0x6(%rcx)
+-movw   $0x100,0xa(%rcx)
++movw   $0x200,0x4(%rcx)
+ movl   $0x2,(%rcx)
+-movw   $0x200,0x4(%rcx)
+ mov    $0x1,%al
+ jmp    instruction[87]

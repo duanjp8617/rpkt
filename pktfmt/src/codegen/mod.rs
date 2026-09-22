@@ -743,10 +743,14 @@ fn next(&mut self) -> Option<Self::Item> {{
         mut handle_pkt: impl FnMut(&Packet, &mut dyn Write),
         parse_error: &str,
     ) {
-        let (last_bitpos, last_field) = self.cond_fields.last().unwrap();
-
-        // First, make sure that we can access the cond field from the buffer
-        let buf_min_len = last_bitpos.next_pos(last_field.bit).byte_pos() + 1;
+        // Bound every discriminant read, independently of field ordering.
+        // All reads below use this same checked borrow, not fresh Buf chunks.
+        let buf_min_len = self
+            .cond_fields
+            .iter()
+            .map(|(position, field)| position.next_pos(field.bit).byte_pos() + 1)
+            .max()
+            .unwrap();
         write!(
             output,
             "let cond_bytes = &{buf_name}{buf_access}[..];\nif cond_bytes.len() < {buf_min_len} {{\n"
@@ -779,5 +783,33 @@ fn next(&mut self) -> Option<Self::Item> {{
 
         // Add the closing bracket for the match.
         write!(output, "}}\n").unwrap();
+    }
+}
+
+#[cfg(test)]
+mod raw_group_tests {
+    use super::*;
+    use crate::{parser::PacketParser, token::Tokenizer};
+
+    #[test]
+    fn dispatch_checks_the_furthest_field_end_on_one_borrow() {
+        let packet = parse_with_error!(
+            PacketParser,
+            Tokenizer::new("packet P { header=[wide=Field{bit=64},narrow=Field{bit=8}] }")
+        )
+        .unwrap();
+        let wide = packet.header().field("wide").unwrap().0;
+        let narrow = packet.header().field("narrow").unwrap().0;
+        // Deliberately non-monotonic endpoints exercise the generator's own
+        // bound calculation, without relying on the AST's stronger constraints.
+        let conditions = vec![(BitPos::new(0), wide), (BitPos::new(8), narrow)];
+        let packets = vec![];
+        let generator = PacketGroupGen::new("G", &packets, &conditions, false);
+        let mut out = vec![];
+        generator.parse_buffer(&mut out, "buf", "", |_, _| {}, "None");
+        let source = String::from_utf8(out).unwrap();
+        assert!(source.contains("let cond_bytes = &buf[..]"));
+        assert!(source.contains("cond_bytes.len() < 8"));
+        assert!(source.contains("cond_bytes.get_unchecked(0..8)"));
     }
 }
