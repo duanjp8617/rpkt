@@ -125,7 +125,10 @@ fn ipv4_option1_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 64..]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(20 + 2 + 22);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(20 + 2 + 22)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_ttl(64);
     ipv4.set_ident(30775);
@@ -137,15 +140,26 @@ fn ipv4_option1_build() {
     {
         let option_pbuf = CursorMut::new(ipv4.var_header_slice_mut());
 
-        let mut cs = CommercialSecurity::parse_unchecked(option_pbuf);
-        cs.set_header_len(22);
+        let mut cs = unsafe {
+            /* SAFETY: this buffer contains the complete fixed header. */
+            CommercialSecurity::parse_unchecked(option_pbuf)
+        };
+        unsafe {
+            /* SAFETY: the template/buffer is provisioned before variable-length access. */
+            cs.set_header_len(22)
+        };
         cs.set_type_(134);
         cs.set_doi(2);
 
-        let mut tag =
-            CommercialSecurityTag::parse_unchecked(CursorMut::new(cs.var_header_slice_mut()));
+        let mut tag = unsafe {
+            /* SAFETY: this buffer contains the complete fixed header. */
+            CommercialSecurityTag::parse_unchecked(CursorMut::new(cs.var_header_slice_mut()))
+        };
         tag.set_tag_type(2);
-        tag.set_header_len(16);
+        unsafe {
+            /* SAFETY: the template/buffer is provisioned before variable-length access. */
+            tag.set_header_len(16)
+        };
         tag.set_sensitivity_level(2);
         tag.set_alignment_octet(0);
         tag.var_header_slice_mut()
@@ -267,7 +281,10 @@ fn ipv4_option2_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 64..]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(60);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(60)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_dscp(0);
     ipv4.set_ecn(0);
@@ -283,8 +300,14 @@ fn ipv4_option2_build() {
     {
         let option_pbuf = CursorMut::new(ipv4.var_header_slice_mut());
 
-        let mut ts = Timestamp::parse_unchecked(option_pbuf);
-        ts.set_header_len(40);
+        let mut ts = unsafe {
+            /* SAFETY: this buffer contains the complete fixed header. */
+            Timestamp::parse_unchecked(option_pbuf)
+        };
+        unsafe {
+            /* SAFETY: the template/buffer is provisioned before variable-length access. */
+            ts.set_header_len(40)
+        };
         ts.set_type_(68);
         ts.set_pointer(9);
         ts.set_oflw(0);
@@ -400,7 +423,10 @@ fn ipv4_option3_build() {
         .copy_from_slice(&pkt[pkt.len() - 22..pkt.len() - 10]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(24);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(24)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_dscp(0);
     ipv4.set_ecn(0);
@@ -574,7 +600,10 @@ fn ipv4_option4_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 20..]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(60);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(60)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_dscp(0);
     ipv4.set_ecn(0);
@@ -591,8 +620,14 @@ fn ipv4_option4_build() {
         let mut option_pbuf = CursorMut::new(ipv4.var_header_slice_mut());
         *option_pbuf.chunk_mut().last_mut().unwrap() = 0;
 
-        let mut rr = RecordRoute::parse_unchecked(option_pbuf);
-        rr.set_header_len(39);
+        let mut rr = unsafe {
+            /* SAFETY: this buffer contains the complete fixed header. */
+            RecordRoute::parse_unchecked(option_pbuf)
+        };
+        unsafe {
+            /* SAFETY: the template/buffer is provisioned before variable-length access. */
+            rr.set_header_len(39)
+        };
         rr.set_type_(7);
         rr.set_pointer(16);
 
@@ -719,7 +754,10 @@ fn ipv4_option6_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 8..]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(28);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(28)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_dscp(0);
     ipv4.set_ecn(0);
@@ -850,7 +888,10 @@ fn ipv4_option7_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 8..]);
 
     let mut hdr = Ipv4::default_header();
-    Ipv4::from_header_array_mut(&mut hdr).set_header_len(28);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Ipv4::from_header_array_mut(&mut hdr).set_header_len(28)
+    };
     let mut ipv4 = Ipv4::prepend_header(pbuf, &hdr);
     ipv4.set_dscp(0);
     ipv4.set_ecn(0);

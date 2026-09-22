@@ -18,14 +18,15 @@ pub struct Tcp<T> {
     buf: T,
 }
 /// Fixed header fields only; no payload or cursor operations.
-/// Construct through the checked parts parser or an exact-size array.
+/// Construct through the checked parts parser or a checked header slice.
 #[derive(Debug)]
 pub struct TcpFields<T> {
     buf: T,
 }
-impl<T: core::ops::Deref<Target = [u8; 20]>> TcpFields<T> {
+impl<T: crate::StableBuf> TcpFields<T> {
     #[inline]
     pub fn from_header(buf: T) -> Self {
+        assert!(buf.chunk().len() >= 20);
         Self { buf }
     }
     #[inline]
@@ -34,190 +35,413 @@ impl<T: core::ops::Deref<Target = [u8; 20]>> TcpFields<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn seq_num(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.deref()[4..8]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn ack_num(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.deref()[8..12]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(8..12)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn reserved(&self) -> u8 {
-        self.buf.deref()[12] & 0xf
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(12)
+        }) & 0xf
     }
     #[inline]
     pub fn cwr(&self) -> bool {
-        self.buf.deref()[13] & 0x80 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x80
+            != 0
     }
     #[inline]
     pub fn ece(&self) -> bool {
-        self.buf.deref()[13] & 0x40 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x40
+            != 0
     }
     #[inline]
     pub fn urg(&self) -> bool {
-        self.buf.deref()[13] & 0x20 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x20
+            != 0
     }
     #[inline]
     pub fn ack(&self) -> bool {
-        self.buf.deref()[13] & 0x10 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x10
+            != 0
     }
     #[inline]
     pub fn psh(&self) -> bool {
-        self.buf.deref()[13] & 0x8 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x8
+            != 0
     }
     #[inline]
     pub fn rst(&self) -> bool {
-        self.buf.deref()[13] & 0x4 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x4
+            != 0
     }
     #[inline]
     pub fn syn(&self) -> bool {
-        self.buf.deref()[13] & 0x2 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x2
+            != 0
     }
     #[inline]
     pub fn fin(&self) -> bool {
-        self.buf.deref()[13] & 0x1 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x1
+            != 0
     }
     #[inline]
     pub fn window_size(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[14..16]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..16)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[16..18]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(16..18)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn urgent_pointer(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[18..20]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(18..20)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn src_port_and_dst_port_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.deref()[0..4].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn seq_num_and_ack_num_bits(&self) -> u64 {
-        u64::from_be_bytes(self.buf.deref()[4..12].try_into().unwrap())
+        u64::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..12)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn window_size_and_checksum_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.deref()[14..18].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..18)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn checksum_and_urgent_pointer_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.deref()[16..20].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(16..20)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.deref()[12] >> 4) * 4
+        ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(12)
+        }) >> 4)
+            * 4
     }
 }
-impl<T: core::ops::DerefMut<Target = [u8; 20]>> TcpFields<T> {
+impl<T: PktBufMut> TcpFields<T> {
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_seq_num(&mut self, value: u32) {
-        (&mut self.buf.deref_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_ack_num(&mut self, value: u32) {
-        (&mut self.buf.deref_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(8..12)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_reserved(&mut self, value: u8) {
         assert!(value <= 0xf);
-        self.buf.deref_mut()[12] = (self.buf.deref_mut()[12] & 0xf0) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(12)
+        }) & 0xf0)
+            | value;
     }
     #[inline]
     pub fn set_cwr(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0x7f) | (value << 7);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0x7f)
+            | (value << 7);
     }
     #[inline]
     pub fn set_ece(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xbf) | (value << 6);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xbf)
+            | (value << 6);
     }
     #[inline]
     pub fn set_urg(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xdf) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xdf)
+            | (value << 5);
     }
     #[inline]
     pub fn set_ack(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_psh(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xf7) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xf7)
+            | (value << 3);
     }
     #[inline]
     pub fn set_rst(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfb) | (value << 2);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfb)
+            | (value << 2);
     }
     #[inline]
     pub fn set_syn(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfd) | (value << 1);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfd)
+            | (value << 1);
     }
     #[inline]
     pub fn set_fin(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.deref_mut()[13] = (self.buf.deref_mut()[13] & 0xfe) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfe)
+            | value;
     }
     #[inline]
     pub fn set_window_size(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[14..16]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..16)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[16..18]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(16..18)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_urgent_pointer(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[18..20]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(18..20)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
         let value = ((src_port as u32) << 16) | (dst_port as u32);
-        self.buf.deref_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_seq_num_and_ack_num(&mut self, seq_num: u32, ack_num: u32) {
         let value = ((seq_num as u64) << 32) | (ack_num as u64);
-        self.buf.deref_mut()[4..12].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..12)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_window_size_and_checksum(&mut self, window_size: u16, checksum: u16) {
         let value = ((window_size as u32) << 16) | (checksum as u32);
-        self.buf.deref_mut()[14..18].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..18)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_checksum_and_urgent_pointer(&mut self, checksum: u16, urgent_pointer: u16) {
         let value = ((checksum as u32) << 16) | (urgent_pointer as u32);
-        self.buf.deref_mut()[16..20].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(16..20)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> Tcp<Cursor<'a>> {
@@ -228,7 +452,7 @@ impl<'a> Tcp<Cursor<'a>> {
     #[inline]
     pub fn parse_parts(
         bytes: &'a [u8],
-    ) -> Result<(TcpFields<&'a [u8; 20]>, &'a [u8], &'a [u8]), &'a [u8]> {
+    ) -> Result<(TcpFields<Cursor<'a>>, &'a [u8], &'a [u8]), &'a [u8]> {
         let (h, end) = {
             let Ok(_p) = Tcp::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -240,7 +464,9 @@ impl<'a> Tcp<Cursor<'a>> {
         let (header, payload) = packet.split_at(h);
         let (fixed, options) = header.split_at(20);
         Ok((
-            TcpFields::from_header(<&[u8; 20]>::try_from(fixed).unwrap()),
+            TcpFields {
+                buf: Cursor::new(fixed),
+            },
             options,
             payload,
         ))
@@ -254,7 +480,7 @@ impl<'a> Tcp<CursorMut<'a>> {
     #[inline]
     pub fn parse_parts_mut(
         bytes: &'a mut [u8],
-    ) -> Result<(TcpFields<&'a mut [u8; 20]>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
+    ) -> Result<(TcpFields<CursorMut<'a>>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
         let (h, end) = {
             let Ok(_p) = Tcp::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -266,15 +492,23 @@ impl<'a> Tcp<CursorMut<'a>> {
         let (header, payload) = packet.split_at_mut(h);
         let (fixed, options) = header.split_at_mut(20);
         Ok((
-            TcpFields::from_header(<&mut [u8; 20]>::try_from(fixed).unwrap()),
+            TcpFields {
+                buf: CursorMut::new(fixed),
+            },
             options,
             payload,
         ))
     }
 }
-impl<T: Buf> Tcp<T> {
+impl<T: Buf + crate::StableBuf> Tcp<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -309,91 +543,207 @@ impl<T: Buf> Tcp<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn seq_num(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[4..8]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn ack_num(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[8..12]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(8..12)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn reserved(&self) -> u8 {
-        self.buf.chunk()[12] & 0xf
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(12)
+        }) & 0xf
     }
     #[inline]
     pub fn cwr(&self) -> bool {
-        self.buf.chunk()[13] & 0x80 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x80
+            != 0
     }
     #[inline]
     pub fn ece(&self) -> bool {
-        self.buf.chunk()[13] & 0x40 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x40
+            != 0
     }
     #[inline]
     pub fn urg(&self) -> bool {
-        self.buf.chunk()[13] & 0x20 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x20
+            != 0
     }
     #[inline]
     pub fn ack(&self) -> bool {
-        self.buf.chunk()[13] & 0x10 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x10
+            != 0
     }
     #[inline]
     pub fn psh(&self) -> bool {
-        self.buf.chunk()[13] & 0x8 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x8
+            != 0
     }
     #[inline]
     pub fn rst(&self) -> bool {
-        self.buf.chunk()[13] & 0x4 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x4
+            != 0
     }
     #[inline]
     pub fn syn(&self) -> bool {
-        self.buf.chunk()[13] & 0x2 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x2
+            != 0
     }
     #[inline]
     pub fn fin(&self) -> bool {
-        self.buf.chunk()[13] & 0x1 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        }) & 0x1
+            != 0
     }
     #[inline]
     pub fn window_size(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[14..16]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..16)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[16..18]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(16..18)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn urgent_pointer(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[18..20]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(18..20)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn src_port_and_dst_port_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.chunk()[0..4].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn seq_num_and_ack_num_bits(&self) -> u64 {
-        u64::from_be_bytes(self.buf.chunk()[4..12].try_into().unwrap())
+        u64::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..12)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn window_size_and_checksum_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.chunk()[14..18].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..18)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn checksum_and_urgent_pointer_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.chunk()[16..20].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(16..20)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[12] >> 4) * 4
+        ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(12)
+        }) >> 4)
+            * 4
     }
 }
 impl<T: PktBuf> Tcp<T> {
@@ -408,7 +758,8 @@ impl<T: PktBuf> Tcp<T> {
 impl<T: PktBufMut> Tcp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 20]) -> Self {
-        let header_len = Tcp::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { Tcp::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 20) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..20]).copy_from_slice(&header.as_ref()[..]);
@@ -421,105 +772,225 @@ impl<T: PktBufMut> Tcp<T> {
     }
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_seq_num(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[4..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_ack_num(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[8..12]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(8..12)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_reserved(&mut self, value: u8) {
         assert!(value <= 0xf);
-        self.buf.chunk_mut()[12] = (self.buf.chunk_mut()[12] & 0xf0) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(12)
+        }) & 0xf0)
+            | value;
     }
     #[inline]
     pub fn set_cwr(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0x7f) | (value << 7);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0x7f)
+            | (value << 7);
     }
     #[inline]
     pub fn set_ece(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xbf) | (value << 6);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xbf)
+            | (value << 6);
     }
     #[inline]
     pub fn set_urg(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xdf) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xdf)
+            | (value << 5);
     }
     #[inline]
     pub fn set_ack(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_psh(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xf7) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xf7)
+            | (value << 3);
     }
     #[inline]
     pub fn set_rst(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfb) | (value << 2);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfb)
+            | (value << 2);
     }
     #[inline]
     pub fn set_syn(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfd) | (value << 1);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfd)
+            | (value << 1);
     }
     #[inline]
     pub fn set_fin(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[13] = (self.buf.chunk_mut()[13] & 0xfe) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(13)
+        }) & 0xfe)
+            | value;
     }
     #[inline]
     pub fn set_window_size(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[14..16]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..16)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[16..18]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(16..18)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_urgent_pointer(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[18..20]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(18..20)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
         let value = ((src_port as u32) << 16) | (dst_port as u32);
-        self.buf.chunk_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_seq_num_and_ack_num(&mut self, seq_num: u32, ack_num: u32) {
         let value = ((seq_num as u64) << 32) | (ack_num as u64);
-        self.buf.chunk_mut()[4..12].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..12)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_window_size_and_checksum(&mut self, window_size: u16, checksum: u16) {
         let value = ((window_size as u32) << 16) | (checksum as u32);
-        self.buf.chunk_mut()[14..18].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..18)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_checksum_and_urgent_pointer(&mut self, checksum: u16, urgent_pointer: u16) {
         let value = ((checksum as u32) << 16) | (urgent_pointer as u32);
-        self.buf.chunk_mut()[16..20].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(16..20)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
+    pub unsafe fn set_header_len(&mut self, value: u8) {
         assert!((value <= 60) && (value % 4 == 0));
-        self.buf.chunk_mut()[12] = (self.buf.chunk_mut()[12] & 0x0f) | ((value / 4) << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(12)
+        }) & 0x0f)
+            | ((value / 4) << 4);
     }
 }
 impl<'a> Tcp<Cursor<'a>> {
@@ -588,9 +1059,15 @@ pub const EOL_HEADER_TEMPLATE: [u8; 1] = [0x00];
 pub struct Eol<T> {
     buf: T,
 }
-impl<T: Buf> Eol<T> {
+impl<T: Buf + crate::StableBuf> Eol<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -616,7 +1093,10 @@ impl<T: Buf> Eol<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
 }
 impl<T: PktBuf> Eol<T> {
@@ -638,7 +1118,10 @@ impl<T: PktBufMut> Eol<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 0);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
 }
 impl<'a> Eol<Cursor<'a>> {
@@ -697,9 +1180,15 @@ pub const NOP_HEADER_TEMPLATE: [u8; 1] = [0x01];
 pub struct Nop<T> {
     buf: T,
 }
-impl<T: Buf> Nop<T> {
+impl<T: Buf + crate::StableBuf> Nop<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -725,7 +1214,10 @@ impl<T: Buf> Nop<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
 }
 impl<T: PktBuf> Nop<T> {
@@ -747,7 +1239,10 @@ impl<T: PktBufMut> Nop<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
 }
 impl<'a> Nop<Cursor<'a>> {
@@ -806,9 +1301,15 @@ pub const MSS_HEADER_TEMPLATE: [u8; 4] = [0x02, 0x04, 0x00, 0x00];
 pub struct Mss<T> {
     buf: T,
 }
-impl<T: Buf> Mss<T> {
+impl<T: Buf + crate::StableBuf> Mss<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -838,15 +1339,28 @@ impl<T: Buf> Mss<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn mss(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> Mss<T> {
@@ -861,7 +1375,8 @@ impl<T: PktBuf> Mss<T> {
 impl<T: PktBufMut> Mss<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = Mss::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { Mss::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len == 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -870,16 +1385,32 @@ impl<T: PktBufMut> Mss<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 2);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_mss(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
+    pub unsafe fn set_header_len(&mut self, value: u8) {
         assert!((value == 4));
-        self.buf.chunk_mut()[1] = (value);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> Mss<Cursor<'a>> {
@@ -948,9 +1479,15 @@ pub const WINDOW_SCALE_HEADER_TEMPLATE: [u8; 3] = [0x03, 0x03, 0x00];
 pub struct WindowScale<T> {
     buf: T,
 }
-impl<T: Buf> WindowScale<T> {
+impl<T: Buf + crate::StableBuf> WindowScale<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -980,15 +1517,24 @@ impl<T: Buf> WindowScale<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn shift_count(&self) -> u8 {
-        self.buf.chunk()[2]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(2)
+        })
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> WindowScale<T> {
@@ -1003,7 +1549,8 @@ impl<T: PktBuf> WindowScale<T> {
 impl<T: PktBufMut> WindowScale<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 3]) -> Self {
-        let header_len = WindowScale::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { WindowScale::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len == 3) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..3]).copy_from_slice(&header.as_ref()[..]);
@@ -1012,16 +1559,31 @@ impl<T: PktBufMut> WindowScale<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 3);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_shift_count(&mut self, value: u8) {
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
+    pub unsafe fn set_header_len(&mut self, value: u8) {
         assert!((value == 3));
-        self.buf.chunk_mut()[1] = (value);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> WindowScale<Cursor<'a>> {
@@ -1090,9 +1652,15 @@ pub const SACK_PERMITTED_HEADER_TEMPLATE: [u8; 2] = [0x04, 0x02];
 pub struct SackPermitted<T> {
     buf: T,
 }
-impl<T: Buf> SackPermitted<T> {
+impl<T: Buf + crate::StableBuf> SackPermitted<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -1122,11 +1690,17 @@ impl<T: Buf> SackPermitted<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> SackPermitted<T> {
@@ -1141,7 +1715,9 @@ impl<T: PktBuf> SackPermitted<T> {
 impl<T: PktBufMut> SackPermitted<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        let header_len = SackPermitted::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len =
+            unsafe { SackPermitted::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len == 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
@@ -1150,12 +1726,24 @@ impl<T: PktBufMut> SackPermitted<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 4);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
+    pub unsafe fn set_header_len(&mut self, value: u8) {
         assert!((value == 2));
-        self.buf.chunk_mut()[1] = (value);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> SackPermitted<Cursor<'a>> {
@@ -1224,9 +1812,15 @@ pub const SACK_HEADER_TEMPLATE: [u8; 2] = [0x05, 0x0a];
 pub struct Sack<T> {
     buf: T,
 }
-impl<T: Buf> Sack<T> {
+impl<T: Buf + crate::StableBuf> Sack<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -1261,11 +1855,17 @@ impl<T: Buf> Sack<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> Sack<T> {
@@ -1280,7 +1880,8 @@ impl<T: PktBuf> Sack<T> {
 impl<T: PktBufMut> Sack<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        let header_len = Sack::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { Sack::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
@@ -1294,11 +1895,23 @@ impl<T: PktBufMut> Sack<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 5);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        self.buf.chunk_mut()[1] = (value);
+    pub unsafe fn set_header_len(&mut self, value: u8) {
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> Sack<Cursor<'a>> {
@@ -1368,9 +1981,15 @@ pub const TIMESTAMP_HEADER_TEMPLATE: [u8; 10] =
 pub struct Timestamp<T> {
     buf: T,
 }
-impl<T: Buf> Timestamp<T> {
+impl<T: Buf + crate::StableBuf> Timestamp<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -1400,24 +2019,51 @@ impl<T: Buf> Timestamp<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn ts(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[2..6]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..6)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn ts_echo(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[6..10]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..10)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn ts_and_ts_echo_bits(&self) -> u64 {
-        u64::from_be_bytes(self.buf.chunk()[2..10].try_into().unwrap())
+        u64::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..10)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> Timestamp<T> {
@@ -1432,7 +2078,8 @@ impl<T: PktBuf> Timestamp<T> {
 impl<T: PktBufMut> Timestamp<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 10]) -> Self {
-        let header_len = Timestamp::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { Timestamp::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len == 10) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..10]).copy_from_slice(&header.as_ref()[..]);
@@ -1441,26 +2088,50 @@ impl<T: PktBufMut> Timestamp<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 8);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_ts(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[2..6]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..6)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_ts_echo(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[6..10]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..10)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_ts_and_ts_echo(&mut self, ts: u32, ts_echo: u32) {
         let value = ((ts as u64) << 32) | (ts_echo as u64);
-        self.buf.chunk_mut()[2..10].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..10)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
+    pub unsafe fn set_header_len(&mut self, value: u8) {
         assert!((value == 10));
-        self.buf.chunk_mut()[1] = (value);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> Timestamp<Cursor<'a>> {
@@ -1529,9 +2200,15 @@ pub const FAST_OPEN_HEADER_TEMPLATE: [u8; 2] = [0x22, 0x12];
 pub struct FastOpen<T> {
     buf: T,
 }
-impl<T: Buf> FastOpen<T> {
+impl<T: Buf + crate::StableBuf> FastOpen<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -1566,11 +2243,17 @@ impl<T: Buf> FastOpen<T> {
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn header_len(&self) -> u8 {
-        (self.buf.chunk()[1])
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
 }
 impl<T: PktBuf> FastOpen<T> {
@@ -1585,7 +2268,8 @@ impl<T: PktBuf> FastOpen<T> {
 impl<T: PktBufMut> FastOpen<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 2]) -> Self {
-        let header_len = FastOpen::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { FastOpen::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 2) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..2]).copy_from_slice(&header.as_ref()[..]);
@@ -1599,11 +2283,23 @@ impl<T: PktBufMut> FastOpen<T> {
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 34);
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u8) {
-        self.buf.chunk_mut()[1] = (value);
+    pub unsafe fn set_header_len(&mut self, value: u8) {
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = (value);
     }
 }
 impl<'a> FastOpen<Cursor<'a>> {
@@ -1674,12 +2370,16 @@ pub enum TcpOptions<T> {
     Timestamp_(Timestamp<T>),
     FastOpen_(FastOpen<T>),
 }
-impl<T: Buf> TcpOptions<T> {
+impl<T: Buf + crate::StableBuf> TcpOptions<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 1 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 1 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[0];
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        });
         match cond_value0 {
             0 => Eol::parse(buf).map(|pkt| TcpOptions::Eol_(pkt)),
             1 => Nop::parse(buf).map(|pkt| TcpOptions::Nop_(pkt)),
@@ -1710,10 +2410,14 @@ impl<'a> TcpOptionsIter<'a> {
 impl<'a> Iterator for TcpOptionsIter<'a> {
     type Item = TcpOptions<Cursor<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.buf.len() < 1 {
+        let cond_bytes = &self.buf[..];
+        if cond_bytes.len() < 1 {
             return None;
         }
-        let cond_value0 = self.buf[0];
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        });
         match cond_value0 {
             0 => Eol::parse(self.buf)
                 .map(|_pkt| {
@@ -1808,10 +2512,14 @@ impl<'a> TcpOptionsIterMut<'a> {
 impl<'a> Iterator for TcpOptionsIterMut<'a> {
     type Item = TcpOptions<CursorMut<'a>>;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.buf.len() < 1 {
+        let cond_bytes = &self.buf[..];
+        if cond_bytes.len() < 1 {
             return None;
         }
-        let cond_value0 = self.buf[0];
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        });
         match cond_value0 {
             0 => match Eol::parse(&self.buf[..]) {
                 Ok(_pkt) => {

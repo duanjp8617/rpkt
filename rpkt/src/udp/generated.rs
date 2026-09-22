@@ -15,14 +15,15 @@ pub struct Udp<T> {
     buf: T,
 }
 /// Fixed header fields only; no payload or cursor operations.
-/// Construct through the checked parts parser or an exact-size array.
+/// Construct through the checked parts parser or a checked header slice.
 #[derive(Debug)]
 pub struct UdpFields<T> {
     buf: T,
 }
-impl<T: core::ops::Deref<Target = [u8; 8]>> UdpFields<T> {
+impl<T: crate::StableBuf> UdpFields<T> {
     #[inline]
     pub fn from_header(buf: T) -> Self {
+        assert!(buf.chunk().len() >= 8);
         Self { buf }
     }
     #[inline]
@@ -31,44 +32,95 @@ impl<T: core::ops::Deref<Target = [u8; 8]>> UdpFields<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.deref()[6..8]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn src_port_and_dst_port_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.deref()[0..4].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn packet_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.deref()[4..6]).try_into().unwrap()))
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..6)
+            })
+            .try_into()
+            .unwrap(),
+        ))
     }
 }
-impl<T: core::ops::DerefMut<Target = [u8; 8]>> UdpFields<T> {
+impl<T: PktBufMut> UdpFields<T> {
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        (&mut self.buf.deref_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
         let value = ((src_port as u32) << 16) | (dst_port as u32);
-        self.buf.deref_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> Udp<Cursor<'a>> {
@@ -79,7 +131,7 @@ impl<'a> Udp<Cursor<'a>> {
     #[inline]
     pub fn parse_parts(
         bytes: &'a [u8],
-    ) -> Result<(UdpFields<&'a [u8; 8]>, &'a [u8], &'a [u8]), &'a [u8]> {
+    ) -> Result<(UdpFields<Cursor<'a>>, &'a [u8], &'a [u8]), &'a [u8]> {
         let (h, end) = {
             let Ok(_p) = Udp::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -91,7 +143,9 @@ impl<'a> Udp<Cursor<'a>> {
         let (header, payload) = packet.split_at(h);
         let (fixed, options) = header.split_at(8);
         Ok((
-            UdpFields::from_header(<&[u8; 8]>::try_from(fixed).unwrap()),
+            UdpFields {
+                buf: Cursor::new(fixed),
+            },
             options,
             payload,
         ))
@@ -105,7 +159,7 @@ impl<'a> Udp<CursorMut<'a>> {
     #[inline]
     pub fn parse_parts_mut(
         bytes: &'a mut [u8],
-    ) -> Result<(UdpFields<&'a mut [u8; 8]>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
+    ) -> Result<(UdpFields<CursorMut<'a>>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
         let (h, end) = {
             let Ok(_p) = Udp::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -117,15 +171,23 @@ impl<'a> Udp<CursorMut<'a>> {
         let (header, payload) = packet.split_at_mut(h);
         let (fixed, options) = header.split_at_mut(8);
         Ok((
-            UdpFields::from_header(<&mut [u8; 8]>::try_from(fixed).unwrap()),
+            UdpFields {
+                buf: CursorMut::new(fixed),
+            },
             options,
             payload,
         ))
     }
 }
-impl<T: Buf> Udp<T> {
+impl<T: Buf + crate::StableBuf> Udp<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -155,24 +217,59 @@ impl<T: Buf> Udp<T> {
     }
     #[inline]
     pub fn src_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn dst_port(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn checksum(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn src_port_and_dst_port_bits(&self) -> u32 {
-        u32::from_be_bytes(self.buf.chunk()[0..4].try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn packet_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..6)
+            })
+            .try_into()
+            .unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> Udp<T> {
@@ -197,30 +294,59 @@ impl<T: PktBufMut> Udp<T> {
         assert!(packet_len <= 65535);
         (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_packet_len(packet_len as u16);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_packet_len(packet_len as u16);
+        }
         container
     }
     #[inline]
     pub fn set_src_port(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_dst_port(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_checksum(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_src_port_and_dst_port(&mut self, src_port: u16, dst_port: u16) {
         let value = ((src_port as u32) << 16) | (dst_port as u32);
-        self.buf.chunk_mut()[0..4].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_packet_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
+    pub unsafe fn set_packet_len(&mut self, value: u16) {
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..6)
+        })
+        .copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> Udp<Cursor<'a>> {

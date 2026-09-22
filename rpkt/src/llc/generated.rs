@@ -14,9 +14,15 @@ pub const LLC_HEADER_TEMPLATE: [u8; 3] = [0x42, 0x42, 0x03];
 pub struct Llc<T> {
     buf: T,
 }
-impl<T: Buf> Llc<T> {
+impl<T: Buf + crate::StableBuf> Llc<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -42,25 +48,48 @@ impl<T: Buf> Llc<T> {
     }
     #[inline]
     pub fn dsap(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn ssap(&self) -> u8 {
-        self.buf.chunk()[1]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
     #[inline]
     pub fn control(&self) -> u8 {
-        self.buf.chunk()[2]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(2)
+        })
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn dsap_and_ssap_bits(&self) -> u16 {
-        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn ssap_and_control_bits(&self) -> u16 {
-        u16::from_be_bytes(self.buf.chunk()[1..3].try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(1..3)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
 }
 impl<T: PktBuf> Llc<T> {
@@ -81,27 +110,44 @@ impl<T: PktBufMut> Llc<T> {
     }
     #[inline]
     pub fn set_dsap(&mut self, value: u8) {
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_ssap(&mut self, value: u8) {
-        self.buf.chunk_mut()[1] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = value;
     }
     #[inline]
     pub fn set_control(&mut self, value: u8) {
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_dsap_and_ssap(&mut self, dsap: u8, ssap: u8) {
         let value = ((dsap as u16) << 8) | (ssap as u16);
-        self.buf.chunk_mut()[0..2].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_ssap_and_control(&mut self, ssap: u8, control: u8) {
         let value = ((ssap as u16) << 8) | (control as u16);
-        self.buf.chunk_mut()[1..3].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1..3)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> Llc<Cursor<'a>> {

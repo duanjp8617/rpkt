@@ -15,6 +15,10 @@ pub struct Cursor<'a> {
     start_addr: *const u8,
 }
 
+// SAFETY: only exclusive cursor operations change the stored slice; Copy and
+// Clone retain its extent. The shared underlying bytes cannot be mutated.
+unsafe impl crate::StableBuf for Cursor<'_> {}
+
 impl<'a> Cursor<'a> {
     /// Create a new `Cursor` from a byte slice.
     #[inline]
@@ -89,6 +93,10 @@ pub struct CursorMut<'a> {
     start_addr: *mut u8,
     _data: PhantomData<&'a mut [u8]>,
 }
+
+// SAFETY: chunk and chunk_mut use the same pointer/length, changed only by
+// exclusive cursor operations. The allocation is exclusively borrowed for 'a.
+unsafe impl crate::StableBuf for CursorMut<'_> {}
 
 impl<'a> CursorMut<'a> {
     /// Create a new `CursorMut` from a byte slice.

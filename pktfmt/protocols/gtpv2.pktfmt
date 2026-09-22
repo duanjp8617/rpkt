@@ -25,7 +25,7 @@ packet Gtpv2 {
 }
 
 %%
-impl<T: Buf> Gtpv2<T> {
+impl<T: Buf + crate::StableBuf> Gtpv2<T> {
     /// A customized `header_len` function.
     /// The header length of Gtpv1 protocol is either 8 or 12 bytes, depending
     /// on the values of the sequence_present, extention_header_present and npdu_present

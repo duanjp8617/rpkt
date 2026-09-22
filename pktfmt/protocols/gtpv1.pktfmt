@@ -38,7 +38,7 @@ packet Gtpv1 {
 }
 
 %%
-impl<T: Buf> Gtpv1<T> {
+impl<T: Buf + crate::StableBuf> Gtpv1<T> {
     /// A customized `header_len` function.
     /// The header length of Gtpv1 protocol is either 8 or 12 bytes, depending
     /// on the values of the sequence_present, extention_header_present and npdu_present
@@ -172,7 +172,7 @@ packet ExtContainer {
 }
 
 %%
-impl<T: Buf> ExtContainer<T> {
+impl<T: Buf + crate::StableBuf> ExtContainer<T> {
     /// Return a byte slice covering the content of the extention header.
     #[inline]
     pub fn extention_header_content(&self) -> &[u8] {
@@ -232,7 +232,7 @@ packet DlPduSessionInfo {
 }
 
 %%
-impl<T: Buf> DlPduSessionInfo<T> {
+impl<T: Buf + crate::StableBuf> DlPduSessionInfo<T> {
     /// Return a byte slice covering the variable content of the 
     /// DlPduSessionInfo header.
     #[inline]
@@ -285,7 +285,7 @@ packet UlPduSessionInfo {
 }
 
 %%
-impl<T: Buf> UlPduSessionInfo<T> {
+impl<T: Buf + crate::StableBuf> UlPduSessionInfo<T> {
     /// Return a byte slice covering the variable content of the 
     /// UlPduSessionInfo header.
     #[inline]
@@ -349,7 +349,7 @@ packet DlUserData {
 }
 
 %%
-impl<T: Buf> DlUserData<T> {
+impl<T: Buf + crate::StableBuf> DlUserData<T> {
     /// Return a byte slice covering the variable content of the 
     /// DlUserData header.
     #[inline]
@@ -406,7 +406,7 @@ packet DlDataDeliveryStatus {
 }
 
 %%
-impl<T: Buf> DlDataDeliveryStatus<T> {
+impl<T: Buf + crate::StableBuf> DlDataDeliveryStatus<T> {
     /// Return a byte slice covering the variable content of the 
     /// DlDataDeliveryStatus header.
     #[inline]
@@ -458,7 +458,7 @@ packet AssistanceInformationData {
 }
 
 %%
-impl<T: Buf> AssistanceInformationData<T> {
+impl<T: Buf + crate::StableBuf> AssistanceInformationData<T> {
     /// Return a byte slice covering the variable content of the 
     /// AssistanceInformationData header.
     #[inline]
@@ -603,4 +603,3 @@ group Gtpv1IEGroup = {
     ],
     enable_iter=true
 }
-

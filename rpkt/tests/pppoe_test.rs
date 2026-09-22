@@ -242,27 +242,39 @@ fn pppoe_discovery_layer_creation_test() {
     let mut pbuf = CursorMut::new(&mut buf);
     pbuf.advance(pbuf.chunk().len());
 
-    PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(20);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(20)
+    };
     let mut tag4 = PppoeTag::prepend_header(pbuf, &pppoe_tag_header);
     tag4.set_type_(PppoeTagType::AC_COOKIE);
     assert_eq!(tag4.header_len(), 20);
     tag4.var_header_slice_mut()[0..8].copy_from_slice(&(0xf284240687050f3d as u64).to_le_bytes());
     tag4.var_header_slice_mut()[8..16].copy_from_slice(&(0x5bbd77fdddb932df as u64).to_le_bytes());
 
-    PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(8)
+    };
     let mut tag3 = PppoeTag::prepend_header(tag4.release(), &pppoe_tag_header);
     tag3.set_type_(PppoeTagType::AC_NAME);
     assert_eq!(tag3.header_len(), 8);
     tag3.var_header_slice_mut()
         .copy_from_slice("BRAS".as_bytes());
 
-    PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(8)
+    };
     let mut tag2 = PppoeTag::prepend_header(tag3.release(), &pppoe_tag_header);
     tag2.set_type_(PppoeTagType::HOST_UNIQ);
     tag2.var_header_slice_mut()
         .copy_from_slice(&(0x64138518 as u32).to_be_bytes());
 
-    PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(4);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        PppoeTag::from_header_array_mut(&mut pppoe_tag_header).set_header_len(4)
+    };
     let mut tag1 = PppoeTag::prepend_header(tag2.release(), &pppoe_tag_header);
     tag1.set_type_(PppoeTagType::SVC_NAME);
 

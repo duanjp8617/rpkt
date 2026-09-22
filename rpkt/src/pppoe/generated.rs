@@ -16,9 +16,15 @@ pub const PPPOE_SESSION_HEADER_TEMPLATE: [u8; 8] = [0x11, 0x00, 0x00, 0x00, 0x00
 pub struct PppoeSession<T> {
     buf: T,
 }
-impl<T: Buf> PppoeSession<T> {
+impl<T: Buf + crate::StableBuf> PppoeSession<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -48,27 +54,60 @@ impl<T: Buf> PppoeSession<T> {
     }
     #[inline]
     pub fn version(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) >> 4
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0] & 0xf
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0xf
     }
     #[inline]
     pub fn code(&self) -> PppoeCode {
-        PppoeCode::from(self.buf.chunk()[1])
+        PppoeCode::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(1)
+            }),
+        )
     }
     #[inline]
     pub fn session_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn data_type(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn packet_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())) as u32 + 6
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..6)
+            })
+            .try_into()
+            .unwrap(),
+        )) as u32
+            + 6
     }
 }
 impl<T: PktBuf> PppoeSession<T> {
@@ -93,37 +132,75 @@ impl<T: PktBufMut> PppoeSession<T> {
         assert!(packet_len <= 65541);
         (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_packet_len(packet_len as u32);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_packet_len(packet_len as u32);
+        }
         container
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x0f)
+            | (value << 4);
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf0)
+            | value;
     }
     #[inline]
     pub fn set_code(&mut self, value: PppoeCode) {
         let value = u8::from(value);
         assert!(value == 0);
-        self.buf.chunk_mut()[1] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = value;
     }
     #[inline]
     pub fn set_session_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_data_type(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_packet_len(&mut self, value: u32) {
+    pub unsafe fn set_packet_len(&mut self, value: u32) {
         assert!((value <= 65541) && (value >= 6));
-        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&((value - 6) as u16).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..6)
+        })
+        .copy_from_slice(&((value - 6) as u16).to_be_bytes());
     }
 }
 impl<'a> PppoeSession<Cursor<'a>> {
@@ -192,9 +269,15 @@ pub const PPPOE_DISCOVERY_HEADER_TEMPLATE: [u8; 6] = [0x11, 0x65, 0x00, 0x00, 0x
 pub struct PppoeDiscovery<T> {
     buf: T,
 }
-impl<T: Buf> PppoeDiscovery<T> {
+impl<T: Buf + crate::StableBuf> PppoeDiscovery<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -224,23 +307,49 @@ impl<T: Buf> PppoeDiscovery<T> {
     }
     #[inline]
     pub fn version(&self) -> u8 {
-        self.buf.chunk()[0] >> 4
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) >> 4
     }
     #[inline]
     pub fn type_(&self) -> u8 {
-        self.buf.chunk()[0] & 0xf
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0xf
     }
     #[inline]
     pub fn code(&self) -> PppoeCode {
-        PppoeCode::from(self.buf.chunk()[1])
+        PppoeCode::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(1)
+            }),
+        )
     }
     #[inline]
     pub fn session_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn packet_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap())) as u32 + 6
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..6)
+            })
+            .try_into()
+            .unwrap(),
+        )) as u32
+            + 6
     }
 }
 impl<T: PktBuf> PppoeDiscovery<T> {
@@ -265,31 +374,65 @@ impl<T: PktBufMut> PppoeDiscovery<T> {
         assert!(packet_len <= 65541);
         (&mut buf.chunk_mut()[0..6]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_packet_len(packet_len as u32);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_packet_len(packet_len as u32);
+        }
         container
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x0f) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x0f)
+            | (value << 4);
     }
     #[inline]
     pub fn set_type_(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf0) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf0)
+            | value;
     }
     #[inline]
     pub fn set_code(&mut self, value: PppoeCode) {
-        self.buf.chunk_mut()[1] = u8::from(value);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = u8::from(value);
     }
     #[inline]
     pub fn set_session_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_packet_len(&mut self, value: u32) {
+    pub unsafe fn set_packet_len(&mut self, value: u32) {
         assert!((value <= 65541) && (value >= 6));
-        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&((value - 6) as u16).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..6)
+        })
+        .copy_from_slice(&((value - 6) as u16).to_be_bytes());
     }
 }
 impl<'a> PppoeDiscovery<Cursor<'a>> {
@@ -354,12 +497,16 @@ pub enum PppoeGroup<T> {
     PppoeSession_(PppoeSession<T>),
     PppoeDiscovery_(PppoeDiscovery<T>),
 }
-impl<T: Buf> PppoeGroup<T> {
+impl<T: Buf + crate::StableBuf> PppoeGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 2 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 2 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[1];
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(1)
+        });
         match cond_value0 {
             0 => PppoeSession::parse(buf).map(|pkt| PppoeGroup::PppoeSession_(pkt)),
             1..=255 => PppoeDiscovery::parse(buf).map(|pkt| PppoeGroup::PppoeDiscovery_(pkt)),
@@ -377,9 +524,15 @@ pub const PPPOE_TAG_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x04];
 pub struct PppoeTag<T> {
     buf: T,
 }
-impl<T: Buf> PppoeTag<T> {
+impl<T: Buf + crate::StableBuf> PppoeTag<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -415,12 +568,25 @@ impl<T: Buf> PppoeTag<T> {
     #[inline]
     pub fn type_(&self) -> PppoeTagType {
         PppoeTagType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[0..2]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())) as u32 + 4
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )) as u32
+            + 4
     }
 }
 impl<T: PktBuf> PppoeTag<T> {
@@ -435,7 +601,8 @@ impl<T: PktBuf> PppoeTag<T> {
 impl<T: PktBufMut> PppoeTag<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = PppoeTag::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { PppoeTag::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -448,12 +615,26 @@ impl<T: PktBufMut> PppoeTag<T> {
     }
     #[inline]
     pub fn set_type_(&mut self, value: PppoeTagType) {
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
+    pub unsafe fn set_header_len(&mut self, value: u32) {
         assert!((value <= 65539) && (value >= 4));
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&((value - 4) as u16).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&((value - 4) as u16).to_be_bytes());
     }
 }
 impl<'a> PppoeTag<Cursor<'a>> {

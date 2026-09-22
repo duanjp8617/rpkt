@@ -33,7 +33,7 @@ packet Ipv6 {
 }
 
 %%
-impl<T: Buf> Ipv6<T> {
+impl<T: Buf + crate::StableBuf> Ipv6<T> {
     #[inline]
     pub fn src_addr(&self) -> Ipv6Addr {
         let b: [u8; 16] = (self.buf.chunk()[8..24].try_into().unwrap());

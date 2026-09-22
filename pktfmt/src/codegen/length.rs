@@ -139,7 +139,13 @@ impl<'a> LengthSetMethod<'a> {
         // }
         let arg_type = length_access_method_io_type(self.expr, self.field);
         let func_def = format!(
-            "#[inline]\npub fn set_{length_field_name}(&mut self, {write_value}:{}){{\n",
+            "/// Change a structural length without resizing the buffer.\n\
+            /// # Safety\n\
+            /// Before variable-header or payload access, the caller must ensure\n\
+            /// the declared header fits the chunk and the declared packet fits\n\
+            /// the remaining buffer, with header length at least the fixed size.\n\
+            /// Fixed-header templates may be initialized before attaching payload.\n\
+            #[inline]\npub unsafe fn set_{length_field_name}(&mut self, {write_value}:{}){{\n",
             arg_type.to_string()
         );
         let mut func_def_writer = HeadTailWriter::new(&mut output, &func_def, "\n}\n");

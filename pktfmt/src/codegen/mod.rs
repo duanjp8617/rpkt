@@ -196,8 +196,12 @@ impl<'a> PktGen<'a> {
         let build = Build::new(self.item().header(), self.item().length().as_slice());
 
         {
-            let mut impl_block =
-                impl_block("T:Buf", &self.item().protocol_name(), "T", &mut output);
+            let mut impl_block = impl_block(
+                "T:Buf + crate::StableBuf",
+                &self.item().protocol_name(),
+                "T",
+                &mut output,
+            );
 
             // Basic container-buffer conversion.
             Container::code_gen_for_parse_unchecked("buf", "T", impl_block.get_writer());
@@ -526,7 +530,12 @@ impl<'a, 'b: 'a> PacketGroupGen<'a, 'b> {
         self.code_gen_for_enum(&self.group_name, "T", output);
 
         {
-            let mut impl_block = impl_block("T:Buf", &self.group_name, "T", &mut output);
+            let mut impl_block = impl_block(
+                "T:Buf + crate::StableBuf",
+                &self.group_name,
+                "T",
+                &mut output,
+            );
 
             self.code_gen_for_grouped_parse(
                 "group_parse",
@@ -740,7 +749,7 @@ fn next(&mut self) -> Option<Self::Item> {{
         let buf_min_len = last_bitpos.next_pos(last_field.bit).byte_pos() + 1;
         write!(
             output,
-            "if {buf_name}{buf_access}.len() < {buf_min_len} {{\n"
+            "let cond_bytes = &{buf_name}{buf_access}[..];\nif cond_bytes.len() < {buf_min_len} {{\n"
         )
         .unwrap();
         write!(output, "return {parse_error};\n").unwrap();
@@ -751,7 +760,7 @@ fn next(&mut self) -> Option<Self::Item> {{
         for (idx, (cond_bitpos, cond_field)) in self.cond_fields.iter().enumerate() {
             let cond_field_access = FieldGetMethod::new(cond_field, *cond_bitpos);
             write!(output, "let cond_value{idx} = ").unwrap();
-            cond_field_access.read_repr(&format!("{buf_name}{buf_access}"), output);
+            cond_field_access.read_repr("cond_bytes", output);
             write!(output, ";\n").unwrap();
             cond_values.push(format!("cond_value{idx}"));
         }

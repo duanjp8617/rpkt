@@ -1,6 +1,5 @@
-//! Opt-in checked decomposition into a fixed-size field view, options and payload.
-//! Array-backed field access communicates a constant bound to downstream LLVM
-//! without unsafe indexing, while disjoint mutable slices preserve noalias.
+//! Opt-in checked decomposition into slice-backed fields, options and payload.
+//! Parse once; StableBuf preserves the bounds for unchecked field access.
 use super::{FieldGenerator, LengthGenerator};
 use crate::ast::Packet;
 use std::io::Write;
@@ -11,21 +10,17 @@ pub fn generate(pkt: &Packet, out: &mut dyn Write) {
     writeln!(
         out,
         "/// Fixed header fields only; no payload or cursor operations.\n\
-        /// Construct through the checked parts parser or an exact-size array.\n\
+        /// Construct through the checked parts parser or a checked header slice.\n\
         #[derive(Debug)]\npub struct {name}Fields<T> {{ buf: T }}\n\
-        impl<T: core::ops::Deref<Target = [u8; {n}]>> {name}Fields<T> {{\n\
-        #[inline] pub fn from_header(buf: T) -> Self {{ Self {{ buf }} }}\n\
+        impl<T: crate::StableBuf> {name}Fields<T> {{\n\
+        #[inline] pub fn from_header(buf: T) -> Self {{ assert!(buf.chunk().len() >= {n}); Self {{ buf }} }}\n\
         #[inline] pub fn into_inner(self) -> T {{ self.buf }}"
     )
     .unwrap();
-    FieldGenerator::new(pkt.header()).code_gen("self.buf.deref()", None, out);
-    LengthGenerator::new(pkt.header(), pkt.length()).code_gen("self.buf.deref()", None, out);
-    writeln!(
-        out,
-        "}}\nimpl<T: core::ops::DerefMut<Target = [u8; {n}]>> {name}Fields<T> {{"
-    )
-    .unwrap();
-    FieldGenerator::new(pkt.header()).code_gen("self.buf.deref_mut()", Some("value"), out);
+    FieldGenerator::new(pkt.header()).code_gen("self.buf.chunk()", None, out);
+    LengthGenerator::new(pkt.header(), pkt.length()).code_gen("self.buf.chunk()", None, out);
+    writeln!(out, "}}\nimpl<T: PktBufMut> {name}Fields<T> {{").unwrap();
+    FieldGenerator::new(pkt.header()).code_gen("self.buf.chunk_mut()", Some("value"), out);
     // Deliberately no length setters: changing a partition's length would not
     // resize the disjoint slices returned by the parser.
     writeln!(out, "}}").unwrap();
@@ -53,7 +48,7 @@ pub fn generate(pkt: &Packet, out: &mut dyn Write) {
             /// Excludes trailing packet padding. Does not verify protocol selectors\n\
             /// or checksums. Error returns the original bytes without modifying them.\n\
             #[inline]\npub fn parse_parts{suffix}(bytes: &'a {m}[u8]) ->\n\
-            Result<({name}Fields<&'a {m}[u8; {n}]>, &'a {m}[u8], &'a {m}[u8]), &'a {m}[u8]> {{\n\
+            Result<({name}Fields<{cursor}<'a>>, &'a {m}[u8], &'a {m}[u8]), &'a {m}[u8]> {{\n\
             let (h, end) = {{\n\
                 let Ok(_p) = {name}::parse_from_cursor(Cursor::new(&*bytes)) else {{ return Err(bytes); }};\n\
                 let h = {h};\n\
@@ -62,7 +57,7 @@ pub fn generate(pkt: &Packet, out: &mut dyn Write) {
             let (packet, _) = bytes.{split}(end);\n\
             let (header, payload) = packet.{split}(h);\n\
             let (fixed, options) = header.{split}({n});\n\
-            Ok(({name}Fields::from_header(<&{m}[u8; {n}]>::try_from(fixed).unwrap()), options, payload))\n\
+            Ok(({name}Fields {{ buf: {cursor}::new(fixed) }}, options, payload))\n\
             }}\n}}").unwrap();
     }
 }
@@ -87,7 +82,8 @@ mod tests {
         let on = code("packet P { header=[a=Field{bit=16},b=Field{bit=16}], enable_parts=true }");
         assert!(on.contains("struct PFields"));
         assert!(on.contains("parse_parts_mut"));
-        assert!(on.contains("DerefMut<Target = [u8; 4]>"));
+        assert!(on.contains("impl<T: PktBufMut> PFields<T>"));
+        assert!(!on.contains("DerefMut"));
         let collision =
             code("packet P { header=[a=Field{bit=16},b=Field{bit=16},a_and_b=Field{bit=16}] }");
         assert_eq!(collision.matches("pub fn set_a_and_b(").count(), 1);
@@ -119,5 +115,20 @@ mod tests {
             "packet P { header=[a=Field{bit=12,arg=%%Small%%},b=Field{bit=12,arg=%%Small%%}] }",
         );
         assert!(!partial.contains("set_a_and_b"));
+    }
+
+    #[test]
+    fn slice_access_is_unchecked_after_parse_and_length_changes_are_unsafe() {
+        let generated = code("packet P { header=[len=Field{bit=8,gen=false},a=Field{bit=8},b=Field{bit=16}], length=[packet_len=len], enable_parts=true }");
+        assert!(generated.contains("pub unsafe fn parse_unchecked("));
+        assert!(generated.contains("pub unsafe fn set_packet_len("));
+        assert!(generated.contains("T:Buf + crate::StableBuf"));
+        assert!(generated.contains(".get_unchecked("));
+        assert!(generated.contains(".get_unchecked_mut("));
+        assert!(generated.contains("PFields<CursorMut<'a>>"));
+        assert!(!generated.contains("Deref<Target"));
+        assert!(!generated.contains("fn field_bytes"));
+        // No unchecked index into a fresh, unvalidated chunk in group dispatch:
+        // its code generator separately binds and checks a single borrow.
     }
 }

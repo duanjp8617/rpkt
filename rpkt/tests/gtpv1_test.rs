@@ -122,7 +122,10 @@ fn gtp_c1_build() {
 
     pbuf.move_back(9);
     let mut ie = PrivateExtentionIE::prepend_header(pbuf, &PRIVATE_EXTENTION_IE_HEADER_TEMPLATE);
-    ie.set_header_len(14);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        ie.set_header_len(14)
+    };
     ie.set_extention_ident(34501);
     ie.var_header_slice_mut()
         .copy_from_slice(&[0x03, 0x00, 0x20, 0x06, 0x01, 0x03, 0x07, 0x01, 0x80][..]);
@@ -130,7 +133,10 @@ fn gtp_c1_build() {
     let mut pbuf = ie.release();
     pbuf.move_back(4);
     let mut ie = GtpuPeerAddrIE::prepend_header(pbuf, &GTPU_PEER_ADDR_IE_HEADER_TEMPLATE);
-    ie.set_header_len(7);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        ie.set_header_len(7)
+    };
     ie.var_header_slice_mut().copy_from_slice(
         Ipv4Addr::from_str("192.168.168.245")
             .unwrap()
@@ -141,7 +147,10 @@ fn gtp_c1_build() {
     let mut pbuf = ie.release();
     pbuf.move_back(4);
     let mut ie = GtpuPeerAddrIE::prepend_header(pbuf, &GTPU_PEER_ADDR_IE_HEADER_TEMPLATE);
-    ie.set_header_len(7);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        ie.set_header_len(7)
+    };
     ie.var_header_slice_mut().copy_from_slice(
         Ipv4Addr::from_str("192.168.168.245")
             .unwrap()
@@ -424,7 +433,10 @@ fn gtp_nr_container_build() {
 
     let mut hdr = DL_DATA_DELIVERY_STATUS_HEADER_TEMPLATE.clone();
     let mut hdr_mut = DlDataDeliveryStatus::from_header_array_mut(&mut hdr);
-    hdr_mut.set_header_len(12);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        hdr_mut.set_header_len(12)
+    };
 
     let mut nrpkt = DlDataDeliveryStatus::prepend_header(pbuf, &hdr);
     nrpkt.set_next_extention_header(Gtpv1NextExtention::NO_EXTENTION);

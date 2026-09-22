@@ -179,13 +179,19 @@ fn gtpv2_with_teid_build() {
     pbuf.advance(1600);
 
     let mut id_hdr = RecoveryIE::default_header();
-    RecoveryIE::from_header_array_mut(&mut id_hdr).set_header_len(1 + 4);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        RecoveryIE::from_header_array_mut(&mut id_hdr).set_header_len(1 + 4)
+    };
 
     let mut ie = RecoveryIE::prepend_header(pbuf, &id_hdr);
     ie.var_header_slice_mut()[0] = 18;
 
     let mut id_hdr = BearerContextIE::default_header();
-    BearerContextIE::from_header_array_mut(&mut id_hdr).set_header_len(18 + 4);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        BearerContextIE::from_header_array_mut(&mut id_hdr).set_header_len(18 + 4)
+    };
 
     let mut ie = BearerContextIE::prepend_header(ie.release(), &id_hdr);
     {
@@ -193,7 +199,10 @@ fn gtpv2_with_teid_build() {
         pbuf.advance(18);
 
         let mut id_hdr = FullyQualifiedTeidIE::default_header();
-        FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr).set_header_len(9 + 4);
+        unsafe {
+            /* SAFETY: the template/buffer is provisioned before variable-length access. */
+            FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr).set_header_len(9 + 4)
+        };
 
         let mut ie = FullyQualifiedTeidIE::prepend_header(pbuf, &id_hdr);
         ie.set_v4(true);
@@ -216,7 +225,10 @@ fn gtpv2_with_teid_build() {
     ie.set_daylight_saving_time(0);
 
     let mut id_hdr = MobileEquipmentIdIE::default_header();
-    MobileEquipmentIdIE::from_header_array_mut(&mut id_hdr).set_header_len(8 + 4);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        MobileEquipmentIdIE::from_header_array_mut(&mut id_hdr).set_header_len(8 + 4)
+    };
 
     let mut ie = MobileEquipmentIdIE::prepend_header(ie.release(), &id_hdr);
     ie.var_header_slice_mut()
@@ -230,8 +242,11 @@ fn gtpv2_with_teid_build() {
     ie.set_apn_ambr_for_uplink(2048);
 
     let mut id_hdr = FullyQualifiedTeidIE::default_header();
-    FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr)
-        .set_header_len(4 + FULLY_QUALIFIED_TEID_IE_HEADER_LEN as u32);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        FullyQualifiedTeidIE::from_header_array_mut(&mut id_hdr)
+            .set_header_len(4 + FULLY_QUALIFIED_TEID_IE_HEADER_LEN as u32)
+    };
     let mut ie = FullyQualifiedTeidIE::prepend_header(ie.release(), &id_hdr);
     ie.set_v4(true);
     ie.set_interface_type(6);
@@ -256,7 +271,10 @@ fn gtpv2_with_teid_build() {
     ie.set_mnc_digit3(0xf);
 
     let mut id_hdr = UserLocationInfoIE::default_header();
-    UserLocationInfoIE::from_header_array_mut(&mut id_hdr).set_header_len(4 + 13);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        UserLocationInfoIE::from_header_array_mut(&mut id_hdr).set_header_len(4 + 13)
+    };
     let mut ie = UserLocationInfoIE::prepend_header(ie.release(), &id_hdr);
     ie.set_ecgi(true);
     ie.set_tai(true);
@@ -383,8 +401,11 @@ fn gtpv2_with_piggyback_build() {
     pbuf.advance(1600);
 
     let mut hdr = InternationalMobileSubscriberIdIE::default_header();
-    InternationalMobileSubscriberIdIE::from_header_array_mut(&mut hdr)
-        .set_header_len((INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN + 8) as u32);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        InternationalMobileSubscriberIdIE::from_header_array_mut(&mut hdr)
+            .set_header_len((INTERNATIONAL_MOBILE_SUBSCRIBER_ID_IE_HEADER_LEN + 8) as u32)
+    };
     let mut ie = InternationalMobileSubscriberIdIE::prepend_header(pbuf, &hdr);
     ie.var_header_slice_mut()
         .copy_from_slice(&[0x33, 0x87, 0x93, 0x34, 0x49, 0x51, 0x83, 0xf6]);
@@ -404,7 +425,11 @@ fn gtpv2_with_piggyback_build() {
     pbuf.advance(cursor);
 
     let mut hdr = RecoveryIE::default_header();
-    RecoveryIE::from_header_array_mut(&mut hdr).set_header_len((RECOVERY_IE_HEADER_LEN + 1) as u32);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        RecoveryIE::from_header_array_mut(&mut hdr)
+            .set_header_len((RECOVERY_IE_HEADER_LEN + 1) as u32)
+    };
     let mut ie = RecoveryIE::prepend_header(pbuf, &hdr);
     ie.var_header_slice_mut()[0] = 17;
 

@@ -45,8 +45,14 @@ buf: T
     pub fn code_gen_for_parse_unchecked(buf_name: &str, buf_type: &str, output: &mut dyn Write) {
         write!(
             output,
-            "#[inline]
-pub fn parse_unchecked({buf_name}: {buf_type}) -> Self{{
+            "/// Wrap a buffer without validating its protocol lengths.
+/// # Safety
+/// The current chunk must contain the complete fixed header. Before using
+/// variable-header or payload operations, the caller must also establish
+/// their declared length invariants. A fixed header template may be used
+/// for field access alone while its variable lengths are being initialized.
+#[inline]
+pub unsafe fn parse_unchecked({buf_name}: {buf_type}) -> Self{{
 Self{{ {buf_name} }}
 }}
 "

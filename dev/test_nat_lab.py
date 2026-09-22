@@ -35,6 +35,13 @@ class PauseTests(unittest.TestCase):
         self.assertIn("/tg/frozen/performance", commands["tg"])
         self.assertNotIn("target/performance/examples", " ".join(commands.values()))
 
+    def test_ablation_provenance_includes_both_dut_hashes(self):
+        with patch("nat_lab.subprocess.check_output", return_value="metadata") as run:
+            environment("/dut/raw", "/tg/performance", "/dut/source", "/tg/source", "/dut/checked")
+        command = run.call_args_list[1].args[0][-1]
+        self.assertIn("/dut/raw", command)
+        self.assertIn("sha256sum /dut/checked", command)
+
     def test_parse_and_command(self):
         output = "Pause parameters for eth0:\nAutonegotiate:\toff\nRX:\ton\nTX:\ton\n"
         state = pause_state(output)

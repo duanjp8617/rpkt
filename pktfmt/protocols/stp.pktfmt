@@ -42,7 +42,7 @@ packet StpConfBpdu {
 }
 
 %%
-impl<T: Buf> StpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> StpConfBpdu<T> {
     /// Get the root id priority from the `StpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
@@ -178,7 +178,7 @@ packet RstpConfBpdu {
 }
 
 %%
-impl<T: Buf> RstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> RstpConfBpdu<T> {
     /// Get the root id priority from the `RstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
@@ -327,7 +327,7 @@ packet MstpConfBpdu {
 }
 
 %%
-impl<T: Buf> MstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> MstpConfBpdu<T> {
     /// Get the **version3_len** field value.
     #[inline]
     pub fn version3_len(&self) -> u16 {
@@ -399,7 +399,8 @@ impl<T: Buf> MstpConfBpdu<T> {
     #[inline]
     pub fn msti_conf(&self, index: usize) -> MstiConf<Cursor<'_>> {
         let offset = 16 * index;
-        MstiConf::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
+        // SAFETY: the checked slice contains exactly one fixed MstiConf header.
+        unsafe { MstiConf::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset])) }
     }
 
     #[inline]
@@ -486,8 +487,11 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
     /// Set the number of the `MstiConf` contained in the
     /// `MstpConfBpdu`.
     #[inline]
-    pub fn set_num_of_msti_msg(&mut self, num: u32) {
-        self.set_header_len(102 + num * 16);
+    /// # Safety
+    /// The caller must provision the declared messages before accessing them.
+    pub unsafe fn set_num_of_msti_msg(&mut self, num: u32) {
+        // SAFETY: forwarded structural-length obligation is the caller's.
+        unsafe { self.set_header_len(102 + num * 16); }
     }
 
     /// Get the `index`-th mutable `MstiConf` from the
@@ -500,7 +504,8 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
     #[inline]
     pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConf<CursorMut<'_>> {
         let offset = 16 * index;
-        MstiConf::parse_unchecked(CursorMut::new(&mut self.buf.chunk_mut()[102 + offset..118 + offset]))
+        // SAFETY: the checked slice contains exactly one fixed MstiConf header.
+        unsafe { MstiConf::parse_unchecked(CursorMut::new(&mut self.buf.chunk_mut()[102 + offset..118 + offset])) }
     }
 
     #[inline]
@@ -539,7 +544,7 @@ packet MstiConf {
 }
 
 %%
-impl<T: Buf> MstiConf<T> {
+impl<T: Buf + crate::StableBuf> MstiConf<T> {
     /// Get the regional root id priority from the `MstiConf`.
     ///
     /// Note: the result is a a multiple of 4096.
