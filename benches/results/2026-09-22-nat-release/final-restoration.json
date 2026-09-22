@@ -1,0 +1,17 @@
+{
+  "note": "Read-only final checks after all experiments. Zero node-2 hugepages and no matching live NAT processes. All four pause settings restored to autoneg off, RX on, TX on.",
+  "duanjp": {
+    "chunk_id": "b86069",
+    "wall_time_seconds": 2.136103617,
+    "exit_code": 0,
+    "original_token_count": 108,
+    "output": "Tue Sep 22 07:59:59 UTC 2026\nPause parameters for ens31f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\nPause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n0\n1fbf4a1892c1e2db5a76affcb970562f14ca3d542e4ff226aa29c14784a7bf1f  /home/duanjp/rpkt-nat-release-20260922/frozen/nat_loop-release\nedbe0172bd16adc6121c0fca882460cf28f527287162287465470ada455b1844  /home/duanjp/rpkt-nat-release-20260922/frozen/nat_loop-performance\n"
+  },
+  "tg": {
+    "chunk_id": "ad9e5b",
+    "wall_time_seconds": 3.408741778,
+    "exit_code": 0,
+    "original_token_count": 75,
+    "output": "Tue Sep 22 08:00:01 UTC 2026\nPause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\nPause parameters for enp37s0f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\nda96d0ff68df6f4a22f4a34c2c7e21e22db9871eeeafe1111ccc24a7f6950579  /root/rpkt-nat-release-20260922/frozen/nat_loop-performance\n"
+  }
+}

@@ -1,0 +1,97 @@
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000001fda25 <nat_loop::run::<2, nat_loop::kernels::pnet>+0x8f5>:
+  1fda25:	48 8b 77 1a          	mov    0x1a(%rdi),%rsi
+  1fda29:	48 0f ce             	bswap  %rsi
+  1fda2c:	44 8b 47 22          	mov    0x22(%rdi),%r8d
+  1fda30:	41 0f c8             	bswap  %r8d
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000001ff95b <nat_loop::run::<2, nat_loop::kernels::rpkt>+0xb9b>:
+  1ff95b:	66 41 03 72 fe       	add    -0x2(%r10),%si
+  1ff960:	41 0f c8             	bswap  %r8d
+  1ff963:	44 89 47 22          	mov    %r8d,0x22(%rdi)
+  1ff967:	66 83 d6 00          	adc    $0x0,%si
+  1ff96b:	f7 d6                	not    %esi
+  1ff96d:	66 c1 c6 08          	rol    $0x8,%si
+  1ff971:	66 89 77 32          	mov    %si,0x32(%rdi)
+  1ff975:	48 0f ca             	bswap  %rdx
+  1ff978:	48 89 57 1a          	mov    %rdx,0x1a(%rdi)
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000001fdd23 <nat_loop::run::<2, nat_loop::kernels::pnet>+0xbf3>:
+  1fdd23:	41 c1 ea 10          	shr    $0x10,%r10d
+  1fdd27:	41 89 d1             	mov    %edx,%r9d
+  1fdd2a:	41 c1 e9 18          	shr    $0x18,%r9d
+  1fdd2e:	44 88 4f 22          	mov    %r9b,0x22(%rdi)
+  1fdd32:	44 88 57 23          	mov    %r10b,0x23(%rdi)
+  1fdd36:	88 77 24             	mov    %dh,0x24(%rdi)
+  1fdd39:	88 57 25             	mov    %dl,0x25(%rdi)
+  1fdd3c:	88 6f 32             	mov    %ch,0x32(%rdi)
+  1fdd3f:	88 4f 33             	mov    %cl,0x33(%rdi)
+  1fdd42:	eb 53                	jmp    1fdd97 <nat_loop::run::<2, nat_loop::kernels::pnet>+0xc67>
+  1fdd44:	31 c9                	xor    %ecx,%ecx
+  1fdd46:	0f b6 b4 24 5a 01 00 	movzbl 0x15a(%rsp),%esi
+  1fdd4d:	00
+  1fdd4e:	0f b6 94 24 5d 01 00 	movzbl 0x15d(%rsp),%edx
+  1fdd55:	00
+  1fdd56:	8b 84 24 5c 01 00 00 	mov    0x15c(%rsp),%eax
+  1fdd5d:	c1 e0 08             	shl    $0x8,%eax
+  1fdd60:	09 d0                	or     %edx,%eax
+  1fdd62:	4d 8b 42 f0          	mov    -0x10(%r10),%r8
+  1fdd66:	41 8b 52 f8          	mov    -0x8(%r10),%edx
+  1fdd6a:	f7 d0                	not    %eax
+  1fdd6c:	66 41 03 42 fc       	add    -0x4(%r10),%ax
+  1fdd71:	66 83 d0 00          	adc    $0x0,%ax
+  1fdd75:	41 89 d1             	mov    %edx,%r9d
+  1fdd78:	41 c1 e9 10          	shr    $0x10,%r9d
+  1fdd7c:	41 89 d2             	mov    %edx,%r10d
+  1fdd7f:	41 c1 ea 18          	shr    $0x18,%r10d
+  1fdd83:	44 88 57 22          	mov    %r10b,0x22(%rdi)
+  1fdd87:	44 88 4f 23          	mov    %r9b,0x23(%rdi)
+  1fdd8b:	88 77 24             	mov    %dh,0x24(%rdi)
+  1fdd8e:	88 57 25             	mov    %dl,0x25(%rdi)
+  1fdd91:	88 6f 28             	mov    %ch,0x28(%rdi)
+  1fdd94:	88 4f 29             	mov    %cl,0x29(%rdi)
+  1fdd97:	4c 89 c1             	mov    %r8,%rcx
+  1fdd9a:	48 c1 e9 20          	shr    $0x20,%rcx
+  1fdd9e:	0f c9                	bswap  %ecx
+  1fdda0:	89 4f 1a             	mov    %ecx,0x1a(%rdi)
+  1fdda3:	f7 d0                	not    %eax
+  1fdda5:	41 0f c8             	bswap  %r8d
+  1fdda8:	44 89 47 1e          	mov    %r8d,0x1e(%rdi)
+  1fddac:	40 fe ce             	dec    %sil
+  1fddaf:	40 88 77 16          	mov    %sil,0x16(%rdi)
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+0000000000201659 <nat_loop::run::<2, nat_loop::kernels::smoltcp>+0xc89>:
+  201659:	89 d7                	mov    %edx,%edi
+  20165b:	c1 ef 10             	shr    $0x10,%edi
+  20165e:	66 c1 c7 08          	rol    $0x8,%di
+  201662:	66 41 89 78 22       	mov    %di,0x22(%r8)
+  201667:	66 c1 c2 08          	rol    $0x8,%dx
+  20166b:	66 41 89 50 24       	mov    %dx,0x24(%r8)
+  201670:	66 c1 c1 08          	rol    $0x8,%cx
+  201674:	66 41 89 48 32       	mov    %cx,0x32(%r8)
+  201679:	48 89 c1             	mov    %rax,%rcx
+  20167c:	48 c1 e9 20          	shr    $0x20,%rcx
+  201680:	0f c9                	bswap  %ecx
+  201682:	41 89 48 1a          	mov    %ecx,0x1a(%r8)
+  201686:	0f c8                	bswap  %eax
+  201688:	41 89 40 1e          	mov    %eax,0x1e(%r8)
