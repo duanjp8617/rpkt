@@ -105,7 +105,10 @@ fn ipv6_options_destination_build() {
     udp.set_checksum(0x6889);
 
     let mut hdr = DestOptions::default_header();
-    DestOptions::from_header_array_mut(&mut hdr).set_header_len(8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        DestOptions::from_header_array_mut(&mut hdr).set_header_len(8)
+    };
     let mut dest_opts = DestOptions::prepend_header(udp.release(), &hdr);
     dest_opts.set_next_header(IpProtocol::UDP);
 
@@ -113,12 +116,18 @@ fn ipv6_options_destination_build() {
     option_pbuf.advance(6);
 
     let mut padn_hdr = Padn::default_header();
-    Padn::from_header_array_mut(&mut padn_hdr).set_header_len(3);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Padn::from_header_array_mut(&mut padn_hdr).set_header_len(3)
+    };
     let mut padn_opt = Padn::prepend_header(option_pbuf, &padn_hdr);
     padn_opt.var_header_slice_mut()[0] = 0x00;
 
     let mut generic_hdr = Generic::default_header();
-    Generic::from_header_array_mut(&mut generic_hdr).set_header_len(3);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Generic::from_header_array_mut(&mut generic_hdr).set_header_len(3)
+    };
     let mut generic_opt = Generic::prepend_header(padn_opt.release(), &generic_hdr);
     generic_opt.set_type_(11);
     generic_opt.var_header_slice_mut()[0] = 0x09;
@@ -203,7 +212,10 @@ fn ipv6_options_hop_by_hop_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 28..]);
 
     let mut hdr = HopByHopOption::default_header();
-    HopByHopOption::from_header_array_mut(&mut hdr).set_header_len(8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        HopByHopOption::from_header_array_mut(&mut hdr).set_header_len(8)
+    };
     let mut hop_by_hop = HopByHopOption::prepend_header(pbuf, &hdr);
     hop_by_hop.set_next_header(IpProtocol::ICMPV6);
 
@@ -211,7 +223,10 @@ fn ipv6_options_hop_by_hop_build() {
     option_pbuf.advance(6);
 
     let mut padn_hdr = Padn::default_header();
-    Padn::from_header_array_mut(&mut padn_hdr).set_header_len(2);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Padn::from_header_array_mut(&mut padn_hdr).set_header_len(2)
+    };
     let padn_opt = Padn::prepend_header(option_pbuf, &padn_hdr);
 
     let mut router_alert_opt =
@@ -222,7 +237,10 @@ fn ipv6_options_hop_by_hop_build() {
     ipv6.set_version(6);
     ipv6.set_traffic_class(0);
     ipv6.set_flow_label(0);
-    ipv6.set_payload_len(36);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        ipv6.set_payload_len(36)
+    };
     ipv6.set_next_header(IpProtocol::IPV6_HOP_BY_HOP_OPTS);
     ipv6.set_hop_limit(1);
     ipv6.set_src_addr(Ipv6Addr::from_str("fe80::9c09:b416:768:ff42").unwrap());
@@ -294,7 +312,10 @@ fn ipv6_options_routing1_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 8..]);
 
     let mut hdr = RoutingHeader::default_header();
-    RoutingHeader::from_header_array_mut(&mut hdr).set_header_len(40);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        RoutingHeader::from_header_array_mut(&mut hdr).set_header_len(40)
+    };
     let mut routing_header = RoutingHeader::prepend_header(pbuf, &hdr);
     routing_header.set_next_header(IpProtocol::ICMPV6);
     routing_header.set_type_(0);
@@ -446,7 +467,10 @@ fn ipv6_options_ah_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 40..]);
 
     let mut hdr = AuthenticationHeader::default_header();
-    AuthenticationHeader::from_header_array_mut(&mut hdr).set_header_len(24);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        AuthenticationHeader::from_header_array_mut(&mut hdr).set_header_len(24)
+    };
     let mut auth_header = AuthenticationHeader::prepend_header(pbuf, &hdr);
     auth_header.set_next_header(89.into());
     auth_header.set_reserved(0);

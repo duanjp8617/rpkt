@@ -585,16 +585,16 @@ fn rpkt_fixed<const PROTO: u8>(data: &mut [u8], table: &Table) -> bool {
     use rpkt::{ether::*, ipv4::*, tcp::TcpFields, udp::UdpFields};
     let available = data.len() - 14;
     let (eth, data) = data.split_at_mut(14);
-    let mut eth = EtherFrameFields::from_header(<&mut [u8; 14]>::try_from(eth).unwrap());
+    let mut eth = EtherFrameFields::from_header(CursorMut::new(eth));
     let (ip, l4) = data.split_at_mut(20);
-    let mut ip = Ipv4Fields::from_header(<&mut [u8; 20]>::try_from(ip).unwrap());
+    let mut ip = Ipv4Fields::from_header(CursorMut::new(ip));
     let n = ip.packet_len() as usize;
     let proto = PROTO;
     let addresses = ip.src_addr_and_dst_addr_bits();
     let ip_c = ip.checksum();
     let (r, ic) = match proto {
         17 => {
-            let mut p = UdpFields::from_header(<&mut [u8; 8]>::try_from(&mut l4[..8]).unwrap());
+            let mut p = UdpFields::from_header(CursorMut::new(&mut l4[..8]));
             // available >= 40 from the prefix bound. Slice lengths are at
             // most isize::MAX, so wrapped underflow is always out of range.
             if n.wrapping_sub(28) > available - 28 || p.packet_len() as usize != n - 20 {
@@ -614,7 +614,7 @@ fn rpkt_fixed<const PROTO: u8>(data: &mut [u8], table: &Table) -> bool {
             (r, ic)
         }
         6 => {
-            let mut p = TcpFields::from_header(<&mut [u8; 20]>::try_from(&mut l4[..20]).unwrap());
+            let mut p = TcpFields::from_header(CursorMut::new(&mut l4[..20]));
             if n.wrapping_sub(40) > available - 40
                 || (p.header_len() as usize).wrapping_sub(20) > n - 40
             {

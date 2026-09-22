@@ -134,7 +134,10 @@ fn tcp_packet_with_options_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 803..]);
 
     let mut hdr = Tcp::default_header();
-    Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 12);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 12)
+    };
     let mut tcp = Tcp::prepend_header(pbuf, &hdr);
     tcp.set_src_port(44147);
     tcp.set_dst_port(80);
@@ -322,7 +325,10 @@ fn tcp_packet_with_options2_build() {
     pbuf.chunk_mut().copy_from_slice(&pkt[pkt.len() - 9..]);
 
     let mut hdr = Tcp::default_header();
-    Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 16);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 16)
+    };
     let mut tcp = Tcp::prepend_header(pbuf, &hdr);
     tcp.set_src_port(80);
     tcp.set_dst_port(44160);
@@ -502,7 +508,10 @@ fn tcp_packet_with_mss_sackperm_build() {
     pbuf.advance(1600);
 
     let mut hdr = Tcp::default_header();
-    Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 8)
+    };
     let mut tcp = Tcp::prepend_header(pbuf, &hdr);
     tcp.set_src_port(2000);
     tcp.set_dst_port(6712);
@@ -681,7 +690,10 @@ fn tcp_packet_with_sack_build() {
     pbuf.advance(1600);
 
     let mut hdr = Tcp::default_header();
-    Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 12);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut hdr).set_header_len(20 + 12)
+    };
     let mut tcp = Tcp::prepend_header(pbuf, &hdr);
     tcp.set_src_port(54436);
     tcp.set_dst_port(80);
@@ -704,7 +716,10 @@ fn tcp_packet_with_sack_build() {
     option_pbuf.advance(12);
 
     let mut sack_hdr = SACK_HEADER_TEMPLATE.clone();
-    Sack::from_header_array_mut(&mut sack_hdr).set_header_len(10);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Sack::from_header_array_mut(&mut sack_hdr).set_header_len(10)
+    };
     let mut sack = Sack::prepend_header(option_pbuf, &sack_hdr);
     sack.var_header_slice_mut()[..4]
         .copy_from_slice((ack_num + 13141 - 1).to_be_bytes().as_slice());

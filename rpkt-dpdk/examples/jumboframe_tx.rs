@@ -144,8 +144,10 @@ fn build_tcp_manual(mp: &Mempool) -> Mbuf {
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
-        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut tcpheader).set_header_len((TCP_HEADER_LEN + 12) as u8)
+    };
     let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);
@@ -197,8 +199,10 @@ fn build_tcp_offload(mp: &Mempool) -> Mbuf {
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
-        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut tcpheader).set_header_len((TCP_HEADER_LEN + 12) as u8)
+    };
     let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);

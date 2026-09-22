@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests examples/nat_loop.rs (target/debug/examples/nat_loop-275d9960df2557ea)
+
+running 4 tests
+test nat::prefix_simd_bounds_and_unaligned_input ... ok
+test nat::short_udp_fallback_and_tcp_options_fast_path ... ok
+test nat::native_carry_matches_wide_checksum_fold ... ok
+test nat::prefix_selector_matches_scalar_checks ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s

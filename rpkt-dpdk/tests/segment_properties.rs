@@ -28,3 +28,25 @@ fn segment_boundaries() {
         }
     }
 }
+
+#[test]
+fn parsed_headers_keep_unchecked_fields_inside_the_first_segment() {
+    let mut bytes = vec![0xa5; 68];
+    bytes[..20].copy_from_slice(&rpkt::ipv4::Ipv4::default_header());
+    bytes[2..4].copy_from_slice(&68u16.to_be_bytes());
+    for segment_size in [1, 7, 19, 20, 21, 68] {
+        let mut mbuf = Mbuf::from_slice(&bytes, segment_size, 8).unwrap();
+        let parsed = rpkt::ipv4::Ipv4::parse(Pbuf::new(&mut mbuf));
+        if segment_size < 20 {
+            assert!(parsed.is_err());
+            continue;
+        }
+        let mut ip = parsed.unwrap();
+        ip.set_src_addr_and_dst_addr([1, 2, 3, 4].into(), [5, 6, 7, 8].into());
+        assert_eq!(ip.src_addr_and_dst_addr_bits(), 0x0102030405060708);
+        let mut payload = ip.payload();
+        let mut actual = [0; 48];
+        payload.copy_to_slice(&mut actual);
+        assert_eq!(actual, [0xa5; 48]);
+    }
+}

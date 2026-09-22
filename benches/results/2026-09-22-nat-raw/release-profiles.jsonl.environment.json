@@ -1,0 +1,33 @@
+{
+  "hosts": {
+    "tg": "Tue Sep 22 08:55:40 UTC 2026\nLinux pcl-109 5.15.0-185-generic #195-Ubuntu SMP Fri Jun 19 17:11:50 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\n1b68ebfc1611e8d8352817c3d4e2ffc01c2cfac8c69e8134956c1628e0857b17  rpkt-dpdk/examples/nat_loop.rs\nb23dc14bd77755e8c0e11620282a6e9079a9098947edf8337201dcd65bae82fd  benches/nat_support/mod.rs\nda96d0ff68df6f4a22f4a34c2c7e21e22db9871eeeafe1111ccc24a7f6950579  /root/rpkt-nat-release-20260922/frozen/nat_loop-performance\nPause parameters for enp23s0f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for enp37s0f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n",
+    "duanjp": "Tue Sep 22 08:55:42 UTC 2026\nLinux amax-2510 6.17.0-35-generic #35~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 19:30:42 UTC 2 x86_64 x86_64 x86_64 GNU/Linux\n24.11.7\n8a06da0008cbb0d5eaefd68413e199c73616eb49a4179de51ea67c2640ec068b  Cargo.lock\n16f27ee7525838f19e8e07be14de1b547542375604dbaea5e04fe9112884d869  Cargo.toml\na576de5a6ce39fc9aa1bc2bf1a62805cc80d0529ddc5183b20080f6c33986ee3  rpkt-dpdk/examples/nat_loop.rs\n2f588080136a5d7224fafb3283dfafed6d7623f907396480072906bc90b621ec  benches/nat_support/mod.rs\n4aac6771781b9d9fbd7fdbfe0eefd4aa339c0c7ddd1fafc1468d4e6cb87b4a23  /home/duanjp/rpkt-nat-raw-20260922/frozen/nat_loop-release\n86fe91acd711ba137677dad83ffe6b8c4823a1f7205206a93498cfe5b0ebf041  /home/duanjp/rpkt-nat-checked-20260922/frozen/nat_loop-release\nPause parameters for ens31f0np0:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\nPause parameters for ens31f1np1:\nAutonegotiate:\toff\nRX:\t\ton\nTX:\t\ton\n\n100000\n1500\n"
+  },
+  "initial_node2_hugepages": "0",
+  "options": {
+    "output": "benches/results/2026-09-22-nat-raw/release-profiles.jsonl",
+    "repeats": 1,
+    "pilot": false,
+    "cases": [
+      "udp:64:4096",
+      "tcp:64:4096",
+      "tcpopts:128:4096"
+    ],
+    "modes": [
+      "rpkt",
+      "pnet",
+      "smoltcp"
+    ],
+    "dut_binary": "/home/duanjp/rpkt-nat-raw-20260922/frozen/nat_loop-release",
+    "traffic_binary": "/root/rpkt-nat-release-20260922/frozen/nat_loop-performance",
+    "dut_source": "/home/duanjp/rpkt-nat-raw-20260922",
+    "traffic_source": "/root/rpkt-nat-release-20260922",
+    "baseline_binary": "/home/duanjp/rpkt-nat-checked-20260922/frozen/nat_loop-release",
+    "perf": true,
+    "vector_rx": true,
+    "sink_workers": 4,
+    "gen_workers": 4,
+    "disable_pause": true,
+    "dut_queues": 2
+  }
+}

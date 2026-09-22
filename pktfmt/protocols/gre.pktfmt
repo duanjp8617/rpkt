@@ -29,7 +29,7 @@ packet Gre {
 }
 
 %%
-impl<T: Buf> Gre<T> {
+impl<T: Buf + crate::StableBuf> Gre<T> {
     /// Return the variable header length of Gre protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -184,7 +184,7 @@ packet GreForPPTP {
 }
 
 %%
-impl<T: Buf> GreForPPTP<T> {
+impl<T: Buf + crate::StableBuf> GreForPPTP<T> {
     /// Return the variable header length of Gre for PPTP protocol.
     ///
     /// The header length of gre is determined by the bit value in the

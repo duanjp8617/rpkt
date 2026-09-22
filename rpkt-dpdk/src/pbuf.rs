@@ -84,6 +84,10 @@ impl<'a> Pbuf<'a> {
     }
 }
 
+// SAFETY: Pbuf exclusively borrows its mbuf chain; chunk and chunk_mut expose
+// the same initialized segment region, changed only by exclusive movement.
+unsafe impl rpkt::StableBuf for Pbuf<'_> {}
+
 impl<'a> Buf for Pbuf<'a> {
     #[inline]
     fn chunk(&self) -> &[u8] {

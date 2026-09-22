@@ -52,7 +52,7 @@ def profile_time_filter(window):
     return f" --time {start + 0.25:.9f},{end - 0.25:.9f}"
 
 
-def environment(dut_binary, traffic_binary, dut_source, traffic_source):
+def environment(dut_binary, traffic_binary, dut_source, traffic_source, baseline_binary=None):
     """Read-only provenance; never includes credentials or process arguments."""
     result = {}
     for host, base, interfaces in [
@@ -64,6 +64,8 @@ def environment(dut_binary, traffic_binary, dut_source, traffic_source):
                    'PKG_CONFIG_PATH="$(cat rpkt-dpdk/.dpdk_install)" pkg-config --modversion libdpdk '
                    "&& sha256sum Cargo.lock Cargo.toml rpkt-dpdk/examples/nat_loop.rs "
                    f"benches/nat_support/mod.rs {shlex.quote(binary)}")
+        if host == "duanjp" and baseline_binary:
+            command += f" && sha256sum {shlex.quote(baseline_binary)}"
         for interface in interfaces:
             command += f" && ethtool -a {interface} && cat /sys/class/net/{interface}/speed /sys/class/net/{interface}/mtu"
         result[host] = subprocess.check_output(["ssh", "-oConnectTimeout=10", host, command],
@@ -97,6 +99,7 @@ def main():
     parser.add_argument("--traffic-binary", default="/root/rpkt-ws/target/performance/examples/nat_loop")
     parser.add_argument("--dut-source", default="/home/duanjp/rpkt-ws")
     parser.add_argument("--traffic-source", default="/root/rpkt-ws")
+    parser.add_argument("--baseline-binary", help="Interleave an additional checked rpkt DUT (label rpkt-checked)")
     parser.add_argument("--perf", action="store_true", help="Record DUT counters and active-window cycle samples")
     parser.add_argument("--vector-rx", action="store_true", help="Use mlx5 vector RX for every DUT (burst remains 64)")
     parser.add_argument("--sink-workers", type=int, choices=[2, 4], default=2)
@@ -108,6 +111,8 @@ def main():
     args = parser.parse_args()
     assert 1 <= args.repeats <= 5
     assert len(args.modes) == len(set(args.modes)), "duplicate DUT modes"
+    if args.baseline_binary:
+        assert "rpkt" in args.modes, "ablation requires the primary rpkt mode"
     cases = selected_cases(args.cases, args.pilot)
     password = os.environ.pop("RPKT_DUT_SUDO_PASSWORD", None)
     huge = "/sys/devices/system/node/node2/hugepages/hugepages-2048kB/nr_hugepages"
@@ -139,7 +144,7 @@ def main():
         raise RuntimeError("node 2 already reserves hugepages; use an idle lab")
     with open(args.output + ".environment.json", "x") as metadata:
         json.dump(dict(hosts=environment(args.dut_binary, args.traffic_binary,
-                                        args.dut_source, args.traffic_source), initial_node2_hugepages=old,
+                                        args.dut_source, args.traffic_source, args.baseline_binary), initial_node2_hugepages=old,
                        options=vars(args)), metadata, indent=2)
     processes = []
     pause_restore = []
@@ -158,7 +163,7 @@ def main():
         assert ssh("duanjp", f"cat {huge}").strip() == "128"
         with open(args.output, "x", buffering=1) as output:
             for repeat in range(args.repeats):
-                modes = args.modes
+                modes = args.modes + (["rpkt-checked"] if args.baseline_binary else [])
                 modes = modes[repeat % len(modes):] + modes[:repeat % len(modes)]
                 for pattern, size, flows in cases:
                     for mode in modes:
@@ -179,9 +184,11 @@ def main():
                             logs[role] = (host, log)
                             workers_count = args.sink_workers if role == "sink" else (1 if host == "duanjp" else args.gen_workers)
                             cores = str(core) if workers_count == 1 else f"{core}-{core + workers_count - 1}"
-                            binary = args.dut_binary if host == "duanjp" else args.traffic_binary
+                            dut_binary = args.baseline_binary if mode == "rpkt-checked" else args.dut_binary
+                            binary = dut_binary if host == "duanjp" else args.traffic_binary
+                            execution_role = "rpkt" if role == "rpkt-checked" else role
                             command = (f"env RPKT_TRAFFIC_WORKERS={workers_count} timeout 40 {shlex.quote(binary)} "
-                                       f"{role} {core} {rx} {tx} {seconds} {size} {flows} {pattern} "
+                                       f"{execution_role} {core} {rx} {tx} {seconds} {size} {flows} {pattern} "
                                        f"-- -l {cores} --no-shconf --file-prefix nat-{role} {eal}")
                             if mode == "io":
                                 command = "env RPKT_NAT_IO_ONLY=1 " + command
@@ -236,7 +243,7 @@ def main():
                             record[name + "_reject_samples"] = [
                                 line for line in content.splitlines() if line.startswith("REJECT ")]
                         record["logs"] = logs
-                        record["dut_binary"] = args.dut_binary
+                        record["dut_binary"] = args.baseline_binary if mode == "rpkt-checked" else args.dut_binary
                         record["traffic_binary"] = args.traffic_binary
                         record["vector_rx"] = args.vector_rx
                         record["pause_disabled"] = args.disable_pause

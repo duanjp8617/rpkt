@@ -1,5 +1,6 @@
 %%
 #![allow(missing_docs)]
+#![allow(unused_parens)]
 
 use crate::ether::{EtherAddr, EtherType};
 use crate::ipv4::Ipv4Addr;

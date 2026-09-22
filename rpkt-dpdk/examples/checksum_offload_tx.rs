@@ -144,8 +144,10 @@ fn build_tcp_manual(mbuf: &mut Mbuf) {
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
-        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut tcpheader).set_header_len((TCP_HEADER_LEN + 12) as u8)
+    };
     let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);
@@ -196,8 +198,10 @@ fn build_tcp_offload(mbuf: &mut Mbuf) {
     pkt.advance(total_header_len);
 
     let mut tcpheader = TCP_HEADER_TEMPLATE;
-    Tcp::parse_unchecked(rpkt::CursorMut::new(&mut tcpheader[..]))
-        .set_header_len((TCP_HEADER_LEN + 12) as u8);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        Tcp::from_header_array_mut(&mut tcpheader).set_header_len((TCP_HEADER_LEN + 12) as u8)
+    };
     let mut tcppkt = Tcp::prepend_header(pkt, &tcpheader);
     tcppkt.set_src_port(SPORT);
     tcppkt.set_dst_port(DPORT);
@@ -256,7 +260,10 @@ fn build_udp_truncated_manual(mbuf: &mut Mbuf) {
     let mut udppkt = Udp::prepend_header(pkt, &UDP_HEADER_TEMPLATE);
     udppkt.set_src_port(SPORT);
     udppkt.set_dst_port(DPORT);
-    udppkt.set_packet_len(udppkt.packet_len() - 10);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        udppkt.set_packet_len(udppkt.packet_len() - 10)
+    };
     udppkt = utils::adjust_udp(udppkt, Ipv4Addr::from(SIP), Ipv4Addr::from(DIP));
 
     let mut ippkt = Ipv4::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
@@ -296,7 +303,10 @@ fn build_udp_truncated_offload(mbuf: &mut Mbuf) {
         17,
         udppkt.packet_len() as usize,
     ));
-    udppkt.set_packet_len(udppkt.packet_len() - 10);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        udppkt.set_packet_len(udppkt.packet_len() - 10)
+    };
 
     let mut ippkt = Ipv4::prepend_header(udppkt.release(), &IPV4_HEADER_TEMPLATE);
     ippkt.set_ident(0x5c65);

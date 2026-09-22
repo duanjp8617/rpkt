@@ -5,6 +5,18 @@ use crate::utils::byte_len;
 
 use super::HeadTailWriter;
 
+// A checked parse/header constructor establishes the fixed-header bound;
+// StableBuf preserves it. Group parsers check their one local borrow instead.
+// Offsets come from the validated schema, never from packet contents.
+fn raw_range(target: &str, start: u64, end: u64, mutable: bool) -> String {
+    let suffix = if mutable { "_mut" } else { "" };
+    format!("unsafe {{ /* SAFETY: schema range is within this validated header borrow. */ {target}.get_unchecked{suffix}({start}..{end}) }}")
+}
+
+fn raw_byte(target: &str, offset: u64) -> String {
+    format!("(unsafe {{ /* SAFETY: schema offset is within this validated header borrow. */ *{target}.get_unchecked({offset}) }})")
+}
+
 pub struct FieldGenerator<'a> {
     header: &'a Header,
 }
@@ -40,8 +52,13 @@ impl<'a> FieldGenerator<'a> {
                         let byte = start.byte_pos();
                         let end = byte + 2;
                         let mask = 1u16 << (15 - start.bit_pos());
-                        writeln!(output, "#[inline]\npub fn {field_name}(&self) -> bool {{\n\
-                            u16::from_be_bytes({target_slice}[{byte}..{end}].try_into().unwrap()) & {mask} != 0\n}}").unwrap();
+                        let bytes = raw_range(target_slice, byte, end, false);
+                        writeln!(
+                            output,
+                            "#[inline]\npub fn {field_name}(&self) -> bool {{\n\
+                            u16::from_be_bytes(({bytes}).try_into().unwrap()) & {mask} != 0\n}}"
+                        )
+                        .unwrap();
                     } else {
                         FieldGetMethod::new(field, start).code_gen(field_name, target_slice, output)
                     }
@@ -94,9 +111,10 @@ impl<'a> FieldGenerator<'a> {
             let start = sa.byte_pos();
             let end = start + bits / 8;
             if !setter {
+                let bytes = raw_range(target, start, end, false);
                 writeln!(out, "/// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.\n\
                     #[inline]\npub fn {suffix}_bits(&self) -> {ty} {{\n\
-                    {ty}::from_be_bytes({target}[{start}..{end}].try_into().unwrap())\n}}").unwrap();
+                    {ty}::from_be_bytes(({bytes}).try_into().unwrap())\n}}").unwrap();
                 continue;
             }
             let as_repr = |name: &str, field: &Field| {
@@ -108,12 +126,13 @@ impl<'a> FieldGenerator<'a> {
             };
             let repr_a = as_repr(a, fa);
             let repr_b = as_repr(b, fb);
+            let bytes = raw_range(target, start, end, true);
             writeln!(
                 out,
                 "/// Set two adjacent fields with one network-order store.\n\
                 #[inline]\npub fn set_{suffix}(&mut self, {a}: {}, {b}: {}) {{\n\
                 let value = (({repr_a} as {ty}) << {}) | ({repr_b} as {ty});\n\
-                {target}[{start}..{end}].copy_from_slice(&value.to_be_bytes());\n}}",
+                ({bytes}).copy_from_slice(&value.to_be_bytes());\n}}",
                 fa.arg.to_string(),
                 fb.arg.to_string(),
                 fb.bit
@@ -187,8 +206,8 @@ impl<'a> FieldGetMethod<'a> {
                     // field to bool type.
                     write!(
                         output,
-                        "{target_slice}[{}]&{} != 0",
-                        self.start.byte_pos(),
+                        "{}&{} != 0",
+                        raw_byte(target_slice, self.start.byte_pos()),
                         ones_mask(
                             7 - u64::from(self.start.bit_pos()),
                             7 - u64::from(self.start.bit_pos())
@@ -212,9 +231,13 @@ impl<'a> FieldGetMethod<'a> {
                 let mut reader = network_read(&mut buf, end.byte_pos() - self.start.byte_pos() + 1);
                 write!(
                     reader.get_writer(),
-                    "&{target_slice}[{}..{}]",
-                    self.start.byte_pos(),
-                    end.byte_pos() + 1
+                    "{}",
+                    raw_range(
+                        target_slice,
+                        self.start.byte_pos(),
+                        end.byte_pos() + 1,
+                        false
+                    )
                 )
                 .unwrap();
             }
@@ -264,15 +287,19 @@ impl<'a> FieldGetMethod<'a> {
                 // It covers the entire byte slice and can be directly read out.
                 write!(
                     output,
-                    "&{target_slice}[{}..{}]",
-                    self.start.byte_pos(),
-                    end.byte_pos() + 1
+                    "{}",
+                    raw_range(
+                        target_slice,
+                        self.start.byte_pos(),
+                        end.byte_pos() + 1,
+                        false
+                    )
                 )
                 .unwrap();
             }
             BuiltinTypes::U8 if self.start.byte_pos() == end.byte_pos() => {
                 // Handle single-byte field separately.
-                let byte_value = format!("{target_slice}[{}]", self.start.byte_pos());
+                let byte_value = raw_byte(target_slice, self.start.byte_pos());
 
                 let byte_value = if end.bit_pos() < 7 {
                     // The field has the following format:
@@ -444,9 +471,13 @@ impl<'a> FieldSetMethod<'a> {
                 let mut field_writer = HeadTailWriter::new(
                     &mut output,
                     &format!(
-                        "(&mut {target_slice}[{}..{}]).copy_from_slice(",
-                        self.start.byte_pos(),
-                        end.byte_pos() + 1
+                        "({}).copy_from_slice(",
+                        raw_range(
+                            target_slice,
+                            self.start.byte_pos(),
+                            end.byte_pos() + 1,
+                            true
+                        )
                     ),
                     ");",
                 );
@@ -454,7 +485,7 @@ impl<'a> FieldSetMethod<'a> {
             }
             BuiltinTypes::U8 if self.start.byte_pos() == end.byte_pos() => {
                 // The write target is the byte containing the field.
-                let write_target = format!("{target_slice}[{}]", self.start.byte_pos());
+                let write_target = format!("*unsafe {{ /* SAFETY: schema offset is within this validated header borrow. */ {target_slice}.get_unchecked_mut({}) }}", self.start.byte_pos());
 
                 let write_value = if end.bit_pos() < 7 {
                     // The field looks like:
@@ -472,8 +503,8 @@ impl<'a> FieldSetMethod<'a> {
                     // * | field | * *
                     // Take the bits marked by `*` out into `rest_of_bits`.
                     let rest_of_bits = format!(
-                        "({target_slice}[{}]&{})",
-                        self.start.byte_pos(),
+                        "({}&{})",
+                        raw_byte(target_slice, self.start.byte_pos()),
                         zeros_mask(
                             7 - u64::from(end.bit_pos()),
                             7 - u64::from(self.start.bit_pos())
@@ -518,8 +549,8 @@ impl<'a> FieldSetMethod<'a> {
                         // Update `write_value` so that it is `or`ed with the
                         // bits marked by `*`.
                         format!(
-                            "{write_value}|((({target_slice}[{}]&{}) as {}) << {})",
-                            self.start.byte_pos(),
+                            "{write_value}|((({}&{}) as {}) << {})",
+                            raw_byte(target_slice, self.start.byte_pos()),
                             ones_mask(8 - u64::from(self.start.bit_pos()), 7),
                             rw_type.to_string(),
                             8 * (end.byte_pos() - self.start.byte_pos()),
@@ -535,8 +566,8 @@ impl<'a> FieldSetMethod<'a> {
                         // Update `write_value` so that it is `or`ed with the
                         // bits marked by `*`.
                         format!(
-                            "{write_value}|(({target_slice}[{}]&{}) as {})",
-                            end.byte_pos(),
+                            "{write_value}|(({}&{}) as {})",
+                            raw_byte(target_slice, end.byte_pos()),
                             ones_mask(0, 6 - u64::from(end.bit_pos())),
                             rw_type.to_string(),
                         )
@@ -553,10 +584,11 @@ impl<'a> FieldSetMethod<'a> {
 
                 let mut field_writer = network_write(
                     &mut output,
-                    &format!(
-                        "&mut {target_slice}[{}..{}]",
+                    &raw_range(
+                        target_slice,
                         self.start.byte_pos(),
-                        end.byte_pos() + 1
+                        end.byte_pos() + 1,
+                        true,
                     ),
                     end.byte_pos() - self.start.byte_pos() + 1,
                 );
@@ -822,7 +854,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldGetMethod,
             read_repr,
-            "(self.buf.as_ref()[0]>>2)&0x1f",
+            "((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_ref().get_unchecked(0) })>>2)&0x1f",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_ref()"
         );
@@ -831,7 +863,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldGetMethod,
             read_repr,
-            "self.buf.as_ref()[0]&0x1f",
+            "(unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_ref().get_unchecked(0) })&0x1f",
             BitPos::new(0 * 8 + 3),
             "self.buf.as_ref()"
         );
@@ -840,7 +872,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldGetMethod,
             read_repr,
-            "self.buf.as_ref()[0]>>3",
+            "(unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_ref().get_unchecked(0) })>>3",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -849,7 +881,7 @@ mod tests {
             "Field {bit  = 8}",
             FieldGetMethod,
             read_repr,
-            "self.buf.as_ref()[0]",
+            "(unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_ref().get_unchecked(0) })",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -858,7 +890,7 @@ mod tests {
             "Field {bit  = 3}",
             FieldGetMethod,
             read_repr,
-            "((u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>7)&0x7) as u8",
+            "((u16::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }).try_into().unwrap())>>7)&0x7) as u8",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_ref()"
         );
@@ -867,7 +899,7 @@ mod tests {
             "Field {bit  = 8}",
             FieldGetMethod,
             read_repr,
-            "((u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>2)&0xff) as u8",
+            "((u16::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }).try_into().unwrap())>>2)&0xff) as u8",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_ref()"
         );
@@ -879,7 +911,7 @@ mod tests {
             "Field {bit  = 9}",
             FieldGetMethod,
             read_repr,
-            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())>>7",
+            "u16::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }).try_into().unwrap())>>7",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -888,7 +920,7 @@ mod tests {
             "Field {bit  = 14}",
             FieldGetMethod,
             read_repr,
-            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())&0x3fff",
+            "u16::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }).try_into().unwrap())&0x3fff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -897,7 +929,7 @@ mod tests {
             "Field {bit  = 16}",
             FieldGetMethod,
             read_repr,
-            "u16::from_be_bytes((&self.buf.as_ref()[0..2]).try_into().unwrap())",
+            "u16::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }).try_into().unwrap())",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -906,7 +938,7 @@ mod tests {
             "Field {bit  = 16, repr = &[u8]}",
             FieldGetMethod,
             read_repr,
-            "&self.buf.as_ref()[0..2]",
+            "unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..2) }",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -915,7 +947,7 @@ mod tests {
             "Field {bit  = 55}",
             FieldGetMethod,
             read_repr,
-            "read_uint_from_be_bytes(&self.buf.as_ref()[3..10])>>1",
+            "read_uint_from_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(3..10) })>>1",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -924,7 +956,7 @@ mod tests {
             "Field {bit  = 60}",
             FieldGetMethod,
             read_repr,
-            "u64::from_be_bytes((&self.buf.as_ref()[3..11]).try_into().unwrap())&0xfffffffffffffff",
+            "u64::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(3..11) }).try_into().unwrap())&0xfffffffffffffff",
             BitPos::new(3 * 8 + 4),
             "self.buf.as_ref()"
         );
@@ -933,7 +965,7 @@ mod tests {
             "Field {bit  = 128}",
             FieldGetMethod,
             read_repr,
-            "&self.buf.as_ref()[3..19]",
+            "unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(3..19) }",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -945,7 +977,7 @@ mod tests {
             "Field {bit  = 32, repr = &[u8], arg = %%Ipv4Addr%%, default=[0,0,0,0]}",
             FieldGetMethod,
             read_as_arg,
-            "Ipv4Addr::from_bytes(&self.buf.as_ref()[3..7])",
+            "Ipv4Addr::from_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(3..7) })",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -954,7 +986,7 @@ mod tests {
             "Field {bit = 1, arg = bool, default = 0}",
             FieldGetMethod,
             read_as_arg,
-            "self.buf.as_ref()[13]&0x80 != 0",
+            "(unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_ref().get_unchecked(13) })&0x80 != 0",
             BitPos::new(13 * 8 + 0),
             "self.buf.as_ref()"
         );
@@ -966,7 +998,7 @@ mod tests {
             "Field {bit  = 15}",
             FieldGetMethod,
             read_repr,
-            "((read_uint_from_be_bytes(&self.buf.as_ref()[0..3])>>7)&0x7fff) as u16",
+            "((read_uint_from_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..3) })>>7)&0x7fff) as u16",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -975,7 +1007,7 @@ mod tests {
             "Field {bit  = 24}",
             FieldGetMethod,
             read_repr,
-            "(u32::from_be_bytes((&self.buf.as_ref()[0..4]).try_into().unwrap())>>6)&0xffffff",
+            "(u32::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..4) }).try_into().unwrap())>>6)&0xffffff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -984,7 +1016,7 @@ mod tests {
             "Field {bit  = 32}",
             FieldGetMethod,
             read_repr,
-            "((read_uint_from_be_bytes(&self.buf.as_ref()[0..5])>>6)&0xffffffff) as u32",
+            "((read_uint_from_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..5) })>>6)&0xffffffff) as u32",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -993,7 +1025,7 @@ mod tests {
             "Field {bit  = 40}",
             FieldGetMethod,
             read_repr,
-            "(read_uint_from_be_bytes(&self.buf.as_ref()[0..6])>>6)&0xffffffffff",
+            "(read_uint_from_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..6) })>>6)&0xffffffffff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -1002,7 +1034,7 @@ mod tests {
             "Field {bit  = 48}",
             FieldGetMethod,
             read_repr,
-            "(read_uint_from_be_bytes(&self.buf.as_ref()[0..7])>>6)&0xffffffffffff",
+            "(read_uint_from_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..7) })>>6)&0xffffffffffff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -1011,7 +1043,7 @@ mod tests {
             "Field {bit  = 58}",
             FieldGetMethod,
             read_repr,
-            "(u64::from_be_bytes((&self.buf.as_ref()[0..8]).try_into().unwrap())>>4)&0x3ffffffffffffff",
+            "(u64::from_be_bytes((unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_ref().get_unchecked(0..8) }).try_into().unwrap())>>4)&0x3ffffffffffffff",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_ref()"
         );
@@ -1023,7 +1055,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldSetMethod,
             write_repr,
-            "self.buf.as_mut()[0]=(self.buf.as_mut()[0]&0x83)|(value<<2);",
+            "*unsafe { /* SAFETY: schema offset is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0) }=((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x83)|(value<<2);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1033,7 +1065,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldSetMethod,
             write_repr,
-            "self.buf.as_mut()[0]=(self.buf.as_mut()[0]&0xe0)|value;",
+            "*unsafe { /* SAFETY: schema offset is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0) }=((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0xe0)|value;",
             BitPos::new(0 * 8 + 3),
             "self.buf.as_mut()",
             "value"
@@ -1043,7 +1075,7 @@ mod tests {
             "Field {bit  = 5}",
             FieldSetMethod,
             write_repr,
-            "self.buf.as_mut()[0]=(self.buf.as_mut()[0]&0x07)|(value<<3);",
+            "*unsafe { /* SAFETY: schema offset is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0) }=((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x07)|(value<<3);",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1053,7 +1085,7 @@ mod tests {
             "Field {bit  = 8}",
             FieldSetMethod,
             write_repr,
-            "self.buf.as_mut()[0]=value;",
+            "*unsafe { /* SAFETY: schema offset is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0) }=value;",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1063,8 +1095,8 @@ mod tests {
             "Field {bit  = 3}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value as u16)<<7)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x7f) as u16);
-(&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=((value as u16)<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0xfc) as u16) << 8)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(1) })&0x7f) as u16);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_mut()",
             "value"
@@ -1074,8 +1106,8 @@ mod tests {
             "Field {bit  = 8}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value as u16)<<2)|(((self.buf.as_mut()[0]&0xfc) as u16) << 8)|((self.buf.as_mut()[1]&0x3) as u16);
-(&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=((value as u16)<<2)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0xfc) as u16) << 8)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(1) })&0x3) as u16);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 6),
             "self.buf.as_mut()",
             "value"
@@ -1088,8 +1120,8 @@ mod tests {
             "Field {bit  = 9}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<7)|((self.buf.as_mut()[1]&0x7f) as u16);
-(&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=(value<<7)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(1) })&0x7f) as u16);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1099,8 +1131,8 @@ mod tests {
             "Field {bit  = 14}",
             FieldSetMethod,
             write_repr,
-            "let write_value=value|(((self.buf.as_mut()[0]&0xc0) as u16) << 8);
-(&mut self.buf.as_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=value|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0xc0) as u16) << 8);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 2),
             "self.buf.as_mut()",
             "value"
@@ -1110,7 +1142,7 @@ mod tests {
             "Field {bit  = 16}",
             FieldSetMethod,
             write_repr,
-            "(&mut self.buf.as_mut()[0..2]).copy_from_slice(&value.to_be_bytes());",
+            "(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(&value.to_be_bytes());",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1120,7 +1152,7 @@ mod tests {
             "Field {bit  = 16, repr = &[u8]}",
             FieldSetMethod,
             write_repr,
-            "(&mut self.buf.as_mut()[0..2]).copy_from_slice(value);",
+            "(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..2) }).copy_from_slice(value);",
             BitPos::new(0 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1130,8 +1162,8 @@ mod tests {
             "Field {bit  = 55}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<1)|((self.buf.as_mut()[9]&0x1) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
+            "let write_value=(value<<1)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(9) })&0x1) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(3..10) },write_value);",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1141,8 +1173,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
             "Field {bit  = 60}",
             FieldSetMethod,
             write_repr,
-            "let write_value=value|(((self.buf.as_mut()[3]&0xf0) as u64) << 56);
-(&mut self.buf.as_mut()[3..11]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=value|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(3) })&0xf0) as u64) << 56);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(3..11) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(3 * 8 + 4),
             "self.buf.as_mut()",
             "value"
@@ -1152,7 +1184,7 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
             "Field {bit  = 128}",
             FieldSetMethod,
             write_repr,
-            "(&mut self.buf.as_mut()[3..19]).copy_from_slice(value);",
+            "(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(3..19) }).copy_from_slice(value);",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1165,7 +1197,7 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
             "Field {bit  = 32, repr = &[u8], arg = %%Ipv4Addr%%, default=[0,0,0,0]}",
             FieldSetMethod,
             write_as_arg,
-            "(&mut self.buf.as_mut()[3..7]).copy_from_slice(value.as_bytes());",
+            "(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(3..7) }).copy_from_slice(value.as_bytes());",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1176,7 +1208,7 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..10],write_value);",
             FieldSetMethod,
             write_as_arg,
             "let value = if value { 1 } else { 0 };
-self.buf.as_mut()[13]=(self.buf.as_mut()[13]&0x7f)|(value<<7);",
+*unsafe { /* SAFETY: schema offset is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(13) }=((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(13) })&0x7f)|(value<<7);",
             BitPos::new(13 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1187,8 +1219,8 @@ self.buf.as_mut()[13]=(self.buf.as_mut()[13]&0x7f)|(value<<7);",
             FieldSetMethod,
             write_as_arg,
             "assert!(value <= 0x7ffffffff);
-let write_value=(value<<5)|((self.buf.as_mut()[7]&0x1f) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[3..8],write_value);",
+let write_value=(value<<5)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(7) })&0x1f) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(3..8) },write_value);",
             BitPos::new(3 * 8 + 0),
             "self.buf.as_mut()",
             "value"
@@ -1201,8 +1233,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[3..8],write_value);",
             "Field {bit  = 16}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value as u64)<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 16)|((self.buf.as_mut()[2]&0x7f) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[0..3],write_value);",
+            "let write_value=((value as u64)<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u64) << 16)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(2) })&0x7f) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..3) },write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1212,8 +1244,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..3],write_value);",
             "Field {bit  = 24}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<7)|(((self.buf.as_mut()[0]&0x80) as u32) << 24)|((self.buf.as_mut()[3]&0x7f) as u32);
-(&mut self.buf.as_mut()[0..4]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=(value<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u32) << 24)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(3) })&0x7f) as u32);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..4) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1223,8 +1255,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..3],write_value);",
             "Field {bit  = 32}",
             FieldSetMethod,
             write_repr,
-            "let write_value=((value as u64)<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 32)|((self.buf.as_mut()[4]&0x7f) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[0..5],write_value);",
+            "let write_value=((value as u64)<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u64) << 32)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(4) })&0x7f) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..5) },write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1234,8 +1266,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..5],write_value);",
             "Field {bit  = 40}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 40)|((self.buf.as_mut()[5]&0x7f) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[0..6],write_value);",
+            "let write_value=(value<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u64) << 40)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(5) })&0x7f) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..6) },write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1245,8 +1277,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..6],write_value);",
             "Field {bit  = 48}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 48)|((self.buf.as_mut()[6]&0x7f) as u64);
-write_uint_as_be_bytes(&mut self.buf.as_mut()[0..7],write_value);",
+            "let write_value=(value<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u64) << 48)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(6) })&0x7f) as u64);
+write_uint_as_be_bytes(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..7) },write_value);",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"
@@ -1256,8 +1288,8 @@ write_uint_as_be_bytes(&mut self.buf.as_mut()[0..7],write_value);",
             "Field {bit  = 56}",
             FieldSetMethod,
             write_repr,
-            "let write_value=(value<<7)|(((self.buf.as_mut()[0]&0x80) as u64) << 56)|((self.buf.as_mut()[7]&0x7f) as u64);
-(&mut self.buf.as_mut()[0..8]).copy_from_slice(&write_value.to_be_bytes());",
+            "let write_value=(value<<7)|((((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(0) })&0x80) as u64) << 56)|(((unsafe { /* SAFETY: schema offset is within this validated header borrow. */ *self.buf.as_mut().get_unchecked(7) })&0x7f) as u64);
+(unsafe { /* SAFETY: schema range is within this validated header borrow. */ self.buf.as_mut().get_unchecked_mut(0..8) }).copy_from_slice(&write_value.to_be_bytes());",
             BitPos::new(0 * 8 + 1),
             "self.buf.as_mut()",
             "value"

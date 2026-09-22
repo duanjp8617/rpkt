@@ -38,7 +38,10 @@ pub fn adjust_udp<T: rpkt::PktBufMut>(
     let mut buf = udp.release();
     let sum = rpkt::checksum::from_buf(&mut buf, len);
     buf.move_back(len);
-    let mut udp = rpkt::udp::Udp::parse_unchecked(buf);
+    let mut udp = unsafe {
+        /* SAFETY: this buffer contains the complete fixed header. */
+        rpkt::udp::Udp::parse_unchecked(buf)
+    };
     let value = !rpkt::checksum::combine(&[sum, pseudo_sum(src, dst, 17, len)]);
     udp.set_checksum(if value == 0 { 0xffff } else { value });
     udp
@@ -54,7 +57,10 @@ pub fn adjust_tcp<T: rpkt::PktBufMut>(
     let len = buf.remaining();
     let sum = rpkt::checksum::from_buf(&mut buf, len);
     buf.move_back(len);
-    let mut tcp = rpkt::tcp::Tcp::parse_unchecked(buf);
+    let mut tcp = unsafe {
+        /* SAFETY: this buffer contains the complete fixed header. */
+        rpkt::tcp::Tcp::parse_unchecked(buf)
+    };
     tcp.set_checksum(!rpkt::checksum::combine(&[
         sum,
         pseudo_sum(src, dst, 6, len),

@@ -65,7 +65,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
             }
             LengthField::Undefined => {
                 // Variable header length with undefined computing expression.
-                write!(output, "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n").unwrap();
+                write!(output, "// SAFETY: header is an exact-size fixed header; only its length field is read.\nlet header_len = unsafe {{ {protocol_name}::parse_unchecked(&header[..]) }}.header_len() as usize;\n").unwrap();
                 guards.push(format!("header_len>={}", self.header.header_len_in_bytes()));
                 guards.push(format!("header_len<={buf_name}.chunk_headroom()"));
                 "header_len".to_string()
@@ -74,7 +74,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // Header field is defined with computing expression.
                 write!(
                     output,
-                    "let header_len = {protocol_name}::parse_unchecked(&header[..]).header_len() as usize;\n"
+                    "// SAFETY: header is an exact-size fixed header; only its length field is read.\nlet header_len = unsafe {{ {protocol_name}::parse_unchecked(&header[..]) }}.header_len() as usize;\n"
                 )
                 .unwrap();
                 let (field, _) = self.header.field(expr.field_name()).unwrap();
@@ -137,7 +137,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // setup the payload length
                 write!(
                     output,
-                    "container.set_payload_len(payload_len as {});\n",
+                    "// SAFETY: length comes from the actual remaining buffer after checked prepend.\nunsafe {{ container.set_payload_len(payload_len as {}); }}\n",
                     length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();
@@ -170,7 +170,7 @@ pub fn {method_name}<{trait_type}>(mut {buf_name}: {buf_type}, {header_name}: {h
                 // setup the packet length
                 write!(
                     output,
-                    "container.set_packet_len(packet_len as {});\n",
+                    "// SAFETY: length comes from the actual remaining buffer after checked prepend.\nunsafe {{ container.set_packet_len(packet_len as {}); }}\n",
                     length_access_method_io_type(expr, field).to_string()
                 )
                 .unwrap();

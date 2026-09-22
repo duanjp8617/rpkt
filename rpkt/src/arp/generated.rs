@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(unused_parens)]
 
 use crate::cursors::{CursorIndex, CursorIndexMut};
 use crate::ether::{EtherAddr, EtherType};
@@ -20,9 +21,15 @@ pub const ARP_HEADER_TEMPLATE: [u8; 28] = [
 pub struct Arp<T> {
     buf: T,
 }
-impl<T: Buf> Arp<T> {
+impl<T: Buf + crate::StableBuf> Arp<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -49,47 +56,84 @@ impl<T: Buf> Arp<T> {
     #[inline]
     pub fn hardware_type(&self) -> Hardware {
         Hardware::from(u16::from_be_bytes(
-            (&self.buf.chunk()[0..2]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn protocol_type(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn hardware_addr_len(&self) -> u8 {
-        self.buf.chunk()[4]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(4)
+        })
     }
     #[inline]
     pub fn protocol_addr_len(&self) -> u8 {
-        self.buf.chunk()[5]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(5)
+        })
     }
     #[inline]
     pub fn operation(&self) -> Operation {
         Operation::from(u16::from_be_bytes(
-            (&self.buf.chunk()[6..8]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..8)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn sender_ether_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[8..14])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(8..14)
+        })
     }
     #[inline]
     pub fn sender_ipv4_addr(&self) -> Ipv4Addr {
         Ipv4Addr::from(u32::from_be_bytes(
-            (&self.buf.chunk()[14..18]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..18)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn target_ether_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[18..24])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(18..24)
+        })
     }
     #[inline]
     pub fn target_ipv4_addr(&self) -> Ipv4Addr {
         Ipv4Addr::from(u32::from_be_bytes(
-            (&self.buf.chunk()[24..28]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(24..28)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
 }
@@ -113,43 +157,77 @@ impl<T: PktBufMut> Arp<T> {
     pub fn set_hardware_type(&mut self, value: Hardware) {
         let value = u16::from(value);
         assert!(value == 1);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_protocol_type(&mut self, value: EtherType) {
         let value = u16::from(value);
         assert!(value == 2048);
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_hardware_addr_len(&mut self, value: u8) {
         assert!(value == 6);
-        self.buf.chunk_mut()[4] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4)
+        } = value;
     }
     #[inline]
     pub fn set_protocol_addr_len(&mut self, value: u8) {
         assert!(value == 4);
-        self.buf.chunk_mut()[5] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(5)
+        } = value;
     }
     #[inline]
     pub fn set_operation(&mut self, value: Operation) {
-        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..8)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
     #[inline]
     pub fn set_sender_ether_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[8..14]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(8..14)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_sender_ipv4_addr(&mut self, value: Ipv4Addr) {
-        (&mut self.buf.chunk_mut()[14..18]).copy_from_slice(&u32::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..18)
+        })
+        .copy_from_slice(&u32::from(value).to_be_bytes());
     }
     #[inline]
     pub fn set_target_ether_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[18..24]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(18..24)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_target_ipv4_addr(&mut self, value: Ipv4Addr) {
-        (&mut self.buf.chunk_mut()[24..28]).copy_from_slice(&u32::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(24..28)
+        })
+        .copy_from_slice(&u32::from(value).to_be_bytes());
     }
 }
 impl<'a> Arp<Cursor<'a>> {

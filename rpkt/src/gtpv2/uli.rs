@@ -25,7 +25,8 @@ macro_rules! access_imutable_field {
             if $payload.len() >= $len {
                 let (header, remaining) = $payload.split_at($len);
                 $payload = remaining;
-                Some($type::parse_unchecked(header))
+                // SAFETY: the checked split contains the complete fixed header.
+                Some(unsafe { $type::parse_unchecked(header) })
             } else {
                 return None;
             }
@@ -40,7 +41,8 @@ macro_rules! access_imutable_field_final {
         let $var = if $cond {
             if $payload.len() >= $len {
                 let (header, _) = $payload.split_at($len);
-                Some($type::parse_unchecked(header))
+                // SAFETY: the checked split contains the complete fixed header.
+                Some(unsafe { $type::parse_unchecked(header) })
             } else {
                 return None;
             }
@@ -56,7 +58,8 @@ macro_rules! access_mutable_field {
             if $payload.len() >= $len {
                 let (header, remaining) = $payload.split_at_mut($len);
                 $payload = remaining;
-                Some($type::parse_unchecked(CursorMut::new(header)))
+                // SAFETY: the checked split contains the complete fixed header.
+                Some(unsafe { $type::parse_unchecked(CursorMut::new(header)) })
             } else {
                 return None;
             }
@@ -71,7 +74,8 @@ macro_rules! access_mutable_field_final {
         let $var = if $cond {
             if $payload.len() >= $len {
                 let (header, _) = $payload.split_at_mut($len);
-                Some($type::parse_unchecked(CursorMut::new(header)))
+                // SAFETY: the checked split contains the complete fixed header.
+                Some(unsafe { $type::parse_unchecked(CursorMut::new(header)) })
             } else {
                 return None;
             }
@@ -105,7 +109,9 @@ pub struct UliVarHeader<'a> {
 
 impl<'a> UliVarHeader<'a> {
     /// Try to construct the helper from a give `DlPduSessionInfo`.
-    pub fn try_from<T: 'a + Buf>(pkt: &'a UserLocationInfoIE<T>) -> Option<Self> {
+    pub fn try_from<T: 'a + Buf + crate::StableBuf>(
+        pkt: &'a UserLocationInfoIE<T>,
+    ) -> Option<Self> {
         let mut payload = pkt.var_header_slice();
 
         access_imutable_field!(cgi, pkt.cgi(), ULI_CGI_HEADER_LEN, UliCgi, payload);

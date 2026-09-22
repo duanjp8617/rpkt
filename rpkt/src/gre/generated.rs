@@ -16,9 +16,15 @@ pub const GRE_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 pub struct Gre<T> {
     buf: T,
 }
-impl<T: Buf> Gre<T> {
+impl<T: Buf + crate::StableBuf> Gre<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -53,40 +59,74 @@ impl<T: Buf> Gre<T> {
     }
     #[inline]
     pub fn checksum_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x80 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x80
+            != 0
     }
     #[inline]
     pub fn routing_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x40 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x40
+            != 0
     }
     #[inline]
     pub fn key_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x20 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x20
+            != 0
     }
     #[inline]
     pub fn sequence_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x10 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x10
+            != 0
     }
     #[inline]
     pub fn strict_source_route(&self) -> bool {
-        self.buf.chunk()[0] & 0x8 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x8
+            != 0
     }
     #[inline]
     pub fn recursion_control(&self) -> u8 {
-        self.buf.chunk()[0] & 0x7
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x7
     }
     #[inline]
     pub fn flags(&self) -> u8 {
-        self.buf.chunk()[1] >> 3
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        }) >> 3
     }
     #[inline]
     pub fn version(&self) -> u8 {
-        self.buf.chunk()[1] & 0x7
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        }) & 0x7
     }
     #[inline]
     pub fn protocol_type(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
 }
@@ -102,7 +142,8 @@ impl<T: PktBuf> Gre<T> {
 impl<T: PktBufMut> Gre<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 4]) -> Self {
-        let header_len = Gre::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { Gre::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 4) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
@@ -116,46 +157,106 @@ impl<T: PktBufMut> Gre<T> {
     #[inline]
     pub fn set_checksum_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x7f) | (value << 7);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x7f)
+            | (value << 7);
     }
     #[inline]
     pub fn set_routing_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xbf) | (value << 6);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xbf)
+            | (value << 6);
     }
     #[inline]
     pub fn set_key_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xdf) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xdf)
+            | (value << 5);
     }
     #[inline]
     pub fn set_sequence_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_strict_source_route(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf7)
+            | (value << 3);
     }
     #[inline]
     pub fn set_recursion_control(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf8) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf8)
+            | value;
     }
     #[inline]
     pub fn set_flags(&mut self, value: u8) {
         assert!(value <= 0x1f);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x07) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(1)
+        }) & 0x07)
+            | (value << 3);
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
         assert!(value == 0);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf8) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(1)
+        }) & 0xf8)
+            | value;
     }
     #[inline]
     pub fn set_protocol_type(&mut self, value: EtherType) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> Gre<Cursor<'a>> {
@@ -215,7 +316,7 @@ impl<'a> Gre<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> Gre<T> {
+impl<T: Buf + crate::StableBuf> Gre<T> {
     /// Return the variable header length of Gre protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -354,9 +455,15 @@ pub const GRE_FOR_PPTP_HEADER_TEMPLATE: [u8; 8] = [0x20, 0x01, 0x88, 0x0b, 0x00,
 pub struct GreForPPTP<T> {
     buf: T,
 }
-impl<T: Buf> GreForPPTP<T> {
+impl<T: Buf + crate::StableBuf> GreForPPTP<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -395,53 +502,106 @@ impl<T: Buf> GreForPPTP<T> {
     }
     #[inline]
     pub fn checksum_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x80 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x80
+            != 0
     }
     #[inline]
     pub fn routing_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x40 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x40
+            != 0
     }
     #[inline]
     pub fn key_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x20 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x20
+            != 0
     }
     #[inline]
     pub fn sequence_present(&self) -> bool {
-        self.buf.chunk()[0] & 0x10 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x10
+            != 0
     }
     #[inline]
     pub fn strict_source_route(&self) -> bool {
-        self.buf.chunk()[0] & 0x8 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x8
+            != 0
     }
     #[inline]
     pub fn recursion_control(&self) -> u8 {
-        self.buf.chunk()[0] & 0x7
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) & 0x7
     }
     #[inline]
     pub fn ack_present(&self) -> bool {
-        self.buf.chunk()[1] & 0x80 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        }) & 0x80
+            != 0
     }
     #[inline]
     pub fn flags(&self) -> u8 {
-        (self.buf.chunk()[1] >> 3) & 0xf
+        ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        }) >> 3)
+            & 0xf
     }
     #[inline]
     pub fn version(&self) -> u8 {
-        self.buf.chunk()[1] & 0x7
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        }) & 0x7
     }
     #[inline]
     pub fn protocol_type(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
     #[inline]
     pub fn key_call_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[6..8]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(6..8)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn payload_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[4..6]).try_into().unwrap()))
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(4..6)
+            })
+            .try_into()
+            .unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> GreForPPTP<T> {
@@ -462,14 +622,18 @@ impl<T: PktBuf> GreForPPTP<T> {
 impl<T: PktBufMut> GreForPPTP<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 8]) -> Self {
-        let header_len = GreForPPTP::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len = unsafe { GreForPPTP::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 8) && (header_len <= buf.chunk_headroom()));
         let payload_len = buf.remaining();
         assert!(payload_len <= 65535);
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..8]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_payload_len(payload_len as u16);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_payload_len(payload_len as u16);
+        }
         container
     }
     #[inline]
@@ -481,63 +645,144 @@ impl<T: PktBufMut> GreForPPTP<T> {
     pub fn set_checksum_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
         assert!(value == 0);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x7f) | (value << 7);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x7f)
+            | (value << 7);
     }
     #[inline]
     pub fn set_routing_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
         assert!(value == 0);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xbf) | (value << 6);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xbf)
+            | (value << 6);
     }
     #[inline]
     pub fn set_key_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
         assert!(value == 1);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xdf) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xdf)
+            | (value << 5);
     }
     #[inline]
     pub fn set_sequence_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_strict_source_route(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf7) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf7)
+            | (value << 3);
     }
     #[inline]
     pub fn set_recursion_control(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xf8) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xf8)
+            | value;
     }
     #[inline]
     pub fn set_ack_present(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x7f) | (value << 7);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(1)
+        }) & 0x7f)
+            | (value << 7);
     }
     #[inline]
     pub fn set_flags(&mut self, value: u8) {
         assert!(value <= 0xf);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0x87) | (value << 3);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(1)
+        }) & 0x87)
+            | (value << 3);
     }
     #[inline]
     pub fn set_version(&mut self, value: u8) {
         assert!(value == 1);
-        self.buf.chunk_mut()[1] = (self.buf.chunk_mut()[1] & 0xf8) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(1)
+        }) & 0xf8)
+            | value;
     }
     #[inline]
     pub fn set_protocol_type(&mut self, value: EtherType) {
         let value = u16::from(value);
         assert!(value == 34827);
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_key_call_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[6..8]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..8)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_payload_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[4..6]).copy_from_slice(&(value).to_be_bytes());
+    pub unsafe fn set_payload_len(&mut self, value: u16) {
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4..6)
+        })
+        .copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> GreForPPTP<Cursor<'a>> {
@@ -601,7 +846,7 @@ impl<'a> GreForPPTP<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> GreForPPTP<T> {
+impl<T: Buf + crate::StableBuf> GreForPPTP<T> {
     /// Return the variable header length of Gre for PPTP protocol.
     ///
     /// The header length of gre is determined by the bit value in the
@@ -676,9 +921,15 @@ pub const PPTP_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 pub struct PPTP<T> {
     buf: T,
 }
-impl<T: Buf> PPTP<T> {
+impl<T: Buf + crate::StableBuf> PPTP<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -704,20 +955,40 @@ impl<T: Buf> PPTP<T> {
     }
     #[inline]
     pub fn address(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn control(&self) -> u8 {
-        self.buf.chunk()[1]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(1)
+        })
     }
     #[inline]
     pub fn protocol(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn address_and_control_bits(&self) -> u16 {
-        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
 }
 impl<T: PktBuf> PPTP<T> {
@@ -738,21 +1009,35 @@ impl<T: PktBufMut> PPTP<T> {
     }
     #[inline]
     pub fn set_address(&mut self, value: u8) {
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_control(&mut self, value: u8) {
-        self.buf.chunk_mut()[1] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1)
+        } = value;
     }
     #[inline]
     pub fn set_protocol(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_address_and_control(&mut self, address: u8, control: u8) {
         let value = ((address as u16) << 8) | (control as u16);
-        self.buf.chunk_mut()[0..2].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> PPTP<Cursor<'a>> {
@@ -807,16 +1092,38 @@ pub enum GreGroup<T> {
     GreForPPTP_(GreForPPTP<T>),
     Gre_(Gre<T>),
 }
-impl<T: Buf> GreGroup<T> {
+impl<T: Buf + crate::StableBuf> GreGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 4 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 4 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[0] >> 7;
-        let cond_value1 = (buf.chunk()[0] >> 6) & 0x1;
-        let cond_value2 = (buf.chunk()[0] >> 5) & 0x1;
-        let cond_value3 = buf.chunk()[1] & 0x7;
-        let cond_value4 = u16::from_be_bytes((&buf.chunk()[2..4]).try_into().unwrap());
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        }) >> 7;
+        let cond_value1 = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        }) >> 6)
+            & 0x1;
+        let cond_value2 = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(0)
+        }) >> 5)
+            & 0x1;
+        let cond_value3 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(1)
+        }) & 0x7;
+        let cond_value4 = u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                cond_bytes.get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        );
         match (
             cond_value0,
             cond_value1,

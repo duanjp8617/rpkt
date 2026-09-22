@@ -18,14 +18,15 @@ pub struct EtherFrame<T> {
     buf: T,
 }
 /// Fixed header fields only; no payload or cursor operations.
-/// Construct through the checked parts parser or an exact-size array.
+/// Construct through the checked parts parser or a checked header slice.
 #[derive(Debug)]
 pub struct EtherFrameFields<T> {
     buf: T,
 }
-impl<T: core::ops::Deref<Target = [u8; 14]>> EtherFrameFields<T> {
+impl<T: crate::StableBuf> EtherFrameFields<T> {
     #[inline]
     pub fn from_header(buf: T) -> Self {
+        assert!(buf.chunk().len() >= 14);
         Self { buf }
     }
     #[inline]
@@ -34,31 +35,54 @@ impl<T: core::ops::Deref<Target = [u8; 14]>> EtherFrameFields<T> {
     }
     #[inline]
     pub fn dst_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.deref()[0..6])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(0..6)
+        })
     }
     #[inline]
     pub fn src_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.deref()[6..12])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(6..12)
+        })
     }
     #[inline]
     pub fn ethertype(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.deref()[12..14]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(12..14)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
 }
-impl<T: core::ops::DerefMut<Target = [u8; 14]>> EtherFrameFields<T> {
+impl<T: PktBufMut> EtherFrameFields<T> {
     #[inline]
     pub fn set_dst_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.deref_mut()[0..6]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..6)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_src_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.deref_mut()[6..12]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..12)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_ethertype(&mut self, value: EtherType) {
-        (&mut self.buf.deref_mut()[12..14]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12..14)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> EtherFrame<Cursor<'a>> {
@@ -69,7 +93,7 @@ impl<'a> EtherFrame<Cursor<'a>> {
     #[inline]
     pub fn parse_parts(
         bytes: &'a [u8],
-    ) -> Result<(EtherFrameFields<&'a [u8; 14]>, &'a [u8], &'a [u8]), &'a [u8]> {
+    ) -> Result<(EtherFrameFields<Cursor<'a>>, &'a [u8], &'a [u8]), &'a [u8]> {
         let (h, end) = {
             let Ok(_p) = EtherFrame::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -81,7 +105,9 @@ impl<'a> EtherFrame<Cursor<'a>> {
         let (header, payload) = packet.split_at(h);
         let (fixed, options) = header.split_at(14);
         Ok((
-            EtherFrameFields::from_header(<&[u8; 14]>::try_from(fixed).unwrap()),
+            EtherFrameFields {
+                buf: Cursor::new(fixed),
+            },
             options,
             payload,
         ))
@@ -95,14 +121,7 @@ impl<'a> EtherFrame<CursorMut<'a>> {
     #[inline]
     pub fn parse_parts_mut(
         bytes: &'a mut [u8],
-    ) -> Result<
-        (
-            EtherFrameFields<&'a mut [u8; 14]>,
-            &'a mut [u8],
-            &'a mut [u8],
-        ),
-        &'a mut [u8],
-    > {
+    ) -> Result<(EtherFrameFields<CursorMut<'a>>, &'a mut [u8], &'a mut [u8]), &'a mut [u8]> {
         let (h, end) = {
             let Ok(_p) = EtherFrame::parse_from_cursor(Cursor::new(&*bytes)) else {
                 return Err(bytes);
@@ -114,15 +133,23 @@ impl<'a> EtherFrame<CursorMut<'a>> {
         let (header, payload) = packet.split_at_mut(h);
         let (fixed, options) = header.split_at_mut(14);
         Ok((
-            EtherFrameFields::from_header(<&mut [u8; 14]>::try_from(fixed).unwrap()),
+            EtherFrameFields {
+                buf: CursorMut::new(fixed),
+            },
             options,
             payload,
         ))
     }
 }
-impl<T: Buf> EtherFrame<T> {
+impl<T: Buf + crate::StableBuf> EtherFrame<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -148,16 +175,27 @@ impl<T: Buf> EtherFrame<T> {
     }
     #[inline]
     pub fn dst_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[0..6])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(0..6)
+        })
     }
     #[inline]
     pub fn src_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[6..12])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(6..12)
+        })
     }
     #[inline]
     pub fn ethertype(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[12..14]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(12..14)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
 }
@@ -179,15 +217,27 @@ impl<T: PktBufMut> EtherFrame<T> {
     }
     #[inline]
     pub fn set_dst_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[0..6]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..6)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_src_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[6..12]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..12)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_ethertype(&mut self, value: EtherType) {
-        (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12..14)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> EtherFrame<Cursor<'a>> {
@@ -248,9 +298,15 @@ pub const ETHER_DOT3_FRAME_HEADER_TEMPLATE: [u8; 14] = [
 pub struct EtherDot3Frame<T> {
     buf: T,
 }
-impl<T: Buf> EtherDot3Frame<T> {
+impl<T: Buf + crate::StableBuf> EtherDot3Frame<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -280,15 +336,28 @@ impl<T: Buf> EtherDot3Frame<T> {
     }
     #[inline]
     pub fn dst_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[0..6])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(0..6)
+        })
     }
     #[inline]
     pub fn src_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[6..12])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(6..12)
+        })
     }
     #[inline]
     pub fn payload_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[12..14]).try_into().unwrap()))
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(12..14)
+            })
+            .try_into()
+            .unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> EtherDot3Frame<T> {
@@ -313,20 +382,41 @@ impl<T: PktBufMut> EtherDot3Frame<T> {
         buf.move_back(14);
         (&mut buf.chunk_mut()[0..14]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_payload_len(payload_len as u16);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_payload_len(payload_len as u16);
+        }
         container
     }
     #[inline]
     pub fn set_dst_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[0..6]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..6)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_src_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[6..12]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(6..12)
+        })
+        .copy_from_slice(value.as_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_payload_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[12..14]).copy_from_slice(&(value).to_be_bytes());
+    pub unsafe fn set_payload_len(&mut self, value: u16) {
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(12..14)
+        })
+        .copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> EtherDot3Frame<Cursor<'a>> {
@@ -391,12 +481,20 @@ pub enum EtherGroup<T> {
     EtherFrame_(EtherFrame<T>),
     EtherDot3Frame_(EtherDot3Frame<T>),
 }
-impl<T: Buf> EtherGroup<T> {
+impl<T: Buf + crate::StableBuf> EtherGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 14 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 14 {
             return Err(buf);
         }
-        let cond_value0 = u16::from_be_bytes((&buf.chunk()[12..14]).try_into().unwrap());
+        let cond_value0 = u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                cond_bytes.get_unchecked(12..14)
+            })
+            .try_into()
+            .unwrap(),
+        );
         match cond_value0 {
             1536..=65535 => EtherFrame::parse(buf).map(|pkt| EtherGroup::EtherFrame_(pkt)),
             ..=1500 => EtherDot3Frame::parse(buf).map(|pkt| EtherGroup::EtherDot3Frame_(pkt)),

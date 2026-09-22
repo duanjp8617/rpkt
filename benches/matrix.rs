@@ -112,7 +112,10 @@ fn build(bytes: &mut [u8], id: u16, complete: bool) {
         ]);
         let buf = udp.release();
         let sum = checksum::from_slice(buf.chunk());
-        udp = Udp::parse_unchecked(buf);
+        udp = unsafe {
+            /* SAFETY: this buffer contains the complete fixed header. */
+            Udp::parse_unchecked(buf)
+        };
         let value = !checksum::combine(&[pseudo, sum]);
         udp.set_checksum(if value == 0 { 0xffff } else { value });
     }

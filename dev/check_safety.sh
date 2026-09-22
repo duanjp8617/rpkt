@@ -5,6 +5,7 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 toolchain=${MIRI_TOOLCHAIN:-nightly}
 cargo +"$toolchain" miri test -p rpkt --lib cursors
 cargo +"$toolchain" miri test -p rpkt --test properties
+cargo +"$toolchain" miri test -p rpkt --test raw_access
 if [[ ${1:-} == --dpdk ]]; then
   cargo +"$toolchain" miri test -p rpkt-dpdk --test mbuf_miri mbuf_data_append_remove
   cargo +"$toolchain" miri test -p rpkt-dpdk --test segment_properties

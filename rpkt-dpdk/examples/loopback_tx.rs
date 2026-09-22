@@ -159,7 +159,10 @@ fn entry_func() {
                     let mut buf = CursorMut::new(mbuf.data_mut());
                     buf.advance(ETHER_FRAME_HEADER_LEN);
 
-                    let mut ipv4_pkt = Ipv4::parse_unchecked(buf);
+                    let mut ipv4_pkt = unsafe {
+                        /* SAFETY: this buffer contains the complete fixed header. */
+                        Ipv4::parse_unchecked(buf)
+                    };
                     ipv4_pkt.set_src_addr(ip_addrs[adder % NUM_FLOWS]);
                     adder += 1;
 

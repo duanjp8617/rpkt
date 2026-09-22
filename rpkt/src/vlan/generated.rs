@@ -15,9 +15,15 @@ pub const VLAN_FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x08, 0x00];
 pub struct VlanFrame<T> {
     buf: T,
 }
-impl<T: Buf> VlanFrame<T> {
+impl<T: Buf + crate::StableBuf> VlanFrame<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -43,20 +49,43 @@ impl<T: Buf> VlanFrame<T> {
     }
     #[inline]
     pub fn priority(&self) -> u8 {
-        self.buf.chunk()[0] >> 5
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) >> 5
     }
     #[inline]
     pub fn dei_flag(&self) -> bool {
-        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 4096 != 0
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 4096
+            != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn ethertype(&self) -> EtherType {
         EtherType::from(u16::from_be_bytes(
-            (&self.buf.chunk()[2..4]).try_into().unwrap(),
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
         ))
     }
 }
@@ -79,22 +108,49 @@ impl<T: PktBufMut> VlanFrame<T> {
     #[inline]
     pub fn set_priority(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x1f) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x1f)
+            | (value << 5);
     }
     #[inline]
     pub fn set_dei_flag(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(0)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_ethertype(&mut self, value: EtherType) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&u16::from(value).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&u16::from(value).to_be_bytes());
     }
 }
 impl<'a> VlanFrame<Cursor<'a>> {
@@ -153,9 +209,15 @@ pub const VLAN_DOT3_FRAME_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x01, 0x00, 0x04];
 pub struct VlanDot3Frame<T> {
     buf: T,
 }
-impl<T: Buf> VlanDot3Frame<T> {
+impl<T: Buf + crate::StableBuf> VlanDot3Frame<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -185,19 +247,44 @@ impl<T: Buf> VlanDot3Frame<T> {
     }
     #[inline]
     pub fn priority(&self) -> u8 {
-        self.buf.chunk()[0] >> 5
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        }) >> 5
     }
     #[inline]
     pub fn dei_flag(&self) -> bool {
-        u16::from_be_bytes(self.buf.chunk()[0..2].try_into().unwrap()) & 4096 != 0
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 4096
+            != 0
     }
     #[inline]
     pub fn vlan_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn payload_len(&self) -> u16 {
-        (u16::from_be_bytes((&self.buf.chunk()[2..4]).try_into().unwrap()))
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        ))
     }
 }
 impl<T: PktBuf> VlanDot3Frame<T> {
@@ -222,28 +309,64 @@ impl<T: PktBufMut> VlanDot3Frame<T> {
         buf.move_back(4);
         (&mut buf.chunk_mut()[0..4]).copy_from_slice(&header.as_ref()[..]);
         let mut container = Self { buf };
-        container.set_payload_len(payload_len as u16);
+        // SAFETY: length comes from the actual remaining buffer after checked prepend.
+        unsafe {
+            container.set_payload_len(payload_len as u16);
+        }
         container
     }
     #[inline]
     pub fn set_priority(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0x1f) | (value << 5);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0x1f)
+            | (value << 5);
     }
     #[inline]
     pub fn set_dei_flag(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[0] = (self.buf.chunk_mut()[0] & 0xef) | (value << 4);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(0)
+        }) & 0xef)
+            | (value << 4);
     }
     #[inline]
     pub fn set_vlan_id(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[0] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(0)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_payload_len(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[2..4]).copy_from_slice(&(value).to_be_bytes());
+    pub unsafe fn set_payload_len(&mut self, value: u16) {
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2..4)
+        })
+        .copy_from_slice(&(value).to_be_bytes());
     }
 }
 impl<'a> VlanDot3Frame<Cursor<'a>> {
@@ -308,12 +431,20 @@ pub enum VlanGroup<T> {
     VlanFrame_(VlanFrame<T>),
     VlanDot3Frame_(VlanDot3Frame<T>),
 }
-impl<T: Buf> VlanGroup<T> {
+impl<T: Buf + crate::StableBuf> VlanGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 4 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 4 {
             return Err(buf);
         }
-        let cond_value0 = u16::from_be_bytes((&buf.chunk()[2..4]).try_into().unwrap());
+        let cond_value0 = u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                cond_bytes.get_unchecked(2..4)
+            })
+            .try_into()
+            .unwrap(),
+        );
         match cond_value0 {
             1536..=65535 => VlanFrame::parse(buf).map(|pkt| VlanGroup::VlanFrame_(pkt)),
             ..=1500 => VlanDot3Frame::parse(buf).map(|pkt| VlanGroup::VlanDot3Frame_(pkt)),

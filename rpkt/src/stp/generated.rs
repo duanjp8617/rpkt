@@ -17,9 +17,15 @@ pub const STP_TCN_BPDU_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x80];
 pub struct StpTcnBpdu<T> {
     buf: T,
 }
-impl<T: Buf> StpTcnBpdu<T> {
+impl<T: Buf + crate::StableBuf> StpTcnBpdu<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -45,15 +51,32 @@ impl<T: Buf> StpTcnBpdu<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
-        StpVersion::from(self.buf.chunk()[2])
+        StpVersion::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(2)
+            }),
+        )
     }
     #[inline]
     pub fn type_(&self) -> StpType {
-        StpType::from(self.buf.chunk()[3])
+        StpType::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(3)
+            }),
+        )
     }
 }
 impl<T: PktBuf> StpTcnBpdu<T> {
@@ -75,19 +98,29 @@ impl<T: PktBufMut> StpTcnBpdu<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
         let value = u8::from(value);
         assert!(value == 0);
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
     #[inline]
     pub fn set_type_(&mut self, value: StpType) {
         let value = u8::from(value);
         assert!(value == 128);
-        self.buf.chunk_mut()[3] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3)
+        } = value;
     }
 }
 impl<'a> StpTcnBpdu<Cursor<'a>> {
@@ -150,9 +183,15 @@ pub const STP_CONF_BPDU_HEADER_TEMPLATE: [u8; 35] = [
 pub struct StpConfBpdu<T> {
     buf: T,
 }
-impl<T: Buf> StpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> StpConfBpdu<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -178,43 +217,97 @@ impl<T: Buf> StpConfBpdu<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
-        StpVersion::from(self.buf.chunk()[2])
+        StpVersion::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(2)
+            }),
+        )
     }
     #[inline]
     pub fn type_(&self) -> StpType {
-        StpType::from(self.buf.chunk()[3])
+        StpType::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(3)
+            }),
+        )
     }
     #[inline]
     pub fn flag(&self) -> u8 {
-        self.buf.chunk()[4]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(4)
+        })
     }
     #[inline]
     pub fn root_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(5..7)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn root_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[7..13])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(7..13)
+        })
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[13..17]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(13..17)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn bridge_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[17..19]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(17..19)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn bridge_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[19..25])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(19..25)
+        })
     }
     #[inline]
     pub fn port_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[25..27]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(25..27)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
 }
 impl<T: PktBuf> StpConfBpdu<T> {
@@ -236,51 +329,98 @@ impl<T: PktBufMut> StpConfBpdu<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
         let value = u8::from(value);
         assert!(value == 0);
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
     #[inline]
     pub fn set_type_(&mut self, value: StpType) {
         let value = u8::from(value);
         assert!(value == 0);
-        self.buf.chunk_mut()[3] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3)
+        } = value;
     }
     #[inline]
     pub fn set_flag(&mut self, value: u8) {
-        self.buf.chunk_mut()[4] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4)
+        } = value;
     }
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[5] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(5)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(5..7)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_root_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[7..13]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(7..13)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[13..17]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13..17)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[17] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(17)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(17..19)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[19..25]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(19..25)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(25..27)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> StpConfBpdu<Cursor<'a>> {
@@ -330,7 +470,7 @@ impl<'a> StpConfBpdu<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> StpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> StpConfBpdu<T> {
     /// Get the root id priority from the `StpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
@@ -454,9 +594,15 @@ pub const RSTP_CONF_BPDU_HEADER_TEMPLATE: [u8; 36] = [
 pub struct RstpConfBpdu<T> {
     buf: T,
 }
-impl<T: Buf> RstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> RstpConfBpdu<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -482,47 +628,104 @@ impl<T: Buf> RstpConfBpdu<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
-        StpVersion::from(self.buf.chunk()[2])
+        StpVersion::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(2)
+            }),
+        )
     }
     #[inline]
     pub fn type_(&self) -> StpType {
-        StpType::from(self.buf.chunk()[3])
+        StpType::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(3)
+            }),
+        )
     }
     #[inline]
     pub fn flag(&self) -> u8 {
-        self.buf.chunk()[4]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(4)
+        })
     }
     #[inline]
     pub fn root_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(5..7)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn root_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[7..13])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(7..13)
+        })
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[13..17]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(13..17)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn bridge_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[17..19]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(17..19)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn bridge_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[19..25])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(19..25)
+        })
     }
     #[inline]
     pub fn port_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[25..27]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(25..27)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version1_len(&self) -> u8 {
-        self.buf.chunk()[35]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(35)
+        })
     }
 }
 impl<T: PktBuf> RstpConfBpdu<T> {
@@ -544,55 +747,105 @@ impl<T: PktBufMut> RstpConfBpdu<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
         let value = u8::from(value);
         assert!(value == 2);
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
     #[inline]
     pub fn set_type_(&mut self, value: StpType) {
         let value = u8::from(value);
         assert!(value == 2);
-        self.buf.chunk_mut()[3] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3)
+        } = value;
     }
     #[inline]
     pub fn set_flag(&mut self, value: u8) {
-        self.buf.chunk_mut()[4] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4)
+        } = value;
     }
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[5] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(5)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(5..7)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_root_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[7..13]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(7..13)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[13..17]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13..17)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[17] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(17)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(17..19)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[19..25]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(19..25)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(25..27)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version1_len(&mut self, value: u8) {
-        self.buf.chunk_mut()[35] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(35)
+        } = value;
     }
 }
 impl<'a> RstpConfBpdu<Cursor<'a>> {
@@ -642,7 +895,7 @@ impl<'a> RstpConfBpdu<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> RstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> RstpConfBpdu<T> {
     /// Get the root id priority from the `RstpConfBpdu`.
     ///
     /// Note: the result is a a multiple of 4096.
@@ -770,9 +1023,15 @@ pub const MSTP_CONF_BPDU_HEADER_TEMPLATE: [u8; 102] = [
 pub struct MstpConfBpdu<T> {
     buf: T,
 }
-impl<T: Buf> MstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> MstpConfBpdu<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -807,83 +1066,184 @@ impl<T: Buf> MstpConfBpdu<T> {
     }
     #[inline]
     pub fn proto_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[0..2]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(0..2)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version(&self) -> StpVersion {
-        StpVersion::from(self.buf.chunk()[2])
+        StpVersion::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(2)
+            }),
+        )
     }
     #[inline]
     pub fn type_(&self) -> StpType {
-        StpType::from(self.buf.chunk()[3])
+        StpType::from(
+            (unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk().get_unchecked(3)
+            }),
+        )
     }
     #[inline]
     pub fn flag(&self) -> u8 {
-        self.buf.chunk()[4]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(4)
+        })
     }
     #[inline]
     pub fn root_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[5..7]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(5..7)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn root_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[7..13])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(7..13)
+        })
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[13..17]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(13..17)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn bridge_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[17..19]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(17..19)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn bridge_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[19..25])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(19..25)
+        })
     }
     #[inline]
     pub fn port_id(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[25..27]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(25..27)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn version1_len(&self) -> u8 {
-        self.buf.chunk()[35]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(35)
+        })
     }
     #[inline]
     pub fn mst_config_format_selector(&self) -> u8 {
-        self.buf.chunk()[38]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(38)
+        })
     }
     #[inline]
     pub fn mst_config_name(&self) -> &[u8] {
-        &self.buf.chunk()[39..71]
+        unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(39..71)
+        }
     }
     #[inline]
     pub fn mst_config_revision(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[71..73]).try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(71..73)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn mst_config_digest(&self) -> &[u8] {
-        &self.buf.chunk()[73..89]
+        unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(73..89)
+        }
     }
     #[inline]
     pub fn irpc(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[89..93]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(89..93)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn cist_bridge_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[93..95]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(93..95)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn cist_bridge_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[95..101])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(95..101)
+        })
     }
     #[inline]
     pub fn remain_id(&self) -> u8 {
-        self.buf.chunk()[101]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(101)
+        })
     }
     #[inline]
     pub fn header_len(&self) -> u32 {
-        (u16::from_be_bytes((&self.buf.chunk()[36..38]).try_into().unwrap())) as u32 + 38
+        (u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(36..38)
+            })
+            .try_into()
+            .unwrap(),
+        )) as u32
+            + 38
     }
 }
 impl<T: PktBuf> MstpConfBpdu<T> {
@@ -898,7 +1258,9 @@ impl<T: PktBuf> MstpConfBpdu<T> {
 impl<T: PktBufMut> MstpConfBpdu<T> {
     #[inline]
     pub fn prepend_header<'a>(mut buf: T, header: &'a [u8; 102]) -> Self {
-        let header_len = MstpConfBpdu::parse_unchecked(&header[..]).header_len() as usize;
+        // SAFETY: header is an exact-size fixed header; only its length field is read.
+        let header_len =
+            unsafe { MstpConfBpdu::parse_unchecked(&header[..]) }.header_len() as usize;
         assert!((header_len >= 102) && (header_len <= buf.chunk_headroom()));
         buf.move_back(header_len);
         (&mut buf.chunk_mut()[0..102]).copy_from_slice(&header.as_ref()[..]);
@@ -912,94 +1274,189 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
     #[inline]
     pub fn set_proto_id(&mut self, value: u16) {
         assert!(value == 0);
-        (&mut self.buf.chunk_mut()[0..2]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0..2)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version(&mut self, value: StpVersion) {
         let value = u8::from(value);
         assert!(value == 3);
-        self.buf.chunk_mut()[2] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = value;
     }
     #[inline]
     pub fn set_type_(&mut self, value: StpType) {
         let value = u8::from(value);
         assert!(value == 2);
-        self.buf.chunk_mut()[3] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3)
+        } = value;
     }
     #[inline]
     pub fn set_flag(&mut self, value: u8) {
-        self.buf.chunk_mut()[4] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(4)
+        } = value;
     }
     #[inline]
     pub fn set_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[5] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[5..7]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(5)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(5..7)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_root_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[7..13]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(7..13)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[13..17]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13..17)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[17] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[17..19]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(17)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(17..19)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[19..25]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(19..25)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_port_id(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[25..27]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(25..27)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_version1_len(&mut self, value: u8) {
-        self.buf.chunk_mut()[35] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(35)
+        } = value;
     }
     #[inline]
     pub fn set_mst_config_format_selector(&mut self, value: u8) {
-        self.buf.chunk_mut()[38] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(38)
+        } = value;
     }
     #[inline]
     pub fn set_mst_config_name(&mut self, value: &[u8]) {
-        (&mut self.buf.chunk_mut()[39..71]).copy_from_slice(value);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(39..71)
+        })
+        .copy_from_slice(value);
     }
     #[inline]
     pub fn set_mst_config_revision(&mut self, value: u16) {
-        (&mut self.buf.chunk_mut()[71..73]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(71..73)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_mst_config_digest(&mut self, value: &[u8]) {
-        (&mut self.buf.chunk_mut()[73..89]).copy_from_slice(value);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(73..89)
+        })
+        .copy_from_slice(value);
     }
     #[inline]
     pub fn set_irpc(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[89..93]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(89..93)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_cist_bridge_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[93] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[93..95]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(93)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(93..95)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_cist_bridge_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[95..101]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(95..101)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_remain_id(&mut self, value: u8) {
-        self.buf.chunk_mut()[101] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(101)
+        } = value;
     }
+    /// Change a structural length without resizing the buffer.
+    /// # Safety
+    /// Before variable-header or payload access, the caller must ensure
+    /// the declared header fits the chunk and the declared packet fits
+    /// the remaining buffer, with header length at least the fixed size.
+    /// Fixed-header templates may be initialized before attaching payload.
     #[inline]
-    pub fn set_header_len(&mut self, value: u32) {
+    pub unsafe fn set_header_len(&mut self, value: u32) {
         assert!((value <= 65573) && (value >= 38));
-        (&mut self.buf.chunk_mut()[36..38]).copy_from_slice(&((value - 38) as u16).to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(36..38)
+        })
+        .copy_from_slice(&((value - 38) as u16).to_be_bytes());
     }
 }
 impl<'a> MstpConfBpdu<Cursor<'a>> {
@@ -1059,7 +1516,7 @@ impl<'a> MstpConfBpdu<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> MstpConfBpdu<T> {
+impl<T: Buf + crate::StableBuf> MstpConfBpdu<T> {
     /// Get the **version3_len** field value.
     #[inline]
     pub fn version3_len(&self) -> u16 {
@@ -1131,7 +1588,10 @@ impl<T: Buf> MstpConfBpdu<T> {
     #[inline]
     pub fn msti_conf(&self, index: usize) -> MstiConf<Cursor<'_>> {
         let offset = 16 * index;
-        MstiConf::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
+        // SAFETY: the checked slice contains exactly one fixed MstiConf header.
+        unsafe {
+            MstiConf::parse_unchecked(Cursor::new(&self.buf.chunk()[102 + offset..118 + offset]))
+        }
     }
 
     #[inline]
@@ -1218,8 +1678,13 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
     /// Set the number of the `MstiConf` contained in the
     /// `MstpConfBpdu`.
     #[inline]
-    pub fn set_num_of_msti_msg(&mut self, num: u32) {
-        self.set_header_len(102 + num * 16);
+    /// # Safety
+    /// The caller must provision the declared messages before accessing them.
+    pub unsafe fn set_num_of_msti_msg(&mut self, num: u32) {
+        // SAFETY: forwarded structural-length obligation is the caller's.
+        unsafe {
+            self.set_header_len(102 + num * 16);
+        }
     }
 
     /// Get the `index`-th mutable `MstiConf` from the
@@ -1232,9 +1697,12 @@ impl<T: PktBufMut> MstpConfBpdu<T> {
     #[inline]
     pub fn msti_conf_message_mut(&mut self, index: usize) -> MstiConf<CursorMut<'_>> {
         let offset = 16 * index;
-        MstiConf::parse_unchecked(CursorMut::new(
-            &mut self.buf.chunk_mut()[102 + offset..118 + offset],
-        ))
+        // SAFETY: the checked slice contains exactly one fixed MstiConf header.
+        unsafe {
+            MstiConf::parse_unchecked(CursorMut::new(
+                &mut self.buf.chunk_mut()[102 + offset..118 + offset],
+            ))
+        }
     }
 
     #[inline]
@@ -1269,9 +1737,15 @@ pub const MSTI_CONF_HEADER_TEMPLATE: [u8; 16] = [
 pub struct MstiConf<T> {
     buf: T,
 }
-impl<T: Buf> MstiConf<T> {
+impl<T: Buf + crate::StableBuf> MstiConf<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -1297,41 +1771,84 @@ impl<T: Buf> MstiConf<T> {
     }
     #[inline]
     pub fn flags(&self) -> u8 {
-        self.buf.chunk()[0]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(0)
+        })
     }
     #[inline]
     pub fn regional_root_sys_id_ext(&self) -> u16 {
-        u16::from_be_bytes((&self.buf.chunk()[1..3]).try_into().unwrap()) & 0xfff
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(1..3)
+            })
+            .try_into()
+            .unwrap(),
+        ) & 0xfff
     }
     #[inline]
     pub fn regional_root_mac_addr(&self) -> EtherAddr {
-        EtherAddr::from_bytes(&self.buf.chunk()[3..9])
+        EtherAddr::from_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(3..9)
+        })
     }
     #[inline]
     pub fn path_cost(&self) -> u32 {
-        u32::from_be_bytes((&self.buf.chunk()[9..13]).try_into().unwrap())
+        u32::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(9..13)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     #[inline]
     pub fn bridge_priority(&self) -> u8 {
-        self.buf.chunk()[13]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(13)
+        })
     }
     #[inline]
     pub fn port_priority(&self) -> u8 {
-        self.buf.chunk()[14]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(14)
+        })
     }
     #[inline]
     pub fn remaining_hops(&self) -> u8 {
-        self.buf.chunk()[15]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(15)
+        })
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn bridge_priority_and_port_priority_bits(&self) -> u16 {
-        u16::from_be_bytes(self.buf.chunk()[13..15].try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(13..15)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
     /// Read adjacent fields as a packed network-order integer; the first field occupies the high bits.
     #[inline]
     pub fn port_priority_and_remaining_hops_bits(&self) -> u16 {
-        u16::from_be_bytes(self.buf.chunk()[14..16].try_into().unwrap())
+        u16::from_be_bytes(
+            (unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk().get_unchecked(14..16)
+            })
+            .try_into()
+            .unwrap(),
+        )
     }
 }
 impl<T: PktBuf> MstiConf<T> {
@@ -1352,33 +1869,62 @@ impl<T: PktBufMut> MstiConf<T> {
     }
     #[inline]
     pub fn set_flags(&mut self, value: u8) {
-        self.buf.chunk_mut()[0] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(0)
+        } = value;
     }
     #[inline]
     pub fn set_regional_root_sys_id_ext(&mut self, value: u16) {
         assert!(value <= 0xfff);
-        let write_value = value | (((self.buf.chunk_mut()[1] & 0xf0) as u16) << 8);
-        (&mut self.buf.chunk_mut()[1..3]).copy_from_slice(&write_value.to_be_bytes());
+        let write_value = value
+            | ((((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(1)
+            }) & 0xf0) as u16)
+                << 8);
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(1..3)
+        })
+        .copy_from_slice(&write_value.to_be_bytes());
     }
     #[inline]
     pub fn set_regional_root_mac_addr(&mut self, value: EtherAddr) {
-        (&mut self.buf.chunk_mut()[3..9]).copy_from_slice(value.as_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3..9)
+        })
+        .copy_from_slice(value.as_bytes());
     }
     #[inline]
     pub fn set_path_cost(&mut self, value: u32) {
-        (&mut self.buf.chunk_mut()[9..13]).copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(9..13)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     #[inline]
     pub fn set_bridge_priority(&mut self, value: u8) {
-        self.buf.chunk_mut()[13] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13)
+        } = value;
     }
     #[inline]
     pub fn set_port_priority(&mut self, value: u8) {
-        self.buf.chunk_mut()[14] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14)
+        } = value;
     }
     #[inline]
     pub fn set_remaining_hops(&mut self, value: u8) {
-        self.buf.chunk_mut()[15] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(15)
+        } = value;
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
@@ -1388,13 +1934,21 @@ impl<T: PktBufMut> MstiConf<T> {
         port_priority: u8,
     ) {
         let value = ((bridge_priority as u16) << 8) | (port_priority as u16);
-        self.buf.chunk_mut()[13..15].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(13..15)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
     /// Set two adjacent fields with one network-order store.
     #[inline]
     pub fn set_port_priority_and_remaining_hops(&mut self, port_priority: u8, remaining_hops: u8) {
         let value = ((port_priority as u16) << 8) | (remaining_hops as u16);
-        self.buf.chunk_mut()[14..16].copy_from_slice(&value.to_be_bytes());
+        (unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(14..16)
+        })
+        .copy_from_slice(&value.to_be_bytes());
     }
 }
 impl<'a> MstiConf<Cursor<'a>> {
@@ -1444,7 +1998,7 @@ impl<'a> MstiConf<CursorMut<'a>> {
     }
 }
 
-impl<T: Buf> MstiConf<T> {
+impl<T: Buf + crate::StableBuf> MstiConf<T> {
     /// Get the regional root id priority from the `MstiConf`.
     ///
     /// Note: the result is a a multiple of 4096.
@@ -1489,13 +2043,20 @@ pub enum StpGroup<T> {
     RstpConfBpdu_(RstpConfBpdu<T>),
     MstpConfBpdu_(MstpConfBpdu<T>),
 }
-impl<T: Buf> StpGroup<T> {
+impl<T: Buf + crate::StableBuf> StpGroup<T> {
     pub fn group_parse(buf: T) -> Result<Self, T> {
-        if buf.chunk().len() < 4 {
+        let cond_bytes = &buf.chunk()[..];
+        if cond_bytes.len() < 4 {
             return Err(buf);
         }
-        let cond_value0 = buf.chunk()[2];
-        let cond_value1 = buf.chunk()[3];
+        let cond_value0 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(2)
+        });
+        let cond_value1 = (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *cond_bytes.get_unchecked(3)
+        });
         match (cond_value0, cond_value1) {
             (0, 128) => StpTcnBpdu::parse(buf).map(|pkt| StpGroup::StpTcnBpdu_(pkt)),
             (0, 0) => StpConfBpdu::parse(buf).map(|pkt| StpGroup::StpConfBpdu_(pkt)),

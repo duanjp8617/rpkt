@@ -15,9 +15,15 @@ pub const MPLS_HEADER_TEMPLATE: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
 pub struct Mpls<T> {
     buf: T,
 }
-impl<T: Buf> Mpls<T> {
+impl<T: Buf + crate::StableBuf> Mpls<T> {
+    /// Wrap a buffer without validating its protocol lengths.
+    /// # Safety
+    /// The current chunk must contain the complete fixed header. Before using
+    /// variable-header or payload operations, the caller must also establish
+    /// their declared length invariants. A fixed header template may be used
+    /// for field access alone while its variable lengths are being initialized.
     #[inline]
-    pub fn parse_unchecked(buf: T) -> Self {
+    pub unsafe fn parse_unchecked(buf: T) -> Self {
         Self { buf }
     }
     #[inline]
@@ -43,19 +49,33 @@ impl<T: Buf> Mpls<T> {
     }
     #[inline]
     pub fn label(&self) -> u32 {
-        (read_uint_from_be_bytes(&self.buf.chunk()[0..3]) >> 4) as u32
+        (read_uint_from_be_bytes(unsafe {
+            /* SAFETY: schema range is within this validated header borrow. */
+            self.buf.chunk().get_unchecked(0..3)
+        }) >> 4) as u32
     }
     #[inline]
     pub fn experimental_bits(&self) -> u8 {
-        (self.buf.chunk()[2] >> 1) & 0x7
+        ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(2)
+        }) >> 1)
+            & 0x7
     }
     #[inline]
     pub fn bottom_of_stack(&self) -> bool {
-        self.buf.chunk()[2] & 0x1 != 0
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(2)
+        }) & 0x1
+            != 0
     }
     #[inline]
     pub fn ttl(&self) -> u8 {
-        self.buf.chunk()[3]
+        (unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk().get_unchecked(3)
+        })
     }
 }
 impl<T: PktBuf> Mpls<T> {
@@ -77,22 +97,49 @@ impl<T: PktBufMut> Mpls<T> {
     #[inline]
     pub fn set_label(&mut self, value: u32) {
         assert!(value <= 0xfffff);
-        let write_value = ((value as u64) << 4) | ((self.buf.chunk_mut()[2] & 0xf) as u64);
-        write_uint_as_be_bytes(&mut self.buf.chunk_mut()[0..3], write_value);
+        let write_value = ((value as u64) << 4)
+            | (((unsafe {
+                /* SAFETY: schema offset is within this validated header borrow. */
+                *self.buf.chunk_mut().get_unchecked(2)
+            }) & 0xf) as u64);
+        write_uint_as_be_bytes(
+            unsafe {
+                /* SAFETY: schema range is within this validated header borrow. */
+                self.buf.chunk_mut().get_unchecked_mut(0..3)
+            },
+            write_value,
+        );
     }
     #[inline]
     pub fn set_experimental_bits(&mut self, value: u8) {
         assert!(value <= 0x7);
-        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xf1) | (value << 1);
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(2)
+        }) & 0xf1)
+            | (value << 1);
     }
     #[inline]
     pub fn set_bottom_of_stack(&mut self, value: bool) {
         let value = if value { 1 } else { 0 };
-        self.buf.chunk_mut()[2] = (self.buf.chunk_mut()[2] & 0xfe) | value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(2)
+        } = ((unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            *self.buf.chunk_mut().get_unchecked(2)
+        }) & 0xfe)
+            | value;
     }
     #[inline]
     pub fn set_ttl(&mut self, value: u8) {
-        self.buf.chunk_mut()[3] = value;
+        *unsafe {
+            /* SAFETY: schema offset is within this validated header borrow. */
+            self.buf.chunk_mut().get_unchecked_mut(3)
+        } = value;
     }
 }
 impl<'a> Mpls<Cursor<'a>> {

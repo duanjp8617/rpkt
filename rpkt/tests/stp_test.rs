@@ -424,8 +424,11 @@ fn multiple_stp_creation_tests() {
     );
 
     let mut mstp_conf_bpdu_header = MSTP_CONF_BPDU_HEADER_TEMPLATE.clone();
-    MstpConfBpdu::from_header_array_mut(&mut mstp_conf_bpdu_header)
-        .set_header_len((MSTP_CONF_BPDU_HEADER_LEN + MSTI_CONF_HEADER_LEN) as u32);
+    unsafe {
+        /* SAFETY: the template/buffer is provisioned before variable-length access. */
+        MstpConfBpdu::from_header_array_mut(&mut mstp_conf_bpdu_header)
+            .set_header_len((MSTP_CONF_BPDU_HEADER_LEN + MSTI_CONF_HEADER_LEN) as u32)
+    };
     let mut msg = MstpConfBpdu::prepend_header(pkt_buf, &mstp_conf_bpdu_header);
     assert_eq!(
         msg.buf().chunk().len(),
