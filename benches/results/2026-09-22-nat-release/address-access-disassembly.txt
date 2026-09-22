@@ -1,0 +1,44 @@
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000001ff694 <nat_loop::run::<2, nat_loop::kernels::rpkt>+0x8d4>:
+  1ff694:	48 8b 77 1a          	mov    0x1a(%rdi),%rsi
+  1ff698:	48 0f ce             	bswap  %rsi
+  1ff69b:	44 8b 47 22          	mov    0x22(%rdi),%r8d
+  1ff69f:	41 0f c8             	bswap  %r8d
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+00000000002012a1 <nat_loop::run::<2, nat_loop::kernels::smoltcp>+0x8d1>:
+  2012a1:	89 4c 24 28          	mov    %ecx,0x28(%rsp)
+  2012a5:	48 89 fb             	mov    %rdi,%rbx
+  2012a8:	48 83 c7 1a          	add    $0x1a,%rdi
+  2012ac:	be 04 00 00 00       	mov    $0x4,%esi
+  2012b1:	ff 15 41 17 52 00    	call   *0x521741(%rip)        # 7229f8 <_DYNAMIC+0x3c0>
+  2012b7:	89 44 24 3c          	mov    %eax,0x3c(%rsp)
+  2012bb:	48 8d 7b 1e          	lea    0x1e(%rbx),%rdi
+  2012bf:	be 04 00 00 00       	mov    $0x4,%esi
+  2012c4:	ff 15 2e 17 52 00    	call   *0x52172e(%rip)        # 7229f8 <_DYNAMIC+0x3c0>
+
+/tmp/rpkt-nat-20260922-release:     file format elf64-x86-64
+
+
+Disassembly of section .text:
+
+000000000020ef00 <<core::net::ip_addr::Ipv4Addr as smoltcp::wire::ipv4::AddressExt>::from_bytes>:
+  20ef00:	48 83 fe 04          	cmp    $0x4,%rsi
+  20ef04:	75 03                	jne    20ef09 <<core::net::ip_addr::Ipv4Addr as smoltcp::wire::ipv4::AddressExt>::from_bytes+0x9>
+  20ef06:	8b 07                	mov    (%rdi),%eax
+  20ef08:	c3                   	ret
+  20ef09:	50                   	push   %rax
+  20ef0a:	48 8d 15 4f 17 50 00 	lea    0x50174f(%rip),%rdx        # 710660 <anon.cb25259b71ec5e90dfa44a109f0e2422.74.llvm.7467063436562101525>
+  20ef11:	bf 04 00 00 00       	mov    $0x4,%edi
+  20ef16:	ff 15 74 3a 51 00    	call   *0x513a74(%rip)        # 722990 <_DYNAMIC+0x358>
+00000000007229f8  0000000000000008 R_X86_64_RELATIVE                         20ef00
+000000000020ef00 T <core::net::ip_addr::Ipv4Addr as smoltcp::wire::ipv4::AddressExt>::from_bytes

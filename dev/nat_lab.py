@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bounded, sequential three-process NAT tests on the documented two-host lab.
 
-Requires already-built identical nat_loop binaries; never changes drivers,
+Requires already-built frozen DUT and traffic binaries; never changes drivers,
 addresses or MTUs. RPKT_DUT_SUDO_PASSWORD is optional (otherwise sudo -n).
 Temporary node-2 hugepages are restored even when a run fails. Run only on
 idle, dedicated test links. Results are JSONL; raw process logs stay on hosts.
@@ -18,6 +18,18 @@ import time
 
 PORTS = [("duanjp", "ens31f0np0"), ("duanjp", "ens31f1np1"),
          ("tg", "enp23s0f0np0"), ("tg", "enp37s0f1np1")]
+CASES = [(p, s, f) for p in ["udp", "tcp"]
+         for s, f in [(64, 64), (64, 4096), (512, 4096), (1500, 4096)]]
+CASES += [("mixed", 64, 4096), ("tcpopts", 128, 4096)]
+
+
+def selected_cases(names=None, pilot=False):
+    if names:
+        assert not pilot, "--cases and --pilot are mutually exclusive"
+        assert len(names) == len(set(names)), "duplicate cases"
+        by_name = {f"{p}:{s}:{f}": (p, s, f) for p, s, f in CASES}
+        return [by_name[name] for name in names]
+    return [("udp", 64, 64), ("tcp", 64, 64)] if pilot else CASES
 
 
 def pause_state(output):
@@ -32,19 +44,26 @@ def pause_command(interface, state):
     return f"ethtool -A {interface} " + " ".join(f"{key} {state[key]}" for key in ["autoneg", "rx", "tx"])
 
 
-def environment(dut_binary):
+def profile_time_filter(window):
+    """Never silently substitute startup/idle samples for active traffic."""
+    assert window is not None and len(window) == 2, "Missing active profile window"
+    start, end = map(float, window)
+    assert 4.9 <= end - start <= 6, window
+    return f" --time {start + 0.25:.9f},{end - 0.25:.9f}"
+
+
+def environment(dut_binary, traffic_binary, dut_source, traffic_source):
     """Read-only provenance; never includes credentials or process arguments."""
     result = {}
     for host, base, interfaces in [
-        ("tg", "/root/rpkt-ws", ["enp23s0f0np0", "enp37s0f1np1"]),
-        ("duanjp", "/home/duanjp/rpkt-ws", ["ens31f0np0", "ens31f1np1"]),
+        ("tg", traffic_source, ["enp23s0f0np0", "enp37s0f1np1"]),
+        ("duanjp", dut_source, ["ens31f0np0", "ens31f1np1"]),
     ]:
-        command = (f"cd {base} && date -u && uname -a && "
+        binary = dut_binary if host == "duanjp" else traffic_binary
+        command = (f"cd {shlex.quote(base)} && date -u && uname -a && "
                    'PKG_CONFIG_PATH="$(cat rpkt-dpdk/.dpdk_install)" pkg-config --modversion libdpdk '
                    "&& sha256sum Cargo.lock Cargo.toml rpkt-dpdk/examples/nat_loop.rs "
-                   "benches/nat_support/mod.rs target/performance/examples/nat_loop")
-        if host == "duanjp":
-            command += f" && sha256sum {shlex.quote(dut_binary)}"
+                   f"benches/nat_support/mod.rs {shlex.quote(binary)}")
         for interface in interfaces:
             command += f" && ethtool -a {interface} && cat /sys/class/net/{interface}/speed /sys/class/net/{interface}/mtu"
         result[host] = subprocess.check_output(["ssh", "-oConnectTimeout=10", host, command],
@@ -70,9 +89,14 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--pilot", action="store_true")
+    parser.add_argument("--cases", nargs="+", choices=[f"{p}:{s}:{f}" for p, s, f in CASES],
+                        help="Run selected cases into a new file; never overwrite failed trials")
     parser.add_argument("--modes", nargs="+", choices=["rpkt", "cursor", "pnet", "smoltcp", "io"],
                         default=["rpkt", "pnet", "smoltcp"])
     parser.add_argument("--dut-binary", default="/home/duanjp/rpkt-ws/target/performance/examples/nat_loop")
+    parser.add_argument("--traffic-binary", default="/root/rpkt-ws/target/performance/examples/nat_loop")
+    parser.add_argument("--dut-source", default="/home/duanjp/rpkt-ws")
+    parser.add_argument("--traffic-source", default="/root/rpkt-ws")
     parser.add_argument("--perf", action="store_true", help="Record DUT counters and active-window cycle samples")
     parser.add_argument("--vector-rx", action="store_true", help="Use mlx5 vector RX for every DUT (burst remains 64)")
     parser.add_argument("--sink-workers", type=int, choices=[2, 4], default=2)
@@ -84,6 +108,7 @@ def main():
     args = parser.parse_args()
     assert 1 <= args.repeats <= 5
     assert len(args.modes) == len(set(args.modes)), "duplicate DUT modes"
+    cases = selected_cases(args.cases, args.pilot)
     password = os.environ.pop("RPKT_DUT_SUDO_PASSWORD", None)
     huge = "/sys/devices/system/node/node2/hugepages/hugepages-2048kB/nr_hugepages"
     sockets = tempfile.TemporaryDirectory(prefix="rpkt-nat-ssh-")
@@ -113,7 +138,8 @@ def main():
     if old != "0":
         raise RuntimeError("node 2 already reserves hugepages; use an idle lab")
     with open(args.output + ".environment.json", "x") as metadata:
-        json.dump(dict(hosts=environment(args.dut_binary), initial_node2_hugepages=old,
+        json.dump(dict(hosts=environment(args.dut_binary, args.traffic_binary,
+                                        args.dut_source, args.traffic_source), initial_node2_hugepages=old,
                        options=vars(args)), metadata, indent=2)
     processes = []
     pause_restore = []
@@ -130,11 +156,6 @@ def main():
             print("Pause disabled and verified on all four test ports", flush=True)
         ssh("duanjp", f"tee {huge}", root=True, data="128\n")
         assert ssh("duanjp", f"cat {huge}").strip() == "128"
-        cases = [(p, s, f) for p in ["udp", "tcp"]
-                 for s, f in [(64, 64), (64, 4096), (512, 4096), (1500, 4096)]]
-        cases += [("mixed", 64, 4096), ("tcpopts", 128, 4096)]
-        if args.pilot:
-            cases = [("udp", 64, 64), ("tcp", 64, 64)]
         with open(args.output, "x", buffering=1) as output:
             for repeat in range(args.repeats):
                 modes = args.modes
@@ -154,12 +175,11 @@ def main():
                         ]:
                             if host == "duanjp" and args.vector_rx:
                                 eal = eal.replace(",rx_vec_en=0", "")
-                            base = "/home/duanjp/rpkt-ws" if host == "duanjp" else "/root/rpkt-ws"
                             log = f"/tmp/nat-{stamp}-{role}.log"
                             logs[role] = (host, log)
                             workers_count = args.sink_workers if role == "sink" else (1 if host == "duanjp" else args.gen_workers)
                             cores = str(core) if workers_count == 1 else f"{core}-{core + workers_count - 1}"
-                            binary = args.dut_binary if host == "duanjp" else f"{base}/target/performance/examples/nat_loop"
+                            binary = args.dut_binary if host == "duanjp" else args.traffic_binary
                             command = (f"env RPKT_TRAFFIC_WORKERS={workers_count} timeout 40 {shlex.quote(binary)} "
                                        f"{role} {core} {rx} {tx} {seconds} {size} {flows} {pattern} "
                                        f"-- -l {cores} --no-shconf --file-prefix nat-{role} {eal}")
@@ -217,14 +237,14 @@ def main():
                                 line for line in content.splitlines() if line.startswith("REJECT ")]
                         record["logs"] = logs
                         record["dut_binary"] = args.dut_binary
+                        record["traffic_binary"] = args.traffic_binary
                         record["vector_rx"] = args.vector_rx
                         record["pause_disabled"] = args.disable_pause
                         record["dut_queues"] = args.dut_queues
                         if args.perf:
                             record["perf_stat"] = ssh("duanjp", f"cat /tmp/nat-{stamp}.stat", root=True)
-                            window = record["profile_window"]
-                            time_filter = "" if window is None else f" --time {float(window[0]) + 0.25:.9f},{float(window[1]) - 0.25:.9f}"
-                            record["perf_report"] = ssh("duanjp", f"perf report --stdio --no-children --percent-limit 0.5{time_filter} -i /tmp/nat-{stamp}.data", root=True)
+                            time_filter = profile_time_filter(record["profile_window"])
+                            record["perf_report"] = ssh("duanjp", f"perf report --stdio --no-children --sort dso,symbol --percent-limit 0{time_filter} -i /tmp/nat-{stamp}.data", root=True)
                         output.write(json.dumps(record) + "\n")
                         print(f"{stamp}: dut={record['dut']['rx']} sink={record['sink']['rx']} "
                               f"sink_drops={record['sink']['rx_missed']}", flush=True)
