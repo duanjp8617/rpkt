@@ -8,7 +8,7 @@ verus=${VERUS:-verus}
 bash dev/gen_verus.sh --check
 # No local axioms or admitted function bodies in the proof inputs.
 if grep -En 'assume\(|admit\(|verifier::external|external_body|assume_specification' \
-    verification/buffers.rs verification/packet.rs rpkt/src/buffer_math.rs \
+    verification/buffers.rs verification/packet.rs verification/clients.rs rpkt/src/buffer_math.rs \
     verification/generated/*.rs; then
   echo 'Unexpected trusted/admitted item in proof inputs' >&2
   exit 1

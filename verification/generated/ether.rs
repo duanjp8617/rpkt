@@ -9,7 +9,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 14 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 14) }
 // runtime-access EtherFrame read 0 6
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -30,6 +31,7 @@ ensures 0 <= 6 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 6 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access EtherFrame read 6 12
@@ -51,6 +53,7 @@ ensures 6 <= 12 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 12 - 6,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 6 + i, byte),
 { proof { range_3(p); } p.write(6 + i, byte); }
 // runtime-access EtherFrame read 12 14
@@ -72,6 +75,7 @@ ensures 12 <= 14 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 14 - 12,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 12 + i, byte),
 { proof { range_5(p); } p.write(12 + i, byte); }
 } // verus!
@@ -85,7 +89,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 14 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 14) }
 // runtime-access EtherDot3Frame read 0 6
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -106,6 +111,7 @@ ensures 0 <= 6 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 6 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access EtherDot3Frame read 6 12
@@ -127,6 +133,7 @@ ensures 6 <= 12 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 12 - 6,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 6 + i, byte),
 { proof { range_3(p); } p.write(6 + i, byte); }
 // runtime-access EtherDot3Frame read 12 14
@@ -148,6 +155,7 @@ ensures 12 <= 14 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 14, i < 14 - 12,
 ensures final(p).valid(), final(p).fixed_len() == 14,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 12 + i, byte),
 { proof { range_5(p); } p.write(12 + i, byte); }
 } // verus!
@@ -161,7 +169,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 14 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 14
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 14) }
 // runtime-access EtherGroup read 12 14
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)

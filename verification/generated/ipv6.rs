@@ -9,7 +9,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 40 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 40,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 40
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 40) }
 // runtime-access Ipv6 read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -30,6 +31,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access Ipv6 read 0 2
@@ -51,6 +53,7 @@ ensures 0 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 2 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_3(p); } p.write(0 + i, byte); }
 // runtime-access Ipv6 read 1 2
@@ -82,6 +85,7 @@ ensures 1 <= 4 <= p.fixed_len(),
 pub fn write_6<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 4 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_6(p); } p.write(1 + i, byte); }
 // runtime-access Ipv6 read 4 6
@@ -103,6 +107,7 @@ ensures 4 <= 6 <= p.fixed_len(),
 pub fn write_8<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 6 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_8(p); } p.write(4 + i, byte); }
 // runtime-access Ipv6 read 6 7
@@ -124,6 +129,7 @@ ensures 6 <= 7 <= p.fixed_len(),
 pub fn write_10<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 7 - 6,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 6 + i, byte),
 { proof { range_10(p); } p.write(6 + i, byte); }
 // runtime-access Ipv6 read 6 8
@@ -145,6 +151,7 @@ ensures 6 <= 8 <= p.fixed_len(),
 pub fn write_12<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 8 - 6,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 6 + i, byte),
 { proof { range_12(p); } p.write(6 + i, byte); }
 // runtime-access Ipv6 read 7 8
@@ -166,6 +173,7 @@ ensures 7 <= 8 <= p.fixed_len(),
 pub fn write_14<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 40, i < 8 - 7,
 ensures final(p).valid(), final(p).fixed_len() == 40,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 7 + i, byte),
 { proof { range_14(p); } p.write(7 + i, byte); }
 } // verus!
@@ -179,7 +187,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 2 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 2) }
 // runtime-access DestOptions read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -200,6 +209,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access DestOptions read 1 2
@@ -221,6 +231,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 } // verus!
@@ -234,7 +245,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 2 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 2) }
 // runtime-access HopByHopOption read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -255,6 +267,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access HopByHopOption read 1 2
@@ -276,6 +289,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 } // verus!
@@ -289,7 +303,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 8 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 8,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 8
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 8) }
 // runtime-access RoutingHeader read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -310,6 +325,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access RoutingHeader read 1 2
@@ -331,6 +347,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 // runtime-access RoutingHeader read 2 3
@@ -352,6 +369,7 @@ ensures 2 <= 3 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 3 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_5(p); } p.write(2 + i, byte); }
 // runtime-access RoutingHeader read 2 4
@@ -373,6 +391,7 @@ ensures 2 <= 4 <= p.fixed_len(),
 pub fn write_7<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 4 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_7(p); } p.write(2 + i, byte); }
 // runtime-access RoutingHeader read 3 4
@@ -394,6 +413,7 @@ ensures 3 <= 4 <= p.fixed_len(),
 pub fn write_9<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 4 - 3,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 3 + i, byte),
 { proof { range_9(p); } p.write(3 + i, byte); }
 // runtime-access RoutingHeader read 4 8
@@ -415,6 +435,7 @@ ensures 4 <= 8 <= p.fixed_len(),
 pub fn write_11<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 8 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_11(p); } p.write(4 + i, byte); }
 } // verus!
@@ -428,7 +449,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 8 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 8,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 8
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 8) }
 // runtime-access FragmentHeader read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -449,6 +471,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access FragmentHeader read 0 2
@@ -470,6 +493,7 @@ ensures 0 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 2 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_3(p); } p.write(0 + i, byte); }
 // runtime-access FragmentHeader read 1 2
@@ -491,6 +515,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_5(p); } p.write(1 + i, byte); }
 // runtime-access FragmentHeader read 2 4
@@ -512,6 +537,7 @@ ensures 2 <= 4 <= p.fixed_len(),
 pub fn write_7<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 4 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_7(p); } p.write(2 + i, byte); }
 // runtime-access FragmentHeader read 3 4
@@ -533,6 +559,7 @@ ensures 3 <= 4 <= p.fixed_len(),
 pub fn write_9<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 4 - 3,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 3 + i, byte),
 { proof { range_9(p); } p.write(3 + i, byte); }
 // runtime-access FragmentHeader read 4 8
@@ -554,6 +581,7 @@ ensures 4 <= 8 <= p.fixed_len(),
 pub fn write_11<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 8, i < 8 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 8,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_11(p); } p.write(4 + i, byte); }
 } // verus!
@@ -567,7 +595,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 12 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 12,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 12
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 12) }
 // runtime-access AuthenticationHeader read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -588,6 +617,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access AuthenticationHeader read 1 2
@@ -609,6 +639,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 // runtime-access AuthenticationHeader read 2 4
@@ -630,6 +661,7 @@ ensures 2 <= 4 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 4 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_5(p); } p.write(2 + i, byte); }
 // runtime-access AuthenticationHeader read 4 8
@@ -651,6 +683,7 @@ ensures 4 <= 8 <= p.fixed_len(),
 pub fn write_7<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 8 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_7(p); } p.write(4 + i, byte); }
 // runtime-access AuthenticationHeader read 4 12
@@ -672,6 +705,7 @@ ensures 4 <= 12 <= p.fixed_len(),
 pub fn write_9<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 12 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_9(p); } p.write(4 + i, byte); }
 // runtime-access AuthenticationHeader read 8 12
@@ -693,6 +727,7 @@ ensures 8 <= 12 <= p.fixed_len(),
 pub fn write_11<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 12, i < 12 - 8,
 ensures final(p).valid(), final(p).fixed_len() == 12,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 8 + i, byte),
 { proof { range_11(p); } p.write(8 + i, byte); }
 } // verus!
@@ -706,7 +741,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 2 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 2) }
 // runtime-access Generic read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -727,6 +763,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access Generic read 1 2
@@ -748,6 +785,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 } // verus!
@@ -761,7 +799,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 4 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 4,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 4
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 4) }
 // runtime-access RouterAlert read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -782,6 +821,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 4, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 4,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access RouterAlert read 1 2
@@ -803,6 +843,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 4, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 4,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 // runtime-access RouterAlert read 2 4
@@ -824,6 +865,7 @@ ensures 2 <= 4 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 4, i < 4 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 4,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_5(p); } p.write(2 + i, byte); }
 } // verus!
@@ -837,7 +879,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 2 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 2
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 2) }
 // runtime-access Padn read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -858,6 +901,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access Padn read 1 2
@@ -879,6 +923,7 @@ ensures 1 <= 2 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 2, i < 2 - 1,
 ensures final(p).valid(), final(p).fixed_len() == 2,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 1 + i, byte),
 { proof { range_3(p); } p.write(1 + i, byte); }
 } // verus!
@@ -892,7 +937,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 1 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 1,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 1
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 1) }
 // runtime-access Pad0 read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -913,6 +959,7 @@ ensures 0 <= 1 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 1, i < 1 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 1,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 } // verus!
@@ -926,7 +973,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 1 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 1,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 1
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 1) }
 // runtime-access Ipv6Options read 0 1
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)

@@ -9,7 +9,8 @@ verus! {
 pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)
 requires buf.valid(),
 ensures out.is_some() <==> 28 <= buf.chunk_end() - buf.position(),
-out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 28,
+out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == 28
+&& out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),
 { Parsed::parse(buf, 28) }
 // runtime-access Arp read 0 2
 pub proof fn range_0<B: PktBuf>(p: &Parsed<B>)
@@ -30,6 +31,7 @@ ensures 0 <= 2 <= p.fixed_len(),
 pub fn write_1<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 2 - 0,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 0 + i, byte),
 { proof { range_1(p); } p.write(0 + i, byte); }
 // runtime-access Arp read 2 4
@@ -51,6 +53,7 @@ ensures 2 <= 4 <= p.fixed_len(),
 pub fn write_3<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 4 - 2,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 2 + i, byte),
 { proof { range_3(p); } p.write(2 + i, byte); }
 // runtime-access Arp read 4 5
@@ -72,6 +75,7 @@ ensures 4 <= 5 <= p.fixed_len(),
 pub fn write_5<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 5 - 4,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 4 + i, byte),
 { proof { range_5(p); } p.write(4 + i, byte); }
 // runtime-access Arp read 5 6
@@ -93,6 +97,7 @@ ensures 5 <= 6 <= p.fixed_len(),
 pub fn write_7<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 6 - 5,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 5 + i, byte),
 { proof { range_7(p); } p.write(5 + i, byte); }
 // runtime-access Arp read 6 8
@@ -114,6 +119,7 @@ ensures 6 <= 8 <= p.fixed_len(),
 pub fn write_9<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 8 - 6,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 6 + i, byte),
 { proof { range_9(p); } p.write(6 + i, byte); }
 // runtime-access Arp read 8 14
@@ -135,6 +141,7 @@ ensures 8 <= 14 <= p.fixed_len(),
 pub fn write_11<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 14 - 8,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 8 + i, byte),
 { proof { range_11(p); } p.write(8 + i, byte); }
 // runtime-access Arp read 14 18
@@ -156,6 +163,7 @@ ensures 14 <= 18 <= p.fixed_len(),
 pub fn write_13<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 18 - 14,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 14 + i, byte),
 { proof { range_13(p); } p.write(14 + i, byte); }
 // runtime-access Arp read 18 24
@@ -177,6 +185,7 @@ ensures 18 <= 24 <= p.fixed_len(),
 pub fn write_15<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 24 - 18,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 18 + i, byte),
 { proof { range_15(p); } p.write(18 + i, byte); }
 // runtime-access Arp read 24 28
@@ -198,6 +207,7 @@ ensures 24 <= 28 <= p.fixed_len(),
 pub fn write_17<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)
 requires old(p).valid(), old(p).fixed_len() == 28, i < 28 - 24,
 ensures final(p).valid(), final(p).fixed_len() == 28,
+final(p).position() == old(p).position(),
 final(p).bytes() == old(p).bytes().update(old(p).position() + 24 + i, byte),
 { proof { range_17(p); } p.write(24 + i, byte); }
 } // verus!

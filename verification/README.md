@@ -6,7 +6,7 @@ DPDK, mbuf ownership, Rust pointer provenance, or the entire pktfmt compiler
 has been formally verified. This distinction is essential when assessing the
 ultimate goal: safe access from a parsed packet to its real backing allocation.
 
-The pinned Verus run reports **2167 verified, 0 errors**. Eight deliberately
+The pinned Verus run reports **2169 verified, 0 errors**. Eight deliberately
 broken variants are rejected by verification, not merely by Rust parsing.
 There are no local `assume`, admitted bodies, or assumed external-function
 specifications in the proof inputs; the runner uses `--no-cheating`.
@@ -46,6 +46,12 @@ Verified byte writes preserve its parse invariant. Obtaining the buffer back
 consumes the packet witness, so movement/trimming cannot accidentally reuse a
 stale witness in verified code. The proof concerns any implementation of the
 formal contract, not just a particular packet length or a sampled input.
+
+`clients.rs` composes actual generated companion functions with the reference
+buffers: a successful Cursor-backed Ethernet parse returns the original byte
+at offset 12, and a Pbuf-backed field write followed by a read returns the
+written value. Parse preserves the source storage/position relation; writes
+preserve position and update only the specified byte.
 
 Dynamic length changes do not threaten fixed-field bounds if the storage
 extent is unchanged, but they can invalidate options/payload boundaries. The

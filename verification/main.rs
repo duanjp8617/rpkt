@@ -3,6 +3,7 @@
 mod buffer_math;
 mod buffers;
 mod packet;
+mod clients;
 #[path = "generated/arp.rs"] mod arp;
 #[path = "generated/ether.rs"] mod ether;
 #[path = "generated/ipv4.rs"] mod ipv4;

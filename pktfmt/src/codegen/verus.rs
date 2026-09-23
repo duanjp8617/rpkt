@@ -154,7 +154,8 @@ pub fn generate(name: &str, minimum: usize, rust: &str, out: &mut dyn Write) -> 
         "pub fn parse<B: PktBuf>(buf: B) -> (out: Option<Parsed<B>>)\n\
         requires buf.valid(),\n\
         ensures out.is_some() <==> {minimum} <= buf.chunk_end() - buf.position(),\n\
-            out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == {minimum},\n\
+            out.is_some() ==> out.unwrap().valid() && out.unwrap().fixed_len() == {minimum}\n\
+                && out.unwrap().bytes() == buf.storage() && out.unwrap().position() == buf.position(),\n\
         {{ Parsed::parse(buf, {minimum}) }}"
     )
     .map_err(|e| e.to_string())?;
@@ -176,6 +177,7 @@ pub fn generate(name: &str, minimum: usize, rust: &str, out: &mut dyn Write) -> 
             writeln!(out, "pub fn write_{id}<B: PktBuf>(p: &mut Parsed<B>, i: usize, byte: u8)\n\
                 requires old(p).valid(), old(p).fixed_len() == {minimum}, i < {end} - {start},\n\
                 ensures final(p).valid(), final(p).fixed_len() == {minimum},\n\
+                    final(p).position() == old(p).position(),\n\
                     final(p).bytes() == old(p).bytes().update(old(p).position() + {start} + i, byte),\n\
                 {{ proof {{ range_{id}(p); }} p.write({start} + i, byte); }}")
                 .map_err(|e| e.to_string())?;
