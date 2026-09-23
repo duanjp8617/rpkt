@@ -3,7 +3,7 @@ use core::{marker::PhantomData, slice};
 
 use bytes::Buf;
 
-use crate::{PktBuf, PktBufMut};
+use crate::{buffer_math, PktBuf, PktBufMut};
 
 /// A container type that turns a byte slice into `PktBuf`.
 #[derive(Debug, Clone, Copy)]
@@ -66,10 +66,10 @@ impl<'a> PktBuf for Cursor<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
-        let new_cursor = self.cursor() - cnt;
+        let new_cursor = buffer_math::shorten(self.cursor(), cnt);
         unsafe {
             let new_chunk_start = self.start_addr.add(new_cursor);
-            let new_chunk_len = self.chunk.len() + cnt;
+            let new_chunk_len = buffer_math::extend(self.chunk.len(), cnt, self.cursor());
             self.chunk = slice::from_raw_parts(new_chunk_start, new_chunk_len);
         }
     }
@@ -77,7 +77,7 @@ impl<'a> PktBuf for Cursor<'a> {
     #[inline]
     fn trim_off(&mut self, cnt: usize) {
         assert!(cnt <= self.chunk.len());
-        self.chunk = &self.chunk[..(self.chunk.len() - cnt)];
+        self.chunk = &self.chunk[..buffer_math::shorten(self.chunk.len(), cnt)];
     }
 }
 
@@ -143,7 +143,7 @@ impl<'a> Buf for CursorMut<'a> {
         assert!(cnt <= self.chunk_len);
         unsafe {
             self.chunk_addr = self.chunk_addr.add(cnt);
-            self.chunk_len -= cnt;
+            self.chunk_len = buffer_math::shorten(self.chunk_len, cnt);
         }
     }
 }
@@ -153,16 +153,17 @@ impl<'a> PktBuf for CursorMut<'a> {
     #[inline]
     fn move_back(&mut self, cnt: usize) {
         assert!(cnt <= self.cursor());
+        let new_len = buffer_math::extend(self.chunk_len, cnt, self.cursor());
         unsafe {
             self.chunk_addr = self.chunk_addr.sub(cnt);
-            self.chunk_len += cnt;
+            self.chunk_len = new_len;
         }
     }
 
     #[inline]
     fn trim_off(&mut self, cnt: usize) {
         assert!(cnt <= self.chunk_len);
-        self.chunk_len -= cnt;
+        self.chunk_len = buffer_math::shorten(self.chunk_len, cnt);
     }
 }
 

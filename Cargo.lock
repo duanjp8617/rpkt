@@ -804,6 +804,7 @@ dependencies = [
  "lalrpop",
  "lalrpop-util",
  "quick-error",
+ "syn",
 ]
 
 [[package]]
