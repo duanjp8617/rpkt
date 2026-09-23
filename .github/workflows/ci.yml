@@ -77,7 +77,7 @@ jobs:
           cargo +nightly install cargo-fuzz --locked
       - name: Check cursor and parser properties under Miri
         run: |
-          bash dev/check_safety.sh
+          bash dev/check_safety.sh --dpdk
           cargo +nightly miri test -p rpkt --features batch --test batch
           cargo +nightly miri test -p rpkt --test parts
           cargo +nightly miri test --locked -p benches --test nat_support prefix_simd_bounds_and_unaligned_input

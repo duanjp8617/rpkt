@@ -46,21 +46,36 @@ unsafe impl StableBuf for bytes::BytesMut {}
 // SAFETY: exclusive forwarding preserves the underlying type's contract.
 unsafe impl<T: StableBuf + ?Sized> StableBuf for &mut T {}
 
-/// The PktBuf trait.
+/// A packet buffer with reversible cursor movement and tail trimming.
+///
+/// Let `position` be the offset from the retained allocation's start and `end`
+/// its current logical end. `remaining() == end - position`, and `chunk()` is
+/// a contiguous prefix of those remaining bytes, empty exactly when remaining
+/// length is zero (the inherited `Buf` contract). Exclusive movement may change
+/// the current segment, but must preserve the retained bytes.
+///
+/// `verification/buffers.rs` gives a Verus reference contract for these laws.
+/// Its reference-model proofs do not verify arbitrary Rust trait implementors.
 pub trait PktBuf: StableBuf {
-    /// Move cursor back.
+    /// Move backward by `cnt`, requiring `cnt <= position`.
+    /// On success, position decreases and remaining length increases by `cnt`;
+    /// the logical end and retained byte contents do not change.
     fn move_back(&mut self, cnt: usize);
 
-    /// Remove trailing bytes.
+    /// Remove `cnt` trailing bytes, requiring `cnt <= remaining()`.
+    /// On success, position is unchanged, while the logical end and remaining
+    /// length decrease by `cnt`. The surviving bytes are unchanged.
     fn trim_off(&mut self, cnt: usize);
 }
 
 /// The PktBufMut trait.
 pub trait PktBufMut: PktBuf {
-    /// Size of the chunk headroom.
+    /// Number of bytes before the cursor in its current contiguous segment.
+    /// Moving backward by at most this amount stays in that segment.
     fn chunk_headroom(&self) -> usize;
 
-    /// A mutable chunk slice.
+    /// The same contiguous region and length as `chunk()`, exclusively borrowed.
+    /// Editing its bytes must not change cursor, length, or segment metadata.
     fn chunk_mut(&mut self) -> &mut [u8];
 }
 

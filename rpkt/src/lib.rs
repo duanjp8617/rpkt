@@ -13,6 +13,8 @@ mod macros;
 mod traits;
 pub use traits::{Buf, PktBuf, PktBufMut, StableBuf};
 
+#[doc(hidden)]
+pub mod buffer_math;
 mod cursors;
 pub use cursors::{Cursor, CursorMut};
 

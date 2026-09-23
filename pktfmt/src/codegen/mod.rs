@@ -24,6 +24,7 @@ mod iter;
 use iter::*;
 
 mod parts;
+pub mod verus;
 
 // A writer object that appends prefix string and prepends suffix string to the
 // underlying content.

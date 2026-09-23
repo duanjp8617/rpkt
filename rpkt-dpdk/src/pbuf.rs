@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use rpkt::{Buf, PktBuf, PktBufMut};
+use rpkt::{buffer_math, Buf, PktBuf, PktBufMut};
 
 use crate::ffi::rte_mbuf;
 use crate::mbuf::{data_addr, mbuf_data_len, Mbuf};
@@ -27,14 +27,20 @@ impl<'a> Pbuf<'a> {
             let mbuf_cur = mbuf.as_mut_ptr();
             let chunk_len = usize::from(mbuf_data_len!(*mbuf_cur));
 
-            Self {
+            let mut out = Self {
                 mbuf_head: mbuf as *mut Mbuf,
                 mbuf_cur,
                 chunk_start: data_addr(&*mbuf_cur),
                 chunk_len,
                 segs_len: chunk_len,
                 _data: PhantomData,
+            };
+            // Buf requires chunk().is_empty() iff remaining() == 0. A valid
+            // mbuf chain may begin with empty segments (e.g. after concat).
+            if chunk_len == 0 {
+                out.advance_common(0);
             }
+            out
         }
     }
 
@@ -45,7 +51,7 @@ impl<'a> Pbuf<'a> {
 
     #[inline]
     pub fn cursor(&self) -> usize {
-        self.segs_len - self.chunk_len
+        buffer_math::position(self.segs_len, self.chunk_len)
     }
 
     // Advance the cursor to the `target_cursor` position.
@@ -57,15 +63,21 @@ impl<'a> Pbuf<'a> {
             self.segs_len += usize::from(mbuf_data_len!(*self.mbuf_cur));
         }
 
-        self.chunk_len = self.segs_len - target_cursor;
-        self.chunk_start = data_addr(&*self.mbuf_cur)
-            .add(usize::from(mbuf_data_len!(*self.mbuf_cur)) - self.chunk_len);
+        self.chunk_len = buffer_math::shorten(self.segs_len, target_cursor);
+        self.chunk_start = data_addr(&*self.mbuf_cur).add(buffer_math::shorten(
+            usize::from(mbuf_data_len!(*self.mbuf_cur)),
+            self.chunk_len,
+        ));
     }
 
     fn advance_slow(&mut self, cnt: usize) {
         unsafe {
             assert!(cnt <= (*self.mbuf_head).pkt_len() - self.cursor());
-            self.advance_common(self.cursor() + cnt);
+            self.advance_common(buffer_math::advance_target(
+                self.cursor(),
+                cnt,
+                (*self.mbuf_head).pkt_len(),
+            ));
         }
     }
 
@@ -73,7 +85,7 @@ impl<'a> Pbuf<'a> {
         assert!(cnt <= self.cursor());
 
         // the new cursor position
-        let target_cursor = self.cursor() - cnt;
+        let target_cursor = buffer_math::shorten(self.cursor(), cnt);
         unsafe {
             // reset the `cur_seg` to the first segment
             self.mbuf_cur = (*self.mbuf_head).as_mut_ptr();
@@ -101,14 +113,14 @@ impl<'a> Buf for Pbuf<'a> {
         } else {
             unsafe {
                 self.chunk_start = self.chunk_start.add(cnt);
-                self.chunk_len -= cnt;
+                self.chunk_len = buffer_math::shorten(self.chunk_len, cnt);
             }
         }
     }
 
     #[inline]
     fn remaining(&self) -> usize {
-        unsafe { (*self.mbuf_head).pkt_len() - self.cursor() }
+        unsafe { buffer_math::shorten((*self.mbuf_head).pkt_len(), self.cursor()) }
     }
 }
 
@@ -119,8 +131,9 @@ impl<'a> PktBuf for Pbuf<'a> {
             if cnt > self.chunk_headroom() {
                 self.move_back_slow(cnt);
             } else {
+                let new_len = buffer_math::extend(self.chunk_len, cnt, self.chunk_headroom());
                 self.chunk_start = self.chunk_start.sub(cnt);
-                self.chunk_len += cnt;
+                self.chunk_len = new_len;
             }
         }
     }
@@ -129,7 +142,7 @@ impl<'a> PktBuf for Pbuf<'a> {
         let cursor = self.cursor();
         assert!(cnt <= self.remaining());
 
-        let new_len = unsafe { (*self.mbuf_head).pkt_len() - cnt };
+        let new_len = unsafe { buffer_math::shorten((*self.mbuf_head).pkt_len(), cnt) };
         if cursor == new_len && self.chunk_headroom() == 0 {
             unsafe {
                 (*self.mbuf_head).truncate_to(new_len);
@@ -144,7 +157,7 @@ impl<'a> PktBuf for Pbuf<'a> {
                 (*self.mbuf_head).truncate_to(new_len);
             }
             if new_len < self.segs_len {
-                self.chunk_len = new_len - cursor;
+                self.chunk_len = buffer_math::shorten(new_len, cursor);
                 self.segs_len = new_len;
             }
         }
@@ -154,7 +167,7 @@ impl<'a> PktBuf for Pbuf<'a> {
 impl<'a> PktBufMut for Pbuf<'a> {
     #[inline]
     fn chunk_headroom(&self) -> usize {
-        unsafe { usize::from(mbuf_data_len!(*self.mbuf_cur)) - self.chunk_len }
+        unsafe { buffer_math::shorten(usize::from(mbuf_data_len!(*self.mbuf_cur)), self.chunk_len) }
     }
 
     #[inline]
