@@ -1,0 +1,73 @@
+   Compiling pktfmt v0.1.0 (/home/duanjp/rpkt-verus-20260923/pktfmt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.75s
+     Running unittests src/lib.rs (target/debug/deps/pktfmt-1693ac941fc44078)
+
+running 53 tests
+test ast::cond::tests::bounds_empty ... ok
+test ast::cond::tests::intersect_test ... ok
+test ast::cond::tests::print_bounds ... ok
+test codegen::field::tests::test_bracket_writer ... ok
+test codegen::field::tests::test_bit_mask ... ok
+test codegen::field::tests::test_read_arg ... ok
+test codegen::field::tests::test_read_repr_8b ... ok
+test codegen::field::tests::test_read_repr_gt_8b ... ok
+test codegen::field::tests::test_read_repr_multi_bytes ... ok
+test codegen::field::tests::test_write_repr_8b ... ok
+     Running unittests bin/pktfmt.rs (target/debug/deps/pktfmt-cf6cd0101990814b)
+   Doc-tests pktfmt
+test codegen::field::tests::test_write_multi_bytes ... ok
+test codegen::field::tests::test_write_arg ... ok
+test codegen::field::tests::test_write_repr_gt_8b ... ok
+test codegen::parts::tests::view_type_names_are_reserved ... ok
+test codegen::parts::tests::slice_access_is_unchecked_after_parse_and_length_changes_are_unsafe ... ok
+test codegen::parts::tests::custom_pairs_use_repr_conversions_without_bypassing_guards ... ok
+test codegen::raw_group_tests::dispatch_checks_the_furthest_field_end_on_one_borrow ... ok
+test codegen::verus::tests::extracts_actual_scalar_pair_and_mutable_ranges ... ok
+test codegen::verus::tests::out_of_bounds_is_a_solver_obligation_not_silently_dropped ... ok
+test file_text::test::bad_file_path ... ok
+test file_text::test::multi_byte_char ... ok
+test file_text::test::parse_lines ... ok
+test codegen::parts::tests::views_are_opt_in_and_pair_stores_skip_collisions_and_guards ... ok
+test file_text::test::test_render_line ... ok
+test file_text::test::test_render_six_lines ... ok
+test file_text::test::test_render_more_than_six_lines ... ok
+test token::test::algorithmic1 ... ok
+test token::test::algorithmic2 ... ok
+test codegen::verus::tests::unknown_indices_fail_closed ... ok
+test token::test::brackets_comma ... ok
+test token::test::builtin_slice_and_and ... ok
+test token::test::code_segment_slice ... ok
+test token::test::comparison ... ok
+test token::test::comparison1 ... ok
+test token::test::comparison_mix_assign ... ok
+test token::test::doc1 ... ok
+test token::test::doc2 ... ok
+test token::test::fuck ... ok
+test token::test::hex_num ... ok
+test token::test::key_word1 ... ok
+test token::test::key_word2 ... ok
+test token::test::key_word_builtin_type_builtin_value ... ok
+test token::test::logical ... ok
+test token::test::match_word1 ... ok
+test token::test::match_word2 ... ok
+test token::test::match_word3 ... ok
+test token::test::num_true_false ... ok
+test token::test::search_doc_line1 ... ok
+test token::test::search_doc_line2 ... ok
+test token::test::search_doc_line3 ... ok
+test token::test::search_for_end_of_code_segment1 ... ok
+test token::test::search_for_end_of_code_segment2 ... ok
+test codegen::verus::tests::parse_gate_linkage_rejects_weakened_or_missing_guards ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test tests::verus_companion_is_opt_in_and_has_a_separate_output ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

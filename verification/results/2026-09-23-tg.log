@@ -1,0 +1,570 @@
+rustc 1.98.0 (88d9e12ae 2026-08-18)
+binary: rustc
+commit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea
+commit-date: 2026-08-18
+host: x86_64-unknown-linux-gnu
+release: 1.98.0
+LLVM version: 22.1.8
+24.11.7
+   Compiling bytes v1.10.1
+   Compiling libc v0.2.174
+   Compiling cfg-if v1.0.1
+   Compiling memchr v2.7.5
+   Compiling regex-syntax v0.8.5
+   Compiling rpkt v0.1.0 (/root/rpkt-verus-20260923/rpkt)
+   Compiling aho-corasick v1.1.3
+   Compiling autocfg v1.5.0
+   Compiling lock_api v0.4.13
+   Compiling parking_lot_core v0.9.11
+   Compiling dirs-sys-next v0.1.2
+   Compiling crunchy v0.2.4
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling regex-automata v0.4.9
+   Compiling dirs-next v2.0.0
+   Compiling equivalent v1.0.2
+   Compiling siphasher v1.0.1
+   Compiling tiny-keccak v2.0.2
+   Compiling hashbrown v0.15.4
+   Compiling phf_shared v0.11.3
+   Compiling term v0.7.0
+   Compiling parking_lot v0.12.4
+   Compiling indexmap v2.10.0
+   Compiling fixedbitset v0.4.2
+   Compiling precomputed-hash v0.1.1
+   Compiling new_debug_unreachable v1.0.6
+   Compiling proc-macro2 v1.0.95
+   Compiling log v0.4.27
+   Compiling same-file v1.0.6
+   Compiling bit-vec v0.6.3
+   Compiling either v1.15.0
+   Compiling bit-set v0.5.3
+   Compiling itertools v0.11.0
+   Compiling walkdir v2.5.0
+   Compiling petgraph v0.6.5
+   Compiling ena v0.14.3
+   Compiling regex v1.11.1
+   Compiling lalrpop-util v0.20.2
+   Compiling string_cache v0.8.9
+   Compiling ascii-canvas v3.0.0
+   Compiling unicode-xid v0.2.6
+   Compiling pico-args v0.5.0
+   Compiling unicode-ident v1.0.18
+   Compiling termcolor v1.4.1
+   Compiling lalrpop v0.20.2
+   Compiling unicode-width v0.1.14
+   Compiling codespan-reporting v0.11.1
+   Compiling quote v1.0.40
+   Compiling codespan v0.11.1
+   Compiling syn v2.0.106
+   Compiling quick-error v2.0.1
+   Compiling byteorder v1.5.0
+   Compiling pktfmt v0.1.0 (/root/rpkt-verus-20260923/pktfmt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 17.71s
+     Running unittests src/lib.rs (target/debug/deps/pktfmt-1693ac941fc44078)
+
+running 53 tests
+test ast::cond::tests::bounds_empty ... ok
+test ast::cond::tests::intersect_test ... ok
+test codegen::field::tests::test_bit_mask ... ok
+test ast::cond::tests::print_bounds ... ok
+test codegen::field::tests::test_bracket_writer ... ok
+test codegen::field::tests::test_read_arg ... ok
+test codegen::field::tests::test_read_repr_8b ... ok
+test codegen::field::tests::test_read_repr_gt_8b ... ok
+test codegen::field::tests::test_read_repr_multi_bytes ... ok
+test codegen::field::tests::test_write_arg ... ok
+test codegen::field::tests::test_write_repr_8b ... ok
+test codegen::field::tests::test_write_repr_gt_8b ... ok
+test codegen::field::tests::test_write_multi_bytes ... ok
+test codegen::parts::tests::view_type_names_are_reserved ... ok
+test codegen::parts::tests::slice_access_is_unchecked_after_parse_and_length_changes_are_unsafe ... ok
+test codegen::parts::tests::custom_pairs_use_repr_conversions_without_bypassing_guards ... ok
+test codegen::raw_group_tests::dispatch_checks_the_furthest_field_end_on_one_borrow ... ok
+test codegen::verus::tests::extracts_actual_scalar_pair_and_mutable_ranges ... ok
+test codegen::parts::tests::views_are_opt_in_and_pair_stores_skip_collisions_and_guards ... ok
+test file_text::test::bad_file_path ... ok
+test codegen::verus::tests::out_of_bounds_is_a_solver_obligation_not_silently_dropped ... ok
+test file_text::test::multi_byte_char ... ok
+test file_text::test::parse_lines ... ok
+test file_text::test::test_render_line ... ok
+test file_text::test::test_render_more_than_six_lines ... ok
+     Running unittests bin/pktfmt.rs (target/debug/deps/pktfmt-cf6cd0101990814b)
+     Running unittests src/lib.rs (target/debug/deps/rpkt-c47571230ab84b0a)
+test file_text::test::test_render_six_lines ... ok
+test token::test::algorithmic1 ... ok
+test token::test::algorithmic2 ... ok
+test token::test::brackets_comma ... ok
+test token::test::code_segment_slice ... ok
+test token::test::builtin_slice_and_and ... ok
+test token::test::comparison ... ok
+test token::test::comparison1 ... ok
+test codegen::verus::tests::unknown_indices_fail_closed ... ok
+test token::test::doc1 ... ok
+test token::test::comparison_mix_assign ... ok
+test token::test::doc2 ... ok
+test token::test::fuck ... ok
+test token::test::hex_num ... ok
+test token::test::key_word1 ... ok
+test token::test::key_word_builtin_type_builtin_value ... ok
+test token::test::logical ... ok
+test token::test::match_word1 ... ok
+test token::test::match_word2 ... ok
+test token::test::match_word3 ... ok
+test token::test::num_true_false ... ok
+test token::test::search_doc_line1 ... ok
+test token::test::search_doc_line2 ... ok
+test token::test::search_doc_line3 ... ok
+test token::test::search_for_end_of_code_segment1 ... ok
+test token::test::search_for_end_of_code_segment2 ... ok
+test token::test::key_word2 ... ok
+test codegen::verus::tests::parse_gate_linkage_rejects_weakened_or_missing_guards ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test tests::verus_companion_is_opt_in_and_has_a_separate_output ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 14 tests
+test cursors::tests::cursor_advance_too_much - should panic ... ok
+test cursors::tests::cursor_moveback_too_much - should panic ... ok
+test cursors::tests::cursor_mut_advance_too_much - should panic ... ok
+test cursors::tests::cursor_mut_moveback_too_much - should panic ... ok
+test cursors::tests::cursor_mut_trimoff_too_much - should panic ... ok
+test cursors::tests::cursor_trimoff_too_much - should panic ... ok
+test cursors::tests::test_cursor ... ok
+test endian::test_read_write_uint_be ... ok
+test cursors::tests::test_cursor_mut ... ok
+test endian::test_read_write_uint_le ... ok
+test ether::tests::etheraddr_parse_from ... ok
+test ether::tests::packet_build ... ok
+test ether::tests::packet_parse ... ok
+     Running tests/batch.rs (target/debug/deps/batch-ebf64cb162d7bacb)
+     Running tests/eth_and_arp_test.rs (target/debug/deps/eth_and_arp_test-f21e89ee67115360)
+test checksum::tests::kernels_alignments_tails_and_long_inputs ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test eth_and_arp_packet_parsing ... ok
+test arp_packet_creation ... ok
+test eth_dot3_layer_parsing_test ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/gre_test.rs (target/debug/deps/gre_test-ad929386fc649168)
+     Running tests/gtpv1_test.rs (target/debug/deps/gtpv1_test-22ba5fef5a405b76)
+     Running tests/gtpv2_test.rs (target/debug/deps/gtpv2_test-673583e6dabc9861)
+     Running tests/icmpv4_test.rs (target/debug/deps/icmpv4_test-df3e4563fcf55737)
+
+running 7 tests
+test create_grev0_4 ... ok
+test create_grev1_3 ... ok
+test parse_grev0_1 ... ok
+test parse_grev0_4 ... ok
+test parse_grev0_2 ... ok
+test parse_grev1_1 ... ok
+test parse_grev1_2 ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test gtp_c1_build ... ok
+test gtp_c1_parse ... ok
+test gtp_nr_container_build ... ok
+test gtp_nr_container_parse ... ok
+test gtp_pdu_session_container_build ... ok
+test gtp_pdu_session_container_parse ... ok
+test gtp_u1_ext_build ... ok
+test gtp_u2_ext_build ... ok
+test gtp_u2_ext_parse ... ok
+test gtp_u1_ext_parse ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test gtpv2_with_piggyback_build ... ok
+test gtpv2_with_piggyback_parse ... ok
+test gtpv2_with_teid_build ... ok
+test gtpv2_with_teid_parse ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test test_icmp_checksum_calculation ... ok
+test test_icmpv4_address_mask ... ok
+test test_icmpv4_echo_reply_construction ... ok
+test test_icmpv4_echo_request_parse ... ok
+test test_icmpv4_group_parse ... ok
+test test_icmpv4_parameter_problem ... ok
+test test_icmpv4_redirect ... ok
+test test_icmpv4_time_exceeded ... ok
+     Running tests/incremental.rs (target/debug/deps/incremental-16047360b4eb3e25)
+     Running tests/ipv4_test.rs (target/debug/deps/ipv4_test-13e8c77b1711e4ee)
+     Running tests/ipv6_test.rs (target/debug/deps/ipv6_test-84fc17b4876e83cc)
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test rfc1624_zero_representations ... ok
+test word_ttl_address_and_pseudo_header_updates_match_recomputation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 18 tests
+test ipv4_option1_build ... ok
+test ipv4_option1_cursor_parse ... ok
+test ipv4_option1_parse ... ok
+test ipv4_option3_build ... ok
+test ipv4_option2_cursor_parse ... ok
+test ipv4_option2_parse ... ok
+test ipv4_option3_cursor_parse ... ok
+test ipv4_option3_parse ... ok
+test ipv4_option4_build ... ok
+test ipv4_option4_cursor_parse ... ok
+test ipv4_option4_parse ... ok
+test ipv4_option2_build ... ok
+test ipv4_option6_build ... ok
+test ipv4_option6_parse ... ok
+test ipv4_option6_cursor_parse ... ok
+test ipv4_option7_build ... ok
+test ipv4_option7_cursor_parse ... ok
+test ipv4_option7_parse ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test generated_cross_byte_setters_preserve_adjacent_bits ... ok
+test ipv6_options_ah_build ... ok
+test ipv6_options_destination_build ... ok
+test ipv6_options_destination_parse ... ok
+test ipv6_options_ah_parse ... ok
+test ipv6_options_hop_by_hop_build ... ok
+test ipv6_options_fragments_build ... ok
+test ipv6_options_routing1_build ... ok
+test ipv6_options_fragments_parse ... ok
+test ipv6_options_hop_by_hop_parse ... ok
+test ipv6_options_routing1_parse ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out     Running tests/llc_test.rs (target/debug/deps/llc_test-94e7a1a49e7b7e47)
+     Running tests/parts.rs (target/debug/deps/parts-89572558170a4636)
+     Running tests/pppoe_test.rs (target/debug/deps/pppoe_test-11ea493ae1820621)
+     Running tests/properties.rs (target/debug/deps/properties-c0c5c0aeea0e5a92)
+; finished in 0.00s
+
+
+running 2 tests
+test llc_creation_test ... ok
+test llc_parsing_test ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test disjoint_views_preserve_options_padding_and_endianness ... ok
+test fields_preserve_neighboring_bits ... ok
+test paired_custom_fields_preserve_conversions_and_neighbors ... ok
+test paired_stores_match_independent_setters ... ok
+test parts_match_checked_parsers_at_all_length_boundaries ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test pppoe_discovery_layer_creation_test ... ok
+test pppoe_discovery_layer_parsing_test1 ... ok
+test pppoe_discovery_layer_parsing_test2 ... ok
+test pppoe_session_layer_parsing_test ... ok
+test pppoe_discovery_layer_parsing_test3 ... ok
+test pppoe_session_layer_creation_test ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test malformed_packets_and_roundtrips ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.57s
+
+     Running tests/raw_access.rs (target/debug/deps/raw_access-9b3aeed60db405c0)
+     Running tests/stp_test.rs (target/debug/deps/stp_test-97b603a2489acaf6)
+
+running 4 tests
+test owned_clone_and_checked_parts_retain_the_validated_header ... ok
+test slice_fields_are_unaligned_and_preserve_neighbors ... ok
+test parse_checks_every_short_header_before_unchecked_fields ... ok
+test checked_field_constructor_rejects_short_slices - should panic ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 9 tests
+test multiple_stp_creation_tests ... ok
+     Running tests/tcp_test.rs (target/debug/deps/tcp_test-1029d90016f6bb33)
+     Running tests/template.rs (target/debug/deps/template-24a561e8f2159b49)
+     Running tests/vlan_mpls_tests.rs (target/debug/deps/vlan_mpls_tests-64e2a0a3af6506b7)
+   Doc-tests pktfmt
+test multiple_stp_parsing_tests ... ok
+test rapid_stp_creation_tests ... ok
+test stp_configuration_creation_tests ... ok
+test rapid_stp_parsing_tests ... ok
+test stp_configuration_edit_tests ... ok
+test stp_configuration_parsing_tests ... ok
+test stp_topology_change_parsing_tests ... ok
+test stp_topology_change_creation_tests ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 12 tests
+test tcp_packet_with_mss_sackperm_build ... ok
+test tcp_packet_with_mss_sackperm_cursor_parse ... ok
+test tcp_packet_with_mss_sackperm_parse ... ok
+test tcp_packet_with_options2_build ... ok
+test tcp_packet_with_options2_cursor_parse ... ok
+test tcp_packet_with_options2_parse ... ok
+test tcp_packet_with_sack_build ... ok
+test tcp_packet_with_options_cursor_parse ... ok
+test tcp_packet_with_sack_cursor_parse ... ok
+test tcp_packet_with_options_parse ... ok
+test tcp_packet_with_sack_parse ... ok
+test tcp_packet_with_options_build ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test computed_udp_zero_is_encoded_as_all_ones ... ok
+test invalid_lengths_do_not_modify_output ... ok
+test prepared_equals_general_builder_and_preserves_guards ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test generated_narrow_setter_widens_before_cross_byte_shift ... ok
+test vlan_parse_and_creation ... ok
+test mpls_layer_test ... ok
+test vxlan_parsing_and_creation_test ... ok
+test qinq802_1adparse ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests rpkt
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 19 tests
+test rpkt/src/arp/mod.rs - arp (line 21) ... ok
+test rpkt/src/gre/mod.rs - gre (line 32) ... ok
+test rpkt/src/icmpv4/mod.rs - icmpv4 (line 66) ... ok
+test rpkt/src/gtpv2/mod.rs - gtpv2 (line 44) ... ok
+test rpkt/src/ipv4/mod.rs - ipv4 (line 22) ... ok
+test rpkt/src/ipv6/mod.rs - ipv6 (line 34) ... ok
+test rpkt/src/ipv4/mod.rs - ipv4 (line 52) ... ok
+test rpkt/src/lib.rs - (line 31) ... ok
+test rpkt/src/llc/mod.rs - llc (line 30) ... ok
+test rpkt/src/mpls/mod.rs - mpls (line 42) ... ok
+test rpkt/src/pppoe/mod.rs - pppoe (line 43) ... ok
+test rpkt/src/traits.rs - traits::StableBuf (line 20) - compile fail ... ok
+test rpkt/src/stp/mod.rs - stp (line 39) ... ok
+test rpkt/src/traits.rs - traits::StableBuf (line 34) - compile fail ... ok
+test rpkt/src/traits.rs - traits::StableBuf (line 31) - compile fail ... ok
+test rpkt/src/tcp/mod.rs - tcp (line 29) ... ok
+test rpkt/src/udp/mod.rs - udp (line 16) ... ok
+test rpkt/src/vxlan/mod.rs - vxlan (line 42) ... ok
+test rpkt/src/vlan/mod.rs - vlan (line 32) ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+   Compiling memchr v2.7.5
+   Compiling proc-macro2 v1.0.95
+   Compiling unicode-ident v1.0.18
+   Compiling regex-syntax v0.8.5
+   Compiling libc v0.2.174
+   Compiling quote v1.0.40
+   Compiling aho-corasick v1.1.3
+   Compiling syn v2.0.106
+   Compiling glob v0.3.3
+   Compiling regex-automata v0.4.9
+   Compiling clang-sys v1.8.1
+   Compiling prettyplease v0.2.37
+   Compiling rustix v0.38.44
+    Checking no-std-net v0.6.0
+   Compiling serde_core v1.0.228
+   Compiling linux-raw-sys v0.4.15
+   Compiling either v1.15.0
+   Compiling bitflags v2.9.1
+   Compiling minimal-lexical v0.2.1
+   Compiling nom v7.1.3
+   Compiling regex v1.11.1
+   Compiling libloading v0.8.8
+    Checking pnet_base v0.35.0
+   Compiling serde v1.0.228
+   Compiling shlex v1.3.0
+   Compiling home v0.5.11
+   Compiling bindgen v0.69.5
+   Compiling which v4.4.2
+   Compiling cexpr v0.6.0
+   Compiling itertools v0.11.0
+   Compiling find-msvc-tools v0.1.0
+   Compiling cfg_aliases v0.2.1
+   Compiling lazy_static v1.5.0
+   Compiling lazycell v1.3.0
+   Compiling rustc-hash v1.1.0
+   Compiling nix v0.30.1
+   Compiling cc v1.2.35
+   Compiling pnet_macros v0.35.0
+    Checking pnet_macros_support v0.35.0
+    Checking pnet_sys v0.35.0
+   Compiling version-compare v0.1.1
+    Checking byteorder v1.5.0
+    Checking cfg-if v1.0.1
+   Compiling heapless v0.8.0
+    Checking hash32 v0.3.1
+    Checking pnet_packet v0.35.0
+    Checking ipnetwork v0.20.0
+   Compiling pnet v0.35.0
+    Checking bytes v1.10.1
+    Checking stable_deref_trait v1.2.1
+   Compiling smoltcp v0.12.0
+    Checking rpkt v0.1.0 (/root/rpkt-verus-20260923/rpkt)
+    Checking pnet_datalink v0.35.0
+    Checking once_cell v1.21.3
+    Checking arrayvec v0.7.6
+    Checking pnet_transport v0.35.0
+    Checking bitflags v1.3.2
+    Checking managed v0.8.0
+    Checking log v0.4.27
+    Checking ctrlc v3.4.7
+   Compiling rpkt-dpdk v0.1.0 (/root/rpkt-verus-20260923/rpkt-dpdk)
+warning: unnecessary parentheses around assigned value
+  --> rpkt-dpdk/examples/jumboframe_rx.rs:88:48
+   |
+88 |                     let manual_ip_cksum_good = (rpkt::checksum::from_slice(
+   |                                                ^
+89 |                         &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+90 |                     ) == 0xffff);
+   |                                ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+88 ~                     let manual_ip_cksum_good = rpkt::checksum::from_slice(
+89 |                         &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+90 ~                     ) == 0xffff;
+   |
+
+warning: variable does not need to be mutable
+  --> rpkt-dpdk/examples/jumboframe_rx.rs:94:33
+   |
+94 | ...                   let mut tcppkt = match Tcp::parse(ippkt.payload()) {
+   |                           ----^^^^^^
+   |                           |
+   |                           help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> rpkt-dpdk/examples/jumboframe_rx.rs:107:33
+    |
+107 | ...                   let mut udppkt = match Udp::parse(ippkt.payload()) {
+    |                           ----^^^^^^
+    |                           |
+    |                           help: remove this `mut`
+
+warning: `rpkt-dpdk` (example "jumboframe_rx") generated 3 warnings (run `cargo fix --example "jumboframe_rx" -p rpkt-dpdk` to apply 3 suggestions)
+warning: unnecessary parentheses around assigned value
+  --> rpkt-dpdk/examples/checksum_offload_rx.rs:88:48
+   |
+88 |                     let manual_ip_cksum_good = (rpkt::checksum::from_slice(
+   |                                                ^
+89 |                         &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+90 |                     ) == 0xffff);
+   |                                ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+88 ~                     let manual_ip_cksum_good = rpkt::checksum::from_slice(
+89 |                         &ippkt.buf().chunk()[..ippkt.header_len() as usize],
+90 ~                     ) == 0xffff;
+   |
+
+warning: variable does not need to be mutable
+  --> rpkt-dpdk/examples/checksum_offload_rx.rs:95:37
+   |
+95 | ...                   let mut tcppkt = match Tcp::parse(ippkt.payload()) {
+   |                           ----^^^^^^
+   |                           |
+   |                           help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> rpkt-dpdk/examples/checksum_offload_rx.rs:109:37
+    |
+109 | ...                   let mut udppkt = match Udp::parse(ippkt.payload()) {
+    |                           ----^^^^^^
+    |                           |
+    |                           help: remove this `mut`
+
+warning: `rpkt-dpdk` (example "checksum_offload_rx") generated 3 warnings (run `cargo fix --example "checksum_offload_rx" -p rpkt-dpdk` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 12.46s
+   Compiling cfg-if v1.0.1
+   Compiling libc v0.2.174
+   Compiling no-std-net v0.6.0
+   Compiling log v0.4.27
+   Compiling pnet_base v0.35.0
+   Compiling libloading v0.8.8
+   Compiling clang-sys v1.8.1
+   Compiling serde_core v1.0.228
+   Compiling pnet_macros_support v0.35.0
+   Compiling byteorder v1.5.0
+   Compiling hash32 v0.3.1
+   Compiling pnet_packet v0.35.0
+   Compiling pnet_sys v0.35.0
+   Compiling stable_deref_trait v1.2.1
+   Compiling bitflags v2.9.1
+   Compiling nix v0.30.1
+   Compiling serde v1.0.228
+   Compiling bindgen v0.69.5
+   Compiling ipnetwork v0.20.0
+   Compiling pnet_datalink v0.35.0
+   Compiling pnet_transport v0.35.0
+   Compiling heapless v0.8.0
+   Compiling managed v0.8.0
+   Compiling once_cell v1.21.3
+   Compiling bitflags v1.3.2
+   Compiling arrayvec v0.7.6
+   Compiling pnet v0.35.0
+   Compiling ctrlc v3.4.7
+   Compiling smoltcp v0.12.0
+   Compiling rpkt-dpdk v0.1.0 (/root/rpkt-verus-20260923/rpkt-dpdk)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.60s
+     Running unittests examples/two_port.rs (target/debug/examples/two_port-2c04b7d1b5ca2def)
+
+running 2 tests
+test tests::pseudo_seed_and_incremental_forwarding_match_full_checksums ... ok
+test tests::checked_rejects_all_truncations_and_unsupported_layouts ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
